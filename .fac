@@ -4,7 +4,7 @@ C target/release
 c Cargo.lock
 C target/debug/deps
 
-| cargo doc
+| cargo doc --no-deps
 C target/debug
 C target/release
 c Cargo.lock
