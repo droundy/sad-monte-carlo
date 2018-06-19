@@ -1,0 +1,19 @@
+[package]
+name = "sad-monte-carlo"
+version = "0.1.0"
+authors = ["David Roundy <roundyd@oregonstate.edu>"]
+
+[lib]
+name = "sadmc"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sad-ising"
+path = "src/sad-ising.rs"
+
+[dependencies]
+
+
+[features]
+# Treat warnings as a build error.
+strict = []

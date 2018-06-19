@@ -1,0 +1,4 @@
+| cargo build --features strict
+
+| cargo doc
+C target
