@@ -1,4 +1,8 @@
 | cargo build --features strict
+C target/doc
+C target/release
 
 | cargo doc
-C target
+C target/debug
+C target/release
+
