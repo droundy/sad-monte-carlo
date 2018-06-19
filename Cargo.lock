@@ -1,4 +1,40 @@
 [[package]]
+name = "dimensioned"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "generic-array 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "typenum 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "generic-array"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "nodrop 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "typenum 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "nodrop"
+version = "0.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "sad-monte-carlo"
 version = "0.1.0"
+dependencies = [
+ "dimensioned 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
+[[package]]
+name = "typenum"
+version = "1.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[metadata]
+"checksum dimensioned 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b0585d967077b28efdfe3dcf8a63ee68e7ca47c8198750a2a59639329229bc6c"
+"checksum generic-array 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5a3fb8dffe3fbf0fc95cd4f0b441cbf3ca81adfc988566bc28ee80291335ac5e"
+"checksum nodrop 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)" = "9a2228dca57108069a5262f2ed8bd2e82496d2e074a06d1ccc7ce1687b6ae0a2"
+"checksum typenum 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "612d636f949607bdf9b123b4a6f6d966dedf3ff669f7f045890d3a4a73948169"
