@@ -8,4 +8,6 @@
 extern crate serde;
 extern crate serde_yaml;
 
+extern crate vector3d;
+
 pub mod system;

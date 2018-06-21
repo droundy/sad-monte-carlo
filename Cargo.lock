@@ -1,9 +1,10 @@
 [[package]]
 name = "dimensioned"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/paholg/dimensioned#a9468936de7959cb24587fa96da5c96d79e184f6"
 dependencies = [
  "generic-array 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.66 (registry+https://github.com/rust-lang/crates.io-index)",
  "typenum 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -51,10 +52,11 @@ dependencies = [
 name = "sad-monte-carlo"
 version = "0.1.0"
 dependencies = [
- "dimensioned 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "dimensioned 0.6.0 (git+https://github.com/paholg/dimensioned)",
  "serde 1.0.66 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.66 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_yaml 0.7.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "vector3d 0.1.0 (git+https://github.com/droundy/vector3d)",
 ]
 
 [[package]]
@@ -104,6 +106,15 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "vector3d"
+version = "0.1.0"
+source = "git+https://github.com/droundy/vector3d#e1ac0488acca8b06f08e5ef53cd2b12c5271c2b0"
+dependencies = [
+ "serde 1.0.66 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.66 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "yaml-rust"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -112,7 +123,7 @@ dependencies = [
 ]
 
 [metadata]
-"checksum dimensioned 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b0585d967077b28efdfe3dcf8a63ee68e7ca47c8198750a2a59639329229bc6c"
+"checksum dimensioned 0.6.0 (git+https://github.com/paholg/dimensioned)" = "<none>"
 "checksum dtoa 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "09c3753c3db574d215cba4ea76018483895d7bff25a31b49ba45db21c48e50ab"
 "checksum generic-array 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5a3fb8dffe3fbf0fc95cd4f0b441cbf3ca81adfc988566bc28ee80291335ac5e"
 "checksum linked-hash-map 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "70fb39025bc7cdd76305867c4eccf2f2dcf6e9a57f5b21a93e1c2d86cd03ec9e"
@@ -125,4 +136,5 @@ dependencies = [
 "checksum syn 0.14.2 (registry+https://github.com/rust-lang/crates.io-index)" = "c67da57e61ebc7b7b6fff56bb34440ca3a83db037320b0507af4c10368deda7d"
 "checksum typenum 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "612d636f949607bdf9b123b4a6f6d966dedf3ff669f7f045890d3a4a73948169"
 "checksum unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fc72304796d0818e357ead4e000d19c9c174ab23dc11093ac919054d20a6a7fc"
+"checksum vector3d 0.1.0 (git+https://github.com/droundy/vector3d)" = "<none>"
 "checksum yaml-rust 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "57ab38ee1a4a266ed033496cf9af1828d8d6e6c1cfa5f643a2809effcae4d628"

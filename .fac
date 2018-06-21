@@ -1,11 +1,11 @@
 | cargo build --features strict
+C target/debug/deps
 C target/doc
 C target/release
-c Cargo.lock
-C target/debug/deps
+> Cargo.lock
 
 | cargo doc --no-deps
 C target/debug
 C target/release
-c Cargo.lock
+< Cargo.lock
 

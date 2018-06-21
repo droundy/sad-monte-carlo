@@ -24,4 +24,6 @@ make_units! {
     fmt = true;
 }
 
+impl_serde!(UNITS);
+
 pub use self::f64consts::*;

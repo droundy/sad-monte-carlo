@@ -3,22 +3,23 @@
 use super::*;
 
 use dimensioned::Dimensionless;
+use vector3d::Vector3d;
 
 /// A square well fluid.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SquareWell {
     /// The dimensionless well width.
-    well_width: f64,
-    /// The number of atoms
-    n: u64,
+    well_width: Unitless,
+    /// The atom positions
+    positions: Vec<Vector3d<Length>>,
 }
 
 impl SquareWell {
     /// Create a new square well fluid.
-    pub fn new(well_width: Unitless, num_atoms: u64) -> SquareWell {
+    pub fn new(well_width: Unitless) -> SquareWell {
         SquareWell {
-            well_width: *well_width.value(),
-            n: num_atoms,
+            well_width: well_width,
+            positions: Vec::new(),
         }
     }
     fn max_interaction(&self) -> u64 {
@@ -37,7 +38,7 @@ impl System for SquareWell {
         Some(0.0*units::EPSILON)
     }
     fn lowest_possible_energy(&self) -> Option<Energy> {
-        Some(-(self.n as f64)*(self.max_interaction() as f64)*units::EPSILON)
+        Some(-(self.positions.len() as f64)*(self.max_interaction() as f64)*units::EPSILON)
     }
 }
 
