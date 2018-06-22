@@ -15,14 +15,22 @@ pub type Energy = units::Energy<f64>;
 /// A distance
 pub type Length = units::Distance<f64>;
 
+/// A distance
+pub type Area = units::Area<f64>;
+
 /// A force
 pub type Force = units::Force<f64>;
 
 /// A physical system, which has some energy, and to which we can make
 /// some changes.
 pub trait System : ::serde::Serialize + ::serde::de::DeserializeOwned {
-    /// Returns the energy of the system.
+    /// Returns the energy of the system, and is fast.  This should
+    /// just access a cached variable.
     fn energy(&self) -> Energy;
+    /// Returns the energy of the system the hard way.  This is slow,
+    /// and should only be used as a test that the changes of energy
+    /// are being tracked properly.
+    fn compute_energy(&self) -> Energy;
     /// The "native" energy step size, assuming one exists.  The
     /// default implementation says the energy is continuous, i.e. it
     /// returns a `None` value.

@@ -5,6 +5,7 @@ use super::*;
 use dimensioned::Dimensionless;
 use vector3d::Vector3d;
 
+#[allow(non_snake_case)]
 /// A square well fluid.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SquareWell {
@@ -12,27 +13,105 @@ pub struct SquareWell {
     well_width: Length,
     /// The atom positions
     positions: Vec<Vector3d<Length>>,
+    /// The energy of the system
+    E: Energy,
+    /// The dimensions of the box.
+    box_diagonal: Vector3d<Length>,
 }
 
 impl SquareWell {
     /// Create a new square well fluid.
-    pub fn new(well_width: Unitless) -> SquareWell {
+    pub fn new(well_width: Unitless, mut box_diagonal: Vector3d<Length>) -> SquareWell {
+        if box_diagonal.x < units::SIGMA*0.0 {
+            box_diagonal.x = -box_diagonal.x;
+        }
+        if box_diagonal.y < units::SIGMA*0.0 {
+            box_diagonal.y = -box_diagonal.y;
+        }
+        if box_diagonal.z < units::SIGMA*0.0 {
+            box_diagonal.z = -box_diagonal.z;
+        }
         SquareWell {
             well_width: well_width*units::SIGMA,
             positions: Vec::new(),
+            E: 0.0*units::EPSILON,
+            box_diagonal: box_diagonal,
         }
     }
     fn max_interaction(&self) -> u64 {
         max_balls_within(self.well_width)
     }
+    /// Add an atom at a given location.  Returns the change in
+    /// energy, or `None` if the atom could not be placed there.
+    pub fn add_atom_at(&mut self, r: Vector3d<Length>) -> Option<Energy> {
+        let mut de = units::EPSILON*0.0;
+        for &r1 in self.positions.iter() {
+            let dist2 = self.closest_distance2(r1,r);
+            if dist2 < units::SIGMA*units::SIGMA {
+                return None;
+            } else if dist2 < self.well_width*self.well_width {
+                de -= units::EPSILON;
+            }
+        }
+        self.positions.push(r);
+        Some(de)
+    }
+    /// Remove the specified atom.  Returns the change in energy.
+    pub fn remove_atom_number(&mut self, which: usize) -> Energy {
+        let r = self.positions.swap_remove(which);
+        let mut de = units::EPSILON*0.0;
+        for &r1 in self.positions.iter() {
+            if self.closest_distance2(r1,r) < self.well_width*self.well_width {
+                de += units::EPSILON;
+            }
+        }
+        de
+    }
+    fn closest_distance2(&self, r1: Vector3d<Length>, r2: Vector3d<Length>) -> Area {
+        let mut dr = r2 - r1;
+        if dr.x < -0.5*self.box_diagonal.x {
+            while {
+                dr.x += self.box_diagonal.x;
+                dr.x < -0.5*self.box_diagonal.x
+            } {}
+        } else {
+            while dr.x > 0.5*self.box_diagonal.x {
+                dr.x -= self.box_diagonal.x;
+            }
+        }
+        if dr.y < -0.5*self.box_diagonal.y {
+            while {
+                dr.y += self.box_diagonal.y;
+                dr.y < -0.5*self.box_diagonal.y
+            } {}
+        } else {
+            while dr.y > 0.5*self.box_diagonal.y {
+                dr.y -= self.box_diagonal.y;
+            }
+        }
+        if dr.z < -0.5*self.box_diagonal.z {
+            while {
+                dr.z += self.box_diagonal.z;
+                dr.z < -0.5*self.box_diagonal.z
+            } {}
+        } else {
+            while dr.z > 0.5*self.box_diagonal.z {
+                dr.z -= self.box_diagonal.z;
+            }
+        }
+        dr.norm2()
+    }
 }
 
 impl System for SquareWell {
     fn energy(&self) -> Energy {
+        self.E
+    }
+    fn compute_energy(&self) -> Energy {
         let mut e: Energy = units::EPSILON*0.0;
-        for (i, r1) in self.positions[..self.positions.len()-1].iter().enumerate() {
-            for r2 in self.positions[i+1..].iter() {
-                if (*r1-*r2).norm2() < self.well_width*self.well_width {
+        for (i, &r1) in self.positions[..self.positions.len()-1].iter().enumerate() {
+            for &r2 in self.positions[i+1..].iter() {
+                if self.closest_distance2(r1,r2) < self.well_width*self.well_width {
                     e -= units::EPSILON;
                 }
             }
