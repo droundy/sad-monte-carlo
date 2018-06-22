@@ -9,7 +9,7 @@ use vector3d::Vector3d;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SquareWell {
     /// The dimensionless well width.
-    well_width: Unitless,
+    well_width: Length,
     /// The atom positions
     positions: Vec<Vector3d<Length>>,
 }
@@ -18,18 +18,26 @@ impl SquareWell {
     /// Create a new square well fluid.
     pub fn new(well_width: Unitless) -> SquareWell {
         SquareWell {
-            well_width: well_width,
+            well_width: well_width*units::SIGMA,
             positions: Vec::new(),
         }
     }
     fn max_interaction(&self) -> u64 {
-        max_balls_within(self.well_width*units::SIGMA)
+        max_balls_within(self.well_width)
     }
 }
 
 impl System for SquareWell {
     fn energy(&self) -> Energy {
-        unimplemented!()
+        let mut e: Energy = units::EPSILON*0.0;
+        for (i, r1) in self.positions[..self.positions.len()-1].iter().enumerate() {
+            for r2 in self.positions[i+1..].iter() {
+                if (*r1-*r2).norm2() < self.well_width*self.well_width {
+                    e -= units::EPSILON;
+                }
+            }
+        }
+        e
     }
     fn delta_energy(&self) -> Option<Energy> {
         Some(units::EPSILON)
