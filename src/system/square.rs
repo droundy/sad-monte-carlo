@@ -17,6 +17,16 @@ pub struct SquareWell {
     E: Energy,
     /// The dimensions of the box.
     box_diagonal: Vector3d<Length>,
+    /// The last change we made (and might want to undo).
+    last_change: Change,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+enum Change {
+    Move { which: usize, from: Vector3d<Length>, de: Energy },
+    Add { which: usize, de: Energy },
+    Remove { from: Vector3d<Length>, de: Energy },
+    None,
 }
 
 impl SquareWell {
@@ -36,6 +46,7 @@ impl SquareWell {
             positions: Vec::new(),
             E: 0.0*units::EPSILON,
             box_diagonal: box_diagonal,
+            last_change: Change::None,
         }
     }
     fn max_interaction(&self) -> u64 {
@@ -48,12 +59,14 @@ impl SquareWell {
         for &r1 in self.positions.iter() {
             let dist2 = self.closest_distance2(r1,r);
             if dist2 < units::SIGMA*units::SIGMA {
+                self.last_change = Change::None;
                 return None;
             } else if dist2 < self.well_width*self.well_width {
                 de -= units::EPSILON;
             }
         }
         self.positions.push(r);
+        self.last_change = Change::Add{ which: self.positions.len()-1, de: de };
         Some(de)
     }
     /// Remove the specified atom.  Returns the change in energy.
@@ -65,6 +78,7 @@ impl SquareWell {
                 de += units::EPSILON;
             }
         }
+        self.last_change = Change::Remove{ from: r, de: de };
         de
     }
     fn closest_distance2(&self, r1: Vector3d<Length>, r2: Vector3d<Length>) -> Area {
@@ -126,6 +140,49 @@ impl System for SquareWell {
     }
     fn lowest_possible_energy(&self) -> Option<Energy> {
         Some(-(self.positions.len() as f64)*(self.max_interaction() as f64)*units::EPSILON)
+    }
+}
+
+impl UndoSystem for SquareWell {
+    fn undo(&mut self) {
+        match self.last_change {
+            Change::None => (),
+            Change::Move{which, from, de} => {
+                let old = self.positions[which];
+                self.positions[which] = from;
+                self.E -= de;
+                self.last_change = Change::Move {
+                    which: which,
+                    from: old,
+                    de: -de,
+                };
+            },
+            Change::Add{which, de} => {
+                let old = self.positions.swap_remove(which);
+                self.E -= de;
+                self.last_change = Change::Remove {
+                    from: old,
+                    de: -de,
+                };
+            },
+            Change::Remove{from, de} => {
+                self.positions.push(from);
+                self.E -= de;
+                self.last_change = Change::Add {
+                    which: self.positions.len()-1,
+                    de: -de,
+                };
+            },
+        }
+    }
+}
+
+impl GrandSystem for SquareWell {
+    fn add_atom(&mut self) -> Option<Energy> {
+        None
+    }
+    fn remove_atom(&mut self) -> Energy {
+        Energy::new(0.0)
     }
 }
 
