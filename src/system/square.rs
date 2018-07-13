@@ -4,6 +4,14 @@ use super::*;
 
 use dimensioned::Dimensionless;
 use vector3d::Vector3d;
+use clapme::ClapMe;
+use clapme;
+
+#[derive(Serialize, Deserialize, Debug, ClapMe)]
+pub struct SquareWellParams {
+    well_width: Unitless,
+    box_diagonal: Vector3d<Length>,
+}
 
 #[allow(non_snake_case)]
 /// A square well fluid.
@@ -31,7 +39,8 @@ enum Change {
 
 impl SquareWell {
     /// Create a new square well fluid.
-    pub fn new(well_width: Unitless, mut box_diagonal: Vector3d<Length>) -> SquareWell {
+    pub fn new(params: SquareWellParams) -> SquareWell {
+        let mut box_diagonal = params.box_diagonal;
         if box_diagonal.x < units::SIGMA*0.0 {
             box_diagonal.x = -box_diagonal.x;
         }
@@ -42,7 +51,7 @@ impl SquareWell {
             box_diagonal.z = -box_diagonal.z;
         }
         SquareWell {
-            well_width: well_width*units::SIGMA,
+            well_width: params.well_width*units::SIGMA,
             positions: Vec::new(),
             E: 0.0*units::EPSILON,
             box_diagonal: box_diagonal,
