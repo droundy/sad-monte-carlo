@@ -7,6 +7,7 @@ use vector3d::Vector3d;
 use clapme::ClapMe;
 use clapme;
 
+/// The parameters needed to configure a square well system.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
 pub struct SquareWellParams {
     well_width: Unitless,
