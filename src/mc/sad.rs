@@ -5,7 +5,6 @@ use super::*;
 
 use dimensioned::Dimensionless;
 use clapme::ClapMe;
-use clapme;
 
 /// The parameters needed to configure a SAD simulation.
 #[allow(non_snake_case)]
