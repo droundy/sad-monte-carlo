@@ -1,6 +1,7 @@
 //! These are different Monte Carlo algorithms.
 
 pub mod sad;
+pub mod rng;
 
 use ::system::*;
 

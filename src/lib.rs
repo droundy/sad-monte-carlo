@@ -10,6 +10,8 @@ extern crate serde_yaml;
 #[macro_use] extern crate clapme;
 
 extern crate vector3d;
+extern crate rand;
+extern crate rand_core;
 
 pub mod system;
 
