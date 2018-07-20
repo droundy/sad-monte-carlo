@@ -13,6 +13,8 @@ use clapme;
 pub struct SadParams {
     /// The minimum temperature we are interested in.
     pub min_T: Energy,
+    /// The seed for the random number generator.
+    pub seed: u64,
 }
 
 #[allow(non_snake_case)]
