@@ -67,7 +67,10 @@ impl RngCore for Xoroshiro128plusRng {
 }
 
 impl Xoroshiro128plusRng {
-    fn from_u64(seed: u64) -> Self {
+    /// Seed this RNG using a u64.  This is not quite as trivial as
+    /// you'd wish, because we need to ensure that the resulting state
+    /// is not *all* zeros.
+    pub fn from_u64(seed: u64) -> Self {
         let mut seed_u64 = [Wrapping(0u64); 2];
         // As recommended, we use splitmix64 to seed the generator if
         // we only have 64 bits of seed.

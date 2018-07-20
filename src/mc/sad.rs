@@ -49,6 +49,9 @@ pub struct Sad<S> {
     pub min_important_energy: Energy,
     /// Number of states found.
     pub n_found: u64,
+
+    /// The random number generator.
+    pub rng: rng::Rng,
 }
 
 impl<S: System> Sad<S> {
@@ -69,6 +72,8 @@ impl<S: System> Sad<S> {
             max_S: Unitless::new(0.0),
             energy_bin: system.delta_energy().unwrap_or(Energy::new(1.0)),
             system: system,
+
+            rng: rng::Rng::from_u64(params.seed),
         }
     }
 
