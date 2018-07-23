@@ -7,10 +7,6 @@ authors = ["David Roundy <roundyd@oregonstate.edu>"]
 name = "sadmc"
 path = "src/lib.rs"
 
-[[bin]]
-name = "sad-ising"
-path = "src/sad-ising.rs"
-
 [dependencies]
 
 dimensioned = { git = "https://github.com/paholg/dimensioned", features=["serde"] }

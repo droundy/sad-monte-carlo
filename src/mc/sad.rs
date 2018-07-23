@@ -4,7 +4,6 @@ use ::system::*;
 use super::*;
 
 use dimensioned::Dimensionless;
-use clapme::ClapMe;
 
 /// The parameters needed to configure a SAD simulation.
 #[allow(non_snake_case)]
@@ -54,8 +53,21 @@ pub struct Sad<S> {
 }
 
 impl<S: System> Sad<S> {
-    /// Create a new sad simulation.
-    pub fn new(params: SadParams, system: S) -> Self {
+    /// Find the index corresponding to a given energy.  This should
+    /// panic if the energy is less than `min_energy_bin`.
+    pub fn energy_to_index(&self, e: Energy) -> usize {
+        *((e - self.min_energy_bin)/self.energy_bin).value() as usize
+    }
+    /// Find the energy corresponding to a given index.
+    pub fn index_to_energy(&self, i: usize) -> Energy {
+        self.min_energy_bin + (i as f64)*self.energy_bin
+    }
+}
+
+impl<S: MovableSystem> MonteCarlo for Sad<S> {
+    type Params = SadParams;
+    type System = S;
+    fn from_params(params: SadParams, system: S) -> Self {
         Sad {
             min_T: params.min_T,
             moves: 0,
@@ -76,18 +88,6 @@ impl<S: System> Sad<S> {
         }
     }
 
-    /// Find the index corresponding to a given energy.  This should
-    /// panic if the energy is less than `min_energy_bin`.
-    pub fn energy_to_index(&self, e: Energy) -> usize {
-        *((e - self.min_energy_bin)/self.energy_bin).value() as usize
-    }
-    /// Find the energy corresponding to a given index.
-    pub fn index_to_energy(&self, i: usize) -> Energy {
-        self.min_energy_bin + (i as f64)*self.energy_bin
-    }
-}
-
-impl<S: MovableSystem> MonteCarlo for Sad<S> {
     fn move_once(&mut self) -> Energy {
         self.system.energy()
     }

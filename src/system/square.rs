@@ -4,7 +4,6 @@ use super::*;
 
 use dimensioned::Dimensionless;
 use vector3d::Vector3d;
-use clapme::ClapMe;
 
 /// The parameters needed to configure a square well system.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
@@ -38,26 +37,6 @@ enum Change {
 }
 
 impl SquareWell {
-    /// Create a new square well fluid.
-    pub fn new(params: SquareWellParams) -> SquareWell {
-        let mut box_diagonal = params.box_diagonal;
-        if box_diagonal.x < units::SIGMA*0.0 {
-            box_diagonal.x = -box_diagonal.x;
-        }
-        if box_diagonal.y < units::SIGMA*0.0 {
-            box_diagonal.y = -box_diagonal.y;
-        }
-        if box_diagonal.z < units::SIGMA*0.0 {
-            box_diagonal.z = -box_diagonal.z;
-        }
-        SquareWell {
-            well_width: params.well_width*units::SIGMA,
-            positions: Vec::new(),
-            E: 0.0*units::EPSILON,
-            box_diagonal: box_diagonal,
-            last_change: Change::None,
-        }
-    }
     fn max_interaction(&self) -> u64 {
         max_balls_within(self.well_width)
     }
@@ -127,6 +106,27 @@ impl SquareWell {
 }
 
 impl System for SquareWell {
+    type Params = SquareWellParams;
+    /// Create a new square well fluid.
+    fn from_params(params: SquareWellParams) -> SquareWell {
+        let mut box_diagonal = params.box_diagonal;
+        if box_diagonal.x < units::SIGMA*0.0 {
+            box_diagonal.x = -box_diagonal.x;
+        }
+        if box_diagonal.y < units::SIGMA*0.0 {
+            box_diagonal.y = -box_diagonal.y;
+        }
+        if box_diagonal.z < units::SIGMA*0.0 {
+            box_diagonal.z = -box_diagonal.z;
+        }
+        SquareWell {
+            well_width: params.well_width*units::SIGMA,
+            positions: Vec::new(),
+            E: 0.0*units::EPSILON,
+            box_diagonal: box_diagonal,
+            last_change: Change::None,
+        }
+    }
     fn energy(&self) -> Energy {
         self.E
     }
@@ -192,6 +192,12 @@ impl GrandSystem for SquareWell {
     }
     fn remove_atom(&mut self) -> Energy {
         Energy::new(0.0)
+    }
+}
+
+impl MovableSystem for SquareWell {
+    fn move_once(&mut self, mean_distance: Length) -> Option<Energy> {
+        None
     }
 }
 
