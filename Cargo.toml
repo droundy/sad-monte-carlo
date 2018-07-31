@@ -13,10 +13,8 @@ dimensioned = { git = "https://github.com/paholg/dimensioned", features=["serde"
 serde = "1.0"
 serde_derive = "1.0"
 serde_yaml = "0.7"
-#clapme = { path = "/home/droundy/src/clapme" }
-clapme = "0.1.5"
+clapme = "0.1.6"
 
-# vector3d = { path = "/home/droundy/src/vector3d" }
 vector3d = "0.1.2"
 rand_core = "0.2.1"
 rand = "0.5.4"
