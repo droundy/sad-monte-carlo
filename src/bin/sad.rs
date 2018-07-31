@@ -13,4 +13,5 @@ fn main() {
     println!("Rejected {}/{} = {}% of the moves",
              sad.rejected_moves, sad.moves,
              100.0*sad.rejected_moves as f64/sad.moves as f64);
+    sad.checkpoint();
 }

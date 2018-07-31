@@ -53,6 +53,8 @@ pub struct Sad<S> {
 
     /// The random number generator.
     pub rng: ::rng::MyRng,
+    /// Where to save the resume file.
+    pub save_as: ::std::path::PathBuf
 }
 
 impl<S: System> Sad<S> {
@@ -85,7 +87,7 @@ impl<S: System> Sad<S> {
 impl<S: MovableSystem> MonteCarlo for Sad<S> {
     type Params = SadParams;
     type System = S;
-    fn from_params(params: SadParams, system: S) -> Self {
+    fn from_params(params: SadParams, system: S, save_as: ::std::path::PathBuf) -> Self {
         Sad {
             min_T: params.min_T,
             moves: 0,
@@ -104,6 +106,7 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
             system: system,
 
             rng: ::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
+            save_as: save_as,
         }
     }
 
@@ -213,6 +216,9 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
     }
     fn num_rejected_moves(&self) -> u64 {
         self.rejected_moves
+    }
+    fn save_as(&self) -> ::std::path::PathBuf {
+        self.save_as.clone()
     }
 }
 
