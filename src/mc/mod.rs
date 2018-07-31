@@ -10,7 +10,7 @@ use serde;
 
 #[derive(ClapMe)]
 enum Params<MP, SP> {
-    _ResumeFrom(::std::path::PathBuf),
+    ResumeFrom(::std::path::PathBuf),
     _Params {
         _sys: SP,
         _mc: MP,
@@ -19,7 +19,7 @@ enum Params<MP, SP> {
 }
 
 /// A Monte Carlo algorithm.
-pub trait MonteCarlo: Sized + serde::Serialize {
+pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
     /// A type defining a new Monte Carlo.
     type Params: ClapMe;
     /// A type defining the corresponding system
@@ -36,7 +36,9 @@ pub trait MonteCarlo: Sized + serde::Serialize {
                 Self::from_params(_mc, s, save_as)
             },
             Params::ResumeFrom(p) => {
-                panic!("unable to open file {:?}", p)
+                let f = ::std::fs::File::open(&p)
+                    .expect(&format!("error reading file {:?}", &p));
+                serde_yaml::from_reader(&f).expect("error reading checkpoint?!")
             },
         }
     }
