@@ -69,6 +69,7 @@ impl SquareWell {
         }
         self.positions.push(r);
         self.last_change = Change::Add{ de };
+        self.E += de;
         Some(de)
     }
     /// Move a specified atom.  Returns the change in energy, or
@@ -93,6 +94,7 @@ impl SquareWell {
         }
         self.positions[which] = r;
         self.last_change = Change::Move{ which, from, de };
+        self.E += de;
         Some(de)
     }
     /// Remove the specified atom.  Returns the change in energy.
@@ -105,6 +107,7 @@ impl SquareWell {
             }
         }
         self.last_change = Change::Remove{ from: r, de: de };
+        self.E += de;
         de
     }
     fn closest_distance2(&self, r1: Vector3d<Length>, r2: Vector3d<Length>) -> Area {
@@ -270,9 +273,13 @@ impl GrandSystem for SquareWell {
 
 impl MovableSystem for SquareWell {
     fn move_once(&mut self, rng: &mut MyRng, mean_distance: Length) -> Option<Energy> {
-        let which = rng.sample(Uniform::new(0, self.positions.len()));
-        let to = self.put_in_cell(self.positions[which] + rng.vector()*mean_distance);
-        self.move_atom(which, to)
+        if self.positions.len() > 0 {
+            let which = rng.sample(Uniform::new(0, self.positions.len()));
+            let to = self.put_in_cell(self.positions[which] + rng.vector()*mean_distance);
+            self.move_atom(which, to)
+        } else {
+            None
+        }
     }
 }
 

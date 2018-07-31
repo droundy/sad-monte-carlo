@@ -4,6 +4,7 @@ use ::system::*;
 use super::*;
 
 use dimensioned::Dimensionless;
+use rand::Rng;
 
 /// The parameters needed to configure a SAD simulation.
 #[allow(non_snake_case)]
@@ -25,6 +26,8 @@ pub struct Sad<S> {
     pub min_T: Energy,
     /// The number of moves that have been made.
     pub moves: u64,
+    /// The last move where we discovered a new energy.
+    pub time_L: u64,
     /// The number of moves that have been rejected.
     pub rejected_moves: u64,
     /// The number of times we have been at each energy.
@@ -62,6 +65,21 @@ impl<S: System> Sad<S> {
     pub fn index_to_energy(&self, i: usize) -> Energy {
         self.min_energy_bin + (i as f64)*self.energy_bin
     }
+    /// Make room in our arrays for a new energy value
+    pub fn prepare_for_energy(&mut self, e: Energy) {
+        assert!(self.energy_bin > Energy::new(0.0));
+        while e < self.min_energy_bin {
+            // this is a little wasteful, but seems the easiest way to
+            // ensure we end up with enough room.
+            self.histogram.insert(0, 0);
+            self.lnw.insert(0, Unitless::new(0.0));
+            self.min_energy_bin -= self.energy_bin;
+        }
+        while e > self.min_energy_bin + self.energy_bin*(self.lnw.len() as f64) {
+            self.lnw.push(Unitless::new(0.0));
+            self.histogram.push(0);
+        }
+    }
 }
 
 impl<S: MovableSystem> MonteCarlo for Sad<S> {
@@ -71,10 +89,11 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
         Sad {
             min_T: params.min_T,
             moves: 0,
+            time_L: 0,
             rejected_moves: 0,
-            histogram: Vec::new(),
-            lnw: Vec::new(),
-            n_found: 0,
+            histogram: vec![1],
+            lnw: vec![Unitless::new(0.0)],
+            n_found: 1,
             min_energy_bin: system.energy(),
             too_lo: system.energy(),
             too_hi: system.energy(),
@@ -88,8 +107,106 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
         }
     }
 
+    #[allow(non_snake_case)]
     fn move_once(&mut self) -> Energy {
-        self.system.energy()
+        self.moves += 1;
+        let e1 = self.system.energy();
+        if let Some(_) = self.system.move_once(&mut self.rng, Length::new(1.0)) {
+            let e2 = self.system.energy();
+            self.prepare_for_energy(e2);
+            let i1 = self.energy_to_index(e1);
+            let i2 = self.energy_to_index(e2);
+
+            let lnw1 = if e1 < self.too_lo {
+                self.lnw[self.energy_to_index(self.too_lo)].value()
+            } else if e1 > self.too_hi {
+                self.lnw[self.energy_to_index(self.too_hi)].value()
+            } else {
+                self.lnw[i1].value()
+            };
+            let lnw2 = if e2 < self.too_lo {
+                self.lnw[self.energy_to_index(self.too_lo)].value()
+            } else if e2 > self.too_hi {
+                self.lnw[self.energy_to_index(self.too_hi)].value()
+            } else {
+                self.lnw[i2].value()
+            };
+            if lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp() {
+                // we reject this move!
+                self.system.undo();
+                self.rejected_moves += 1;
+            } else if self.histogram[i2] == 0 {
+                // Here we do any changes that need only happen when
+                // we encounter an energy we have never seen before.
+                self.n_found += 1;
+                self.time_L = self.moves;
+            }
+        } else {
+            // The system itself rejected the move.
+            self.rejected_moves += 1;
+        }
+        let energy = self.system.energy();
+        let i = self.energy_to_index(energy);
+
+        self.histogram[i] += 1;
+        if self.too_lo < self.too_hi {
+            let t = self.moves as f64;
+            let tL = self.time_L as f64;
+            let dE = self.too_hi - self.too_lo;
+            let n = self.n_found as f64;
+
+            let gamma = dE/(3.0*self.min_T*t)*(n*n + t*(t/tL - 1.0) + n*t)/(n*n + t*(t/tL - 1.0) + t);
+
+            if energy < self.too_lo || energy > self.too_hi {
+                // We are at higher energy than the maximum entropy
+                // state, so we need to tweak our weights by even
+                // more, since we don't spend much time here.
+
+                // We key our change in weights based on the max_entropy_state.
+                // 1/w = 1/w + gamma 1/w0
+                // -lnw = ln(1/w + gamma 1/w0) = ln((w0/w + gamma)/w0)
+                //      = -lnw0 + ln(w0/w + gamma) = -lnw0 + ln(gamma + exp(lnw0-lnw))
+                // lnw = lnw0 - ln(gamma + exp(lnw0-lnw))
+                let lnw = self.lnw[i];
+                let lnw0 = if energy > self.too_hi {
+                    self.lnw[self.energy_to_index(self.too_hi)]
+                } else {
+                    self.lnw[self.energy_to_index(self.too_lo)]
+                };
+                if lnw0 > lnw {
+                    // If w0 > w then we can turn into logs like so:
+                    // lnw = ln((w/w0 + gamma)*w0)
+                    //     = lnw0 + ln(w/w0 + gamma) = lnw0 + ln(gamma + exp(lnw-lnw0))
+                    // lnw = lnw0 + ln(gamma + exp(lnw-lnw0))
+                    self.lnw[i] = lnw0 + log((exp(gamma)-1.) + exp(lnw - lnw0));
+                } else {
+                    // If w > w0 then we can turn into logs like so:
+                    // lnw = ln((1 + gamma*w0/w)*w)
+                    //     = lnw + ln(1 + gamma*w0/w) = lnw + ln(1 + gamma exp(lnw0-lnw))
+                    // lnw = lnw + ln(1 + gamma exp(lnw0-lnw))
+                    self.lnw[i] = lnw + log(1.0 + (exp(gamma)-1.)*exp(lnw0 - lnw));
+                }
+            } else {
+                // We are in the "interesting" region, so use an ordinary SA update.
+                self.lnw[i] += gamma;
+            }
+        }
+
+        if self.lnw[i] > self.max_S {
+            self.max_S = self.lnw[i];
+            self.max_entropy_energy = energy;
+            if energy > self.too_hi {
+                self.too_hi = energy;
+            }
+        }
+        if self.lnw[i] + energy/self.min_T
+            > self.lnw[self.energy_to_index(self.min_important_energy)] + self.min_important_energy/self.min_T {
+                self.min_important_energy = energy;
+                if energy < self.too_lo {
+                    self.too_lo = energy;
+                }
+        }
+        energy
     }
     fn num_moves(&self) -> u64 {
         self.moves
@@ -97,4 +214,11 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
     fn num_rejected_moves(&self) -> u64 {
         self.rejected_moves
     }
+}
+
+fn log(x: Unitless) -> Unitless {
+    Unitless::new(x.ln())
+}
+fn exp(x: Unitless) -> Unitless {
+    Unitless::new(x.exp())
 }
