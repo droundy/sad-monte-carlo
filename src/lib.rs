@@ -14,5 +14,5 @@ extern crate rand;
 extern crate rand_core;
 
 pub mod system;
-
 pub mod mc;
+pub mod rng;

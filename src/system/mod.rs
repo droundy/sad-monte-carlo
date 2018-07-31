@@ -3,6 +3,8 @@
 
 use clapme::ClapMe;
 
+use super::rng::MyRng;
+
 pub mod units;
 pub mod ising;
 pub mod square;
@@ -70,7 +72,7 @@ pub trait MovableSystem : UndoSystem {
     /// Moves an atom, and returns the change in energy of the system.
     /// If, however, the move fails (i.e. has infinite energy), `None`
     /// is returned, and no change is made to the system.
-    fn move_once(&mut self, mean_distance: Length) -> Option<Energy>;
+    fn move_once(&mut self, &mut MyRng, mean_distance: Length) -> Option<Energy>;
 }
 
 /// A system that can gain or lose atoms?
@@ -78,7 +80,7 @@ pub trait GrandSystem : UndoSystem {
     /// Adds an atom, and returns the change in energy of the system.
     /// If, however, the move fails (i.e. has infinite energy), `None`
     /// is returned, and no change is made to the system.
-    fn add_atom(&mut self) -> Option<Energy>;
+    fn add_atom(&mut self, &mut MyRng) -> Option<Energy>;
     /// Removes an atom, and returns the change in energy of the system.
-    fn remove_atom(&mut self) -> Energy;
+    fn remove_atom(&mut self, &mut MyRng) -> Energy;
 }

@@ -5,6 +5,8 @@ use super::*;
 use dimensioned::Dimensionless;
 use dimensioned::{Cbrt,Abs};
 use vector3d::Vector3d;
+use rand::prelude::*;
+use rand::distributions::Uniform;
 
 /// A description of the cell dimensions
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
@@ -42,7 +44,8 @@ pub struct SquareWell {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 enum Change {
     Move { which: usize, from: Vector3d<Length>, de: Energy },
-    Add { which: usize, de: Energy },
+    /// The added atom is always pushed to the end of the vector!
+    Add { de: Energy },
     Remove { from: Vector3d<Length>, de: Energy },
     None,
 }
@@ -65,7 +68,31 @@ impl SquareWell {
             }
         }
         self.positions.push(r);
-        self.last_change = Change::Add{ which: self.positions.len()-1, de: de };
+        self.last_change = Change::Add{ de };
+        Some(de)
+    }
+    /// Move a specified atom.  Returns the change in energy, or
+    /// `None` if the atom could not be placed there.
+    pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
+        let mut de = units::EPSILON*0.0;
+        let from = self.positions[which];
+        for &r1 in self.positions.iter() {
+            let old_dist2 = self.closest_distance2(r1,from);
+            if old_dist2 > Area::new(0.0) { // not the same atom!
+                let dist2 = self.closest_distance2(r1,r);
+                if dist2 < units::SIGMA*units::SIGMA {
+                    self.last_change = Change::None;
+                    return None;
+                } else if dist2 < self.well_width*self.well_width {
+                    de -= units::EPSILON;
+                }
+                if old_dist2 < self.well_width*self.well_width {
+                    de += units::EPSILON;
+                }
+            }
+        }
+        self.positions[which] = r;
+        self.last_change = Change::Move{ which, from, de };
         Some(de)
     }
     /// Remove the specified atom.  Returns the change in energy.
@@ -113,6 +140,39 @@ impl SquareWell {
             }
         }
         dr.norm2()
+    }
+    fn put_in_cell(&self, mut r: Vector3d<Length>) -> Vector3d<Length> {
+        if r.x < Length::new(0.0) {
+            while {
+                r.x += self.box_diagonal.x;
+                r.x < Length::new(0.0)
+            } {}
+        } else {
+            while r.x > self.box_diagonal.x {
+                r.x -= self.box_diagonal.x;
+            }
+        }
+        if r.y < Length::new(0.0) {
+            while {
+                r.y += self.box_diagonal.y;
+                r.y < Length::new(0.0)
+            } {}
+        } else {
+            while r.y > self.box_diagonal.y {
+                r.y -= self.box_diagonal.y;
+            }
+        }
+        if r.z < Length::new(0.0) {
+            while {
+                r.z += self.box_diagonal.z;
+                r.z < Length::new(0.0)
+            } {}
+        } else {
+            while r.z > self.box_diagonal.z {
+                r.z -= self.box_diagonal.z;
+            }
+        }
+        r
     }
 }
 
@@ -176,8 +236,8 @@ impl UndoSystem for SquareWell {
                     de: -de,
                 };
             },
-            Change::Add{which, de} => {
-                let old = self.positions.swap_remove(which);
+            Change::Add{de} => {
+                let old = self.positions.pop().expect("undo add failed with no atoms?!");
                 self.E -= de;
                 self.last_change = Change::Remove {
                     from: old,
@@ -188,7 +248,6 @@ impl UndoSystem for SquareWell {
                 self.positions.push(from);
                 self.E -= de;
                 self.last_change = Change::Add {
-                    which: self.positions.len()-1,
                     de: -de,
                 };
             },
@@ -197,17 +256,23 @@ impl UndoSystem for SquareWell {
 }
 
 impl GrandSystem for SquareWell {
-    fn add_atom(&mut self) -> Option<Energy> {
-        None
+    fn add_atom(&mut self, rng: &mut MyRng) -> Option<Energy> {
+        let r = self.put_in_cell(Vector3d::new(Length::new(rng.sample(Uniform::new(0.0, self.box_diagonal.x.value_unsafe))),
+                                               Length::new(rng.sample(Uniform::new(0.0, self.box_diagonal.y.value_unsafe))),
+                                               Length::new(rng.sample(Uniform::new(0.0, self.box_diagonal.z.value_unsafe)))));
+        self.add_atom_at(r)
     }
-    fn remove_atom(&mut self) -> Energy {
-        Energy::new(0.0)
+    fn remove_atom(&mut self, rng: &mut MyRng) -> Energy {
+        let which = rng.sample(Uniform::new(0, self.positions.len()));
+        self.remove_atom_number(which)
     }
 }
 
 impl MovableSystem for SquareWell {
-    fn move_once(&mut self, mean_distance: Length) -> Option<Energy> {
-        None
+    fn move_once(&mut self, rng: &mut MyRng, mean_distance: Length) -> Option<Energy> {
+        let which = rng.sample(Uniform::new(0, self.positions.len()));
+        let to = self.put_in_cell(self.positions[which] + rng.vector()*mean_distance);
+        self.move_atom(which, to)
     }
 }
 

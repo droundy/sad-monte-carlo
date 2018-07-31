@@ -49,7 +49,7 @@ pub struct Sad<S> {
     pub n_found: u64,
 
     /// The random number generator.
-    pub rng: rng::Rng,
+    pub rng: ::rng::MyRng,
 }
 
 impl<S: System> Sad<S> {
@@ -84,7 +84,7 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
             energy_bin: system.delta_energy().unwrap_or(Energy::new(1.0)),
             system: system,
 
-            rng: rng::Rng::from_u64(params.seed.unwrap_or(0)),
+            rng: ::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
         }
     }
 
