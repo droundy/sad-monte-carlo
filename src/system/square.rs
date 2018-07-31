@@ -3,13 +3,24 @@
 use super::*;
 
 use dimensioned::Dimensionless;
+use dimensioned::{Cbrt,Abs};
 use vector3d::Vector3d;
+
+/// A description of the cell dimensions
+#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[allow(non_snake_case)]
+pub enum CellDimensions {
+    /// The three widths of the cell
+    CellWidth(Vector3d<Length>),
+    /// The volume of the cell
+    CellVolume(Volume),
+}
 
 /// The parameters needed to configure a square well system.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
 pub struct SquareWellParams {
     well_width: Unitless,
-    box_diagonal: Vector3d<Length>,
+    _dim: CellDimensions,
 }
 
 #[allow(non_snake_case)]
@@ -109,16 +120,15 @@ impl System for SquareWell {
     type Params = SquareWellParams;
     /// Create a new square well fluid.
     fn from_params(params: SquareWellParams) -> SquareWell {
-        let mut box_diagonal = params.box_diagonal;
-        if box_diagonal.x < units::SIGMA*0.0 {
-            box_diagonal.x = -box_diagonal.x;
-        }
-        if box_diagonal.y < units::SIGMA*0.0 {
-            box_diagonal.y = -box_diagonal.y;
-        }
-        if box_diagonal.z < units::SIGMA*0.0 {
-            box_diagonal.z = -box_diagonal.z;
-        }
+        let box_diagonal = match params._dim {
+            CellDimensions::CellWidth(w) => {
+                Vector3d::new(w.x.abs(),w.y.abs(),w.z.abs())
+            },
+            CellDimensions::CellVolume(v) => {
+                let w = v.cbrt();
+                Vector3d::new(w,w,w)
+            }
+        };
         SquareWell {
             well_width: params.well_width*units::SIGMA,
             positions: Vec::new(),

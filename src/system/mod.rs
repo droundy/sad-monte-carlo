@@ -17,8 +17,11 @@ pub type Energy = units::Energy<f64>;
 /// A distance
 pub type Length = units::Distance<f64>;
 
-/// A distance
+/// An area
 pub type Area = units::Area<f64>;
+
+/// A volume
+pub type Volume = units::Volume<f64>;
 
 /// A force
 pub type Force = units::Force<f64>;

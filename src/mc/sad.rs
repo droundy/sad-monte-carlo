@@ -12,7 +12,7 @@ pub struct SadParams {
     /// The minimum temperature we are interested in.
     pub min_T: Energy,
     /// The seed for the random number generator.
-    pub seed: u64,
+    pub seed: Option<u64>,
 }
 
 #[allow(non_snake_case)]
@@ -84,7 +84,7 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
             energy_bin: system.delta_energy().unwrap_or(Energy::new(1.0)),
             system: system,
 
-            rng: rng::Rng::from_u64(params.seed),
+            rng: rng::Rng::from_u64(params.seed.unwrap_or(0)),
         }
     }
 
