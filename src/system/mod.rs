@@ -1,8 +1,6 @@
 //! Systems are things that have energy and can be changed into
 //! different configurations.
 
-use clapme::ClapMe;
-
 use super::rng::MyRng;
 
 pub mod units;
@@ -31,10 +29,6 @@ pub type Force = units::Force<f64>;
 /// A physical system, which has some energy, and to which we can make
 /// some changes.
 pub trait System : ::serde::Serialize + ::serde::de::DeserializeOwned {
-    /// A type defining a new system.
-    type Params: ClapMe;
-    /// Create this system from its parameters
-    fn from_params(params: Self::Params) -> Self;
     /// Returns the energy of the system, and is fast.  This should
     /// just access a cached variable.
     fn energy(&self) -> Energy;

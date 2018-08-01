@@ -6,7 +6,7 @@ use sadmc::mc::MonteCarlo;
 use sadmc::mc::sad::Sad;
 
 fn main() {
-    let mut sad = Sad::<SquareWell>::from_args();
+    let mut sad = Sad::<SquareWell>::from_args::<SquareWellParams>();
     for _ in 0..1000 {
         sad.move_once();
     }

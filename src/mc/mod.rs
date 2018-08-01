@@ -28,12 +28,11 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
     fn from_params(params: Self::Params, system: Self::System, save_as: ::std::path::PathBuf) -> Self;
 
     /// Create a new simulation from command-line flags.
-    fn from_args() -> Self {
-        match <Params<Self::Params, <Self::System as System>::Params>>::from_args() {
+    fn from_args<S: ClapMe + Into<Self::System>>() -> Self {
+        match <Params<Self::Params, S>>::from_args() {
             Params::_Params { _sys, _mc, save_as } => {
-                let s = Self::System::from_params(_sys);
                 let save_as = save_as.unwrap_or(::std::path::PathBuf::from("resume.yaml"));
-                Self::from_params(_mc, s, save_as)
+                Self::from_params(_mc, _sys.into(), save_as)
             },
             Params::ResumeFrom(p) => {
                 let f = ::std::fs::File::open(&p)

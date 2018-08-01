@@ -179,10 +179,8 @@ impl SquareWell {
     }
 }
 
-impl System for SquareWell {
-    type Params = SquareWellParams;
-    /// Create a new square well fluid.
-    fn from_params(params: SquareWellParams) -> SquareWell {
+impl From<SquareWellParams> for SquareWell {
+    fn from(params: SquareWellParams) -> SquareWell {
         let box_diagonal = match params._dim {
             CellDimensions::CellWidth(w) => {
                 Vector3d::new(w.x.abs(),w.y.abs(),w.z.abs())
@@ -200,6 +198,9 @@ impl System for SquareWell {
             last_change: Change::None,
         }
     }
+}
+
+impl System for SquareWell {
     fn energy(&self) -> Energy {
         self.E
     }
