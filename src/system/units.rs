@@ -21,6 +21,7 @@ make_units! {
 
     constants {
         PI: Unitless = consts::PI;
+        R: Distance = 0.5;
     }
 
     fmt = true;

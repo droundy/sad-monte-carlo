@@ -7,6 +7,7 @@ use dimensioned::{Cbrt,Abs};
 use vector3d::Vector3d;
 use rand::prelude::*;
 use rand::distributions::Uniform;
+use std::f64::consts::PI;
 
 /// A description of the cell dimensions
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
@@ -314,3 +315,93 @@ fn max_balls_within(mut distance: Length) -> u64 {
     }
     num as u64
 }
+
+
+
+/// A description of the cell dimensions and number.
+#[derive(Serialize, Deserialize, Debug, ClapMe)]
+pub enum CellDimensionsGivenNumber {
+    /// The three widths of the cell
+    CellWidth(Vector3d<Length>),
+    /// The volume of the cell
+    CellVolume(Volume),
+    /// The filling fraction, from which we compute volume
+    FillingFraction(Unitless),
+}
+
+/// Parameters needed to configure a finite-N square-well system.
+#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[allow(non_snake_case)]
+pub struct SquareWellNParams {
+    well_width: Unitless,
+    _dim: CellDimensionsGivenNumber,
+    N: usize,
+}
+
+impl From<SquareWellNParams> for SquareWell {
+    fn from(params: SquareWellNParams) -> SquareWell {
+        let n = params.N;
+        let dim: CellDimensions = match params._dim {
+            CellDimensionsGivenNumber::CellWidth(v)
+                => CellDimensions::CellWidth(v),
+            CellDimensionsGivenNumber::CellVolume(v)
+                => CellDimensions::CellVolume(v),
+            CellDimensionsGivenNumber::FillingFraction(f)
+                => CellDimensions::CellVolume((n as f64)*(PI*units::SIGMA*units::SIGMA*units::SIGMA/6.0)/f),
+        };
+        let mut sw = SquareWell::from(SquareWellParams {
+            _dim: dim,
+            well_width: params.well_width,
+        });
+
+        // Atoms will be initially placed on a face centered cubic (fcc) grid
+        // Note that the unit cells need not be actually "cubic", but the fcc grid will
+        //   be stretched to cell dimensions
+        let min_cell_width = 2.0*2.0f64.sqrt()*units::R; // minimum cell width
+        let spots_per_cell = 4; // spots in each fcc periodic unit cell
+
+        // cells holds the max number of cells that will fit in the x,
+        // y, and z dimensions
+        let cells = [*(sw.box_diagonal.x/min_cell_width).value() as usize,
+                     *(sw.box_diagonal.y/min_cell_width).value() as usize,
+                     *(sw.box_diagonal.z/min_cell_width).value() as usize];
+        // It is usefull to know our cell dimensions
+        let cell_width = [sw.box_diagonal.x/cells[0] as f64,
+                          sw.box_diagonal.y/cells[1] as f64,
+                          sw.box_diagonal.z/cells[2] as f64];
+        for i in 0..3 {
+            assert!(cell_width[i] >= min_cell_width);
+        }
+        // Define ball positions relative to cell position
+        let offset = [Vector3d::new(Length::new(0.0), Length::new(0.0), Length::new(0.0)),
+                      Vector3d::new(Length::new(0.0), cell_width[1], cell_width[2])/2.0,
+                      Vector3d::new(cell_width[0], Length::new(0.0), cell_width[2])/2.0,
+                      Vector3d::new(cell_width[0], cell_width[1], Length::new(0.0))/2.0];
+        // Reserve total_spots at random to be occupied
+        let total_spots = spots_per_cell*cells[0]*cells[1]*cells[1];
+        assert!(total_spots >= params.N);
+        let mut spots_reserved = vec![vec![vec![[false; 4]; cells[2]]; cells[1]]; cells[0]];
+        let mut rng = ::rng::MyRng::from_u64(0);
+        for _ in 0..params.N {
+            loop {
+                // This is an inefficient but relatively
+                // hard-to-get-wrong way to randomly sample spots.
+                // Speed shouldn't matter here.
+                let i = rng.sample(Uniform::new(0, cells[0]));
+                let j = rng.sample(Uniform::new(0, cells[1]));
+                let k = rng.sample(Uniform::new(0, cells[2]));
+                let l = rng.sample(Uniform::new(0, 4));
+                if !spots_reserved[i][j][k][l] {
+                    spots_reserved[i][j][k][l] = true;
+                    sw.add_atom_at(Vector3d::new(i as f64*cell_width[0],
+                                                 j as f64*cell_width[1],
+                                                 k as f64*cell_width[2])
+                                   + offset[l]);
+                    break;
+                }
+            }
+        }
+        sw
+    }
+}
+

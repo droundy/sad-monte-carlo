@@ -77,7 +77,7 @@ impl<S: System> Sad<S> {
             self.lnw.insert(0, Unitless::new(0.0));
             self.min_energy_bin -= self.energy_bin;
         }
-        while e > self.min_energy_bin + self.energy_bin*(self.lnw.len() as f64) {
+        while e >= self.min_energy_bin + self.energy_bin*(self.lnw.len() as f64) {
             self.lnw.push(Unitless::new(0.0));
             self.histogram.push(0);
         }
@@ -114,7 +114,7 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
     fn move_once(&mut self) -> Energy {
         self.moves += 1;
         let e1 = self.system.energy();
-        if let Some(_) = self.system.move_once(&mut self.rng, Length::new(1.0)) {
+        if let Some(_) = self.system.move_once(&mut self.rng, Length::new(0.1)) {
             let e2 = self.system.energy();
             self.prepare_for_energy(e2);
             let i1 = self.energy_to_index(e1);
