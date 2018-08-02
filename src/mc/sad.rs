@@ -3,17 +3,20 @@
 use ::system::*;
 use super::*;
 
+use super::plugin::Plugin;
 use dimensioned::Dimensionless;
 use rand::Rng;
 
 /// The parameters needed to configure a SAD simulation.
 #[allow(non_snake_case)]
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Debug, ClapMe)]
 pub struct SadParams {
     /// The minimum temperature we are interested in.
     pub min_T: Energy,
     /// The seed for the random number generator.
     pub seed: Option<u64>,
+    _maxiter: plugin::MaxIterParams,
+    // _final_report: plugin::FinalReportParams,
 }
 
 #[allow(non_snake_case)]
@@ -54,7 +57,9 @@ pub struct Sad<S> {
     /// The random number generator.
     pub rng: ::rng::MyRng,
     /// Where to save the resume file.
-    pub save_as: ::std::path::PathBuf
+    pub save_as: ::std::path::PathBuf,
+    maxiter: plugin::MaxIter,
+    final_report: plugin::FinalReport,
 }
 
 impl<S: System> Sad<S> {
@@ -107,6 +112,8 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
 
             rng: ::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
             save_as: save_as,
+            maxiter: plugin::MaxIter::from(params._maxiter),
+            final_report: plugin::FinalReport, // ::from(params._final_report),
         }
     }
 
@@ -208,6 +215,26 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
                 if energy < self.too_lo {
                     self.too_lo = energy;
                 }
+            }
+        let mut todo = plugin::Action::None;
+        let plugins = [&self.maxiter as &Plugin<Self>,
+                       &self.final_report];
+        for p in plugins.iter() {
+            todo = todo.and(p.run(self, &self.system));
+        }
+        if todo >= plugin::Action::Log {
+            for p in plugins.iter() {
+                p.log(self, &self.system);
+            }
+        }
+        if todo >= plugin::Action::Save {
+            self.checkpoint();
+            for p in plugins.iter() {
+                p.save(self, &self.system);
+            }
+        }
+        if true {
+            ::std::process::exit(0);
         }
         energy
     }
