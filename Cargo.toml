@@ -19,6 +19,13 @@ vector3d = "0.1.2"
 rand_core = "0.2.1"
 rand = "0.5.4"
 
+[dev-dependencies]
+criterion = "0.2"
+
 [features]
 # Treat warnings as a build error.
 strict = []
+
+[[bench]]
+name = "bench-sad"
+harness = false

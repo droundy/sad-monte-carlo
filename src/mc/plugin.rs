@@ -14,7 +14,7 @@ pub trait Plugin<MC: MonteCarlo> {
     /// information, you will have to use interior mutability, because
     /// I can't figure out any practical way to borrow `self` mutably
     /// while still giving read access to the `MC`.
-    fn run(&self, mc: &MC, sys: &MC::System) -> Action { Action::None }
+    fn run(&self, _mc: &MC, _sys: &MC::System) -> Action { Action::None }
     /// How often we need the plugin to run.  A `None` value means
     /// that this plugin never needs to run.  Note that it is expected
     /// that this period may change any time the plugin is called, so
@@ -141,7 +141,7 @@ pub struct FinalReport;
 pub struct FinalReportParams;
 
 impl From<FinalReportParams> for FinalReport {
-    fn from(params: FinalReportParams) -> Self {
+    fn from(_params: FinalReportParams) -> Self {
         FinalReport
     }
 }
