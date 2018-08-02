@@ -3,8 +3,6 @@
 set -ev
 
 DIR=`pwd`
-echo Working in $DIR
-
 if test $EUID -ne 0; then
    echo "This script must be run as root"
    exit 1
@@ -18,5 +16,5 @@ for i in `seq 2 15`; do
 done
 
 cset shield --cpu=$USERSET
-cset shield -e -- su - droundy -c "cd $DIR && cargo bench" || true
+cset shield -e -- su - droundy -c "cd $DIR && cargo bench --bench bench-sad -- $@" || true
 cset shield --reset
