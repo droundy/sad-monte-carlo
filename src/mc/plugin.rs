@@ -2,7 +2,9 @@
 //! implementation for different Monte Carlo algorithms.
 
 use super::*;
+
 use std::cell::Cell;
+use std::default::Default;
 
 /// A `Plugin` is an object that can be used to configure a MonteCarlo
 /// simulation.  The plugin will be called regularly, and will have a
@@ -112,7 +114,12 @@ pub struct MaxIter {
 /// The parameter to define the maximum number of iterations.
 #[derive(ClapMe, Debug)]
 pub struct MaxIterParams {
-    max_iter: Option<u64>,
+    /// The maximum number of iterations to run.
+    pub max_iter: Option<u64>,
+}
+
+impl Default for MaxIterParams {
+    fn default() -> Self { MaxIterParams { max_iter: None } }
 }
 
 impl From<MaxIterParams> for MaxIter {
@@ -140,6 +147,9 @@ pub struct FinalReport;
 #[derive(ClapMe, Debug)]
 pub struct FinalReportParams;
 
+impl Default for FinalReportParams {
+    fn default() -> Self { FinalReportParams }
+}
 impl From<FinalReportParams> for FinalReport {
     fn from(_params: FinalReportParams) -> Self {
         FinalReport

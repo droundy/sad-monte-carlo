@@ -6,6 +6,7 @@ use super::*;
 use super::plugin::Plugin;
 use dimensioned::Dimensionless;
 use rand::Rng;
+use std::default::Default;
 
 /// The parameters needed to configure a SAD simulation.
 #[allow(non_snake_case)]
@@ -17,6 +18,17 @@ pub struct SadParams {
     pub seed: Option<u64>,
     _maxiter: plugin::MaxIterParams,
     _final_report: plugin::FinalReportParams,
+}
+
+impl Default for SadParams {
+    fn default() -> Self {
+        SadParams {
+            min_T: Energy::new(0.2),
+            seed: None,
+            _maxiter: plugin::MaxIterParams::default(),
+            _final_report: plugin::FinalReportParams::default(),
+        }
+    }
 }
 
 #[allow(non_snake_case)]

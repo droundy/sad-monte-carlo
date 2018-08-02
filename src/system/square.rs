@@ -8,6 +8,7 @@ use vector3d::Vector3d;
 use rand::prelude::*;
 use rand::distributions::Uniform;
 use std::f64::consts::PI;
+use std::default::Default;
 
 /// A description of the cell dimensions
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
@@ -333,9 +334,22 @@ pub enum CellDimensionsGivenNumber {
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
 #[allow(non_snake_case)]
 pub struct SquareWellNParams {
-    well_width: Unitless,
-    _dim: CellDimensionsGivenNumber,
-    N: usize,
+    /// The width of the well, relative to the diameter.
+    pub well_width: Unitless,
+    /// The sice of the cell.
+    pub _dim: CellDimensionsGivenNumber,
+    /// The number of atoms.
+    pub N: usize,
+}
+
+impl Default for SquareWellNParams {
+    fn default() -> Self {
+        SquareWellNParams {
+            well_width: Unitless::new(1.3),
+            _dim: CellDimensionsGivenNumber::FillingFraction(Unitless::new(0.3)),
+            N: 50,
+        }
+    }
 }
 
 impl From<SquareWellNParams> for SquareWell {
@@ -379,6 +393,9 @@ impl From<SquareWellNParams> for SquareWell {
                       Vector3d::new(cell_width[0], cell_width[1], Length::new(0.0))/2.0];
         // Reserve total_spots at random to be occupied
         let total_spots = spots_per_cell*cells[0]*cells[1]*cells[1];
+        if total_spots < params.N {
+            println!("problem:  {} < {}", total_spots, params.N);
+        }
         assert!(total_spots >= params.N);
         let mut spots_reserved = vec![vec![vec![[false; 4]; cells[2]]; cells[1]]; cells[0]];
         let mut rng = ::rng::MyRng::from_u64(0);
