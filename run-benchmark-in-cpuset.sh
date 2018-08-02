@@ -16,5 +16,5 @@ for i in `seq 2 15`; do
 done
 
 cset shield --cpu=$USERSET
-cset shield -e -- su - droundy -c "cd $DIR && cargo bench --bench bench-sad -- $@" || true
+cset shield -e -- su - droundy -c "cd $DIR && cargo bench --bench bench-sad -- $1 $2 $3" || true
 cset shield --reset
