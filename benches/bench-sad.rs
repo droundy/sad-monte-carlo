@@ -4,6 +4,7 @@ extern crate sadmc;
 extern crate rand;
 
 use rand::Rng;
+use rand::distributions::Uniform;
 use criterion::Criterion;
 
 use sadmc::mc::MonteCarlo;
@@ -58,6 +59,36 @@ fn criterion_benchmark(c: &mut Criterion) {
                                  &[50, 100,
                                    // 200, 400
                                    ]);
+
+    let closest = criterion::Fun::new("standard", |b,&n_atoms| {
+        let sw = gen_sw(n_atoms);
+        let mut rng = sadmc::rng::MyRng::from_u64(2);
+        b.iter_with_setup(|| {
+            let r1 = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
+            let r2 = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
+            (r1,r2)
+        }, |(r1,r2)| sw.closest_distance2(r1,r2));
+    });
+    let unsafe_closest = criterion::Fun::new("unsafe", |b,&n_atoms| {
+        let sw = gen_sw(n_atoms);
+        let mut rng = sadmc::rng::MyRng::from_u64(2);
+        b.iter_with_setup(|| {
+            let r1 = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
+            let r2 = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
+            (r1,r2)
+        }, |(r1,r2)| sw.unsafe_closest_distance2(r1,r2));
+    });
+    let sloppy_closest = criterion::Fun::new("sloppy", |b,&n_atoms| {
+        let sw = gen_sw(n_atoms);
+        let mut rng = sadmc::rng::MyRng::from_u64(2);
+        b.iter_with_setup(|| {
+            let r1 = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
+            let r2 = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
+            (r1,r2)
+        }, |(r1,r2)| sw.sloppy_closest_distance2(r1,r2));
+    });
+    let funs = vec![closest, unsafe_closest, sloppy_closest];
+    c.bench_functions("SW_closest_distance2", funs, 500);
 }
 
 criterion_group!(benches, criterion_benchmark);

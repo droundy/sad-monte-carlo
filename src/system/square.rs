@@ -34,7 +34,7 @@ pub struct SquareWell {
     /// The dimensionless well width.
     well_width: Length,
     /// The atom positions
-    positions: Vec<Vector3d<Length>>,
+    pub positions: Vec<Vector3d<Length>>,
     /// The energy of the system
     E: Energy,
     /// The dimensions of the box.
@@ -144,6 +144,29 @@ impl SquareWell {
             while dr.z > 0.5*self.box_diagonal.z {
                 dr.z -= self.box_diagonal.z;
             }
+        }
+        dr.norm2()
+    }
+    /// PUBLIC FOR TESTING ONLY! The shortest distance squared between two vectors.
+    pub fn sloppy_closest_distance2(&self, r1: Vector3d<Length>, r2: Vector3d<Length>) -> Area {
+        let mut dr = r2 - r1;
+        while dr.x < -0.5*self.box_diagonal.x {
+            dr.x -= self.box_diagonal.x;
+        }
+        while dr.x > 0.5*self.box_diagonal.x {
+            dr.x -= self.box_diagonal.x;
+        }
+        while dr.y < -0.5*self.box_diagonal.y {
+            dr.y += self.box_diagonal.y;
+        }
+        while dr.y > 0.5*self.box_diagonal.y {
+            dr.y -= self.box_diagonal.y;
+        }
+        while dr.z < -0.5*self.box_diagonal.z {
+            dr.z += self.box_diagonal.z;
+        }
+        while dr.z > 0.5*self.box_diagonal.z {
+            dr.z -= self.box_diagonal.z;
         }
         dr.norm2()
     }
@@ -450,6 +473,7 @@ fn closest_distance_matches() {
     for &r1 in sw.positions.iter() {
         for &r2 in sw.positions.iter() {
             assert_eq!(sw.closest_distance2(r1,r2), sw.unsafe_closest_distance2(r1,r2));
+            assert_eq!(sw.closest_distance2(r1,r2), sw.sloppy_closest_distance2(r1,r2));
         }
     }
     let mut rng = MyRng::from_u64(1);
@@ -459,6 +483,7 @@ fn closest_distance_matches() {
     for &r1 in sw.positions.iter() {
         for &r2 in sw.positions.iter() {
             assert_eq!(sw.closest_distance2(r1,r2), sw.unsafe_closest_distance2(r1,r2));
+            assert_eq!(sw.closest_distance2(r1,r2), sw.sloppy_closest_distance2(r1,r2));
         }
     }
 }
