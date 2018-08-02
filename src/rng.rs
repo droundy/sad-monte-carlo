@@ -20,8 +20,7 @@ use rand::Rng as RandRng;
 /// The [xoshiro128plus
 /// RNG](http://xoshiro.di.unimi.it/xoroshiro128plus.c).
 
-#[derive(Clone)]
-#[derive(Serialize,Deserialize)]
+#[derive(Clone,Serialize,Deserialize)]
 pub struct Xoroshiro128plusRng {
     s: [Wrapping<u64>; 2],
 }

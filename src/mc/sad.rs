@@ -16,7 +16,7 @@ pub struct SadParams {
     /// The seed for the random number generator.
     pub seed: Option<u64>,
     _maxiter: plugin::MaxIterParams,
-    // _final_report: plugin::FinalReportParams,
+    _final_report: plugin::FinalReportParams,
 }
 
 #[allow(non_snake_case)]
@@ -60,6 +60,7 @@ pub struct Sad<S> {
     pub save_as: ::std::path::PathBuf,
     maxiter: plugin::MaxIter,
     final_report: plugin::FinalReport,
+    manager: plugin::PluginManager,
 }
 
 impl<S: System> Sad<S> {
@@ -113,7 +114,8 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
             rng: ::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
             save_as: save_as,
             maxiter: plugin::MaxIter::from(params._maxiter),
-            final_report: plugin::FinalReport, // ::from(params._final_report),
+            final_report: plugin::FinalReport::from(params._final_report),
+            manager: plugin::PluginManager::new(),
         }
     }
 
@@ -216,26 +218,10 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
                     self.too_lo = energy;
                 }
             }
-        let mut todo = plugin::Action::None;
         let plugins = [&self.maxiter as &Plugin<Self>,
-                       &self.final_report];
-        for p in plugins.iter() {
-            todo = todo.and(p.run(self, &self.system));
-        }
-        if todo >= plugin::Action::Log {
-            for p in plugins.iter() {
-                p.log(self, &self.system);
-            }
-        }
-        if todo >= plugin::Action::Save {
-            self.checkpoint();
-            for p in plugins.iter() {
-                p.save(self, &self.system);
-            }
-        }
-        if true {
-            ::std::process::exit(0);
-        }
+                       &self.final_report,
+        ];
+        self.manager.run(self, &self.system, &plugins);
         energy
     }
     fn num_moves(&self) -> u64 {
