@@ -112,7 +112,8 @@ impl SquareWell {
         self.E += de;
         de
     }
-    fn closest_distance2(&self, r1: Vector3d<Length>, r2: Vector3d<Length>) -> Area {
+    /// PUBLIC FOR TESTING ONLY! The shortest distance squared between two vectors.
+    pub fn closest_distance2(&self, r1: Vector3d<Length>, r2: Vector3d<Length>) -> Area {
         let mut dr = r2 - r1;
         if dr.x < -0.5*self.box_diagonal.x {
             while {
@@ -143,6 +144,26 @@ impl SquareWell {
             while dr.z > 0.5*self.box_diagonal.z {
                 dr.z -= self.box_diagonal.z;
             }
+        }
+        dr.norm2()
+    }
+    /// PUBLIC FOR TESTING ONLY! The shortest distance squared between two vectors.
+    pub fn unsafe_closest_distance2(&self, r1: Vector3d<Length>, r2: Vector3d<Length>) -> Area {
+        let mut dr = r2 - r1;
+        if dr.x < -0.5*self.box_diagonal.x {
+            dr.x += self.box_diagonal.x;
+        } else if dr.x > 0.5*self.box_diagonal.x {
+            dr.x -= self.box_diagonal.x;
+        }
+        if dr.y < -0.5*self.box_diagonal.y {
+            dr.y += self.box_diagonal.y;
+        } else if dr.y > 0.5*self.box_diagonal.y {
+            dr.y -= self.box_diagonal.y;
+        }
+        if dr.z < -0.5*self.box_diagonal.z {
+            dr.z += self.box_diagonal.z;
+        } else if dr.z > 0.5*self.box_diagonal.z {
+            dr.z -= self.box_diagonal.z;
         }
         dr.norm2()
     }
@@ -422,3 +443,22 @@ impl From<SquareWellNParams> for SquareWell {
     }
 }
 
+#[test]
+fn closest_distance_matches() {
+    use std::default::Default;
+    let mut sw = SquareWell::from(SquareWellNParams::default());
+    for &r1 in sw.positions.iter() {
+        for &r2 in sw.positions.iter() {
+            assert_eq!(sw.closest_distance2(r1,r2), sw.unsafe_closest_distance2(r1,r2));
+        }
+    }
+    let mut rng = MyRng::from_u64(1);
+    for _ in 0..100000 {
+        sw.move_once(&mut rng, Length::new(1.0));
+    }
+    for &r1 in sw.positions.iter() {
+        for &r2 in sw.positions.iter() {
+            assert_eq!(sw.closest_distance2(r1,r2), sw.unsafe_closest_distance2(r1,r2));
+        }
+    }
+}
