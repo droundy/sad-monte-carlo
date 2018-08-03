@@ -151,7 +151,7 @@ impl SquareWell {
     pub fn sloppy_closest_distance2(&self, r1: Vector3d<Length>, r2: Vector3d<Length>) -> Area {
         let mut dr = r2 - r1;
         while dr.x < -0.5*self.box_diagonal.x {
-            dr.x -= self.box_diagonal.x;
+            dr.x += self.box_diagonal.x;
         }
         while dr.x > 0.5*self.box_diagonal.x {
             dr.x -= self.box_diagonal.x;

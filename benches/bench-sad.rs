@@ -88,7 +88,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         }, |(r1,r2)| sw.sloppy_closest_distance2(r1,r2));
     });
     let funs = vec![closest, unsafe_closest, sloppy_closest];
-    c.bench_functions("SW_closest_distance2", funs, 500);
+    c.bench_functions("SW_closest_distance2", funs, 50);
 }
 
 criterion_group!(benches, criterion_benchmark);
