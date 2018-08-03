@@ -2,6 +2,8 @@
 
 pub mod plugin;
 pub mod sad;
+pub mod samc;
+pub mod energy;
 
 use ::system::*;
 use clapme::ClapMe;
