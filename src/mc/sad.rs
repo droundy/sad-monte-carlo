@@ -132,7 +132,7 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
     }
 
     #[allow(non_snake_case)]
-    fn move_once(&mut self) -> Energy {
+    fn move_once(&mut self) {
         self.moves += 1;
         let e1 = self.system.energy();
         if let Some(_) = self.system.move_once(&mut self.rng, Length::new(0.1)) {
@@ -234,7 +234,9 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
                        &self.final_report,
         ];
         self.manager.run(self, &self.system, &plugins);
-        energy
+    }
+    fn system(&self) -> &Self::System {
+        &self.system
     }
     fn num_moves(&self) -> u64 {
         self.moves

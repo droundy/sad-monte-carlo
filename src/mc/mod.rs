@@ -52,8 +52,10 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
 
 
     /// Make one random move, collecting appropriate statistics.
-    /// Return the energy of the system after the move.
-    fn move_once(&mut self) -> Energy;
+    fn move_once(&mut self);
+
+    /// Return the system!
+    fn system(&self) -> &Self::System;
 
     /// The number of moves that have been made.
     fn num_moves(&self) -> u64;
