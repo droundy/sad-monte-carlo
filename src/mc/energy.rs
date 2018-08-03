@@ -172,7 +172,7 @@ impl<S: System> EnergyMC<S> {
                         Method::Sad { ref mut n_found, ref mut tL,
                                       min_important_energy, .. } => {
                             *n_found += 1;
-                            println!("sad: [{}]  {}:  {} < {} < {} < {} < {} < {}",
+                            println!("sad: [{}]  {}:  {} < {} < {} ... {} < {} < {}",
                                      self.moves, n_found,
                                      self.min_energy_bin.value_unsafe,
                                      too_lo.value_unsafe,
@@ -180,7 +180,7 @@ impl<S: System> EnergyMC<S> {
                                      self.max_entropy_energy.value_unsafe,
                                      too_hi.value_unsafe,
                                      (self.min_energy_bin
-                                      + self.energy_bin*self.lnw.len() as f64).value_unsafe);
+                                      + self.energy_bin*(self.lnw.len()-1) as f64).value_unsafe);
                             *tL = self.moves;
                         }
                         _ => unreachable!()
@@ -268,7 +268,7 @@ impl<S: System> EnergyMC<S> {
                     }
                 }
                 if want_print {
-                    println!("sad: [{}]  {}:  {} < {} < {} < {} < {} < {}",
+                    println!("sad: [{}]  {}:  {} < {} < {} ... {} < {} < {}",
                              self.moves, n_found,
                              self.min_energy_bin.value_unsafe,
                              too_lo.value_unsafe,
@@ -276,7 +276,7 @@ impl<S: System> EnergyMC<S> {
                              self.max_entropy_energy.value_unsafe,
                              too_hi.value_unsafe,
                              (self.min_energy_bin
-                              + self.energy_bin*self.lnw.len() as f64).value_unsafe);
+                              + self.energy_bin*(self.lnw.len()-1) as f64).value_unsafe);
                 }
             }
             Method::Samc { t0 } => {
