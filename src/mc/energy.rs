@@ -168,9 +168,19 @@ impl<S: System> EnergyMC<S> {
                 if !rejected && self.histogram[i2] == 0 {
                     // Here we do changes that need only happen when
                     // we encounter an energy we have never seen before.
-                    match self.method {
-                        Method::Sad { ref mut n_found, ref mut tL, .. } => {
+                    match &mut self.method {
+                        Method::Sad { ref mut n_found, ref mut tL,
+                                      min_important_energy, .. } => {
                             *n_found += 1;
+                            println!("sad: [{}]  {}:  {} < {} < {} < {} < {} < {}",
+                                     self.moves, n_found,
+                                     self.min_energy_bin.value_unsafe,
+                                     too_lo.value_unsafe,
+                                     min_important_energy.value_unsafe,
+                                     self.max_entropy_energy.value_unsafe,
+                                     too_hi.value_unsafe,
+                                     (self.min_energy_bin
+                                      + self.energy_bin*self.lnw.len() as f64).value_unsafe);
                             *tL = self.moves;
                         }
                         _ => unreachable!()
@@ -233,25 +243,40 @@ impl<S: System> EnergyMC<S> {
                     }
                 }
 
-                if self.lnw[i] > self.max_S && energy > too_hi {
-                    match self.method {
+                let mut want_print = false;
+                if self.lnw[i] >= self.max_S && energy > too_hi {
+                    match &mut self.method {
                         Method::Sad { ref mut too_hi, .. } => {
                             *too_hi = energy;
+                            want_print = true;
                         }
                         _ => unreachable!()
                     }
                 }
-                let boltz = self.lnw[self.energy_to_index(min_important_energy)] + min_important_energy/min_T;
-                if self.lnw[i] + energy/min_T > boltz {
-                    match self.method {
+                let boltz = self.lnw[self.energy_to_index(min_important_energy)]
+                    - min_important_energy/min_T;
+                if self.lnw[i] - energy/min_T >= boltz {
+                    match &mut self.method {
                         Method::Sad { ref mut too_lo, ref mut min_important_energy, .. } => {
                             *min_important_energy = energy;
                             if energy < *too_lo {
                                 *too_lo = energy;
+                                want_print = true;
                             }
                         }
                         _ => unreachable!()
                     }
+                }
+                if want_print {
+                    println!("sad: [{}]  {}:  {} < {} < {} < {} < {} < {}",
+                             self.moves, n_found,
+                             self.min_energy_bin.value_unsafe,
+                             too_lo.value_unsafe,
+                             min_important_energy.value_unsafe,
+                             self.max_entropy_energy.value_unsafe,
+                             too_hi.value_unsafe,
+                             (self.min_energy_bin
+                              + self.energy_bin*self.lnw.len() as f64).value_unsafe);
                 }
             }
             Method::Samc { t0 } => {
