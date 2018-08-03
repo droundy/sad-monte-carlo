@@ -73,6 +73,7 @@ impl PluginManager {
         let moves = self.moves.get() + 1;
         self.moves.set(moves);
         if moves >= self.period.get() {
+            self.moves.set(0);
             let mut todo = plugin::Action::None;
             for p in plugins.iter() {
                 todo = todo.and(p.run(mc, sys));
