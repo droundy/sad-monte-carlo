@@ -7,6 +7,7 @@ use rand::Rng;
 use rand::distributions::Uniform;
 use criterion::Criterion;
 
+use sadmc::system::units;
 use sadmc::mc::MonteCarlo;
 use sadmc::mc::sad::{Sad, SadParams};
 use sadmc::system::square::{SquareWell, SquareWellNParams};
@@ -89,6 +90,25 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
     let funs = vec![closest, unsafe_closest, sloppy_closest];
     c.bench_functions("SW_closest_distance2", funs, 50);
+
+    let put = criterion::Fun::new("standard", |b,&n_atoms| {
+        let sw = gen_sw(n_atoms);
+        let mut rng = sadmc::rng::MyRng::from_u64(2);
+        b.iter_with_setup(|| {
+            let r = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
+            r + rng.vector()*0.1*units::SIGMA
+        }, |r| sw.put_in_cell(r));
+    });
+    let sloppy_put = criterion::Fun::new("sloppy", |b,&n_atoms| {
+        let sw = gen_sw(n_atoms);
+        let mut rng = sadmc::rng::MyRng::from_u64(2);
+        b.iter_with_setup(|| {
+            let r = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
+            r + rng.vector()*0.1*units::SIGMA
+        }, |r| sw.sloppy_put_in_cell(r));
+    });
+    let funs = vec![put, sloppy_put];
+    c.bench_functions("SW_put_in_cell", funs, 50);
 }
 
 criterion_group!(benches, criterion_benchmark);

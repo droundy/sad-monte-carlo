@@ -190,7 +190,8 @@ impl SquareWell {
         }
         dr.norm2()
     }
-    fn put_in_cell(&self, mut r: Vector3d<Length>) -> Vector3d<Length> {
+    /// PUBLIC FOR TESTING ONLY! Put position into the cell.
+    pub fn put_in_cell(&self, mut r: Vector3d<Length>) -> Vector3d<Length> {
         if r.x < Length::new(0.0) {
             while {
                 r.x += self.box_diagonal.x;
@@ -220,6 +221,28 @@ impl SquareWell {
             while r.z > self.box_diagonal.z {
                 r.z -= self.box_diagonal.z;
             }
+        }
+        r
+    }
+    /// PUBLIC FOR TESTING ONLY! Put position into the cell.
+    pub fn sloppy_put_in_cell(&self, mut r: Vector3d<Length>) -> Vector3d<Length> {
+        while r.x < Length::new(0.0) {
+            r.x += self.box_diagonal.x;
+        }
+        while r.x > self.box_diagonal.x {
+            r.x -= self.box_diagonal.x;
+        }
+        while r.y < Length::new(0.0) {
+            r.y += self.box_diagonal.y;
+        }
+        while r.y > self.box_diagonal.y {
+            r.y -= self.box_diagonal.y;
+        }
+        while r.z < Length::new(0.0) {
+            r.z += self.box_diagonal.z;
+        }
+        while r.z > self.box_diagonal.z {
+            r.z -= self.box_diagonal.z;
         }
         r
     }
