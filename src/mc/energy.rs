@@ -90,9 +90,9 @@ enum Method {
         min_T: Energy,
         too_lo: Energy,
         too_hi: Energy,
-        min_important_energy: Energy,
         tL: u64,
         n_found: u64,
+        higheset_hist: u64,
     },
     /// Samc
     Samc {
@@ -108,9 +108,9 @@ impl Method {
                     min_T,
                     too_lo: E,
                     too_hi: E,
-                    min_important_energy: E,
                     tL: 0,
                     n_found: 1,
+                    higheset_hist: 1,
                 },
             MethodParams::Samc { t0 } => Method::Samc { t0 },
         }
@@ -149,34 +149,32 @@ impl<S: System> EnergyMC<S> {
         let i1 = self.energy_to_index(e1);
         let i2 = self.energy_to_index(e2);
         match self.method {
-            Method::Sad { too_lo, too_hi,  .. } => {
+            Method::Sad { too_lo, too_hi, min_T,  .. } => {
                 let lnw1 = if e1 < too_lo {
-                    self.lnw[self.energy_to_index(too_lo)].value()
+                    self.lnw[self.energy_to_index(too_lo)] + (e1 - too_lo)/min_T
                 } else if e1 > too_hi {
-                    self.lnw[self.energy_to_index(too_hi)].value()
+                    self.lnw[self.energy_to_index(too_hi)]
                 } else {
-                    self.lnw[i1].value()
+                    self.lnw[i1]
                 };
                 let lnw2 = if e2 < too_lo {
-                    self.lnw[self.energy_to_index(too_lo)].value()
+                    self.lnw[self.energy_to_index(too_lo)] + (e2 - too_lo)/min_T
                 } else if e2 > too_hi {
-                    self.lnw[self.energy_to_index(too_hi)].value()
+                    self.lnw[self.energy_to_index(too_hi)]
                 } else {
-                    self.lnw[i2].value()
+                    self.lnw[i2]
                 };
                 let rejected = lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp();
                 if !rejected && self.histogram[i2] == 0 {
                     // Here we do changes that need only happen when
                     // we encounter an energy we have never seen before.
                     match &mut self.method {
-                        Method::Sad { ref mut n_found, ref mut tL,
-                                      min_important_energy, .. } => {
+                        Method::Sad { ref mut n_found, ref mut tL, .. } => {
                             *n_found += 1;
-                            println!("sad: [{}]  {}:  {} < {} < {} ... {} < {} < {}",
+                            println!("sad: [{}]  {}:  {} < {} ... {} < {} < {}",
                                      self.moves, n_found,
                                      self.min_energy_bin.value_unsafe,
                                      too_lo.value_unsafe,
-                                     min_important_energy.value_unsafe,
                                      self.max_entropy_energy.value_unsafe,
                                      too_hi.value_unsafe,
                                      (self.min_energy_bin
@@ -199,80 +197,72 @@ impl<S: System> EnergyMC<S> {
     fn update_weights(&mut self, energy: Energy) {
         let i = self.energy_to_index(energy);
         match self.method {
-            Method::Sad { too_lo, too_hi, min_important_energy, min_T, n_found, tL, .. } => {
-                if too_lo < too_hi {
+            Method::Sad { too_lo, too_hi, min_T, n_found, tL, higheset_hist, .. } => {
+                if too_lo < too_hi && energy >= too_lo && energy <= too_hi {
                     let t = self.moves as f64;
                     let tL = tL as f64;
                     let dE = too_hi - too_lo;
                     let n = n_found as f64;
 
                     let gamma = dE/(3.0*min_T*t)*(n*n + t*(t/tL - 1.0) + n*t)/(n*n + t*(t/tL - 1.0) + t);
-                    if energy < too_lo || energy > too_hi {
-                        // We are at higher energy than the maximum
-                        // entropy state, so we need to tweak our
-                        // weights by even more, since we don't spend
-                        // much time here.
-
-                        // We key our change in weights based on the max_entropy_state.
-                        // 1/w = 1/w + gamma 1/w0
-                        // -lnw = ln(1/w + gamma 1/w0) = ln((w0/w + gamma)/w0)
-                        //      = -lnw0 + ln(w0/w + gamma) = -lnw0 + ln(gamma + exp(lnw0-lnw))
-                        // lnw = lnw0 - ln(gamma + exp(lnw0-lnw))
-                        let lnw = self.lnw[i];
-                        let lnw0 = if energy > too_hi {
-                            self.lnw[self.energy_to_index(too_hi)]
-                        } else {
-                            self.lnw[self.energy_to_index(too_lo)]
-                        };
-                        if lnw0 > lnw {
-                            // If w0 > w then we can turn into logs like so:
-                            // lnw = ln((w/w0 + gamma)*w0)
-                            //     = lnw0 + ln(w/w0 + gamma) = lnw0 + ln(gamma + exp(lnw-lnw0))
-                            // lnw = lnw0 + ln(gamma + exp(lnw-lnw0))
-                            self.lnw[i] = lnw0 + log((exp(gamma)-1.) + exp(lnw - lnw0));
-                        } else {
-                            // If w > w0 then we can turn into logs like so:
-                            // lnw = ln((1 + gamma*w0/w)*w)
-                            //     = lnw + ln(1 + gamma*w0/w) = lnw + ln(1 + gamma exp(lnw0-lnw))
-                            // lnw = lnw + ln(1 + gamma exp(lnw0-lnw))
-                            self.lnw[i] = lnw + log(1.0 + (exp(gamma)-1.)*exp(lnw0 - lnw));
-                        }
-                    } else {
-                        // We are in the "interesting" region, so use an ordinary SA update.
-                        self.lnw[i] += gamma;
-                    }
+                    self.lnw[i] += gamma;
                 }
 
                 let mut want_print = false;
-                if self.lnw[i] >= self.max_S && energy > too_hi {
+                if self.histogram[i] > higheset_hist {
                     match &mut self.method {
-                        Method::Sad { ref mut too_hi, .. } => {
-                            *too_hi = energy;
-                            want_print = true;
+                        Method::Sad { ref mut higheset_hist, .. } => {
+                            *higheset_hist = self.histogram[i];
                         }
                         _ => unreachable!()
                     }
-                }
-                let boltz = self.lnw[self.energy_to_index(min_important_energy)]
-                    - min_important_energy/min_T;
-                if self.lnw[i] - energy/min_T >= boltz {
-                    match &mut self.method {
-                        Method::Sad { ref mut too_lo, ref mut min_important_energy, .. } => {
-                            *min_important_energy = energy;
-                            if energy < *too_lo {
-                                *too_lo = energy;
-                                want_print = true;
+                    if energy > too_hi {
+                        want_print = true;
+                        let hmax = self.histogram[i] as f64;
+                        let ihi = self.energy_to_index(too_hi);
+                        for j in 0 .. self.histogram.len() {
+                            let ej = self.index_to_energy(j);
+                            if ej > too_hi && ej <= energy {
+                                if self.histogram[j] != 0 {
+                                    self.lnw[j] = self.lnw[ihi] + (self.histogram[j] as f64/hmax).ln();
+                                } else {
+                                    self.lnw[j] = Unitless::new(0.0);
+                                }
                             }
                         }
-                        _ => unreachable!()
+                        match &mut self.method {
+                            Method::Sad { ref mut too_hi, .. } => {
+                                *too_hi = energy;
+                            }
+                            _ => unreachable!()
+                        }
+                    } else if energy < too_lo {
+                        want_print = true;
+                        let hmax = Unitless::new(self.histogram[i] as f64);
+                        let ilo = self.energy_to_index(too_lo);
+                        for j in 0 .. self.histogram.len() {
+                            let ej = self.index_to_energy(j);
+                            if ej < too_lo && ej >= energy {
+                                if self.histogram[j] != 0 {
+                                    self.lnw[j] = self.lnw[ilo] + log(self.histogram[j] as f64/hmax) + (ej-too_lo)/min_T;
+                                } else {
+                                    self.lnw[j] = Unitless::new(0.0);
+                                }
+                            }
+                        }
+                        match &mut self.method {
+                            Method::Sad { ref mut too_lo, .. } => {
+                                *too_lo = energy;
+                            }
+                            _ => unreachable!()
+                        }
                     }
                 }
                 if want_print {
-                    println!("sad: [{}]  {}:  {} < {} < {} ... {} < {} < {}",
+                    println!("sad: [{}]  {}:  {} < {} ... {} < {} < {}",
                              self.moves, n_found,
                              self.min_energy_bin.value_unsafe,
                              too_lo.value_unsafe,
-                             min_important_energy.value_unsafe,
                              self.max_entropy_energy.value_unsafe,
                              too_hi.value_unsafe,
                              (self.min_energy_bin
