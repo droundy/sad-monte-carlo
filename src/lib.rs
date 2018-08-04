@@ -12,7 +12,6 @@ extern crate serde_yaml;
 extern crate vector3d;
 extern crate rand;
 extern crate rand_core;
-extern crate humantime;
 
 pub mod system;
 pub mod mc;

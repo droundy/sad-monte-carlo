@@ -141,9 +141,6 @@ impl From<ReportParams> for Report {
         }
     }
 }
-fn duration_from_f64(seconds: f64) -> time::Duration {
-    time::Duration::new(seconds as u64, (seconds*1e9) as u32)
-}
 impl<MC: MonteCarlo> Plugin<MC> for Report {
     fn run(&self, mc: &MC, _sys: &MC::System) -> Action {
         if let Some(maxiter) = self.max_iter {
@@ -161,20 +158,19 @@ impl<MC: MonteCarlo> Plugin<MC> for Report {
                 let runtime = start_time.elapsed();
                 if let Some(max) = self.max_iter {
                     let time_per_move =
-                        runtime.as_secs() as f64/(moves - start_iter) as f64;
+                        duration_to_secs(runtime)/(moves - start_iter) as f64;
                     let frac_complete = moves as f64/max as f64;
                     let moves_left = max - moves;
-                    let time_left = time_per_move*moves_left as f64;
+                    let time_left = (time_per_move*moves_left as f64) as u64;
                     println!("[{}] {}% complete after {} ({} left)",
                              moves,
                              (100.*frac_complete) as isize,
-                             ::humantime::format_duration(runtime),
-                             ::humantime::format_duration(duration_from_f64(time_left)),
-                    );
+                             format_duration(runtime.as_secs()),
+                             format_duration(time_left));
                 } else {
                     println!("[{}] after {}",
                              moves,
-                             ::humantime::format_duration(runtime),
+                             format_duration(runtime.as_secs()),
                     );
                 }
             }
@@ -230,4 +226,24 @@ impl<MC: MonteCarlo> Plugin<MC> for Save {
     fn run_period(&self) -> Option<u64> {
         Some(self.next_output.get())
     }
+}
+
+fn format_duration(secs: u64) -> String {
+    let mins = secs / 60;
+    let hours = mins / 60;
+    let mins = mins % 60;
+    if hours > 50 {
+        format!("{} hours", hours)
+    } else if mins < 1 {
+        format!("{} seconds", secs)
+    } else if hours < 1 {
+        format!("{} minutes", mins)
+    } else if hours < 2 {
+        format!("1 hour, {} minutes", mins)
+    } else {
+        format!("{} hours, {} minutes", hours, mins)
+    }
+}
+fn duration_to_secs(t: time::Duration) -> f64 {
+    t.as_secs() as f64 + t.subsec_nanos() as f64*1e-9
 }
