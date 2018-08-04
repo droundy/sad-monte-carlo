@@ -32,7 +32,6 @@ pub struct EnergyMCParams {
     pub _method: MethodParams,
     /// The seed for the random number generator.
     pub seed: Option<u64>,
-    _maxiter: plugin::MaxIterParams,
     _report: plugin::ReportParams,
     _save: plugin::SaveParams,
 }
@@ -42,7 +41,6 @@ impl Default for EnergyMCParams {
         EnergyMCParams {
             _method: MethodParams::Sad { min_T: 0.2*units::EPSILON },
             seed: None,
-            _maxiter: plugin::MaxIterParams::default(),
             _report: plugin::ReportParams::default(),
             _save: plugin::SaveParams::default(),
         }
@@ -80,7 +78,6 @@ pub struct EnergyMC<S> {
     pub rng: ::rng::MyRng,
     /// Where to save the resume file.
     pub save_as: ::std::path::PathBuf,
-    maxiter: plugin::MaxIter,
     report: plugin::Report,
     save: plugin::Save,
     manager: plugin::PluginManager,
@@ -174,7 +171,7 @@ impl<S: System> EnergyMC<S> {
                     match &mut self.method {
                         Method::Sad { ref mut n_found, ref mut tL, .. } => {
                             *n_found += 1;
-                            println!("sad: [{}]  {}:  {} < {} ... {} < {} < {}",
+                            println!("    sad: [{}]  {}:  {} < {} ... {} < {} < {}",
                                      self.moves, n_found,
                                      self.min_energy_bin.value_unsafe,
                                      too_lo.value_unsafe,
@@ -262,7 +259,7 @@ impl<S: System> EnergyMC<S> {
                     }
                 }
                 if want_print {
-                    println!("sad: [{}]  {}:  {} < {} ... {} < {} < {}",
+                    println!("    sad: [{}]  {}:  {} < {} ... {} < {} < {}",
                              self.moves, n_found,
                              self.min_energy_bin.value_unsafe,
                              too_lo.value_unsafe,
@@ -299,7 +296,6 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
 
             rng: ::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
             save_as: save_as,
-            maxiter: plugin::MaxIter::from(params._maxiter),
             report: plugin::Report::from(params._report),
             save: plugin::Save::from(params._save),
             manager: plugin::PluginManager::new(),
@@ -331,8 +327,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             self.max_S = self.lnw[i];
             self.max_entropy_energy = energy;
         }
-        let plugins = [&self.maxiter as &Plugin<Self>,
-                       &self.report,
+        let plugins = [&self.report as &Plugin<Self>,
                        &self.save,
         ];
         self.manager.run(self, &self.system, &plugins);

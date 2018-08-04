@@ -16,7 +16,6 @@ pub struct SadParams {
     pub min_T: Energy,
     /// The seed for the random number generator.
     pub seed: Option<u64>,
-    _maxiter: plugin::MaxIterParams,
     _final_report: plugin::ReportParams,
 }
 
@@ -25,7 +24,6 @@ impl Default for SadParams {
         SadParams {
             min_T: Energy::new(0.2),
             seed: None,
-            _maxiter: plugin::MaxIterParams::default(),
             _final_report: plugin::ReportParams::default(),
         }
     }
@@ -70,7 +68,6 @@ pub struct Sad<S> {
     pub rng: ::rng::MyRng,
     /// Where to save the resume file.
     pub save_as: ::std::path::PathBuf,
-    maxiter: plugin::MaxIter,
     final_report: plugin::Report,
     manager: plugin::PluginManager,
 }
@@ -125,7 +122,6 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
 
             rng: ::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
             save_as: save_as,
-            maxiter: plugin::MaxIter::from(params._maxiter),
             final_report: plugin::Report::from(params._final_report),
             manager: plugin::PluginManager::new(),
         }
@@ -230,8 +226,7 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
                     self.too_lo = energy;
                 }
             }
-        let plugins = [&self.maxiter as &Plugin<Self>,
-                       &self.final_report,
+        let plugins = [&self.final_report as &Plugin<Self>,
         ];
         self.manager.run(self, &self.system, &plugins);
     }

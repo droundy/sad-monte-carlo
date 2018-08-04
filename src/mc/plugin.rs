@@ -5,6 +5,7 @@ use super::*;
 
 use std::cell::Cell;
 use std::default::Default;
+use std::time;
 
 /// A `Plugin` is an object that can be used to configure a MonteCarlo
 /// simulation.  The plugin will be called regularly, and will have a
@@ -106,29 +107,44 @@ impl PluginManager {
     }
 }
 
+fn no_time() -> Cell<Option<(time::Instant, u64)>> { Cell::new(None) }
+
 /// A plugin that terminates the simulation after a fixed number of iterations.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
-pub struct MaxIter {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Report {
     max_iter: Option<u64>,
+    /// This is when and where the simulation started.
+    #[serde(skip, default="no_time")]
+    start: Cell<Option<(time::Instant, u64)>>,
 }
 
 /// The parameter to define the maximum number of iterations.
 #[derive(ClapMe, Debug)]
-pub struct MaxIterParams {
+pub struct ReportParams {
     /// The maximum number of iterations to run.
     pub max_iter: Option<u64>,
 }
 
-impl Default for MaxIterParams {
-    fn default() -> Self { MaxIterParams { max_iter: None } }
-}
-
-impl From<MaxIterParams> for MaxIter {
-    fn from(params: MaxIterParams) -> Self {
-        MaxIter { max_iter: params.max_iter }
+impl Default for ReportParams {
+    fn default() -> Self {
+        ReportParams {
+            max_iter: None,
+        }
     }
 }
-impl<MC: MonteCarlo> Plugin<MC> for MaxIter {
+
+impl From<ReportParams> for Report {
+    fn from(params: ReportParams) -> Self {
+        Report {
+            max_iter: params.max_iter,
+            start: Cell::new(Some((time::Instant::now(), 0))),
+        }
+    }
+}
+fn duration_from_f64(seconds: f64) -> time::Duration {
+    time::Duration::new(seconds as u64, (seconds*1e9) as u32)
+}
+impl<MC: MonteCarlo> Plugin<MC> for Report {
     fn run(&self, mc: &MC, _sys: &MC::System) -> Action {
         if let Some(maxiter) = self.max_iter {
             if mc.num_moves() >= maxiter {
@@ -138,25 +154,35 @@ impl<MC: MonteCarlo> Plugin<MC> for MaxIter {
         Action::None
     }
     fn run_period(&self) -> Option<u64> { self.max_iter }
-}
-
-/// A plugin that writes a handy report of MC information.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
-pub struct Report;
-
-/// The parameter to define report parameters
-#[derive(ClapMe, Debug)]
-pub struct ReportParams;
-
-impl Default for ReportParams {
-    fn default() -> Self { ReportParams }
-}
-impl From<ReportParams> for Report {
-    fn from(_params: ReportParams) -> Self {
-        Report
+    fn log(&self, mc: &MC, _sys: &MC::System) {
+        match self.start.get() {
+            Some((start_time, start_iter)) => {
+                let moves = mc.num_moves();
+                let runtime = start_time.elapsed();
+                if let Some(max) = self.max_iter {
+                    let time_per_move =
+                        runtime.as_secs() as f64/(moves - start_iter) as f64;
+                    let frac_complete = moves as f64/max as f64;
+                    let moves_left = max - moves;
+                    let time_left = time_per_move*moves_left as f64;
+                    println!("[{}] {}% complete after {} ({} left)",
+                             moves,
+                             (100.*frac_complete) as isize,
+                             ::humantime::format_duration(runtime),
+                             ::humantime::format_duration(duration_from_f64(time_left)),
+                    );
+                } else {
+                    println!("[{}] after {}",
+                             moves,
+                             ::humantime::format_duration(runtime),
+                    );
+                }
+            }
+            None => {
+                self.start.set(Some((time::Instant::now(), mc.num_moves())));
+            }
+        }
     }
-}
-impl<MC: MonteCarlo> Plugin<MC> for Report {
     fn save(&self, mc: &MC, _sys: &MC::System) {
         let rejects = mc.num_rejected_moves();
         let moves = mc.num_moves();
