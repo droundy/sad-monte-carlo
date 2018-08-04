@@ -33,7 +33,8 @@ pub struct EnergyMCParams {
     /// The seed for the random number generator.
     pub seed: Option<u64>,
     _maxiter: plugin::MaxIterParams,
-    _final_report: plugin::FinalReportParams,
+    _report: plugin::ReportParams,
+    _save: plugin::SaveParams,
 }
 
 impl Default for EnergyMCParams {
@@ -42,7 +43,8 @@ impl Default for EnergyMCParams {
             _method: MethodParams::Sad { min_T: 0.2*units::EPSILON },
             seed: None,
             _maxiter: plugin::MaxIterParams::default(),
-            _final_report: plugin::FinalReportParams::default(),
+            _report: plugin::ReportParams::default(),
+            _save: plugin::SaveParams::default(),
         }
     }
 }
@@ -79,7 +81,8 @@ pub struct EnergyMC<S> {
     /// Where to save the resume file.
     pub save_as: ::std::path::PathBuf,
     maxiter: plugin::MaxIter,
-    final_report: plugin::FinalReport,
+    report: plugin::Report,
+    save: plugin::Save,
     manager: plugin::PluginManager,
 }
 
@@ -297,7 +300,8 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             rng: ::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
             save_as: save_as,
             maxiter: plugin::MaxIter::from(params._maxiter),
-            final_report: plugin::FinalReport::from(params._final_report),
+            report: plugin::Report::from(params._report),
+            save: plugin::Save::from(params._save),
             manager: plugin::PluginManager::new(),
         }
     }
@@ -328,7 +332,8 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             self.max_entropy_energy = energy;
         }
         let plugins = [&self.maxiter as &Plugin<Self>,
-                       &self.final_report,
+                       &self.report,
+                       &self.save,
         ];
         self.manager.run(self, &self.system, &plugins);
     }

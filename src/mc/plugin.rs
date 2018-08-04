@@ -140,27 +140,68 @@ impl<MC: MonteCarlo> Plugin<MC> for MaxIter {
     fn run_period(&self) -> Option<u64> { self.max_iter }
 }
 
-/// A plugin that terminates the simulation after a fixed number of iterations.
+/// A plugin that writes a handy report of MC information.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
-pub struct FinalReport;
+pub struct Report;
 
-/// The parameter to define the maximum number of iterations.
+/// The parameter to define report parameters
 #[derive(ClapMe, Debug)]
-pub struct FinalReportParams;
+pub struct ReportParams;
 
-impl Default for FinalReportParams {
-    fn default() -> Self { FinalReportParams }
+impl Default for ReportParams {
+    fn default() -> Self { ReportParams }
 }
-impl From<FinalReportParams> for FinalReport {
-    fn from(_params: FinalReportParams) -> Self {
-        FinalReport
+impl From<ReportParams> for Report {
+    fn from(_params: ReportParams) -> Self {
+        Report
     }
 }
-impl<MC: MonteCarlo> Plugin<MC> for FinalReport {
+impl<MC: MonteCarlo> Plugin<MC> for Report {
     fn save(&self, mc: &MC, _sys: &MC::System) {
         let rejects = mc.num_rejected_moves();
         let moves = mc.num_moves();
         println!("Rejected {}/{} = {}% of the moves",
                  rejects, moves, 100.0*rejects as f64/moves as f64);
+    }
+}
+
+
+/// A plugin that schedules when to save
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Save {
+    next_output: Cell<u64>,
+    moves_left: Cell<u64>,
+}
+
+/// The parameter to define the save schedule
+#[derive(ClapMe, Debug)]
+pub struct SaveParams;
+
+impl Default for SaveParams {
+    fn default() -> Self { SaveParams }
+}
+impl From<SaveParams> for Save {
+    fn from(_params: SaveParams) -> Self {
+        Save {
+            next_output: Cell::new(1),
+            moves_left: Cell::new(1),
+        }
+    }
+}
+impl<MC: MonteCarlo> Plugin<MC> for Save {
+    fn run(&self, mc: &MC, _sys: &MC::System) -> Action {
+        let next_output = self.next_output.get();
+        let moves = mc.num_moves();
+        let action = if moves >= next_output {
+            self.next_output.set(next_output*2);
+            Action::Save
+        } else {
+            Action::None
+        };
+        self.moves_left.set(next_output - moves);
+        action
+    }
+    fn run_period(&self) -> Option<u64> {
+        Some(self.next_output.get())
     }
 }
