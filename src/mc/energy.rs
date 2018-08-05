@@ -9,6 +9,8 @@ use super::plugin::Plugin;
 use dimensioned::Dimensionless;
 use rand::Rng;
 use std::default::Default;
+use ndarray::{Array2, Axis};
+use std::cell::{RefCell,Cell};
 
 /// Parameters to configure a particular MC.
 #[derive(Debug, ClapMe)]
@@ -33,6 +35,7 @@ pub struct EnergyMCParams {
     /// The seed for the random number generator.
     pub seed: Option<u64>,
     _report: plugin::ReportParams,
+    _movies: MoviesParams,
     _save: plugin::SaveParams,
 }
 
@@ -42,6 +45,7 @@ impl Default for EnergyMCParams {
             _method: MethodParams::Sad { min_T: 0.2*units::EPSILON },
             seed: None,
             _report: plugin::ReportParams::default(),
+            _movies: MoviesParams::default(),
             _save: plugin::SaveParams::default(),
         }
     }
@@ -79,6 +83,7 @@ pub struct EnergyMC<S> {
     /// Where to save the resume file.
     pub save_as: ::std::path::PathBuf,
     report: plugin::Report,
+    movies: Movies,
     save: plugin::Save,
     manager: plugin::PluginManager,
 }
@@ -297,6 +302,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             rng: ::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
             save_as: save_as,
             report: plugin::Report::from(params._report),
+            movies: Movies::from(params._movies),
             save: plugin::Save::from(params._save),
             manager: plugin::PluginManager::new(),
         }
@@ -328,6 +334,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             self.max_entropy_energy = energy;
         }
         let plugins = [&self.report as &Plugin<Self>,
+                       &self.movies,
                        &self.save,
         ];
         self.manager.run(self, &self.system, &plugins);
@@ -351,4 +358,100 @@ fn log(x: Unitless) -> Unitless {
 }
 fn exp(x: Unitless) -> Unitless {
     Unitless::new(x.exp())
+}
+
+
+
+
+/// Do we want movies? Where?
+#[derive(ClapMe, Debug)]
+pub struct MoviesParams {
+    /// How often (logarithmically) do we want a movie frame? If this
+    /// is 2.0, it means we want a frame every time the number of
+    /// iterations doubles.
+    pub movie_time: Option<f64>,
+}
+
+impl Default for MoviesParams {
+    fn default() -> Self {
+        MoviesParams {
+            movie_time: None,
+        }
+    }
+}
+
+/// A plugin that saves movie data.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Movies {
+    movie_time: Option<f64>,
+    next_frame: Cell<u64>,
+    period: Cell<Option<u64>>,
+    entropy: RefCell<Array2<f64>>,
+    time: RefCell<Vec<u64>>,
+    energy: RefCell<Vec<Energy>>,
+}
+
+impl From<MoviesParams> for Movies {
+    fn from(params: MoviesParams) -> Self {
+        Movies {
+            movie_time: params.movie_time,
+            next_frame: Cell::new(1),
+            period: Cell::new(params.movie_time.map(|_| 1)),
+            entropy: RefCell::new(Array2::zeros((0,0))),
+            time: RefCell::new(Vec::new()),
+            energy: RefCell::new(Vec::new()),
+        }
+    }
+}
+impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
+    fn run(&self, mc: &EnergyMC<S>, _sys: &S) -> plugin::Action {
+        if let Some(movie_time) = self.movie_time {
+            let next_frame = self.next_frame.get();
+            if mc.num_moves() == next_frame {
+                // First, let's create the arrays for the time and
+                // energy indices.
+                self.time.borrow_mut().push(next_frame);
+                let new_energy: Vec<_> =
+                    (0 .. mc.histogram.len()).map(|i| mc.index_to_energy(i)).collect();
+                let old_energy = self.energy.replace(new_energy.clone());
+
+                let entropy = Array2::from_shape_fn((1,new_energy.len()), |(_,i)| {
+                    if let Method::Sad { too_lo, too_hi, higheset_hist, .. } = mc.method {
+                        if mc.histogram[i] == 0 {
+                            return 0.0;
+                        }
+                        let e = mc.index_to_energy(i);
+                        if e < too_lo {
+                            return mc.lnw[mc.energy_to_index(too_lo)].value()
+                                + (mc.histogram[i] as f64/higheset_hist as f64).ln();
+                        }
+                        if e > too_hi {
+                            return mc.lnw[mc.energy_to_index(too_hi)].value()
+                                + (mc.histogram[i] as f64/higheset_hist as f64).ln();
+                        }
+                    }
+                    *mc.lnw[i].value()
+                });
+                if new_energy == old_energy {
+                    // We can just add a row.
+                    let mut S = self.entropy.borrow_mut();
+                    *S = stack!(Axis(0), *S, entropy);
+                } else {
+                    let old_S = self.entropy.replace(
+                        Array2::zeros((self.time.borrow().len(),
+                                       new_energy.len())));
+                    // We need to change the shape of the array.
+                }
+
+                // Now decide when we need the next frame to be.
+                let following_frame = (next_frame as f64*movie_time) as u64;
+                self.next_frame.set(following_frame);
+                self.period.set(Some(following_frame-next_frame));
+            } else {
+                println!("wrong time at {} vs {}", mc.num_moves(), next_frame);
+            }
+        }
+        plugin::Action::None
+    }
+    fn run_period(&self) -> Option<u64> { self.period.get() }
 }

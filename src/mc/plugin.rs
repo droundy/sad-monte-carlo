@@ -118,7 +118,8 @@ pub struct Report {
     start: Cell<Option<(time::Instant, u64)>>,
 }
 
-/// The parameter to define the maximum number of iterations.
+/// The parameters to define the report information as well as stop
+/// time (which is part of the report).
 #[derive(ClapMe, Debug)]
 pub struct ReportParams {
     /// The maximum number of iterations to run.
@@ -182,7 +183,7 @@ impl<MC: MonteCarlo> Plugin<MC> for Report {
     fn save(&self, mc: &MC, _sys: &MC::System) {
         let rejects = mc.num_rejected_moves();
         let moves = mc.num_moves();
-        println!("Rejected {}/{} = {}% of the moves",
+        println!("Rejected {}/{} = {:.0}% of the moves",
                  rejects, moves, 100.0*rejects as f64/moves as f64);
     }
 }

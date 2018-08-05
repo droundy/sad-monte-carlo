@@ -4,6 +4,7 @@
 #![deny(missing_docs)]
 
 #[macro_use] extern crate dimensioned;
+#[macro_use] extern crate ndarray;
 #[macro_use] extern crate serde_derive;
 extern crate serde;
 extern crate serde_yaml;
