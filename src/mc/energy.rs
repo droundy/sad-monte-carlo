@@ -385,7 +385,7 @@ impl Default for MoviesParams {
 pub struct Movies {
     movie_time: Option<f64>,
     next_frame: Cell<u64>,
-    period: Cell<Option<u64>>,
+    period: Cell<plugin::TimeToRun>,
     entropy: RefCell<Array2<f64>>,
     time: RefCell<Vec<u64>>,
     energy: RefCell<Vec<Energy>>,
@@ -396,7 +396,11 @@ impl From<MoviesParams> for Movies {
         Movies {
             movie_time: params.movie_time,
             next_frame: Cell::new(1),
-            period: Cell::new(params.movie_time.map(|_| 1)),
+            period: Cell::new(if params.movie_time.is_some() {
+                plugin::TimeToRun::Period(1)
+            } else {
+                plugin::TimeToRun::Never
+            }),
             entropy: RefCell::new(Array2::zeros((0,0))),
             time: RefCell::new(Vec::new()),
             energy: RefCell::new(Vec::new()),
@@ -446,12 +450,12 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                 // Now decide when we need the next frame to be.
                 let following_frame = (next_frame as f64*movie_time) as u64;
                 self.next_frame.set(following_frame);
-                self.period.set(Some(following_frame-next_frame));
+                self.period.set(plugin::TimeToRun::Period(following_frame-next_frame));
             } else {
                 println!("wrong time at {} vs {}", mc.num_moves(), next_frame);
             }
         }
         plugin::Action::None
     }
-    fn run_period(&self) -> Option<u64> { self.period.get() }
+    fn run_period(&self) -> plugin::TimeToRun { self.period.get() }
 }

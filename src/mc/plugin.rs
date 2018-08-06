@@ -23,7 +23,7 @@ pub trait Plugin<MC: MonteCarlo> {
     /// that this period may change any time the plugin is called, so
     /// this should be a cheap call as it may happen frequently.  Also
     /// note that this is an upper, not a lower bound.
-    fn run_period(&self) -> Option<u64> { None }
+    fn run_period(&self) -> TimeToRun { TimeToRun::Never }
     /// We might be about to die, so please do any cleanup or saving.
     /// Note that the plugin state is stored on each checkpoint.  This
     /// is called in response to `Action::Save` and `Action::Exit`.
@@ -32,6 +32,17 @@ pub trait Plugin<MC: MonteCarlo> {
     /// care about.  This is called in response to `Action::Save`,
     /// `Action::Log` and `Action::Exit`.
     fn log(&self, _mc: &MC, _sys: &MC::System) {}
+}
+
+/// A time when we want to be run.
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+pub enum TimeToRun {
+    /// Don't stop on our behalf!
+    Never,
+    /// After this many moves in total.
+    TotalMoves(u64),
+    /// This often.
+    Period(u64),
 }
 
 /// An action that should be taken based on this plugin's decision.
@@ -96,9 +107,17 @@ impl PluginManager {
             // run plugins every trillion iterations minimum
             let mut new_period = 1u64 << 40;
             for p in plugins.iter() {
-                if let Some(period) = p.run_period() {
-                    if period < new_period {
-                        new_period = period;
+                match p.run_period() {
+                    TimeToRun::Never => (),
+                    TimeToRun::TotalMoves(moves) => {
+                        if moves > mc.num_moves() && moves - mc.num_moves() < new_period {
+                            new_period = moves - mc.num_moves();
+                        }
+                    }
+                    TimeToRun::Period(period) => {
+                        if period < new_period {
+                            new_period = period;
+                        }
                     }
                 }
             }
@@ -112,7 +131,7 @@ fn no_time() -> Cell<Option<(time::Instant, u64)>> { Cell::new(None) }
 /// A plugin that terminates the simulation after a fixed number of iterations.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Report {
-    max_iter: Option<u64>,
+    max_iter: TimeToRun,
     /// This is when and where the simulation started.
     #[serde(skip, default="no_time")]
     start: Cell<Option<(time::Instant, u64)>>,
@@ -137,31 +156,35 @@ impl Default for ReportParams {
 impl From<ReportParams> for Report {
     fn from(params: ReportParams) -> Self {
         Report {
-            max_iter: params.max_iter,
+            max_iter: if let Some(mi) = params.max_iter {
+                TimeToRun::TotalMoves(mi)
+            } else {
+                TimeToRun::Never
+            },
             start: Cell::new(Some((time::Instant::now(), 0))),
         }
     }
 }
 impl<MC: MonteCarlo> Plugin<MC> for Report {
     fn run(&self, mc: &MC, _sys: &MC::System) -> Action {
-        if let Some(maxiter) = self.max_iter {
+        if let TimeToRun::TotalMoves(maxiter) = self.max_iter {
             if mc.num_moves() >= maxiter {
                 return Action::Exit;
             }
         }
         Action::None
     }
-    fn run_period(&self) -> Option<u64> { self.max_iter }
+    fn run_period(&self) -> TimeToRun { self.max_iter }
     fn log(&self, mc: &MC, _sys: &MC::System) {
         match self.start.get() {
             Some((start_time, start_iter)) => {
                 let moves = mc.num_moves();
                 let runtime = start_time.elapsed();
-                if let Some(max) = self.max_iter {
+                if let TimeToRun::TotalMoves(max) = self.max_iter {
                     let time_per_move =
                         duration_to_secs(runtime)/(moves - start_iter) as f64;
                     let frac_complete = moves as f64/max as f64;
-                    let moves_left = max - moves;
+                    let moves_left = if max >= moves { max - moves } else { 0 };
                     let time_left = (time_per_move*moves_left as f64) as u64;
                     println!("[{}] {}% complete after {} ({} left)",
                              moves,
@@ -224,8 +247,8 @@ impl<MC: MonteCarlo> Plugin<MC> for Save {
         self.moves_left.set(next_output - moves);
         action
     }
-    fn run_period(&self) -> Option<u64> {
-        Some(self.next_output.get())
+    fn run_period(&self) -> TimeToRun {
+        TimeToRun::Period(self.next_output.get())
     }
 }
 
