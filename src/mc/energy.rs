@@ -444,15 +444,28 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                     let old_S = self.entropy.replace(
                         Array2::zeros((self.time.borrow().len(),
                                        new_energy.len())));
-                    // We need to change the shape of the array.
+                    let energy = self.energy.borrow().clone();
+                    let mut S = self.entropy.borrow_mut();
+                    for e in 0..old_S.len_of(Axis(1)) {
+                        for ne in 0..S.len_of(Axis(1)) {
+                            if old_energy[e] == energy[ne] {
+                                for t in 0..old_S.len_of(Axis(0)) {
+                                    S[[t,ne]] = old_S[[t,e]];
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    let tlen = self.time.borrow().len();
+                    for e in 0..energy.len() {
+                        S[[tlen-1, e]] = entropy[[0,e]];
+                    }
                 }
 
                 // Now decide when we need the next frame to be.
                 let following_frame = (next_frame as f64*movie_time) as u64;
                 self.next_frame.set(following_frame);
                 self.period.set(plugin::TimeToRun::Period(following_frame-next_frame));
-            } else {
-                println!("wrong time at {} vs {}", mc.num_moves(), next_frame);
             }
         }
         plugin::Action::None
