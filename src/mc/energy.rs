@@ -9,7 +9,6 @@ use super::plugin::Plugin;
 use dimensioned::Dimensionless;
 use rand::Rng;
 use std::default::Default;
-use ndarray::{Array2, Axis};
 use std::cell::{RefCell,Cell};
 
 /// Parameters to configure a particular MC.
@@ -347,10 +346,6 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
 fn log(x: Unitless) -> Unitless {
     Unitless::new(x.ln())
 }
-fn exp(x: Unitless) -> Unitless {
-    Unitless::new(x.exp())
-}
-
 
 
 
@@ -377,7 +372,7 @@ pub struct Movies {
     movie_time: Option<f64>,
     next_frame: Cell<u64>,
     period: Cell<plugin::TimeToRun>,
-    entropy: RefCell<Array2<f64>>,
+    entropy: RefCell<Vec<Vec<f64>>>,
     time: RefCell<Vec<u64>>,
     energy: RefCell<Vec<Energy>>,
 }
@@ -392,7 +387,7 @@ impl From<MoviesParams> for Movies {
             } else {
                 plugin::TimeToRun::Never
             }),
-            entropy: RefCell::new(Array2::zeros((0,0))),
+            entropy: RefCell::new(Vec::new()),
             time: RefCell::new(Vec::new()),
             energy: RefCell::new(Vec::new()),
         }
@@ -410,9 +405,9 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                     (0 .. mc.bins.lnw.len()).map(|i| mc.index_to_energy(i)).collect();
                 let old_energy = self.energy.replace(new_energy.clone());
 
-                let entropy = Array2::from_shape_fn((1,new_energy.len()), |(_,i)| {
-                    let histogram = &mc.bins.histogram;
-                    let lnw = &mc.bins.lnw;
+                let histogram = &mc.bins.histogram;
+                let lnw = &mc.bins.lnw;
+                let entropy: Vec<_> = (0..new_energy.len()).map(|i| {
                     if let Method::Sad { too_lo, too_hi, highest_hist, .. } = mc.method {
                         if histogram[i] == 0 {
                             return 0.0;
@@ -428,31 +423,40 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                         }
                     }
                     *lnw[i].value()
-                });
+                }).collect();
                 if new_energy == old_energy {
                     // We can just add a row.
                     let mut S = self.entropy.borrow_mut();
-                    *S = stack!(Axis(0), *S, entropy);
+                    S.push(entropy);
                 } else {
-                    let old_S = self.entropy.replace(
-                        Array2::zeros((self.time.borrow().len(),
-                                       new_energy.len())));
                     let energy = self.energy.borrow().clone();
-                    let mut S = self.entropy.borrow_mut();
-                    for e in 0..old_S.len_of(Axis(1)) {
-                        for ne in 0..S.len_of(Axis(1)) {
-                            if old_energy[e] == energy[ne] {
-                                for t in 0..old_S.len_of(Axis(0)) {
-                                    S[[t,ne]] = old_S[[t,e]];
-                                }
-                                break;
-                            }
+                    let mut left_zeros = 0;
+                    for e in energy.iter() {
+                        if !old_energy.contains(e) {
+                            left_zeros += 1;
+                        } else {
+                            break;
                         }
                     }
-                    let tlen = self.time.borrow().len();
-                    for e in 0..energy.len() {
-                        S[[tlen-1, e]] = entropy[[0,e]];
+                    let mut right_zeros = 0;
+                    for e in energy.iter().rev() {
+                        if !old_energy.contains(e) {
+                            right_zeros += 1;
+                        } else {
+                            break;
+                        }
                     }
+                    let mut S = self.entropy.borrow_mut();
+                    for v in S.iter_mut() {
+                        for _ in 0..right_zeros {
+                            v.push(0.);
+                        }
+                        for _ in 0..left_zeros {
+                            v.insert(0,0.);
+                        }
+                    }
+
+                    S.push(entropy);
                 }
 
                 // Now decide when we need the next frame to be.
