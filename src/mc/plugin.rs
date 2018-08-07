@@ -135,6 +135,8 @@ pub struct Report {
     /// This is when and where the simulation started.
     #[serde(skip, default="no_time")]
     start: Cell<Option<(time::Instant, u64)>>,
+    /// The user has requested that nothing be printed!
+    pub quiet: bool,
 }
 
 /// The parameters to define the report information as well as stop
@@ -143,12 +145,15 @@ pub struct Report {
 pub struct ReportParams {
     /// The maximum number of iterations to run.
     pub max_iter: Option<u64>,
+    /// Do not make reports!
+    pub quiet: bool,
 }
 
 impl Default for ReportParams {
     fn default() -> Self {
         ReportParams {
             max_iter: None,
+            quiet: true,
         }
     }
 }
@@ -162,6 +167,7 @@ impl From<ReportParams> for Report {
                 TimeToRun::Never
             },
             start: Cell::new(Some((time::Instant::now(), 0))),
+            quiet: params.quiet,
         }
     }
 }
@@ -176,6 +182,7 @@ impl<MC: MonteCarlo> Plugin<MC> for Report {
     }
     fn run_period(&self) -> TimeToRun { self.max_iter }
     fn log(&self, mc: &MC, _sys: &MC::System) {
+        if self.quiet { return; }
         match self.start.get() {
             Some((start_time, start_iter)) => {
                 let moves = mc.num_moves();
@@ -204,6 +211,7 @@ impl<MC: MonteCarlo> Plugin<MC> for Report {
         }
     }
     fn save(&self, mc: &MC, _sys: &MC::System) {
+        if self.quiet { return; }
         let rejects = mc.num_rejected_moves();
         let moves = mc.num_moves();
         println!("Rejected {}/{} = {:.0}% of the moves",

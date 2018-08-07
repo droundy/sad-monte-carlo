@@ -258,7 +258,7 @@ impl<S: System> EnergyMC<S> {
                         *too_lo = energy;
                     }
                 }
-                if *tL == self.moves {
+                if *tL == self.moves && !self.report.quiet {
                     println!("    sad: [{}]  {}:  {} < {} ... {} < {}",
                              self.moves, num_states,
                              self.bins.min.value_unsafe,
