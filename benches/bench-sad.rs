@@ -13,11 +13,24 @@ use sadmc::mc::sad::{Sad, SadParams};
 use sadmc::mc::energy::{EnergyMC, EnergyMCParams};
 use sadmc::system::square::{SquareWell, SquareWellNParams};
 use sadmc::system::{Length, MovableSystem};
+use sadmc::system::optsquare;
 
 fn gen_sw(n_atoms: usize) -> SquareWell {
     let mut sw_params = SquareWellNParams::default();
     sw_params.N = n_atoms;
     let mut sw = SquareWell::from(sw_params);
+    // Randomize things a bit before beginning.
+    let mut rng = sadmc::rng::MyRng::from_u64(1);
+    for _ in 0..n_atoms*1000 {
+        sw.move_once(&mut rng, Length::new(1.0));
+    }
+    sw
+}
+
+fn gen_optsw(n_atoms: usize) -> optsquare::SquareWell {
+    let mut sw_params = optsquare::SquareWellNParams::default();
+    sw_params.N = n_atoms;
+    let mut sw = optsquare::SquareWell::from(sw_params);
     // Randomize things a bit before beginning.
     let mut rng = sadmc::rng::MyRng::from_u64(1);
     for _ in 0..n_atoms*1000 {
@@ -75,6 +88,15 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function_over_inputs("SW_sw_move_once",
                                  move |b, &&n_atoms| {
                                      let mut sw = gen_sw(n_atoms);
+                                     let mut rng = sadmc::rng::MyRng::from_u64(2);
+                                     b.iter(|| sw.move_once(&mut rng, Length::new(0.1)))
+                                 },
+                                 &[50, 100,
+                                   // 200, 400
+                                   ]);
+    c.bench_function_over_inputs("SW_optsw_move_once",
+                                 move |b, &&n_atoms| {
+                                     let mut sw = gen_optsw(n_atoms);
                                      let mut rng = sadmc::rng::MyRng::from_u64(2);
                                      b.iter(|| sw.move_once(&mut rng, Length::new(0.1)))
                                  },

@@ -6,6 +6,7 @@ use super::rng::MyRng;
 pub mod units;
 pub mod ising;
 pub mod square;
+pub mod optsquare;
 
 /// A unitless number.  This is equivalent to a f64, but makes clear
 /// that it is going to be interpreted as a dimensionless quantity.
