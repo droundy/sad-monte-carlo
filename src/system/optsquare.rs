@@ -126,9 +126,21 @@ impl<'a> Iterator for NeighborIterator<'a> {
             }
             self.positions = &self.cell[self.sc + self.offset];
             self.shift = Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.));
-            // if self.sc.x + self.offset.x < 0 {
-            //     self.shift.x = self
-            // }
+            if self.sc.x + self.offset.x < 0 {
+                self.shift.x -= self.cell.box_diagonal.x;
+            } else if self.sc.x + self.offset.x >= self.cell.num_subcells.x as isize {
+                self.shift.x += self.cell.box_diagonal.x;
+            }
+            if self.sc.y + self.offset.y < 0 {
+                self.shift.y -= self.cell.box_diagonal.y;
+            } else if self.sc.y + self.offset.y >= self.cell.num_subcells.y as isize {
+                self.shift.y += self.cell.box_diagonal.y;
+            }
+            if self.sc.z + self.offset.z < 0 {
+                self.shift.z -= self.cell.box_diagonal.z;
+            } else if self.sc.z + self.offset.z >= self.cell.num_subcells.z as isize {
+                self.shift.z += self.cell.box_diagonal.z;
+            }
             self.which = 0;
         }
     }
@@ -451,7 +463,7 @@ impl SquareWell {
     pub fn add_atom_at(&mut self, r: Vector3d<Length>) -> Option<Energy> {
         let mut de = units::EPSILON*0.0;
         for r1 in self.cell.maybe_interacting_atoms(r) {
-            let dist2 = self.cell.closest_distance2(r1,r);
+            let dist2 = (r1-r).norm2();
             if dist2 < units::SIGMA*units::SIGMA {
                 self.last_change = Change::None;
                 return None;
@@ -470,13 +482,14 @@ impl SquareWell {
         let mut de = units::EPSILON*0.0;
         let from = self.cell.positions[which];
         let mut am_infinite = false;
+        let wsqr = self.cell.well_width*self.cell.well_width;
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, from) {
-            let dist2 = self.cell.closest_distance2(r1,r);
+            let dist2 = (r1-r).norm2();
             if dist2 < units::SIGMA*units::SIGMA {
                 am_infinite = true;
                 break;
             }
-            if dist2 < self.cell.well_width*self.cell.well_width {
+            if dist2 < wsqr {
                     de -= units::EPSILON;
             }
         }
@@ -485,8 +498,7 @@ impl SquareWell {
             return None;
         }
         for r1 in self.cell.maybe_interacting_atoms(from) {
-            if self.cell.closest_distance2(r1,from)
-                < self.cell.well_width*self.cell.well_width {
+            if (r1-from).norm2() < wsqr {
                     de += units::EPSILON;
             }
         }
@@ -786,6 +798,38 @@ fn closest_distance_matches() {
                        sw.cell.unsafe_closest_distance2(r1,r2));
             assert_eq!(sw.cell.closest_distance2(r1,r2),
                        sw.cell.sloppy_closest_distance2(r1,r2));
+        }
+    }
+}
+
+#[test]
+fn maybe_interacting_needs_no_shifting() {
+    use std::default::Default;
+    let mut sw = SquareWell::from(SquareWellNParams::default());
+    let mut rng = MyRng::from_u64(1);
+    for _ in 0..100000 {
+        sw.move_once(&mut rng, Length::new(1.0));
+    }
+    for &r1 in sw.cell.positions.iter() {
+        for r2 in sw.cell.maybe_interacting_atoms(r1) {
+            println!("comparing positions:\n{}\n  and\n{}", r1, r2);
+            assert_eq!(sw.cell.closest_distance2(r1,r2),
+                       sw.cell.unsafe_closest_distance2(r1,r2));
+            assert_eq!(sw.cell.closest_distance2(r1,r2),
+                       sw.cell.sloppy_closest_distance2(r1,r2));
+            assert_eq!(sw.cell.closest_distance2(r1,r2),
+                       (r1-r2).norm2());
+        }
+    }
+    println!("starting with exclusion.");
+    for &r1 in sw.cell.positions.iter() {
+        for r2 in sw.cell.maybe_interacting_atoms_excluding(r1, r1) {
+            assert_eq!(sw.cell.closest_distance2(r1,r2),
+                       sw.cell.unsafe_closest_distance2(r1,r2));
+            assert_eq!(sw.cell.closest_distance2(r1,r2),
+                       sw.cell.sloppy_closest_distance2(r1,r2));
+            assert_eq!(sw.cell.closest_distance2(r1,r2),
+                       (r1-r2).norm2());
         }
     }
 }
