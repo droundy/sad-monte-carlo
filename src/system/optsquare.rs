@@ -229,12 +229,6 @@ impl SquareWell {
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
         let mut de = units::EPSILON*0.0;
         let from = self.cell.positions[which];
-        for &r1 in self.cell.maybe_interacting_atoms(from) {
-            if self.cell.closest_distance2(r1,from)
-                < self.cell.well_width*self.cell.well_width {
-                    de += units::EPSILON;
-            }
-        }
         self.cell.positions[which] = r;
         let mut am_infinite = false;
         for &r1 in self.cell.maybe_interacting_atoms(r) {
@@ -249,13 +243,20 @@ impl SquareWell {
         }
         if am_infinite {
             self.last_change = Change::None;
-            self.cell.positions[which] = r;
-            None
-        } else {
-            self.last_change = Change::Move{ which, from, de };
-            self.E += de;
-            Some(de)
+            self.cell.positions[which] = from;
+            return None;
         }
+        self.cell.positions[which] = from;
+        for &r1 in self.cell.maybe_interacting_atoms(from) {
+            if self.cell.closest_distance2(r1,from)
+                < self.cell.well_width*self.cell.well_width {
+                    de += units::EPSILON;
+            }
+        }
+        self.cell.positions[which] = r;
+        self.last_change = Change::Move{ which, from, de };
+        self.E += de;
+        Some(de)
     }
     /// Remove the specified atom.  Returns the change in energy.
     pub fn remove_atom_number(&mut self, which: usize) -> Energy {

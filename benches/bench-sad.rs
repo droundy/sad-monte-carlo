@@ -85,7 +85,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                                    // 200, 400
                                    ]);
 
-    c.bench_function_over_inputs("SW_sw_move_once",
+    c.bench_function_over_inputs("SW_move_once_sw",
                                  move |b, &&n_atoms| {
                                      let mut sw = gen_sw(n_atoms);
                                      let mut rng = sadmc::rng::MyRng::from_u64(2);
@@ -94,7 +94,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                                  &[50, 100,
                                    // 200, 400
                                    ]);
-    c.bench_function_over_inputs("SW_optsw_move_once",
+    c.bench_function_over_inputs("SW_move_once_optsw",
                                  move |b, &&n_atoms| {
                                      let mut sw = gen_optsw(n_atoms);
                                      let mut rng = sadmc::rng::MyRng::from_u64(2);
