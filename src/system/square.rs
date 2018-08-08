@@ -510,3 +510,16 @@ fn closest_distance_matches() {
         }
     }
 }
+
+#[test]
+fn energy_is_right() {
+    use std::default::Default;
+    let mut sw = SquareWell::from(SquareWellNParams::default());
+    assert_eq!(sw.energy(), sw.compute_energy());
+    let mut rng = MyRng::from_u64(1);
+    for _ in 0..100 {
+        println!("making a move...");
+        sw.move_once(&mut rng, Length::new(1.0));
+        assert_eq!(sw.energy(), sw.compute_energy());
+    }
+}

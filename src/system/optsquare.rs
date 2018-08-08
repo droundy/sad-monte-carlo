@@ -93,6 +93,7 @@ struct NeighborIterator<'a> {
     positions: &'a [Vector3d<Length>],
     which: usize,
     shift: Vector3d<Length>,
+    exclude_offset: Option<Vector3d<isize>>,
 }
 
 impl<'a> Iterator for NeighborIterator<'a> {
@@ -121,8 +122,8 @@ impl<'a> Iterator for NeighborIterator<'a> {
             } else {
                 self.offset.z += 1;
             }
-            if self.offset == Vector3d::new(0,0,0) {
-                self.offset = Vector3d::new(0,0,1); // skip the origin!
+            if Some(self.offset) == self.exclude_offset {
+                continue;
             }
             self.positions = &self.cell[self.sc + self.offset];
             self.shift = Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.));
@@ -154,15 +155,15 @@ impl Cell {
         }
         let sc = self.get_subcell(r);
         // takes 1.9us
-        self[sc].iter().map(|&r| r)
-            .chain(NeighborIterator {
-                cell: self,
-                sc: sc,
-                offset: Vector3d::new(-1,-1,-2),
-                positions: &[],
-                which: 0,
-                shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
-            })
+        NeighborIterator {
+            cell: self,
+            sc: sc,
+            offset: Vector3d::new(-1,-1,-2),
+            positions: &[],
+            which: 0,
+            shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
+            exclude_offset: None,
+        }
 
             // THE FOLLOWING IS 3.4us
         // let mut atoms: Vec<Vector3d<Length>> = Vec::with_capacity(100*self[sc].len());
@@ -220,7 +221,23 @@ impl Cell {
         let sc = self.get_subcell(r);
 
         // Takes 1.9us
-        self[sc].iter().map(|&r| r).filter(move |&rr| rr != rprime)
+        let mut exclude_offset = self.get_subcell(rprime) - sc;
+        if exclude_offset.x > self.num_subcells.x as isize/2 {
+            exclude_offset.x -= self.num_subcells.x as isize;
+        } else if exclude_offset.x < -(self.num_subcells.x as isize/2) {
+            exclude_offset.x += self.num_subcells.x as isize;
+        }
+        if exclude_offset.y > self.num_subcells.y as isize/2 {
+            exclude_offset.y -= self.num_subcells.y as isize;
+        } else if exclude_offset.y < -(self.num_subcells.y as isize/2) {
+            exclude_offset.y += self.num_subcells.y as isize;
+        }
+        if exclude_offset.z > self.num_subcells.z as isize/2 {
+            exclude_offset.z -= self.num_subcells.z as isize;
+        } else if exclude_offset.z < -(self.num_subcells.z as isize/2) {
+            exclude_offset.z += self.num_subcells.z as isize;
+        }
+        self[sc+exclude_offset].iter().map(|&r| r).filter(move |&r| r != rprime)
             .chain(NeighborIterator {
                 cell: self,
                 sc: sc,
@@ -228,6 +245,7 @@ impl Cell {
                 positions: &[],
                 which: 0,
                 shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
+                exclude_offset: Some(exclude_offset),
             })
 
 
@@ -561,9 +579,9 @@ impl System for SquareWell {
     }
     fn compute_energy(&self) -> Energy {
         let mut e: Energy = units::EPSILON*0.0;
-        for &r1 in self.cell.positions[..self.cell.positions.len()-1].iter() {
+        for &r1 in self.cell.positions.iter() {
             for r2 in self.cell.maybe_interacting_atoms_excluding(r1, r1) {
-                if self.cell.closest_distance2(r1,r2) < self.cell.well_width*self.cell.well_width {
+                if (r1-r2).norm2() < self.cell.well_width*self.cell.well_width {
                     e -= units::EPSILON;
                 }
             }
@@ -768,6 +786,7 @@ impl From<SquareWellNParams> for SquareWell {
                                                  j as f64*cell_width[1],
                                                  k as f64*cell_width[2])
                                    + offset[l]);
+                    // assert_eq!(sw.energy(), sw.compute_energy());
                     break;
                 }
             }
@@ -831,5 +850,18 @@ fn maybe_interacting_needs_no_shifting() {
             assert_eq!(sw.cell.closest_distance2(r1,r2),
                        (r1-r2).norm2());
         }
+    }
+}
+
+#[test]
+fn energy_is_right() {
+    use std::default::Default;
+    let mut sw = SquareWell::from(SquareWellNParams::default());
+    assert_eq!(sw.energy(), sw.compute_energy());
+    let mut rng = MyRng::from_u64(1);
+    for _ in 0..1000 {
+        println!("making a move...");
+        sw.move_once(&mut rng, Length::new(1.0));
+        assert_eq!(sw.energy(), sw.compute_energy());
     }
 }
