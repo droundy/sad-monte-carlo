@@ -36,6 +36,10 @@ pub struct Cell {
     well_width: Length,
     /// The atom positions
     pub positions: Vec<Vector3d<Length>>,
+    /// The dimensions of the subcell grid
+    num_subcells: Vector3d<usize>,
+    /// The subcell lists
+    subcells: Vec<Vec<Vector3d<Length>>>
 }
 
 #[allow(non_snake_case)]
@@ -59,24 +63,160 @@ enum Change {
     None,
 }
 
+fn modulus(i: isize, sz: usize) -> usize {
+    let sz = sz as isize;
+    (((i % sz) + sz) % sz) as usize
+}
+
+impl ::std::ops::Index<Vector3d<isize>> for Cell {
+    type Output = Vec<Vector3d<Length>>;
+    fn index(&self, i: Vector3d<isize>) -> &Vec<Vector3d<Length>> {
+        let ix = modulus(i.x, self.num_subcells.x);
+        let iy = modulus(i.y, self.num_subcells.y);
+        let iz = modulus(i.z, self.num_subcells.z);
+        &self.subcells[ix*(self.num_subcells.y*self.num_subcells.z) + iy*self.num_subcells.z + iz]
+    }
+}
+impl ::std::ops::IndexMut<Vector3d<isize>> for Cell {
+    fn index_mut(&mut self, i: Vector3d<isize>) -> &mut Vec<Vector3d<Length>> {
+        let ix = modulus(i.x, self.num_subcells.x);
+        let iy = modulus(i.y, self.num_subcells.y);
+        let iz = modulus(i.z, self.num_subcells.z);
+        &mut self.subcells[ix*(self.num_subcells.y*self.num_subcells.z) + iy*self.num_subcells.z + iz]
+    }
+}
+
 impl Cell {
+    /// Atoms that may be within well_width of r.
+    pub fn maybe_interacting_atoms<'a>(&'a self, r: Vector3d<Length>)
+                                   -> impl Iterator<Item=Vector3d<Length>> + 'a {
+        if self.num_subcells.x == 1 || self.num_subcells.y == 1 || self.num_subcells.z == 1 {
+            panic!("maybe_interacting_atoms doesn't yet work for tiny cells")
+        }
+        let sc = self.get_subcell(r);
+        // let mut atoms: Vec<Vector3d<Length>> = Vec::with_capacity(100*self[sc].positions.len());
+        // atoms.extend(self[sc].iter().map(|&r| r));
+        // for ix in &[-1,0,1] {
+        //     for iy in &[-1,0,1] {
+        //         for iz in &[-1,0,1] {
+        //             if (ix,iy,iz) != (0,0,0) {
+        //                 atoms.extend(self[sc+Vector3d::new(-1,-1,-1)].iter().map(|&r| r));
+        //             }
+        //         }
+        //     }
+        // }
+        // atoms.into_iter()
+        self[sc].iter()
+            .chain(self[sc+Vector3d::new(-1,-1,-1)].iter())
+            .chain(self[sc+Vector3d::new(-1,-1, 0)].iter())
+            .chain(self[sc+Vector3d::new(-1,-1, 1)].iter())
+            .chain(self[sc+Vector3d::new(-1, 0,-1)].iter())
+            .chain(self[sc+Vector3d::new(-1, 0, 0)].iter())
+            .chain(self[sc+Vector3d::new(-1, 0, 1)].iter())
+            .chain(self[sc+Vector3d::new(-1, 1,-1)].iter())
+            .chain(self[sc+Vector3d::new(-1, 1, 0)].iter())
+            .chain(self[sc+Vector3d::new(-1, 1, 1)].iter())
+
+            .chain(self[sc+Vector3d::new( 0,-1,-1)].iter())
+            .chain(self[sc+Vector3d::new( 0,-1, 0)].iter())
+            .chain(self[sc+Vector3d::new( 0,-1, 1)].iter())
+            .chain(self[sc+Vector3d::new( 0, 0,-1)].iter())
+            // .chain(self[sc+Vector3d::new( 0, 0, 0)].iter())
+            .chain(self[sc+Vector3d::new( 0, 0, 1)].iter())
+            .chain(self[sc+Vector3d::new( 0, 1,-1)].iter())
+            .chain(self[sc+Vector3d::new( 0, 1, 0)].iter())
+            .chain(self[sc+Vector3d::new( 0, 1, 1)].iter())
+
+            .chain(self[sc+Vector3d::new( 1,-1,-1)].iter())
+            .chain(self[sc+Vector3d::new( 1,-1, 0)].iter())
+            .chain(self[sc+Vector3d::new( 1,-1, 1)].iter())
+            .chain(self[sc+Vector3d::new( 1, 0,-1)].iter())
+            .chain(self[sc+Vector3d::new( 1, 0, 0)].iter())
+            .chain(self[sc+Vector3d::new( 1, 0, 1)].iter())
+            .chain(self[sc+Vector3d::new( 1, 1,-1)].iter())
+            .chain(self[sc+Vector3d::new( 1, 1, 0)].iter())
+            .chain(self[sc+Vector3d::new( 1, 1, 1)].iter()).map(|&r| r)
+    }
     /// Atoms that may be within well_width of r.  This excludes any
-    /// atom that is located precisely at r.
-    pub fn maybe_interacting_atoms(&self, r: Vector3d<Length>)
-                                   -> impl Iterator<Item=&Vector3d<Length>> {
-        self.positions.iter().filter(move |&&rr| rr != r)
+    /// atom that is located precisely at rprime.
+    pub fn maybe_interacting_atoms_excluding<'a>(&'a self, r: Vector3d<Length>, rprime: Vector3d<Length>)
+                                   -> impl Iterator<Item=Vector3d<Length>> + 'a {
+        if self.num_subcells.x == 1 || self.num_subcells.y == 1 || self.num_subcells.z == 1 {
+            panic!("maybe_interacting_atoms doesn't yet work for tiny cells")
+        }
+        let sc = self.get_subcell(r);
+        self[sc].iter().filter(move |&&rr| rr != rprime)
+            .chain(self[sc+Vector3d::new(-1,-1,-1)].iter())
+            .chain(self[sc+Vector3d::new(-1,-1, 0)].iter())
+            .chain(self[sc+Vector3d::new(-1,-1, 1)].iter())
+            .chain(self[sc+Vector3d::new(-1, 0,-1)].iter())
+            .chain(self[sc+Vector3d::new(-1, 0, 0)].iter())
+            .chain(self[sc+Vector3d::new(-1, 0, 1)].iter())
+            .chain(self[sc+Vector3d::new(-1, 1,-1)].iter())
+            .chain(self[sc+Vector3d::new(-1, 1, 0)].iter())
+            .chain(self[sc+Vector3d::new(-1, 1, 1)].iter())
+
+            .chain(self[sc+Vector3d::new( 0,-1,-1)].iter())
+            .chain(self[sc+Vector3d::new( 0,-1, 0)].iter())
+            .chain(self[sc+Vector3d::new( 0,-1, 1)].iter())
+            .chain(self[sc+Vector3d::new( 0, 0,-1)].iter())
+            // .chain(self[sc+Vector3d::new( 0, 0, 0)].iter())
+            .chain(self[sc+Vector3d::new( 0, 0, 1)].iter())
+            .chain(self[sc+Vector3d::new( 0, 1,-1)].iter())
+            .chain(self[sc+Vector3d::new( 0, 1, 0)].iter())
+            .chain(self[sc+Vector3d::new( 0, 1, 1)].iter())
+
+            .chain(self[sc+Vector3d::new( 1,-1,-1)].iter())
+            .chain(self[sc+Vector3d::new( 1,-1, 0)].iter())
+            .chain(self[sc+Vector3d::new( 1,-1, 1)].iter())
+            .chain(self[sc+Vector3d::new( 1, 0,-1)].iter())
+            .chain(self[sc+Vector3d::new( 1, 0, 0)].iter())
+            .chain(self[sc+Vector3d::new( 1, 0, 1)].iter())
+            .chain(self[sc+Vector3d::new( 1, 1,-1)].iter())
+            .chain(self[sc+Vector3d::new( 1, 1, 0)].iter())
+            .chain(self[sc+Vector3d::new( 1, 1, 1)].iter()).map(|&r| r)
+    }
+    /// Find the cell for a given vector.
+    pub fn get_subcell(&self, r: Vector3d<Length>) -> Vector3d<isize> {
+        Vector3d::new((r.x/self.box_diagonal.x*self.num_subcells.x as f64).value().floor() as isize,
+                      (r.y/self.box_diagonal.y*self.num_subcells.y as f64).value().floor() as isize,
+                      (r.z/self.box_diagonal.z*self.num_subcells.z as f64).value().floor() as isize)
     }
     /// Add an atom at a given location.
     pub fn add_atom_at(&mut self, r: Vector3d<Length>) {
         self.positions.push(r);
+        let sc = self.get_subcell(r);
+        self[sc].push(r);
     }
     /// Move the atom.  Return the previous position.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Vector3d<Length> {
-        ::std::mem::replace(&mut self.positions[which], r)
+        let old = ::std::mem::replace(&mut self.positions[which], r);
+        let sc = self.get_subcell(r);
+        self[sc].push(r);
+        let oldsc = self.get_subcell(old);
+        let mut oldi = 0;
+        for (i,&v) in self[oldsc].iter().enumerate() {
+            if v == old {
+                oldi = i;
+                break;
+            }
+        }
+        self[oldsc].swap_remove(oldi);
+        old
     }
     /// Remove an atom.  Return the previous position.
     pub fn remove_atom(&mut self, which: usize) -> Vector3d<Length> {
-        self.positions.swap_remove(which)
+        let old = self.positions.swap_remove(which);
+        let oldsc = self.get_subcell(old);
+        let mut oldi = 0;
+        for (i,&v) in self[oldsc].iter().enumerate() {
+            if v == old {
+                oldi = i;
+                break;
+            }
+        }
+        self[oldsc].swap_remove(oldi);
+        old
     }
     /// PUBLIC FOR TESTING ONLY! The shortest distance squared between two vectors.
     pub fn closest_distance2(&self, r1: Vector3d<Length>, r2: Vector3d<Length>) -> Area {
@@ -222,7 +362,7 @@ impl SquareWell {
     /// energy, or `None` if the atom could not be placed there.
     pub fn add_atom_at(&mut self, r: Vector3d<Length>) -> Option<Energy> {
         let mut de = units::EPSILON*0.0;
-        for &r1 in self.cell.maybe_interacting_atoms(r) {
+        for r1 in self.cell.maybe_interacting_atoms(r) {
             let dist2 = self.cell.closest_distance2(r1,r);
             if dist2 < units::SIGMA*units::SIGMA {
                 self.last_change = Change::None;
@@ -240,9 +380,9 @@ impl SquareWell {
     /// `None` if the atom could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
         let mut de = units::EPSILON*0.0;
-        let from = self.cell.move_atom(which, r);
+        let from = self.cell.positions[which];
         let mut am_infinite = false;
-        for &r1 in self.cell.maybe_interacting_atoms(r) {
+        for r1 in self.cell.maybe_interacting_atoms_excluding(r, from) {
             let dist2 = self.cell.closest_distance2(r1,r);
             if dist2 < units::SIGMA*units::SIGMA {
                 am_infinite = true;
@@ -254,18 +394,15 @@ impl SquareWell {
         }
         if am_infinite {
             self.last_change = Change::None;
-            self.cell.move_atom(which, from);
             return None;
         }
-        for &r1 in self.cell.maybe_interacting_atoms(from) {
+        for r1 in self.cell.maybe_interacting_atoms(from) {
             if self.cell.closest_distance2(r1,from)
                 < self.cell.well_width*self.cell.well_width {
                     de += units::EPSILON;
             }
         }
-        if self.cell.closest_distance2(r, from) < self.cell.well_width*self.cell.well_width {
-            de -= units::EPSILON; // don't count interaction between old and new position
-        }
+        de -= units::EPSILON; // don't count interaction between old position and itself
         self.cell.move_atom(which, r);
         self.last_change = Change::Move{ which, from, de };
         self.E += de;
@@ -275,7 +412,7 @@ impl SquareWell {
     pub fn remove_atom_number(&mut self, which: usize) -> Energy {
         let r = self.cell.remove_atom(which);
         let mut de = units::EPSILON*0.0;
-        for &r1 in self.cell.positions.iter() {
+        for r1 in self.cell.maybe_interacting_atoms(r) {
             if self.cell.closest_distance2(r1,r) < self.cell.well_width*self.cell.well_width {
                 de += units::EPSILON;
             }
@@ -297,12 +434,21 @@ impl From<SquareWellParams> for SquareWell {
                 Vector3d::new(w,w,w)
             }
         };
+        let biggest_wid = params.well_width*units::SIGMA/3.0_f64.sqrt();
+        let mut cells_x = (box_diagonal.x/biggest_wid).value().ceil() as usize;
+        if cells_x < 4 { cells_x = 1; }
+        let mut cells_y = (box_diagonal.y/biggest_wid).value().ceil() as usize;
+        if cells_y < 4 { cells_y = 1; }
+        let mut cells_z = (box_diagonal.z/biggest_wid).value().ceil() as usize;
+        if cells_z < 4 { cells_z = 1; }
         SquareWell {
             E: 0.0*units::EPSILON,
             cell: Cell {
                 box_diagonal: box_diagonal,
                 well_width: params.well_width*units::SIGMA,
                 positions: Vec::new(),
+                num_subcells: Vector3d::new(cells_x,cells_y,cells_z),
+                subcells: vec![Vec::new(); cells_x*cells_y*cells_z],
             },
             last_change: Change::None,
         }
@@ -316,13 +462,13 @@ impl System for SquareWell {
     fn compute_energy(&self) -> Energy {
         let mut e: Energy = units::EPSILON*0.0;
         for &r1 in self.cell.positions[..self.cell.positions.len()-1].iter() {
-            for &r2 in self.cell.maybe_interacting_atoms(r1) {
+            for r2 in self.cell.maybe_interacting_atoms_excluding(r1, r1) {
                 if self.cell.closest_distance2(r1,r2) < self.cell.well_width*self.cell.well_width {
                     e -= units::EPSILON;
                 }
             }
         }
-        (e + self.cell.positions.len() as f64*units::EPSILON)*0.5
+        e*0.5
     }
     fn delta_energy(&self) -> Option<Energy> {
         Some(units::EPSILON)

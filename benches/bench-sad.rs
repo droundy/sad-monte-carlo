@@ -92,7 +92,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                                      b.iter(|| sw.move_once(&mut rng, Length::new(0.1)))
                                  },
                                  &[50, 100,
-                                   // 200, 400
+                                   200, 400
                                    ]);
     c.bench_function_over_inputs("SW_move_once_optsw",
                                  move |b, &&n_atoms| {
@@ -101,7 +101,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                                      b.iter(|| sw.move_once(&mut rng, Length::new(0.1)))
                                  },
                                  &[50, 100,
-                                   // 200, 400
+                                   200, 400
                                    ]);
 
     let closest = criterion::Fun::new("standard", |b,&n_atoms| {
