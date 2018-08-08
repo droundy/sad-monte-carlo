@@ -86,6 +86,53 @@ impl ::std::ops::IndexMut<Vector3d<isize>> for Cell {
     }
 }
 
+struct NeighborIterator<'a> {
+    cell: &'a Cell,
+    sc: Vector3d<isize>,
+    offset: Vector3d<isize>,
+    positions: &'a [Vector3d<Length>],
+    which: usize,
+    shift: Vector3d<Length>,
+}
+
+impl<'a> Iterator for NeighborIterator<'a> {
+    type Item = Vector3d<Length>;
+    fn next(&mut self) -> Option<Vector3d<Length>> {
+        loop {
+            if self.which < self.positions.len() {
+                // We are currently reading through a list of positions...
+                let me = self.which;
+                self.which += 1;
+                return Some(self.positions[me] + self.shift);
+            }
+            if self.offset.z == 1 {
+                self.offset.z = -1;
+                if self.offset.y == 1 {
+                    self.offset.y = -1;
+                    if self.offset.x == 1 {
+                        self.offset = Vector3d::new(1,1,1);
+                        return None;
+                    } else {
+                        self.offset.x += 1;
+                    }
+                } else {
+                    self.offset.y += 1;
+                }
+            } else {
+                self.offset.z += 1;
+            }
+            if self.offset == Vector3d::new(0,0,0) {
+                self.offset = Vector3d::new(0,0,1); // skip the origin!
+            }
+            self.positions = &self.cell[self.sc + self.offset];
+            self.shift = Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.));
+            // if self.sc.x + self.offset.x < 0 {
+            //     self.shift.x = self
+            // }
+            self.which = 0;
+        }
+    }
+}
 impl Cell {
     /// Atoms that may be within well_width of r.
     pub fn maybe_interacting_atoms<'a>(&'a self, r: Vector3d<Length>)
@@ -94,11 +141,23 @@ impl Cell {
             panic!("maybe_interacting_atoms doesn't yet work for tiny cells")
         }
         let sc = self.get_subcell(r);
-        // let mut atoms: Vec<Vector3d<Length>> = Vec::with_capacity(100*self[sc].positions.len());
+        // takes 1.9us
+        self[sc].iter().map(|&r| r)
+            .chain(NeighborIterator {
+                cell: self,
+                sc: sc,
+                offset: Vector3d::new(-1,-1,-2),
+                positions: &[],
+                which: 0,
+                shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
+            })
+
+            // THE FOLLOWING IS 3.4us
+        // let mut atoms: Vec<Vector3d<Length>> = Vec::with_capacity(100*self[sc].len());
         // atoms.extend(self[sc].iter().map(|&r| r));
-        // for ix in &[-1,0,1] {
-        //     for iy in &[-1,0,1] {
-        //         for iz in &[-1,0,1] {
+        // for &ix in &[-1,0,1] {
+        //     for &iy in &[-1,0,1] {
+        //         for &iz in &[-1,0,1] {
         //             if (ix,iy,iz) != (0,0,0) {
         //                 atoms.extend(self[sc+Vector3d::new(-1,-1,-1)].iter().map(|&r| r));
         //             }
@@ -106,36 +165,38 @@ impl Cell {
         //     }
         // }
         // atoms.into_iter()
-        self[sc].iter()
-            .chain(self[sc+Vector3d::new(-1,-1,-1)].iter())
-            .chain(self[sc+Vector3d::new(-1,-1, 0)].iter())
-            .chain(self[sc+Vector3d::new(-1,-1, 1)].iter())
-            .chain(self[sc+Vector3d::new(-1, 0,-1)].iter())
-            .chain(self[sc+Vector3d::new(-1, 0, 0)].iter())
-            .chain(self[sc+Vector3d::new(-1, 0, 1)].iter())
-            .chain(self[sc+Vector3d::new(-1, 1,-1)].iter())
-            .chain(self[sc+Vector3d::new(-1, 1, 0)].iter())
-            .chain(self[sc+Vector3d::new(-1, 1, 1)].iter())
 
-            .chain(self[sc+Vector3d::new( 0,-1,-1)].iter())
-            .chain(self[sc+Vector3d::new( 0,-1, 0)].iter())
-            .chain(self[sc+Vector3d::new( 0,-1, 1)].iter())
-            .chain(self[sc+Vector3d::new( 0, 0,-1)].iter())
-            // .chain(self[sc+Vector3d::new( 0, 0, 0)].iter())
-            .chain(self[sc+Vector3d::new( 0, 0, 1)].iter())
-            .chain(self[sc+Vector3d::new( 0, 1,-1)].iter())
-            .chain(self[sc+Vector3d::new( 0, 1, 0)].iter())
-            .chain(self[sc+Vector3d::new( 0, 1, 1)].iter())
+            // THE FOLLOWING IS base 2.7us
+        // self[sc].iter()
+        //     .chain(self[sc+Vector3d::new(-1,-1,-1)].iter())
+        //     .chain(self[sc+Vector3d::new(-1,-1, 0)].iter())
+        //     .chain(self[sc+Vector3d::new(-1,-1, 1)].iter())
+        //     .chain(self[sc+Vector3d::new(-1, 0,-1)].iter())
+        //     .chain(self[sc+Vector3d::new(-1, 0, 0)].iter())
+        //     .chain(self[sc+Vector3d::new(-1, 0, 1)].iter())
+        //     .chain(self[sc+Vector3d::new(-1, 1,-1)].iter())
+        //     .chain(self[sc+Vector3d::new(-1, 1, 0)].iter())
+        //     .chain(self[sc+Vector3d::new(-1, 1, 1)].iter())
 
-            .chain(self[sc+Vector3d::new( 1,-1,-1)].iter())
-            .chain(self[sc+Vector3d::new( 1,-1, 0)].iter())
-            .chain(self[sc+Vector3d::new( 1,-1, 1)].iter())
-            .chain(self[sc+Vector3d::new( 1, 0,-1)].iter())
-            .chain(self[sc+Vector3d::new( 1, 0, 0)].iter())
-            .chain(self[sc+Vector3d::new( 1, 0, 1)].iter())
-            .chain(self[sc+Vector3d::new( 1, 1,-1)].iter())
-            .chain(self[sc+Vector3d::new( 1, 1, 0)].iter())
-            .chain(self[sc+Vector3d::new( 1, 1, 1)].iter()).map(|&r| r)
+        //     .chain(self[sc+Vector3d::new( 0,-1,-1)].iter())
+        //     .chain(self[sc+Vector3d::new( 0,-1, 0)].iter())
+        //     .chain(self[sc+Vector3d::new( 0,-1, 1)].iter())
+        //     .chain(self[sc+Vector3d::new( 0, 0,-1)].iter())
+        //     // .chain(self[sc+Vector3d::new( 0, 0, 0)].iter())
+        //     .chain(self[sc+Vector3d::new( 0, 0, 1)].iter())
+        //     .chain(self[sc+Vector3d::new( 0, 1,-1)].iter())
+        //     .chain(self[sc+Vector3d::new( 0, 1, 0)].iter())
+        //     .chain(self[sc+Vector3d::new( 0, 1, 1)].iter())
+
+        //     .chain(self[sc+Vector3d::new( 1,-1,-1)].iter())
+        //     .chain(self[sc+Vector3d::new( 1,-1, 0)].iter())
+        //     .chain(self[sc+Vector3d::new( 1,-1, 1)].iter())
+        //     .chain(self[sc+Vector3d::new( 1, 0,-1)].iter())
+        //     .chain(self[sc+Vector3d::new( 1, 0, 0)].iter())
+        //     .chain(self[sc+Vector3d::new( 1, 0, 1)].iter())
+        //     .chain(self[sc+Vector3d::new( 1, 1,-1)].iter())
+        //     .chain(self[sc+Vector3d::new( 1, 1, 0)].iter())
+        //     .chain(self[sc+Vector3d::new( 1, 1, 1)].iter()).map(|&r| r)
     }
     /// Atoms that may be within well_width of r.  This excludes any
     /// atom that is located precisely at rprime.
@@ -145,36 +206,63 @@ impl Cell {
             panic!("maybe_interacting_atoms doesn't yet work for tiny cells")
         }
         let sc = self.get_subcell(r);
-        self[sc].iter().filter(move |&&rr| rr != rprime)
-            .chain(self[sc+Vector3d::new(-1,-1,-1)].iter())
-            .chain(self[sc+Vector3d::new(-1,-1, 0)].iter())
-            .chain(self[sc+Vector3d::new(-1,-1, 1)].iter())
-            .chain(self[sc+Vector3d::new(-1, 0,-1)].iter())
-            .chain(self[sc+Vector3d::new(-1, 0, 0)].iter())
-            .chain(self[sc+Vector3d::new(-1, 0, 1)].iter())
-            .chain(self[sc+Vector3d::new(-1, 1,-1)].iter())
-            .chain(self[sc+Vector3d::new(-1, 1, 0)].iter())
-            .chain(self[sc+Vector3d::new(-1, 1, 1)].iter())
 
-            .chain(self[sc+Vector3d::new( 0,-1,-1)].iter())
-            .chain(self[sc+Vector3d::new( 0,-1, 0)].iter())
-            .chain(self[sc+Vector3d::new( 0,-1, 1)].iter())
-            .chain(self[sc+Vector3d::new( 0, 0,-1)].iter())
-            // .chain(self[sc+Vector3d::new( 0, 0, 0)].iter())
-            .chain(self[sc+Vector3d::new( 0, 0, 1)].iter())
-            .chain(self[sc+Vector3d::new( 0, 1,-1)].iter())
-            .chain(self[sc+Vector3d::new( 0, 1, 0)].iter())
-            .chain(self[sc+Vector3d::new( 0, 1, 1)].iter())
+        // Takes 1.9us
+        self[sc].iter().map(|&r| r).filter(move |&rr| rr != rprime)
+            .chain(NeighborIterator {
+                cell: self,
+                sc: sc,
+                offset: Vector3d::new(-1,-1,-2),
+                positions: &[],
+                which: 0,
+                shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
+            })
 
-            .chain(self[sc+Vector3d::new( 1,-1,-1)].iter())
-            .chain(self[sc+Vector3d::new( 1,-1, 0)].iter())
-            .chain(self[sc+Vector3d::new( 1,-1, 1)].iter())
-            .chain(self[sc+Vector3d::new( 1, 0,-1)].iter())
-            .chain(self[sc+Vector3d::new( 1, 0, 0)].iter())
-            .chain(self[sc+Vector3d::new( 1, 0, 1)].iter())
-            .chain(self[sc+Vector3d::new( 1, 1,-1)].iter())
-            .chain(self[sc+Vector3d::new( 1, 1, 0)].iter())
-            .chain(self[sc+Vector3d::new( 1, 1, 1)].iter()).map(|&r| r)
+
+        // let mut atoms: Vec<Vector3d<Length>> = Vec::with_capacity(100*self[sc].len());
+        // atoms.extend(self[sc].iter().map(|&r| r).filter(move |&rr| rr != rprime));
+        // for &ix in &[-1,0,1] {
+        //     for &iy in &[-1,0,1] {
+        //         for &iz in &[-1,0,1] {
+        //             if (ix,iy,iz) != (0,0,0) {
+        //                 atoms.extend(self[sc+Vector3d::new(-1,-1,-1)].iter().map(|&r| r));
+        //             }
+        //         }
+        //     }
+        // }
+        // atoms.into_iter()
+
+            // THE FOLLOWING IS base 2.7us
+        // self[sc].iter().filter(move |&&rr| rr != rprime)
+        //     .chain(self[sc+Vector3d::new(-1,-1,-1)].iter())
+        //     .chain(self[sc+Vector3d::new(-1,-1, 0)].iter())
+        //     .chain(self[sc+Vector3d::new(-1,-1, 1)].iter())
+        //     .chain(self[sc+Vector3d::new(-1, 0,-1)].iter())
+        //     .chain(self[sc+Vector3d::new(-1, 0, 0)].iter())
+        //     .chain(self[sc+Vector3d::new(-1, 0, 1)].iter())
+        //     .chain(self[sc+Vector3d::new(-1, 1,-1)].iter())
+        //     .chain(self[sc+Vector3d::new(-1, 1, 0)].iter())
+        //     .chain(self[sc+Vector3d::new(-1, 1, 1)].iter())
+
+        //     .chain(self[sc+Vector3d::new( 0,-1,-1)].iter())
+        //     .chain(self[sc+Vector3d::new( 0,-1, 0)].iter())
+        //     .chain(self[sc+Vector3d::new( 0,-1, 1)].iter())
+        //     .chain(self[sc+Vector3d::new( 0, 0,-1)].iter())
+        //     // .chain(self[sc+Vector3d::new( 0, 0, 0)].iter())
+        //     .chain(self[sc+Vector3d::new( 0, 0, 1)].iter())
+        //     .chain(self[sc+Vector3d::new( 0, 1,-1)].iter())
+        //     .chain(self[sc+Vector3d::new( 0, 1, 0)].iter())
+        //     .chain(self[sc+Vector3d::new( 0, 1, 1)].iter())
+
+        //     .chain(self[sc+Vector3d::new( 1,-1,-1)].iter())
+        //     .chain(self[sc+Vector3d::new( 1,-1, 0)].iter())
+        //     .chain(self[sc+Vector3d::new( 1,-1, 1)].iter())
+        //     .chain(self[sc+Vector3d::new( 1, 0,-1)].iter())
+        //     .chain(self[sc+Vector3d::new( 1, 0, 0)].iter())
+        //     .chain(self[sc+Vector3d::new( 1, 0, 1)].iter())
+        //     .chain(self[sc+Vector3d::new( 1, 1,-1)].iter())
+        //     .chain(self[sc+Vector3d::new( 1, 1, 0)].iter())
+        //     .chain(self[sc+Vector3d::new( 1, 1, 1)].iter()).map(|&r| r)
     }
     /// Find the cell for a given vector.
     pub fn get_subcell(&self, r: Vector3d<Length>) -> Vector3d<isize> {
