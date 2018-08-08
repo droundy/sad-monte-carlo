@@ -27,18 +27,25 @@ pub struct SquareWellParams {
     _dim: CellDimensions,
 }
 
-#[allow(non_snake_case)]
 /// A square well fluid.
 #[derive(Serialize, Deserialize, Debug)]
-pub struct SquareWell {
+pub struct Cell {
+    /// The dimensions of the box.
+    box_diagonal: Vector3d<Length>,
     /// The dimensionless well width.
     well_width: Length,
     /// The atom positions
     pub positions: Vec<Vector3d<Length>>,
+}
+
+#[allow(non_snake_case)]
+/// A square well fluid.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SquareWell {
     /// The energy of the system
     E: Energy,
     /// The dimensions of the box.
-    box_diagonal: Vector3d<Length>,
+    pub cell: Cell,
     /// The last change we made (and might want to undo).
     last_change: Change,
 }
@@ -52,65 +59,12 @@ enum Change {
     None,
 }
 
-impl SquareWell {
-    fn max_interaction(&self) -> u64 {
-        max_balls_within(self.well_width)
-    }
-    /// Add an atom at a given location.  Returns the change in
-    /// energy, or `None` if the atom could not be placed there.
-    pub fn add_atom_at(&mut self, r: Vector3d<Length>) -> Option<Energy> {
-        let mut de = units::EPSILON*0.0;
-        for &r1 in self.positions.iter() {
-            let dist2 = self.closest_distance2(r1,r);
-            if dist2 < units::SIGMA*units::SIGMA {
-                self.last_change = Change::None;
-                return None;
-            } else if dist2 < self.well_width*self.well_width {
-                de -= units::EPSILON;
-            }
-        }
-        self.positions.push(r);
-        self.last_change = Change::Add{ de };
-        self.E += de;
-        Some(de)
-    }
-    /// Move a specified atom.  Returns the change in energy, or
-    /// `None` if the atom could not be placed there.
-    pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
-        let mut de = units::EPSILON*0.0;
-        let from = self.positions[which];
-        for &r1 in self.positions.iter() {
-            let old_dist2 = self.closest_distance2(r1,from);
-            if old_dist2 > Area::new(0.0) { // not the same atom!
-                let dist2 = self.closest_distance2(r1,r);
-                if dist2 < units::SIGMA*units::SIGMA {
-                    self.last_change = Change::None;
-                    return None;
-                } else if dist2 < self.well_width*self.well_width {
-                    de -= units::EPSILON;
-                }
-                if old_dist2 < self.well_width*self.well_width {
-                    de += units::EPSILON;
-                }
-            }
-        }
-        self.positions[which] = r;
-        self.last_change = Change::Move{ which, from, de };
-        self.E += de;
-        Some(de)
-    }
-    /// Remove the specified atom.  Returns the change in energy.
-    pub fn remove_atom_number(&mut self, which: usize) -> Energy {
-        let r = self.positions.swap_remove(which);
-        let mut de = units::EPSILON*0.0;
-        for &r1 in self.positions.iter() {
-            if self.closest_distance2(r1,r) < self.well_width*self.well_width {
-                de += units::EPSILON;
-            }
-        }
-        self.last_change = Change::Remove{ from: r, de: de };
-        self.E += de;
-        de
+impl Cell {
+    /// Atoms that may be within well_width of r.  This excludes any
+    /// atom that is located precisely at r.
+    pub fn maybe_interacting_atoms(&self, r: Vector3d<Length>)
+                                   -> impl Iterator<Item=&Vector3d<Length>> {
+        self.positions.iter().filter(move |&&rr| rr != r)
     }
     /// PUBLIC FOR TESTING ONLY! The shortest distance squared between two vectors.
     pub fn closest_distance2(&self, r1: Vector3d<Length>, r2: Vector3d<Length>) -> Area {
@@ -248,6 +202,76 @@ impl SquareWell {
     }
 }
 
+impl SquareWell {
+    fn max_interaction(&self) -> u64 {
+        max_balls_within(self.cell.well_width)
+    }
+    /// Add an atom at a given location.  Returns the change in
+    /// energy, or `None` if the atom could not be placed there.
+    pub fn add_atom_at(&mut self, r: Vector3d<Length>) -> Option<Energy> {
+        let mut de = units::EPSILON*0.0;
+        for &r1 in self.cell.maybe_interacting_atoms(r) {
+            let dist2 = self.cell.closest_distance2(r1,r);
+            if dist2 < units::SIGMA*units::SIGMA {
+                self.last_change = Change::None;
+                return None;
+            } else if dist2 < self.cell.well_width*self.cell.well_width {
+                de -= units::EPSILON;
+            }
+        }
+        self.cell.positions.push(r);
+        self.last_change = Change::Add{ de };
+        self.E += de;
+        Some(de)
+    }
+    /// Move a specified atom.  Returns the change in energy, or
+    /// `None` if the atom could not be placed there.
+    pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
+        let mut de = units::EPSILON*0.0;
+        let from = self.cell.positions[which];
+        for &r1 in self.cell.maybe_interacting_atoms(from) {
+            if self.cell.closest_distance2(r1,from)
+                < self.cell.well_width*self.cell.well_width {
+                    de += units::EPSILON;
+            }
+        }
+        self.cell.positions[which] = r;
+        let mut am_infinite = false;
+        for &r1 in self.cell.maybe_interacting_atoms(r) {
+            let dist2 = self.cell.closest_distance2(r1,r);
+            if dist2 < units::SIGMA*units::SIGMA {
+                am_infinite = true;
+                break;
+            }
+            if dist2 < self.cell.well_width*self.cell.well_width {
+                    de -= units::EPSILON;
+            }
+        }
+        if am_infinite {
+            self.last_change = Change::None;
+            self.cell.positions[which] = r;
+            None
+        } else {
+            self.last_change = Change::Move{ which, from, de };
+            self.E += de;
+            Some(de)
+        }
+    }
+    /// Remove the specified atom.  Returns the change in energy.
+    pub fn remove_atom_number(&mut self, which: usize) -> Energy {
+        let r = self.cell.positions.swap_remove(which);
+        let mut de = units::EPSILON*0.0;
+        for &r1 in self.cell.positions.iter() {
+            if self.cell.closest_distance2(r1,r) < self.cell.well_width*self.cell.well_width {
+                de += units::EPSILON;
+            }
+        }
+        self.last_change = Change::Remove{ from: r, de: de };
+        self.E += de;
+        de
+    }
+}
+
 impl From<SquareWellParams> for SquareWell {
     fn from(params: SquareWellParams) -> SquareWell {
         let box_diagonal = match params._dim {
@@ -260,10 +284,12 @@ impl From<SquareWellParams> for SquareWell {
             }
         };
         SquareWell {
-            well_width: params.well_width*units::SIGMA,
-            positions: Vec::new(),
             E: 0.0*units::EPSILON,
-            box_diagonal: box_diagonal,
+            cell: Cell {
+                box_diagonal: box_diagonal,
+                well_width: params.well_width*units::SIGMA,
+                positions: Vec::new(),
+            },
             last_change: Change::None,
         }
     }
@@ -275,14 +301,14 @@ impl System for SquareWell {
     }
     fn compute_energy(&self) -> Energy {
         let mut e: Energy = units::EPSILON*0.0;
-        for (i, &r1) in self.positions[..self.positions.len()-1].iter().enumerate() {
-            for &r2 in self.positions[i+1..].iter() {
-                if self.closest_distance2(r1,r2) < self.well_width*self.well_width {
+        for &r1 in self.cell.positions[..self.cell.positions.len()-1].iter() {
+            for &r2 in self.cell.maybe_interacting_atoms(r1) {
+                if self.cell.closest_distance2(r1,r2) < self.cell.well_width*self.cell.well_width {
                     e -= units::EPSILON;
                 }
             }
         }
-        e
+        (e + self.cell.positions.len() as f64*units::EPSILON)*0.5
     }
     fn delta_energy(&self) -> Option<Energy> {
         Some(units::EPSILON)
@@ -291,7 +317,7 @@ impl System for SquareWell {
         Some(0.0*units::EPSILON)
     }
     fn lowest_possible_energy(&self) -> Option<Energy> {
-        Some(-(self.positions.len() as f64)*(self.max_interaction() as f64)*units::EPSILON)
+        Some(-(self.cell.positions.len() as f64)*(self.max_interaction() as f64)*units::EPSILON)
     }
 }
 
@@ -300,8 +326,8 @@ impl UndoSystem for SquareWell {
         match self.last_change {
             Change::None => (),
             Change::Move{which, from, de} => {
-                let old = self.positions[which];
-                self.positions[which] = from;
+                let old = self.cell.positions[which];
+                self.cell.positions[which] = from;
                 self.E -= de;
                 self.last_change = Change::Move {
                     which: which,
@@ -310,7 +336,7 @@ impl UndoSystem for SquareWell {
                 };
             },
             Change::Add{de} => {
-                let old = self.positions.pop().expect("undo add failed with no atoms?!");
+                let old = self.cell.positions.pop().expect("undo add failed with no atoms?!");
                 self.E -= de;
                 self.last_change = Change::Remove {
                     from: old,
@@ -318,7 +344,7 @@ impl UndoSystem for SquareWell {
                 };
             },
             Change::Remove{from, de} => {
-                self.positions.push(from);
+                self.cell.positions.push(from);
                 self.E -= de;
                 self.last_change = Change::Add {
                     de: -de,
@@ -330,22 +356,23 @@ impl UndoSystem for SquareWell {
 
 impl GrandSystem for SquareWell {
     fn add_atom(&mut self, rng: &mut MyRng) -> Option<Energy> {
-        let r = self.put_in_cell(Vector3d::new(Length::new(rng.sample(Uniform::new(0.0, self.box_diagonal.x.value_unsafe))),
-                                               Length::new(rng.sample(Uniform::new(0.0, self.box_diagonal.y.value_unsafe))),
-                                               Length::new(rng.sample(Uniform::new(0.0, self.box_diagonal.z.value_unsafe)))));
+        let r = self.cell.put_in_cell(
+            Vector3d::new(Length::new(rng.sample(Uniform::new(0.0, self.cell.box_diagonal.x.value_unsafe))),
+                          Length::new(rng.sample(Uniform::new(0.0, self.cell.box_diagonal.y.value_unsafe))),
+                          Length::new(rng.sample(Uniform::new(0.0, self.cell.box_diagonal.z.value_unsafe)))));
         self.add_atom_at(r)
     }
     fn remove_atom(&mut self, rng: &mut MyRng) -> Energy {
-        let which = rng.sample(Uniform::new(0, self.positions.len()));
+        let which = rng.sample(Uniform::new(0, self.cell.positions.len()));
         self.remove_atom_number(which)
     }
 }
 
 impl MovableSystem for SquareWell {
     fn move_once(&mut self, rng: &mut MyRng, mean_distance: Length) -> Option<Energy> {
-        if self.positions.len() > 0 {
-            let which = rng.sample(Uniform::new(0, self.positions.len()));
-            let to = self.put_in_cell(self.positions[which] + rng.vector()*mean_distance);
+        if self.cell.positions.len() > 0 {
+            let which = rng.sample(Uniform::new(0, self.cell.positions.len()));
+            let to = self.cell.put_in_cell(self.cell.positions[which] + rng.vector()*mean_distance);
             self.move_atom(which, to)
         } else {
             None
@@ -443,13 +470,13 @@ impl From<SquareWellNParams> for SquareWell {
 
         // cells holds the max number of cells that will fit in the x,
         // y, and z dimensions
-        let cells = [*(sw.box_diagonal.x/min_cell_width).value() as usize,
-                     *(sw.box_diagonal.y/min_cell_width).value() as usize,
-                     *(sw.box_diagonal.z/min_cell_width).value() as usize];
+        let cells = [*(sw.cell.box_diagonal.x/min_cell_width).value() as usize,
+                     *(sw.cell.box_diagonal.y/min_cell_width).value() as usize,
+                     *(sw.cell.box_diagonal.z/min_cell_width).value() as usize];
         // It is usefull to know our cell dimensions
-        let cell_width = [sw.box_diagonal.x/cells[0] as f64,
-                          sw.box_diagonal.y/cells[1] as f64,
-                          sw.box_diagonal.z/cells[2] as f64];
+        let cell_width = [sw.cell.box_diagonal.x/cells[0] as f64,
+                          sw.cell.box_diagonal.y/cells[1] as f64,
+                          sw.cell.box_diagonal.z/cells[2] as f64];
         for i in 0..3 {
             assert!(cell_width[i] >= min_cell_width);
         }
@@ -493,20 +520,24 @@ impl From<SquareWellNParams> for SquareWell {
 fn closest_distance_matches() {
     use std::default::Default;
     let mut sw = SquareWell::from(SquareWellNParams::default());
-    for &r1 in sw.positions.iter() {
-        for &r2 in sw.positions.iter() {
-            assert_eq!(sw.closest_distance2(r1,r2), sw.unsafe_closest_distance2(r1,r2));
-            assert_eq!(sw.closest_distance2(r1,r2), sw.sloppy_closest_distance2(r1,r2));
+    for &r1 in sw.cell.positions.iter() {
+        for &r2 in sw.cell.positions.iter() {
+            assert_eq!(sw.cell.closest_distance2(r1,r2),
+                       sw.cell.unsafe_closest_distance2(r1,r2));
+            assert_eq!(sw.cell.closest_distance2(r1,r2),
+                       sw.cell.sloppy_closest_distance2(r1,r2));
         }
     }
     let mut rng = MyRng::from_u64(1);
     for _ in 0..100000 {
         sw.move_once(&mut rng, Length::new(1.0));
     }
-    for &r1 in sw.positions.iter() {
-        for &r2 in sw.positions.iter() {
-            assert_eq!(sw.closest_distance2(r1,r2), sw.unsafe_closest_distance2(r1,r2));
-            assert_eq!(sw.closest_distance2(r1,r2), sw.sloppy_closest_distance2(r1,r2));
+    for &r1 in sw.cell.positions.iter() {
+        for &r2 in sw.cell.positions.iter() {
+            assert_eq!(sw.cell.closest_distance2(r1,r2),
+                       sw.cell.unsafe_closest_distance2(r1,r2));
+            assert_eq!(sw.cell.closest_distance2(r1,r2),
+                       sw.cell.sloppy_closest_distance2(r1,r2));
         }
     }
 }
