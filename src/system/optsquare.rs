@@ -66,6 +66,18 @@ impl Cell {
                                    -> impl Iterator<Item=&Vector3d<Length>> {
         self.positions.iter().filter(move |&&rr| rr != r)
     }
+    /// Add an atom at a given location.
+    pub fn add_atom_at(&mut self, r: Vector3d<Length>) {
+        self.positions.push(r);
+    }
+    /// Move the atom.  Return the previous position.
+    pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Vector3d<Length> {
+        ::std::mem::replace(&mut self.positions[which], r)
+    }
+    /// Remove an atom.  Return the previous position.
+    pub fn remove_atom(&mut self, which: usize) -> Vector3d<Length> {
+        self.positions.swap_remove(which)
+    }
     /// PUBLIC FOR TESTING ONLY! The shortest distance squared between two vectors.
     pub fn closest_distance2(&self, r1: Vector3d<Length>, r2: Vector3d<Length>) -> Area {
         let mut dr = r2 - r1;
@@ -219,7 +231,7 @@ impl SquareWell {
                 de -= units::EPSILON;
             }
         }
-        self.cell.positions.push(r);
+        self.cell.add_atom_at(r);
         self.last_change = Change::Add{ de };
         self.E += de;
         Some(de)
@@ -228,8 +240,7 @@ impl SquareWell {
     /// `None` if the atom could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
         let mut de = units::EPSILON*0.0;
-        let from = self.cell.positions[which];
-        self.cell.positions[which] = r;
+        let from = self.cell.move_atom(which, r);
         let mut am_infinite = false;
         for &r1 in self.cell.maybe_interacting_atoms(r) {
             let dist2 = self.cell.closest_distance2(r1,r);
@@ -243,24 +254,26 @@ impl SquareWell {
         }
         if am_infinite {
             self.last_change = Change::None;
-            self.cell.positions[which] = from;
+            self.cell.move_atom(which, from);
             return None;
         }
-        self.cell.positions[which] = from;
         for &r1 in self.cell.maybe_interacting_atoms(from) {
             if self.cell.closest_distance2(r1,from)
                 < self.cell.well_width*self.cell.well_width {
                     de += units::EPSILON;
             }
         }
-        self.cell.positions[which] = r;
+        if self.cell.closest_distance2(r, from) < self.cell.well_width*self.cell.well_width {
+            de -= units::EPSILON; // don't count interaction between old and new position
+        }
+        self.cell.move_atom(which, r);
         self.last_change = Change::Move{ which, from, de };
         self.E += de;
         Some(de)
     }
     /// Remove the specified atom.  Returns the change in energy.
     pub fn remove_atom_number(&mut self, which: usize) -> Energy {
-        let r = self.cell.positions.swap_remove(which);
+        let r = self.cell.remove_atom(which);
         let mut de = units::EPSILON*0.0;
         for &r1 in self.cell.positions.iter() {
             if self.cell.closest_distance2(r1,r) < self.cell.well_width*self.cell.well_width {
