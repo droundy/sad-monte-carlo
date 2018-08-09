@@ -87,11 +87,9 @@ impl SquareWell {
                     self.last_change = Change::None;
                     return None;
                 } else if dist2 < self.well_width*self.well_width {
-                    println!("   new at {} from {} with old_dist2 {}", dist2, r1, old_dist2);
                     de -= units::EPSILON;
                 }
                 if old_dist2 < self.well_width*self.well_width {
-                    println!("   old at {} from {}", old_dist2, r1);
                     de += units::EPSILON;
                 }
             }
@@ -348,7 +346,6 @@ impl MovableSystem for SquareWell {
         if self.positions.len() > 0 {
             let which = rng.sample(Uniform::new(0, self.positions.len()));
             let to = self.put_in_cell(self.positions[which] + rng.vector()*mean_distance);
-            println!("    proposing {} to {}", which, to);
             self.move_atom(which, to)
         } else {
             None
