@@ -93,18 +93,20 @@ struct NeighborIterator<'a> {
     positions: &'a [Vector3d<Length>],
     which: usize,
     shift: Vector3d<Length>,
-    exclude_offset: Option<Vector3d<isize>>,
+    exclude: Option<Vector3d<Length>>,
 }
 
 impl<'a> Iterator for NeighborIterator<'a> {
     type Item = Vector3d<Length>;
     fn next(&mut self) -> Option<Vector3d<Length>> {
         loop {
-            if self.which < self.positions.len() {
+            while self.which < self.positions.len() {
                 // We are currently reading through a list of positions...
                 let me = self.which;
                 self.which += 1;
-                return Some(self.positions[me] + self.shift);
+                if Some(self.positions[me]) != self.exclude {
+                    return Some(self.positions[me] + self.shift);
+                }
             }
             if self.offset.z == 1 {
                 self.offset.z = -1;
@@ -121,9 +123,6 @@ impl<'a> Iterator for NeighborIterator<'a> {
                 }
             } else {
                 self.offset.z += 1;
-            }
-            if Some(self.offset) == self.exclude_offset {
-                continue;
             }
             self.positions = &self.cell[self.sc + self.offset];
             self.shift = Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.));
@@ -162,7 +161,7 @@ impl Cell {
             positions: &[],
             which: 0,
             shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
-            exclude_offset: None,
+            exclude: None,
         }
 
             // THE FOLLOWING IS 3.4us
@@ -221,32 +220,15 @@ impl Cell {
         let sc = self.get_subcell(r);
 
         // Takes 1.9us
-        let mut exclude_offset = self.get_subcell(rprime) - sc;
-        if exclude_offset.x > self.num_subcells.x as isize/2 {
-            exclude_offset.x -= self.num_subcells.x as isize;
-        } else if exclude_offset.x < -(self.num_subcells.x as isize/2) {
-            exclude_offset.x += self.num_subcells.x as isize;
+        NeighborIterator {
+            cell: self,
+            sc: sc,
+            offset: Vector3d::new(-1,-1,-2),
+            positions: &[],
+            which: 0,
+            shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
+            exclude: Some(rprime),
         }
-        if exclude_offset.y > self.num_subcells.y as isize/2 {
-            exclude_offset.y -= self.num_subcells.y as isize;
-        } else if exclude_offset.y < -(self.num_subcells.y as isize/2) {
-            exclude_offset.y += self.num_subcells.y as isize;
-        }
-        if exclude_offset.z > self.num_subcells.z as isize/2 {
-            exclude_offset.z -= self.num_subcells.z as isize;
-        } else if exclude_offset.z < -(self.num_subcells.z as isize/2) {
-            exclude_offset.z += self.num_subcells.z as isize;
-        }
-        self[sc+exclude_offset].iter().map(|&r| r).filter(move |&r| r != rprime)
-            .chain(NeighborIterator {
-                cell: self,
-                sc: sc,
-                offset: Vector3d::new(-1,-1,-2),
-                positions: &[],
-                which: 0,
-                shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
-                exclude_offset: Some(exclude_offset),
-            })
 
 
         // let mut atoms: Vec<Vector3d<Length>> = Vec::with_capacity(100*self[sc].len());
@@ -502,9 +484,7 @@ impl SquareWell {
         let wsqr = self.cell.well_width*self.cell.well_width;
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, from) {
             let dist2 = (r1-r).norm2();
-            println!("  {} -> {}", dist2, r1);
             if dist2 < units::SIGMA*units::SIGMA {
-                println!("XXX too close to {} with {}", r1, dist2);
                 self.last_change = Change::None;
                 return None;
             }
@@ -647,7 +627,6 @@ impl MovableSystem for SquareWell {
         if self.cell.positions.len() > 0 {
             let which = rng.sample(Uniform::new(0, self.cell.positions.len()));
             let to = self.cell.put_in_cell(self.cell.positions[which] + rng.vector()*mean_distance);
-            println!("proposed {} -> {}", which, to);
             self.move_atom(which, to)
         } else {
             None
@@ -885,8 +864,8 @@ fn energy_is_right() {
     let mut sw = SquareWell::from(SquareWellNParams::default());
     assert_eq!(sw.energy(), sw.compute_energy());
     let mut rng = MyRng::from_u64(1);
-    for _ in 0..1000 {
-        println!("making a move...");
+    for i in 0..1000 {
+        println!("making move {}...", i);
         sw.move_once(&mut rng, Length::new(1.0));
         assert_eq!(sw.energy(), sw.compute_energy());
     }

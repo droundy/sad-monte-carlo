@@ -84,7 +84,6 @@ impl SquareWell {
             if old_dist2 > Area::new(0.0) { // not the same atom!
                 let dist2 = self.closest_distance2(r1,r);
                 if dist2 < units::SIGMA*units::SIGMA {
-                    println!("XXX too close to {} with {} and {}", r1, dist2, old_dist2);
                     self.last_change = Change::None;
                     return None;
                 } else if dist2 < self.well_width*self.well_width {
@@ -347,7 +346,6 @@ impl MovableSystem for SquareWell {
         if self.positions.len() > 0 {
             let which = rng.sample(Uniform::new(0, self.positions.len()));
             let to = self.put_in_cell(self.positions[which] + rng.vector()*mean_distance);
-            println!("proposed {} -> {}", which, to);
             self.move_atom(which, to)
         } else {
             None
