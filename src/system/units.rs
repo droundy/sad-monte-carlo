@@ -7,8 +7,8 @@ make_units! {
     ONE: Unitless;
 
     base {
-        EPSILON: Energy, "epsilon", Energy;
-        SIGMA: Distance, "sigma", Length;
+        EPSILON: Energy, "e", Energy;
+        SIGMA: Distance, "d", Length;
     }
 
     derived {

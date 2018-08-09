@@ -88,11 +88,10 @@ impl SquareWell {
                     return None;
                 } else if dist2 < self.well_width*self.well_width {
                     println!("   new at {} from {} with old_dist2 {}", dist2, r1, old_dist2);
-                    println!("      ww2 = {}", self.well_width*self.well_width);
                     de -= units::EPSILON;
                 }
                 if old_dist2 < self.well_width*self.well_width {
-                    println!("   old at {}", old_dist2);
+                    println!("   old at {} from {}", old_dist2, r1);
                     de += units::EPSILON;
                 }
             }
