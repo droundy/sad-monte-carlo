@@ -125,21 +125,29 @@ impl<'a> Iterator for NeighborIterator<'a> {
                 self.offset.z += 1;
             }
             self.positions = &self.cell[self.sc + self.offset];
-            self.shift = Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.));
-            if self.sc.x + self.offset.x < 0 {
-                self.shift.x -= self.cell.box_diagonal.x;
-            } else if self.sc.x + self.offset.x >= self.cell.num_subcells.x as isize {
-                self.shift.x += self.cell.box_diagonal.x;
-            }
-            if self.sc.y + self.offset.y < 0 {
-                self.shift.y -= self.cell.box_diagonal.y;
-            } else if self.sc.y + self.offset.y >= self.cell.num_subcells.y as isize {
-                self.shift.y += self.cell.box_diagonal.y;
-            }
-            if self.sc.z + self.offset.z < 0 {
-                self.shift.z -= self.cell.box_diagonal.z;
-            } else if self.sc.z + self.offset.z >= self.cell.num_subcells.z as isize {
-                self.shift.z += self.cell.box_diagonal.z;
+            if self.positions.len() > 0 {
+                self.shift = Vector3d::new(
+                    if self.sc.x + self.offset.x < 0 {
+                        -self.cell.box_diagonal.x
+                    } else if self.sc.x + self.offset.x >= self.cell.num_subcells.x as isize {
+                        self.cell.box_diagonal.x
+                    } else {
+                        Length::new(0.)
+                    },
+                    if self.sc.y + self.offset.y < 0 {
+                        -self.cell.box_diagonal.y
+                    } else if self.sc.y + self.offset.y >= self.cell.num_subcells.y as isize {
+                        self.cell.box_diagonal.y
+                    } else {
+                        Length::new(0.)
+                    },
+                    if self.sc.z + self.offset.z < 0 {
+                        -self.cell.box_diagonal.z
+                    } else if self.sc.z + self.offset.z >= self.cell.num_subcells.z as isize {
+                        self.cell.box_diagonal.z
+                    } else {
+                        Length::new(0.)
+                    });
             }
             self.which = 0;
         }
