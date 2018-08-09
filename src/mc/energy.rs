@@ -306,7 +306,6 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
         self.moves += 1;
         let e1 = self.system.energy();
         if let Some(de) = self.system.move_once(&mut self.rng, Length::new(0.1)) {
-            println!("de is {}", de);
             let e2 = self.system.energy();
             self.bins.prepare_for_energy(e2);
 
@@ -315,7 +314,6 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
                 self.rejected_moves += 1;
             }
         } else {
-            println!("de is None");
             // The system itself rejected the move.
             self.rejected_moves += 1;
         }
