@@ -87,9 +87,12 @@ impl SquareWell {
                     self.last_change = Change::None;
                     return None;
                 } else if dist2 < self.well_width*self.well_width {
+                    println!("   new at {} from {} with old_dist2 {}", dist2, r1, old_dist2);
+                    println!("      ww2 = {}", self.well_width*self.well_width);
                     de -= units::EPSILON;
                 }
                 if old_dist2 < self.well_width*self.well_width {
+                    println!("   old at {}", old_dist2);
                     de += units::EPSILON;
                 }
             }
@@ -415,7 +418,7 @@ impl Default for SquareWellNParams {
         SquareWellNParams {
             well_width: Unitless::new(1.3),
             _dim: CellDimensionsGivenNumber::FillingFraction(Unitless::new(0.3)),
-            N: 50,
+            N: 100,
         }
     }
 }

@@ -498,12 +498,14 @@ impl SquareWell {
                 return None;
             }
             if dist2 < wsqr {
+                println!("   new at {}", dist2);
                 de -= units::EPSILON;
             }
         }
         verify_maybe_interacting_excluding_includes_everything(&self.cell, from, from);
         for r1 in self.cell.maybe_interacting_atoms_excluding(from, from) {
             if (r1-from).norm2() < wsqr {
+                println!("   old at {}", (r1-from).norm2());
                 de += units::EPSILON;
             }
         }
@@ -539,12 +541,15 @@ impl From<SquareWellParams> for SquareWell {
             }
         };
         let biggest_wid = params.well_width*units::SIGMA;
-        let mut cells_x = (box_diagonal.x/biggest_wid).value().ceil() as usize;
-        if cells_x < 4 { cells_x = 1; }
-        let mut cells_y = (box_diagonal.y/biggest_wid).value().ceil() as usize;
-        if cells_y < 4 { cells_y = 1; }
-        let mut cells_z = (box_diagonal.z/biggest_wid).value().ceil() as usize;
-        if cells_z < 4 { cells_z = 1; }
+        let mut cells_x = (box_diagonal.x/biggest_wid).value().floor() as usize;
+        let mut cells_y = (box_diagonal.y/biggest_wid).value().floor() as usize;
+        let mut cells_z = (box_diagonal.z/biggest_wid).value().floor() as usize;
+        if cells_z < 4 || cells_y < 4 || cells_x < 4 {
+            panic!("cell is too small: {}, {}, {}", cells_x, cells_y, cells_z);
+            cells_z = 1;
+            cells_y = 1;
+            cells_x = 1;
+        }
         SquareWell {
             E: 0.0*units::EPSILON,
             cell: Cell {
@@ -706,7 +711,7 @@ impl Default for SquareWellNParams {
         SquareWellNParams {
             well_width: Unitless::new(1.3),
             _dim: CellDimensionsGivenNumber::FillingFraction(Unitless::new(0.3)),
-            N: 50,
+            N: 100,
         }
     }
 }
