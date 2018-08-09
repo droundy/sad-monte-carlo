@@ -346,6 +346,7 @@ impl MovableSystem for SquareWell {
         if self.positions.len() > 0 {
             let which = rng.sample(Uniform::new(0, self.positions.len()));
             let to = self.put_in_cell(self.positions[which] + rng.vector()*mean_distance);
+            println!("    proposing {} to {}", which, to);
             self.move_atom(which, to)
         } else {
             None
