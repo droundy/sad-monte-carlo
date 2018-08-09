@@ -94,6 +94,7 @@ struct NeighborIterator<'a> {
     which: usize,
     shift: Vector3d<Length>,
     exclude: Option<Vector3d<Length>>,
+    shift_near: Option<Vector3d<Length>>,
 }
 
 impl<'a> Iterator for NeighborIterator<'a> {
@@ -105,7 +106,30 @@ impl<'a> Iterator for NeighborIterator<'a> {
                 let me = self.which;
                 self.which += 1;
                 if Some(self.positions[me]) != self.exclude {
-                    return Some(self.positions[me] + self.shift);
+                    if let Some(shift_near) = self.shift_near {
+                        let mut me = self.positions[me];
+                        while me.z - shift_near.z < -self.cell.box_diagonal.z*0.5 {
+                            me.z += self.cell.box_diagonal.z;
+                        }
+                        while me.z - shift_near.z > self.cell.box_diagonal.z*0.5 {
+                            me.z -= self.cell.box_diagonal.z;
+                        }
+                        while me.y - shift_near.y < -self.cell.box_diagonal.y*0.5 {
+                            me.y += self.cell.box_diagonal.y;
+                        }
+                        while me.y - shift_near.y > self.cell.box_diagonal.y*0.5 {
+                            me.y -= self.cell.box_diagonal.y;
+                        }
+                        while me.x - shift_near.x < -self.cell.box_diagonal.x*0.5 {
+                            me.x += self.cell.box_diagonal.x;
+                        }
+                        while me.x - shift_near.x > self.cell.box_diagonal.x*0.5 {
+                            me.x -= self.cell.box_diagonal.x;
+                        }
+                        return Some(me);
+                    } else {
+                        return Some(self.positions[me] + self.shift);
+                    }
                 }
             }
             if self.offset.z == 1 {
@@ -157,19 +181,30 @@ impl Cell {
     /// Atoms that may be within well_width of r.
     pub fn maybe_interacting_atoms<'a>(&'a self, r: Vector3d<Length>)
                                    -> impl Iterator<Item=Vector3d<Length>> + 'a {
-        if self.num_subcells.x == 1 || self.num_subcells.y == 1 || self.num_subcells.z == 1 {
-            panic!("maybe_interacting_atoms doesn't yet work for tiny cells")
-        }
-        let sc = self.get_subcell(r);
-        // takes 1.9us
-        NeighborIterator {
-            cell: self,
-            sc: sc,
-            offset: Vector3d::new(-1,-1,-2),
-            positions: &[],
-            which: 0,
-            shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
-            exclude: None,
+        if self.num_subcells.x == 1 {
+            NeighborIterator {
+                cell: self,
+                sc: Vector3d::new(0,0,0),
+                offset: Vector3d::new(1,1,1),
+                positions: &self.positions,
+                which: 0,
+                shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
+                exclude: None,
+                shift_near: Some(r),
+            }
+        } else {
+            let sc = self.get_subcell(r);
+            // takes 1.9us
+            NeighborIterator {
+                cell: self,
+                sc: sc,
+                offset: Vector3d::new(-1,-1,-2),
+                positions: &[],
+                which: 0,
+                shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
+                exclude: None,
+                shift_near: None,
+            }
         }
 
             // THE FOLLOWING IS 3.4us
@@ -223,19 +258,28 @@ impl Cell {
     pub fn maybe_interacting_atoms_excluding<'a>(&'a self, r: Vector3d<Length>, rprime: Vector3d<Length>)
                                    -> impl Iterator<Item=Vector3d<Length>> + 'a {
         if self.num_subcells.x == 1 || self.num_subcells.y == 1 || self.num_subcells.z == 1 {
-            panic!("maybe_interacting_atoms doesn't yet work for tiny cells")
-        }
-        let sc = self.get_subcell(r);
-
-        // Takes 1.9us
-        NeighborIterator {
-            cell: self,
-            sc: sc,
-            offset: Vector3d::new(-1,-1,-2),
-            positions: &[],
-            which: 0,
-            shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
-            exclude: Some(rprime),
+            NeighborIterator {
+                cell: self,
+                sc: Vector3d::new(0,0,0),
+                offset: Vector3d::new(1,1,1),
+                positions: &self.positions,
+                which: 0,
+                shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
+                exclude: Some(rprime),
+                shift_near: Some(r),
+            }
+        } else {
+            let sc = self.get_subcell(r);
+            NeighborIterator {
+                cell: self,
+                sc: sc,
+                offset: Vector3d::new(-1,-1,-2),
+                positions: &[],
+                which: 0,
+                shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
+                exclude: Some(rprime),
+                shift_near: None,
+            }
         }
 
 
@@ -461,6 +505,102 @@ impl Cell {
         }
         r
     }
+    /// for testing
+    pub fn verify_subcells_include_everything(&self) {
+        for &r in self.positions.iter() {
+            let sc = self.get_subcell(r);
+            assert!(self[sc].contains(&r));
+        }
+    }
+
+    /// for testing
+    pub fn verify_subcells_include_nothing_out_of_place(&self) {
+        for ix in 0..self.num_subcells.x {
+            for iy in 0..self.num_subcells.y {
+                for iz in 0..self.num_subcells.z {
+                    let sc = Vector3d::new(ix as isize,iy as isize,iz as isize);
+                    for &r in self[sc].iter() {
+                        assert_eq!(sc, self.get_subcell(r));
+                    }
+                }
+            }
+        }
+        for &r in self.positions.iter() {
+            let sc = self.get_subcell(r);
+            if !self[sc].contains(&r) {
+                println!("\n\nWe are missing {}", r);
+                println!("   do have:");
+                for &x in self[sc].iter() {
+                    println!("            {}", x);
+                }
+            }
+            assert!(self[sc].contains(&r));
+        }
+    }
+
+    /// for testing
+    pub fn verify_maybe_interacting_includes_everything(&self, r1: Vector3d<Length>) {
+        self.verify_subcells_include_everything();
+        self.verify_subcells_include_nothing_out_of_place();
+        let mi: Vec<_> = self.maybe_interacting_atoms(r1).map(|r| self.put_in_cell(r)).collect();
+        let d2s: Vec<_> = self.maybe_interacting_atoms(r1).map(|r| (r-r1).norm2()).collect();
+        for &r2 in self.positions.iter() {
+            let dist2 = self.closest_distance2(r1, r2);
+            if dist2 <= self.well_width*self.well_width {
+                if !mi.iter().any(|&rrr| self.closest_distance2(rrr, r2) < 1e-10*units::SIGMA*units::SIGMA) {
+                    println!("");
+                    println!("  subcell is {} vs {}", self.get_subcell(r2), self.get_subcell(r1));
+                    println!("  delta z is {}", r2.z - r1.z);
+                    println!("missing [{} {}] {} from:", dist2, d2s.contains(&dist2), r2);
+                    for m in mi.iter() {
+                        println!("   {}", m);
+                    }
+                    panic!("We are missing a vector from maybe_interacting_atoms");
+                }
+            }
+        }
+    }
+
+    /// for testing
+    pub fn verify_maybe_interacting_excluding_includes_everything(&self, r1: Vector3d<Length>, exc: Vector3d<Length>) {
+        self.verify_subcells_include_everything();
+        self.verify_subcells_include_nothing_out_of_place();
+        let mi: Vec<_> = self.maybe_interacting_atoms_excluding(r1, exc).map(|r| self.put_in_cell(r)).collect();
+        let d2s: Vec<_> = self.maybe_interacting_atoms_excluding(r1, exc).map(|r| (r-r1).norm2()).collect();
+        for &r2 in self.positions.iter().filter(|&&r2| r2 != exc) {
+            let dist2 = self.closest_distance2(r1, r2);
+            if dist2 <= self.well_width*self.well_width {
+                println!("==--> {} from {}", dist2, r2);
+                for rr in mi.iter().map(|&r|r).filter(|&rrr| self.closest_distance2(rrr, r2) < 1e-10*units::SIGMA*units::SIGMA) {
+                    println!("    ==--> {}", rr);
+                }
+                if !mi.iter().any(|&rrr| self.closest_distance2(rrr, r2) < 1e-10*units::SIGMA*units::SIGMA) {
+                    println!("");
+                    println!("==== excluding {} at d2 of {}", exc, self.closest_distance2(exc, r2));
+                    println!("==== r1 = {}", r1);
+                    println!("==== r2 = {} missing", r2);
+                    println!("  box_diagonal is {}", self.box_diagonal);
+                    println!("  subcell is {} vs {} / {}", self.get_subcell(r2), self.get_subcell(r1), self.num_subcells);
+                    println!("  delta r is {}", r2 - r1);
+                    println!("  dist2 = {}", dist2);
+                    println!("      mi contains {} with this distance", d2s.iter().filter(|&&d| d == dist2).count());
+                    println!("      XX contains {} with this distance",
+                             self.positions.iter().filter(|&&r| self.closest_distance2(r1,r) == dist2).count());
+                    for x in self[self.get_subcell(r2)].iter() {
+                        println!("  subcell has: {}", x);
+                    }
+                    // for m in mi.iter() {
+                    //     if self.closest_distance2(r1, *m) == dist2 {
+                    //         println!("**>{}", m);
+                    //     } else {
+                    //         println!("   {}", m);
+                    //     }
+                    // }
+                    panic!("We are missing a vector from maybe_interacting_atoms_excluding");
+                }
+            }
+        }
+    }
 }
 
 impl SquareWell {
@@ -488,12 +628,9 @@ impl SquareWell {
     /// Move a specified atom.  Returns the change in energy, or
     /// `None` if the atom could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
-        //verify_subcells_include_nothing_out_of_place(&self.cell);
-        //verify_subcells_include_everything(&self.cell);
         let mut de = units::EPSILON*0.0;
         let from = self.cell.positions[which];
         let wsqr = self.cell.well_width*self.cell.well_width;
-        //verify_maybe_interacting_excluding_includes_everything(&self.cell, r, from);
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, from) {
             let dist2 = (r1-r).norm2();
             if dist2 < units::SIGMA*units::SIGMA {
@@ -504,9 +641,7 @@ impl SquareWell {
                 de -= units::EPSILON;
             }
         }
-        //verify_maybe_interacting_excluding_includes_everything(&self.cell, from, from);
         for r1 in self.cell.maybe_interacting_atoms_excluding(from, from) {
-            assert_eq!((r1-from).norm2(), self.cell.closest_distance2(r1, from));
             if (r1-from).norm2() < wsqr {
                 de += units::EPSILON;
             }
@@ -547,7 +682,6 @@ impl From<SquareWellParams> for SquareWell {
         let mut cells_y = (box_diagonal.y/biggest_wid).value().floor() as usize;
         let mut cells_z = (box_diagonal.z/biggest_wid).value().floor() as usize;
         if cells_z < 4 || cells_y < 4 || cells_x < 4 {
-            panic!("cell is too small: {}, {}, {}", cells_x, cells_y, cells_z);
             cells_z = 1;
             cells_y = 1;
             cells_x = 1;
@@ -789,10 +923,9 @@ impl From<SquareWellNParams> for SquareWell {
     }
 }
 
-#[test]
-fn closest_distance_matches() {
-    use std::default::Default;
-    let mut sw = SquareWell::from(SquareWellNParams::default());
+#[cfg(test)]
+fn closest_distance_matches(natoms: usize) {
+    let mut sw = mk_sw(natoms, 0.3);
     for &r1 in sw.cell.positions.iter() {
         for &r2 in sw.cell.positions.iter() {
             assert_eq!(sw.cell.closest_distance2(r1,r2),
@@ -816,9 +949,21 @@ fn closest_distance_matches() {
 }
 
 #[test]
-fn maybe_interacting_needs_no_shifting() {
-    use std::default::Default;
-    let mut sw = SquareWell::from(SquareWellNParams::default());
+fn closest_distance_matches_n50() {
+    closest_distance_matches(50);
+}
+#[test]
+fn closest_distance_matches_n100() {
+    closest_distance_matches(100);
+}
+#[test]
+fn closest_distance_matches_n200() {
+    closest_distance_matches(200);
+}
+
+#[cfg(test)]
+fn maybe_interacting_needs_no_shifting(natoms: usize) {
+    let mut sw = mk_sw(natoms, 0.3);
     let mut rng = MyRng::from_u64(1);
     for _ in 0..100000 {
         sw.move_once(&mut rng, Length::new(1.0));
@@ -847,135 +992,68 @@ fn maybe_interacting_needs_no_shifting() {
     }
 }
 
-fn verify_subcells_include_everything(cell: &Cell) {
-    for &r in cell.positions.iter() {
-        let sc = cell.get_subcell(r);
-        assert!(cell[sc].contains(&r));
-    }
+#[test]
+fn maybe_interacting_needs_no_shifting_n50() {
+    maybe_interacting_needs_no_shifting(50);
 }
-
-fn verify_subcells_include_nothing_out_of_place(cell: &Cell) {
-    for ix in 0..cell.num_subcells.x {
-        for iy in 0..cell.num_subcells.y {
-            for iz in 0..cell.num_subcells.z {
-                let sc = Vector3d::new(ix as isize,iy as isize,iz as isize);
-                for &r in cell[sc].iter() {
-                    assert_eq!(sc, cell.get_subcell(r));
-                }
-            }
-        }
-    }
-    for &r in cell.positions.iter() {
-        let sc = cell.get_subcell(r);
-        if !cell[sc].contains(&r) {
-            println!("\n\nWe are missing {}", r);
-            println!("   do have:");
-            for &x in cell[sc].iter() {
-                println!("            {}", x);
-            }
-        }
-        assert!(cell[sc].contains(&r));
-    }
+#[test]
+fn maybe_interacting_needs_no_shifting_n100() {
+    maybe_interacting_needs_no_shifting(100);
 }
-
-fn verify_maybe_interacting_includes_everything(cell: &Cell, r1: Vector3d<Length>) {
-    verify_subcells_include_everything(cell);
-    verify_subcells_include_nothing_out_of_place(cell);
-    let mi: Vec<_> = cell.maybe_interacting_atoms(r1).map(|r| cell.put_in_cell(r)).collect();
-    let d2s: Vec<_> = cell.maybe_interacting_atoms(r1).map(|r| (r-r1).norm2()).collect();
-    for &r2 in cell.positions.iter() {
-        let dist2 = cell.closest_distance2(r1, r2);
-        if dist2 <= cell.well_width*cell.well_width {
-            if !mi.iter().any(|&rrr| cell.closest_distance2(rrr, r2) < 1e-10*units::SIGMA*units::SIGMA) {
-                println!("");
-                println!("  subcell is {} vs {}", cell.get_subcell(r2), cell.get_subcell(r1));
-                println!("  delta z is {}", r2.z - r1.z);
-                println!("missing [{} {}] {} from:", dist2, d2s.contains(&dist2), r2);
-                for m in mi.iter() {
-                    println!("   {}", m);
-                }
-                panic!("We are missing a vector from maybe_interacting_atoms");
-            }
-        }
-    }
-}
-
-fn verify_maybe_interacting_excluding_includes_everything(cell: &Cell, r1: Vector3d<Length>, exc: Vector3d<Length>) {
-    verify_subcells_include_everything(cell);
-    verify_subcells_include_nothing_out_of_place(cell);
-    let mi: Vec<_> = cell.maybe_interacting_atoms_excluding(r1, exc).map(|r| cell.put_in_cell(r)).collect();
-    let d2s: Vec<_> = cell.maybe_interacting_atoms_excluding(r1, exc).map(|r| (r-r1).norm2()).collect();
-    for &r2 in cell.positions.iter().filter(|&&r2| r2 != exc) {
-        let dist2 = cell.closest_distance2(r1, r2);
-        if dist2 <= cell.well_width*cell.well_width {
-            println!("==--> {} from {}", dist2, r2);
-            for rr in mi.iter().map(|&r|r).filter(|&rrr| cell.closest_distance2(rrr, r2) < 1e-10*units::SIGMA*units::SIGMA) {
-                println!("    ==--> {}", rr);
-            }
-            if !mi.iter().any(|&rrr| cell.closest_distance2(rrr, r2) < 1e-10*units::SIGMA*units::SIGMA) {
-                println!("");
-                println!("==== excluding {} at d2 of {}", exc, cell.closest_distance2(exc, r2));
-                println!("==== r1 = {}", r1);
-                println!("==== r2 = {} missing", r2);
-                println!("  box_diagonal is {}", cell.box_diagonal);
-                println!("  subcell is {} vs {} / {}", cell.get_subcell(r2), cell.get_subcell(r1), cell.num_subcells);
-                println!("  delta r is {}", r2 - r1);
-                println!("  dist2 = {}", dist2);
-                println!("      mi contains {} with this distance", d2s.iter().filter(|&&d| d == dist2).count());
-                println!("      XX contains {} with this distance",
-                         cell.positions.iter().filter(|&&r| cell.closest_distance2(r1,r) == dist2).count());
-                for x in cell[cell.get_subcell(r2)].iter() {
-                    println!("  subcell has: {}", x);
-                }
-                // for m in mi.iter() {
-                //     if cell.closest_distance2(r1, *m) == dist2 {
-                //         println!("**>{}", m);
-                //     } else {
-                //         println!("   {}", m);
-                //     }
-                // }
-                panic!("We are missing a vector from maybe_interacting_atoms_excluding");
-            }
-        }
-    }
+#[test]
+fn maybe_interacting_needs_no_shifting_n200() {
+    maybe_interacting_needs_no_shifting(200);
 }
 
 #[test]
 fn maybe_interacting_includes_everything() {
-    use std::default::Default;
-    let mut sw = SquareWell::from(SquareWellNParams::default());
+    let mut sw = mk_sw(100, 0.3);
     let mut rng = MyRng::from_u64(1);
     for _ in 0..100000 {
         sw.move_once(&mut rng, Length::new(1.0));
     }
     for &r1 in sw.cell.positions.iter() {
-        verify_maybe_interacting_includes_everything(&sw.cell, r1);
+        sw.cell.verify_maybe_interacting_includes_everything(r1);
     }
 }
 
-#[test]
-fn maybe_interacting_excluding_includes_everything() {
-    use std::default::Default;
-    let mut sw = SquareWell::from(SquareWellNParams::default());
+#[cfg(test)]
+fn maybe_interacting_excluding_includes_everything(natoms: usize) {
+    let mut sw = mk_sw(natoms, 0.3);
     let mut rng = MyRng::from_u64(1);
     for &r1 in sw.cell.positions.iter() {
-        verify_maybe_interacting_excluding_includes_everything(&sw.cell, r1, r1);
+        sw.cell.verify_maybe_interacting_excluding_includes_everything(r1, r1);
     }
     for _ in 0..100000 {
         sw.move_once(&mut rng, Length::new(1.0));
     }
     println!("Finished moving stuff around...");
     for &r1 in sw.cell.positions.iter() {
-        verify_maybe_interacting_excluding_includes_everything(&sw.cell, r1, r1);
-        verify_maybe_interacting_excluding_includes_everything(&sw.cell, r1, sw.cell.positions[0]);
-        verify_maybe_interacting_excluding_includes_everything(&sw.cell, r1,
+        sw.cell.verify_maybe_interacting_excluding_includes_everything(r1, r1);
+        sw.cell.verify_maybe_interacting_excluding_includes_everything(r1, sw.cell.positions[0]);
+        sw.cell.verify_maybe_interacting_excluding_includes_everything(
+            r1,
             Vector3d::new(0.5*units::SIGMA, 0.5*units::SIGMA, 0.5*units::SIGMA));
     }
 }
 
 #[test]
+fn maybe_interacting_excluding_includes_everything_n50() {
+    maybe_interacting_excluding_includes_everything(50);
+}
+
+#[test]
+fn maybe_interacting_excluding_includes_everything_n100() {
+    maybe_interacting_excluding_includes_everything(100);
+}
+
+#[test]
+fn maybe_interacting_excluding_includes_everything_n200() {
+    maybe_interacting_excluding_includes_everything(200);
+}
+
+#[test]
 fn energy_is_right() {
-    use std::default::Default;
     let mut sw = SquareWell::from(SquareWellNParams::default());
     assert_eq!(sw.energy(), sw.compute_energy());
     let mut rng = MyRng::from_u64(1);
@@ -984,4 +1062,12 @@ fn energy_is_right() {
         sw.move_once(&mut rng, Length::new(1.0));
         assert_eq!(sw.energy(), sw.compute_energy());
     }
+}
+
+#[cfg(test)]
+fn mk_sw(natoms: usize, ff: f64) -> SquareWell {
+    let mut param = SquareWellNParams::default();
+    param._dim = CellDimensionsGivenNumber::FillingFraction(Unitless::new(ff));
+    param.N = natoms;
+    SquareWell::from(param)
 }
