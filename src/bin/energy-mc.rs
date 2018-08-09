@@ -1,6 +1,6 @@
 extern crate sadmc;
 
-use sadmc::system::square::*;
+use sadmc::system::optsquare::*;
 
 use sadmc::mc::MonteCarlo;
 use sadmc::mc::energy::EnergyMC;

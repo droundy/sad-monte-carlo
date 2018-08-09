@@ -499,28 +499,24 @@ impl SquareWell {
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
         let mut de = units::EPSILON*0.0;
         let from = self.cell.positions[which];
-        let mut am_infinite = false;
         let wsqr = self.cell.well_width*self.cell.well_width;
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, from) {
             let dist2 = (r1-r).norm2();
+            println!("  {} -> {}", dist2, r1);
             if dist2 < units::SIGMA*units::SIGMA {
-                am_infinite = true;
-                break;
+                println!("XXX too close to {} with {}", r1, dist2);
+                self.last_change = Change::None;
+                return None;
             }
             if dist2 < wsqr {
-                    de -= units::EPSILON;
+                de -= units::EPSILON;
             }
         }
-        if am_infinite {
-            self.last_change = Change::None;
-            return None;
-        }
-        for r1 in self.cell.maybe_interacting_atoms(from) {
+        for r1 in self.cell.maybe_interacting_atoms_excluding(from, from) {
             if (r1-from).norm2() < wsqr {
-                    de += units::EPSILON;
+                de += units::EPSILON;
             }
         }
-        de -= units::EPSILON; // don't count interaction between old position and itself
         self.cell.move_atom(which, r);
         self.last_change = Change::Move{ which, from, de };
         self.E += de;
@@ -552,7 +548,7 @@ impl From<SquareWellParams> for SquareWell {
                 Vector3d::new(w,w,w)
             }
         };
-        let biggest_wid = params.well_width*units::SIGMA/3.0_f64.sqrt();
+        let biggest_wid = params.well_width*units::SIGMA;
         let mut cells_x = (box_diagonal.x/biggest_wid).value().ceil() as usize;
         if cells_x < 4 { cells_x = 1; }
         let mut cells_y = (box_diagonal.y/biggest_wid).value().ceil() as usize;
@@ -651,6 +647,7 @@ impl MovableSystem for SquareWell {
         if self.cell.positions.len() > 0 {
             let which = rng.sample(Uniform::new(0, self.cell.positions.len()));
             let to = self.cell.put_in_cell(self.cell.positions[which] + rng.vector()*mean_distance);
+            println!("proposed {} -> {}", which, to);
             self.move_atom(which, to)
         } else {
             None
@@ -849,6 +846,35 @@ fn maybe_interacting_needs_no_shifting() {
                        sw.cell.sloppy_closest_distance2(r1,r2));
             assert_eq!(sw.cell.closest_distance2(r1,r2),
                        (r1-r2).norm2());
+        }
+    }
+}
+
+#[test]
+fn maybe_interacting_includes_everything() {
+    use std::default::Default;
+    let mut sw = SquareWell::from(SquareWellNParams::default());
+    let mut rng = MyRng::from_u64(1);
+    for _ in 0..100000 {
+        sw.move_once(&mut rng, Length::new(1.0));
+    }
+    for &r1 in sw.cell.positions.iter() {
+        let mi: Vec<_> = sw.cell.maybe_interacting_atoms(r1).map(|r| sw.cell.put_in_cell(r)).collect();
+        let d2s: Vec<_> = sw.cell.maybe_interacting_atoms(r1).map(|r| (r-r1).norm2()).collect();
+        for &r2 in sw.cell.positions.iter() {
+            let dist2 = sw.cell.closest_distance2(r1, r2);
+            if dist2 <= units::SIGMA*units::SIGMA {
+                if !mi.contains(&r2) {
+                    println!("");
+                    println!("  subcell is {} vs {}", sw.cell.get_subcell(r2), sw.cell.get_subcell(r1));
+                    println!("  delta z is {}", r2.z - r1.z);
+                    println!("missing [{} {}] {} from:", dist2, d2s.contains(&dist2), r1);
+                    for m in mi.iter() {
+                        println!("   {}", m);
+                    }
+                }
+                assert!(mi.contains(&r2));
+            }
         }
     }
 }

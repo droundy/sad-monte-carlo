@@ -252,7 +252,9 @@ impl<MC: MonteCarlo> Plugin<MC> for Save {
         } else {
             Action::None
         };
-        self.moves_left.set(next_output - moves);
+        if next_output > moves {
+            self.moves_left.set(next_output - moves);
+        }
         action
     }
     fn run_period(&self) -> TimeToRun {
