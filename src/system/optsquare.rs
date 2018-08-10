@@ -134,22 +134,19 @@ impl<'a> Iterator for NewNeighborIterator<'a> {
                 if Some(r) != self.exclude {
                     if let Some(shift_near) = self.shift_near {
                         let mut me = r;
-                        while me.z - shift_near.z < -self.cell.box_diagonal.z*0.5 {
+                        if me.z - shift_near.z < -self.cell.box_diagonal.z*0.5 {
                             me.z += self.cell.box_diagonal.z;
-                        }
-                        while me.z - shift_near.z > self.cell.box_diagonal.z*0.5 {
+                        } else if me.z - shift_near.z > self.cell.box_diagonal.z*0.5 {
                             me.z -= self.cell.box_diagonal.z;
                         }
-                        while me.y - shift_near.y < -self.cell.box_diagonal.y*0.5 {
+                        if me.y - shift_near.y < -self.cell.box_diagonal.y*0.5 {
                             me.y += self.cell.box_diagonal.y;
-                        }
-                        while me.y - shift_near.y > self.cell.box_diagonal.y*0.5 {
+                        } else if me.y - shift_near.y > self.cell.box_diagonal.y*0.5 {
                             me.y -= self.cell.box_diagonal.y;
                         }
-                        while me.x - shift_near.x < -self.cell.box_diagonal.x*0.5 {
+                        if me.x - shift_near.x < -self.cell.box_diagonal.x*0.5 {
                             me.x += self.cell.box_diagonal.x;
-                        }
-                        while me.x - shift_near.x > self.cell.box_diagonal.x*0.5 {
+                        } else if me.x - shift_near.x > self.cell.box_diagonal.x*0.5 {
                             me.x -= self.cell.box_diagonal.x;
                         }
                         return Some(me);
