@@ -9,7 +9,6 @@ use criterion::Criterion;
 
 use sadmc::system::units;
 use sadmc::mc::MonteCarlo;
-use sadmc::mc::sad::{Sad, SadParams};
 use sadmc::mc::energy::{EnergyMC, EnergyMCParams};
 use sadmc::system::square::{SquareWell, SquareWellNParams};
 use sadmc::system::{Length, MovableSystem};
@@ -39,21 +38,10 @@ fn gen_optsw(n_atoms: usize) -> optsquare::SquareWell {
     sw
 }
 
-fn gen_sad(n_atoms: usize) -> Sad<SquareWell> {
-    let sad_params = SadParams::default();
-    let mut sad = Sad::<SquareWell>::from_params(sad_params, gen_sw(n_atoms),
-                                                 ::std::path::PathBuf::from("/dev/null"));
-    // Randomize things a bit before beginning.
-    for _ in 0..n_atoms*1000 {
-        sad.move_once();
-    }
-    sad
-}
-
-fn gen_energy_sad(n_atoms: usize) -> EnergyMC<SquareWell> {
+fn gen_energy_sad(n_atoms: usize) -> EnergyMC<optsquare::SquareWell> {
     let params = EnergyMCParams::default();
-    let mut mc = EnergyMC::<SquareWell>::from_params(params, gen_sw(n_atoms),
-                                                     ::std::path::PathBuf::from("/dev/null"));
+    let mut mc = EnergyMC::<optsquare::SquareWell>::from_params(params, gen_optsw(n_atoms),
+                                                                ::std::path::PathBuf::from("/dev/null"));
     // Randomize things a bit before beginning.
     for _ in 0..n_atoms*1000 {
         mc.move_once();
@@ -67,22 +55,13 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut rng = sadmc::rng::MyRng::from_u64(0);
     c.bench_function("MyRng.gen<f64>", move |b| b.iter(|| rng.gen::<f64>()));
 
-    c.bench_function_over_inputs("sad_sw_move_once",
-                                 move |b, &&n_atoms| {
-                                     let mut sad = gen_sad(n_atoms);
-                                     b.iter(|| sad.move_once())
-                                 },
-                                 &[50, 100,
-                                   // 200, 400
-                                   ]);
-
-    c.bench_function_over_inputs("energy_sad_sw_move_once",
+    c.bench_function_over_inputs("sad_optsw_move_once",
                                  move |b, &&n_atoms| {
                                      let mut sad = gen_energy_sad(n_atoms);
                                      b.iter(|| sad.move_once())
                                  },
                                  &[50, 100,
-                                   // 200, 400
+                                   200, 400
                                    ]);
 
     c.bench_function_over_inputs("SW_move_once_sw",
