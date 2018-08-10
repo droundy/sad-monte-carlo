@@ -74,7 +74,8 @@ impl ::std::ops::Index<Vector3d<isize>> for Cell {
         let ix = modulus(i.x, self.num_subcells.x);
         let iy = modulus(i.y, self.num_subcells.y);
         let iz = modulus(i.z, self.num_subcells.z);
-        &self.subcells[ix*(self.num_subcells.y*self.num_subcells.z) + iy*self.num_subcells.z + iz]
+        // &self.subcells[ix*(self.num_subcells.y*self.num_subcells.z) + iy*self.num_subcells.z + iz]
+        unsafe { self.subcells.get_unchecked(ix*(self.num_subcells.y*self.num_subcells.z) + iy*self.num_subcells.z + iz) }
     }
 }
 impl ::std::ops::IndexMut<Vector3d<isize>> for Cell {
@@ -82,32 +83,57 @@ impl ::std::ops::IndexMut<Vector3d<isize>> for Cell {
         let ix = modulus(i.x, self.num_subcells.x);
         let iy = modulus(i.y, self.num_subcells.y);
         let iz = modulus(i.z, self.num_subcells.z);
-        &mut self.subcells[ix*(self.num_subcells.y*self.num_subcells.z) + iy*self.num_subcells.z + iz]
+        // &mut self.subcells[ix*(self.num_subcells.y*self.num_subcells.z) + iy*self.num_subcells.z + iz]
+        unsafe { self.subcells.get_unchecked_mut(ix*(self.num_subcells.y*self.num_subcells.z) + iy*self.num_subcells.z + iz) }
     }
 }
 
-struct NeighborIterator<'a> {
+const NO_NEIGHBORS: [Vector3d<isize>; 0] = [];
+const NEIGHBORS: [Vector3d<isize>; 26] = [
+    Vector3d { x:  1, y:  0, z:  0 },
+    Vector3d { x: -1, y:  0, z:  0 },
+    Vector3d { x:  0, y:  1, z:  0 },
+    Vector3d { x:  0, y: -1, z:  0 },
+    Vector3d { x:  0, y:  0, z:  1 },
+    Vector3d { x:  0, y:  0, z: -1 },
+    Vector3d { x:  0, y:  1, z:  1 },
+    Vector3d { x:  0, y:  1, z: -1 },
+    Vector3d { x:  0, y: -1, z:  1 },
+    Vector3d { x:  0, y: -1, z: -1 },
+    Vector3d { x:  1, y:  0, z:  1 },
+    Vector3d { x:  1, y:  0, z: -1 },
+    Vector3d { x: -1, y:  0, z:  1 },
+    Vector3d { x: -1, y:  0, z: -1 },
+    Vector3d { x:  1, y:  1, z:  0 },
+    Vector3d { x:  1, y: -1, z:  0 },
+    Vector3d { x: -1, y:  1, z:  0 },
+    Vector3d { x: -1, y: -1, z:  0 },
+    Vector3d { x:  1, y:  1, z:  1 },
+    Vector3d { x: -1, y:  1, z:  1 },
+    Vector3d { x:  1, y: -1, z:  1 },
+    Vector3d { x:  1, y:  1, z: -1 },
+    Vector3d { x:  1, y: -1, z: -1 },
+    Vector3d { x: -1, y:  1, z: -1 },
+    Vector3d { x: -1, y: -1, z:  1 },
+    Vector3d { x: -1, y: -1, z: -1 }];
+
+struct NewNeighborIterator<'a> {
     cell: &'a Cell,
     sc: Vector3d<isize>,
-    offset: Vector3d<isize>,
-    positions: &'a [Vector3d<Length>],
-    which: usize,
+    offset_iter: ::std::slice::Iter<'a, Vector3d<isize>>,
+    position_iter: ::std::slice::Iter<'a, Vector3d<Length>>,
     shift: Vector3d<Length>,
     exclude: Option<Vector3d<Length>>,
     shift_near: Option<Vector3d<Length>>,
 }
-
-impl<'a> Iterator for NeighborIterator<'a> {
+impl<'a> Iterator for NewNeighborIterator<'a> {
     type Item = Vector3d<Length>;
     fn next(&mut self) -> Option<Vector3d<Length>> {
         loop {
-            while self.which < self.positions.len() {
-                // We are currently reading through a list of positions...
-                let me = self.which;
-                self.which += 1;
-                if Some(self.positions[me]) != self.exclude {
+            while let Some(&r) = self.position_iter.next() {
+                if Some(r) != self.exclude {
                     if let Some(shift_near) = self.shift_near {
-                        let mut me = self.positions[me];
+                        let mut me = r;
                         while me.z - shift_near.z < -self.cell.box_diagonal.z*0.5 {
                             me.z += self.cell.box_diagonal.z;
                         }
@@ -128,205 +154,96 @@ impl<'a> Iterator for NeighborIterator<'a> {
                         }
                         return Some(me);
                     } else {
-                        return Some(self.positions[me] + self.shift);
+                        return Some(r + self.shift);
                     }
                 }
             }
-            if self.offset.z == 1 {
-                self.offset.z = -1;
-                if self.offset.y == 1 {
-                    self.offset.y = -1;
-                    if self.offset.x == 1 {
-                        self.offset = Vector3d::new(1,1,1);
-                        return None;
-                    } else {
-                        self.offset.x += 1;
-                    }
-                } else {
-                    self.offset.y += 1;
-                }
-            } else {
-                self.offset.z += 1;
-            }
-            self.positions = &self.cell[self.sc + self.offset];
-            if self.positions.len() > 0 {
+            if let Some(&offset) = self.offset_iter.next() {
+                let pos = &self.cell[self.sc + offset];
+                self.position_iter = pos.iter();
+                if pos.len() > 0 {
                 self.shift = Vector3d::new(
-                    if self.sc.x + self.offset.x < 0 {
+                    if self.sc.x + offset.x < 0 {
                         -self.cell.box_diagonal.x
-                    } else if self.sc.x + self.offset.x >= self.cell.num_subcells.x as isize {
+                    } else if self.sc.x + offset.x >= self.cell.num_subcells.x as isize {
                         self.cell.box_diagonal.x
                     } else {
                         Length::new(0.)
                     },
-                    if self.sc.y + self.offset.y < 0 {
+                    if self.sc.y + offset.y < 0 {
                         -self.cell.box_diagonal.y
-                    } else if self.sc.y + self.offset.y >= self.cell.num_subcells.y as isize {
+                    } else if self.sc.y + offset.y >= self.cell.num_subcells.y as isize {
                         self.cell.box_diagonal.y
                     } else {
                         Length::new(0.)
                     },
-                    if self.sc.z + self.offset.z < 0 {
+                    if self.sc.z + offset.z < 0 {
                         -self.cell.box_diagonal.z
-                    } else if self.sc.z + self.offset.z >= self.cell.num_subcells.z as isize {
+                    } else if self.sc.z + offset.z >= self.cell.num_subcells.z as isize {
                         self.cell.box_diagonal.z
                     } else {
                         Length::new(0.)
                     });
+                }
+            } else {
+                return None;
             }
-            self.which = 0;
         }
     }
 }
 impl Cell {
     /// Atoms that may be within well_width of r.
     pub fn maybe_interacting_atoms<'a>(&'a self, r: Vector3d<Length>)
-                                   -> impl Iterator<Item=Vector3d<Length>> + 'a {
+                                       -> impl Iterator<Item=Vector3d<Length>> + 'a {
         if self.num_subcells.x == 1 {
-            NeighborIterator {
+            NewNeighborIterator {
                 cell: self,
                 sc: Vector3d::new(0,0,0),
-                offset: Vector3d::new(1,1,1),
-                positions: &self.positions,
-                which: 0,
+                offset_iter: NO_NEIGHBORS.iter(),
+                position_iter: self.positions.iter(),
                 shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
                 exclude: None,
                 shift_near: Some(r),
             }
         } else {
             let sc = self.get_subcell(r);
-            // takes 1.9us
-            NeighborIterator {
+            NewNeighborIterator {
                 cell: self,
                 sc: sc,
-                offset: Vector3d::new(-1,-1,-2),
-                positions: &[],
-                which: 0,
+                offset_iter: NEIGHBORS.iter(),
+                position_iter: self[sc].iter(),
                 shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
                 exclude: None,
                 shift_near: None,
             }
         }
-
-            // THE FOLLOWING IS 3.4us
-        // let mut atoms: Vec<Vector3d<Length>> = Vec::with_capacity(100*self[sc].len());
-        // atoms.extend(self[sc].iter().map(|&r| r));
-        // for &ix in &[-1,0,1] {
-        //     for &iy in &[-1,0,1] {
-        //         for &iz in &[-1,0,1] {
-        //             if (ix,iy,iz) != (0,0,0) {
-        //                 atoms.extend(self[sc+Vector3d::new(-1,-1,-1)].iter().map(|&r| r));
-        //             }
-        //         }
-        //     }
-        // }
-        // atoms.into_iter()
-
-            // THE FOLLOWING IS base 2.7us
-        // self[sc].iter()
-        //     .chain(self[sc+Vector3d::new(-1,-1,-1)].iter())
-        //     .chain(self[sc+Vector3d::new(-1,-1, 0)].iter())
-        //     .chain(self[sc+Vector3d::new(-1,-1, 1)].iter())
-        //     .chain(self[sc+Vector3d::new(-1, 0,-1)].iter())
-        //     .chain(self[sc+Vector3d::new(-1, 0, 0)].iter())
-        //     .chain(self[sc+Vector3d::new(-1, 0, 1)].iter())
-        //     .chain(self[sc+Vector3d::new(-1, 1,-1)].iter())
-        //     .chain(self[sc+Vector3d::new(-1, 1, 0)].iter())
-        //     .chain(self[sc+Vector3d::new(-1, 1, 1)].iter())
-
-        //     .chain(self[sc+Vector3d::new( 0,-1,-1)].iter())
-        //     .chain(self[sc+Vector3d::new( 0,-1, 0)].iter())
-        //     .chain(self[sc+Vector3d::new( 0,-1, 1)].iter())
-        //     .chain(self[sc+Vector3d::new( 0, 0,-1)].iter())
-        //     // .chain(self[sc+Vector3d::new( 0, 0, 0)].iter())
-        //     .chain(self[sc+Vector3d::new( 0, 0, 1)].iter())
-        //     .chain(self[sc+Vector3d::new( 0, 1,-1)].iter())
-        //     .chain(self[sc+Vector3d::new( 0, 1, 0)].iter())
-        //     .chain(self[sc+Vector3d::new( 0, 1, 1)].iter())
-
-        //     .chain(self[sc+Vector3d::new( 1,-1,-1)].iter())
-        //     .chain(self[sc+Vector3d::new( 1,-1, 0)].iter())
-        //     .chain(self[sc+Vector3d::new( 1,-1, 1)].iter())
-        //     .chain(self[sc+Vector3d::new( 1, 0,-1)].iter())
-        //     .chain(self[sc+Vector3d::new( 1, 0, 0)].iter())
-        //     .chain(self[sc+Vector3d::new( 1, 0, 1)].iter())
-        //     .chain(self[sc+Vector3d::new( 1, 1,-1)].iter())
-        //     .chain(self[sc+Vector3d::new( 1, 1, 0)].iter())
-        //     .chain(self[sc+Vector3d::new( 1, 1, 1)].iter()).map(|&r| r)
     }
     /// Atoms that may be within well_width of r.  This excludes any
     /// atom that is located precisely at rprime.
     pub fn maybe_interacting_atoms_excluding<'a>(&'a self, r: Vector3d<Length>, rprime: Vector3d<Length>)
                                    -> impl Iterator<Item=Vector3d<Length>> + 'a {
-        if self.num_subcells.x == 1 || self.num_subcells.y == 1 || self.num_subcells.z == 1 {
-            NeighborIterator {
+        if self.num_subcells.x == 1 {
+            NewNeighborIterator {
                 cell: self,
                 sc: Vector3d::new(0,0,0),
-                offset: Vector3d::new(1,1,1),
-                positions: &self.positions,
-                which: 0,
+                offset_iter: NO_NEIGHBORS.iter(),
+                position_iter: self.positions.iter(),
                 shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
                 exclude: Some(rprime),
                 shift_near: Some(r),
             }
         } else {
             let sc = self.get_subcell(r);
-            NeighborIterator {
+            NewNeighborIterator {
                 cell: self,
                 sc: sc,
-                offset: Vector3d::new(-1,-1,-2),
-                positions: &[],
-                which: 0,
+                offset_iter: NEIGHBORS.iter(),
+                position_iter: self[sc].iter(),
                 shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
                 exclude: Some(rprime),
                 shift_near: None,
             }
         }
-
-
-        // let mut atoms: Vec<Vector3d<Length>> = Vec::with_capacity(100*self[sc].len());
-        // atoms.extend(self[sc].iter().map(|&r| r).filter(move |&rr| rr != rprime));
-        // for &ix in &[-1,0,1] {
-        //     for &iy in &[-1,0,1] {
-        //         for &iz in &[-1,0,1] {
-        //             if (ix,iy,iz) != (0,0,0) {
-        //                 atoms.extend(self[sc+Vector3d::new(-1,-1,-1)].iter().map(|&r| r));
-        //             }
-        //         }
-        //     }
-        // }
-        // atoms.into_iter()
-
-            // THE FOLLOWING IS base 2.7us
-        // self[sc].iter().filter(move |&&rr| rr != rprime)
-        //     .chain(self[sc+Vector3d::new(-1,-1,-1)].iter())
-        //     .chain(self[sc+Vector3d::new(-1,-1, 0)].iter())
-        //     .chain(self[sc+Vector3d::new(-1,-1, 1)].iter())
-        //     .chain(self[sc+Vector3d::new(-1, 0,-1)].iter())
-        //     .chain(self[sc+Vector3d::new(-1, 0, 0)].iter())
-        //     .chain(self[sc+Vector3d::new(-1, 0, 1)].iter())
-        //     .chain(self[sc+Vector3d::new(-1, 1,-1)].iter())
-        //     .chain(self[sc+Vector3d::new(-1, 1, 0)].iter())
-        //     .chain(self[sc+Vector3d::new(-1, 1, 1)].iter())
-
-        //     .chain(self[sc+Vector3d::new( 0,-1,-1)].iter())
-        //     .chain(self[sc+Vector3d::new( 0,-1, 0)].iter())
-        //     .chain(self[sc+Vector3d::new( 0,-1, 1)].iter())
-        //     .chain(self[sc+Vector3d::new( 0, 0,-1)].iter())
-        //     // .chain(self[sc+Vector3d::new( 0, 0, 0)].iter())
-        //     .chain(self[sc+Vector3d::new( 0, 0, 1)].iter())
-        //     .chain(self[sc+Vector3d::new( 0, 1,-1)].iter())
-        //     .chain(self[sc+Vector3d::new( 0, 1, 0)].iter())
-        //     .chain(self[sc+Vector3d::new( 0, 1, 1)].iter())
-
-        //     .chain(self[sc+Vector3d::new( 1,-1,-1)].iter())
-        //     .chain(self[sc+Vector3d::new( 1,-1, 0)].iter())
-        //     .chain(self[sc+Vector3d::new( 1,-1, 1)].iter())
-        //     .chain(self[sc+Vector3d::new( 1, 0,-1)].iter())
-        //     .chain(self[sc+Vector3d::new( 1, 0, 0)].iter())
-        //     .chain(self[sc+Vector3d::new( 1, 0, 1)].iter())
-        //     .chain(self[sc+Vector3d::new( 1, 1,-1)].iter())
-        //     .chain(self[sc+Vector3d::new( 1, 1, 0)].iter())
-        //     .chain(self[sc+Vector3d::new( 1, 1, 1)].iter()).map(|&r| r)
     }
     /// Find the cell for a given vector.
     pub fn get_subcell(&self, r: Vector3d<Length>) -> Vector3d<isize> {
