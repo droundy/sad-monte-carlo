@@ -305,7 +305,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
     fn move_once(&mut self) {
         self.moves += 1;
         let e1 = self.system.energy();
-        if let Some(_) = self.system.move_once(&mut self.rng, Length::new(0.1)) {
+        if let Some(_) = self.system.move_once(&mut self.rng, Length::new(0.05)) {
             let e2 = self.system.energy();
             self.bins.prepare_for_energy(e2);
 
