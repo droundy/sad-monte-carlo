@@ -284,8 +284,9 @@ impl<S: System> EnergyMC<S> {
                         let s = if s < 0.8 { 0.8 } else if s > 1.2 { 1.2 } else { s };
                         self.translation_scale *= s;
                         if !self.report.quiet {
-                            println!("    new translation scale: {:.3} from acceptance rate {:.1}% [long-term: {:.1}%]",
-                                     self.translation_scale,
+                            println!("        new translation scale: {:.3}",
+                                     self.translation_scale);
+                            println!("        acceptance rate {:.1}% [long-term: {:.1}%]",
                                      100.0*self.acceptance_rate,
                                      100.0*self.accepted_moves as f64
                                      /self.moves as f64);
