@@ -26,6 +26,15 @@ pub enum MethodParams {
     },
 }
 
+/// Parameters to configure the moves.
+#[derive(Serialize, Deserialize, Debug, ClapMe)]
+pub enum MoveParams {
+    /// The rms distance of moves
+    TranslationScale(Length),
+    /// Adjust translation scale to reach acceptance rate.
+    AcceptanceRate(f64),
+}
+
 /// The parameters needed to configure a simulation.
 #[derive(Debug, ClapMe)]
 pub struct EnergyMCParams {
@@ -33,6 +42,7 @@ pub struct EnergyMCParams {
     pub _method: MethodParams,
     /// The seed for the random number generator.
     pub seed: Option<u64>,
+    _moves: MoveParams,
     _report: plugin::ReportParams,
     _movies: MoviesParams,
     _save: plugin::SaveParams,
@@ -43,6 +53,7 @@ impl Default for EnergyMCParams {
         EnergyMCParams {
             _method: MethodParams::Sad { min_T: 0.2*units::EPSILON },
             seed: None,
+            _moves: MoveParams::TranslationScale(0.05*units::SIGMA),
             _report: plugin::ReportParams::default(),
             _movies: MoviesParams::default(),
             _save: plugin::SaveParams::default(),
@@ -78,6 +89,10 @@ pub struct EnergyMC<S> {
     pub rejected_moves: u64,
     /// The energy bins.
     pub bins: Bins,
+    /// The move plan
+    pub move_plan: MoveParams,
+    /// The current translation scale
+    pub translation_scale: Length,
     /// The random number generator.
     pub rng: ::rng::MyRng,
     /// Where to save the resume file.
@@ -291,6 +306,11 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
                 min: system.energy(),
                 width: system.delta_energy().unwrap_or(Energy::new(1.0)),
             },
+            translation_scale: match params._moves {
+                MoveParams::TranslationScale(x) => x,
+                _ => 0.05*units::SIGMA,
+            },
+            move_plan: params._moves,
             system: system,
 
             rng: ::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
@@ -305,7 +325,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
     fn move_once(&mut self) {
         self.moves += 1;
         let e1 = self.system.energy();
-        if let Some(_) = self.system.move_once(&mut self.rng, Length::new(0.05)) {
+        if let Some(_) = self.system.move_once(&mut self.rng, self.translation_scale) {
             let e2 = self.system.energy();
             self.bins.prepare_for_energy(e2);
 
