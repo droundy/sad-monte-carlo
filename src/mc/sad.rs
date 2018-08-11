@@ -236,8 +236,8 @@ impl<S: MovableSystem> MonteCarlo for Sad<S> {
     fn num_moves(&self) -> u64 {
         self.moves
     }
-    fn num_rejected_moves(&self) -> u64 {
-        self.rejected_moves
+    fn num_accepted_moves(&self) -> u64 {
+        self.moves - self.rejected_moves
     }
     fn save_as(&self) -> ::std::path::PathBuf {
         self.save_as.clone()

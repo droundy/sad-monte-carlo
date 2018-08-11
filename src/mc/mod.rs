@@ -61,8 +61,8 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
     /// The number of moves that have been made.
     fn num_moves(&self) -> u64;
 
-    /// The number of rejected moves.
-    fn num_rejected_moves(&self) -> u64;
+    /// The number of accepted moves.
+    fn num_accepted_moves(&self) -> u64;
 
     /// The path to save the file at.
     fn save_as(&self) -> ::std::path::PathBuf;

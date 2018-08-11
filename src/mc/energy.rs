@@ -85,14 +85,16 @@ pub struct EnergyMC<S> {
     pub moves: u64,
     /// The last move where we discovered a new energy.
     pub time_L: u64,
-    /// The number of moves that have been rejected.
-    pub rejected_moves: u64,
+    /// The number of moves that have been accepted.
+    pub accepted_moves: u64,
     /// The energy bins.
     pub bins: Bins,
     /// The move plan
     pub move_plan: MoveParams,
     /// The current translation scale
     pub translation_scale: Length,
+    /// The "recent" acceptance rate.
+    pub acceptance_rate: f64,
     /// The random number generator.
     pub rng: ::rng::MyRng,
     /// Where to save the resume file.
@@ -273,14 +275,31 @@ impl<S: System> EnergyMC<S> {
                         *too_lo = energy;
                     }
                 }
-                if *tL == self.moves && !self.report.quiet {
-                    println!("    sad: [{}]  {}:  {} < {} ... {} < {}",
-                             self.moves, num_states,
-                             self.bins.min.value_unsafe,
-                             too_lo.value_unsafe,
-                             too_hi.value_unsafe,
-                             (self.bins.min
-                              + self.bins.width*(histogram.len()-1) as f64).value_unsafe);
+                if *tL == self.moves {
+                    // We just discovered a new important energy.
+                    // Let's take this as an opportunity to revise our
+                    // translation scale, and also to log the news.
+                    if let MoveParams::AcceptanceRate(r) = self.move_plan {
+                        let s = self.acceptance_rate/r;
+                        let s = if s < 0.8 { 0.8 } else if s > 1.2 { 1.2 } else { s };
+                        self.translation_scale *= s;
+                        if !self.report.quiet {
+                            println!("    new translation scale: {:.3} from acceptance rate {:.1}% [long-term: {:.1}%]",
+                                     self.translation_scale,
+                                     100.0*self.acceptance_rate,
+                                     100.0*self.accepted_moves as f64
+                                     /self.moves as f64);
+                        }
+                    }
+                    if !self.report.quiet {
+                        println!("    sad: [{}]  {}:  {} < {} ... {} < {}",
+                                 self.moves, num_states,
+                                 self.bins.min.value_unsafe,
+                                 too_lo.value_unsafe,
+                                 too_hi.value_unsafe,
+                                 (self.bins.min
+                                  + self.bins.width*(histogram.len()-1) as f64).value_unsafe);
+                    }
                 }
             }
             Method::Samc { t0 } => {
@@ -299,7 +318,8 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             method: Method::new(params._method, system.energy()),
             moves: 0,
             time_L: 0,
-            rejected_moves: 0,
+            accepted_moves: 0,
+            acceptance_rate: 0.5, // arbitrary starting guess.
             bins: Bins {
                 histogram: vec![1],
                 lnw: vec![Unitless::new(0.0)],
@@ -325,17 +345,18 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
     fn move_once(&mut self) {
         self.moves += 1;
         let e1 = self.system.energy();
+        let recent_scale = (1.0/self.moves as f64).sqrt();
+        self.acceptance_rate *= 1. - recent_scale;
         if let Some(_) = self.system.move_once(&mut self.rng, self.translation_scale) {
             let e2 = self.system.energy();
             self.bins.prepare_for_energy(e2);
 
             if self.reject_move(e1,e2) {
                 self.system.undo();
-                self.rejected_moves += 1;
+            } else {
+                self.accepted_moves += 1;
+                self.acceptance_rate += recent_scale;
             }
-        } else {
-            // The system itself rejected the move.
-            self.rejected_moves += 1;
         }
         let energy = self.system.energy();
         let i = self.energy_to_index(energy);
@@ -355,8 +376,8 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
     fn num_moves(&self) -> u64 {
         self.moves
     }
-    fn num_rejected_moves(&self) -> u64 {
-        self.rejected_moves
+    fn num_accepted_moves(&self) -> u64 {
+        self.accepted_moves
     }
     fn save_as(&self) -> ::std::path::PathBuf {
         self.save_as.clone()
