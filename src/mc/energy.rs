@@ -415,6 +415,7 @@ pub struct Movies {
     next_frame: Cell<u64>,
     period: Cell<plugin::TimeToRun>,
     entropy: RefCell<Vec<Vec<f64>>>,
+    histogram: RefCell<Vec<Vec<u64>>>,
     time: RefCell<Vec<u64>>,
     energy: RefCell<Vec<Energy>>,
 }
@@ -430,6 +431,7 @@ impl From<MoviesParams> for Movies {
                 plugin::TimeToRun::Never
             }),
             entropy: RefCell::new(Vec::new()),
+            histogram: RefCell::new(Vec::new()),
             time: RefCell::new(Vec::new()),
             energy: RefCell::new(Vec::new()),
         }
@@ -470,6 +472,8 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                     // We can just add a row.
                     let mut S = self.entropy.borrow_mut();
                     S.push(entropy);
+                    let mut hist_movie = self.histogram.borrow_mut();
+                    hist_movie.push(histogram.clone());
                 } else {
                     let energy = self.energy.borrow().clone();
                     let mut left_zeros = 0;
@@ -497,8 +501,17 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                             v.insert(0,0.);
                         }
                     }
-
+                    let mut hist_movie = self.histogram.borrow_mut();
+                    for v in hist_movie.iter_mut() {
+                        for _ in 0..right_zeros {
+                            v.push(0);
+                        }
+                        for _ in 0..left_zeros {
+                            v.insert(0,0);
+                        }
+                    }
                     S.push(entropy);
+                    hist_movie.push(histogram.clone());
                 }
 
                 // Now decide when we need the next frame to be.
