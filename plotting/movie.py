@@ -41,26 +41,22 @@ while True:
             if i < len(my_time[fname]):
                 t = my_time[fname][i]
                 plt.figure('Entropy')
-                if i == 0:
-                    plt.plot(my_energy[fname], my_entropy[fname][i,:], my_color[fname],
-                             label=fname)
-                else:
+                if i > 0:
                     plt.plot(my_energy[fname], my_entropy[fname][i-1,:], my_color[fname],
                              alpha=0.5)
-                    plt.plot(my_energy[fname], my_entropy[fname][i,:], my_color[fname])
+                plt.plot(my_energy[fname], my_entropy[fname][i,:], my_color[fname],
+                         label=fname)
                 plt.title('$t=%.3g/%.3g' % (t, my_time[fname][-1]))
                 plt.ylabel('$S$')
                 plt.legend(loc='best')
                 plt.figure('Histogram')
                 plt.title('$t=%.3g/%.3g' % (t, my_time[fname][-1]))
                 plt.ylabel('histogram')
-                if i == 0:
-                    plt.plot(my_energy[fname], my_histogram[fname][i,:], my_color[fname],
-                             label=fname)
-                else:
+                if i > 0:
                     plt.plot(my_energy[fname], my_histogram[fname][i-1,:], my_color[fname],
                              alpha=0.5)
-                    plt.plot(my_energy[fname], my_histogram[fname][i,:], my_color[fname])
+                plt.plot(my_energy[fname], my_histogram[fname][i,:], my_color[fname],
+                         label=fname)
                 plt.legend(loc='best')
         plt.pause(1.0)
         print('on time', t)
