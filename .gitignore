@@ -2,3 +2,5 @@
 *.tum
 /target
 **/*.rs.bk
+*.out
+*.yaml
