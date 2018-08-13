@@ -241,14 +241,13 @@ impl<S: System> EnergyMC<S> {
                     *highest_hist = histogram[i];
                     if energy > *too_hi {
                         *tL = self.moves;
-                        let hmax = histogram[i] as f64;
                         let ihi = self.bins.energy_to_index(*too_hi);
                         for j in 0 .. histogram.len() {
                             let ej = self.bins.index_to_energy(j);
                             let lnw = &mut self.bins.lnw;
                             if ej > *too_hi && ej <= energy {
                                 if histogram[j] != 0 {
-                                    lnw[j] = lnw[ihi] + (histogram[j] as f64/hmax).ln();
+                                    lnw[j] = lnw[ihi];
                                     *num_states += 1;
                                 } else {
                                     lnw[j] = Unitless::new(0.0);
@@ -258,14 +257,16 @@ impl<S: System> EnergyMC<S> {
                         *too_hi = energy;
                     } else if energy < *too_lo {
                         *tL = self.moves;
-                        let hmax = Unitless::new(histogram[i] as f64);
                         let ilo = self.bins.energy_to_index(*too_lo);
                         for j in 0 .. histogram.len() {
                             let ej = self.bins.index_to_energy(j);
                             let lnw = &mut self.bins.lnw;
                             if ej < *too_lo && ej >= energy {
                                 if histogram[j] != 0 {
-                                    lnw[j] = lnw[ilo] + log(histogram[j] as f64/hmax) + (ej-*too_lo)/min_T;
+                                    lnw[j] = lnw[ilo] + (ej-*too_lo)/min_T;
+                                    if lnw[j] < Unitless::new(0.) {
+                                        lnw[j] = Unitless::new(0.);
+                                    }
                                     *num_states += 1;
                                 } else {
                                     lnw[j] = Unitless::new(0.0);
@@ -384,11 +385,6 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
         self.save_as.clone()
     }
 }
-
-fn log(x: Unitless) -> Unitless {
-    Unitless::new(x.ln())
-}
-
 
 
 /// Do we want movies? Where?
