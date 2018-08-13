@@ -19,9 +19,6 @@ for fname in sys.argv[1:]:
     data = yaml.load(yaml_data)
     data['bins']['histogram'] = np.array(data['bins']['histogram'])
     data['bins']['lnw'] = np.array(data['bins']['lnw'])
-    print('bins:', data['bins'].keys())
-    print('movies:', data['movies'].keys())
-    print(data.keys())
     my_color[fname] = allcolors.pop()
     my_energy[fname] = np.array(data['movies']['energy'])
     my_time[fname] = np.array(data['movies']['time'])
@@ -59,7 +56,6 @@ while True:
                          label=fname)
                 plt.legend(loc='best')
         plt.pause(1.0)
-        print('on time', t)
 
 plt.ioff()
 plt.show()
