@@ -231,9 +231,10 @@ impl<S: System> EnergyMC<S> {
                     let t = self.moves as f64;
                     let tL = *tL as f64;
                     let dE = *too_hi - *too_lo;
-                    let n = *num_states as f64;
+                    let Ns = *num_states as f64;
+                    let Smean = dE/(3.0*min_T);
 
-                    let gamma = dE/(3.0*min_T*t)*(n*n + t*(t/tL - 1.0) + n*t)/(n*n + t*(t/tL - 1.0) + t);
+                    let gamma = (Smean + t/tL)/(Smean + t/Ns*t/tL);
                     self.bins.lnw[i] += gamma;
                 }
 
