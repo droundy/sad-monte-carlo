@@ -212,10 +212,10 @@ impl<MC: MonteCarlo> Plugin<MC> for Report {
     }
     fn save(&self, mc: &MC, _sys: &MC::System) {
         if self.quiet { return; }
-        let rejects = mc.num_rejected_moves();
+        let accepted = mc.num_accepted_moves();
         let moves = mc.num_moves();
-        println!("Rejected {}/{} = {:.0}% of the moves",
-                 rejects, moves, 100.0*rejects as f64/moves as f64);
+        println!("Accepted {}/{} = {:.0}% of the moves",
+                 accepted, moves, 100.0*accepted as f64/moves as f64);
     }
 }
 
