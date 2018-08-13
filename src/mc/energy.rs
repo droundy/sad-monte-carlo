@@ -22,7 +22,7 @@ pub enum MethodParams {
     /// Samc
     Samc {
         /// The t0 parameter, determining how long to leave gamma=1.
-        t0: u64,
+        t0: f64,
     },
 }
 
@@ -118,7 +118,7 @@ enum Method {
     },
     /// Samc
     Samc {
-        t0: u64,
+        t0: f64,
     },
 }
 
@@ -305,7 +305,7 @@ impl<S: System> EnergyMC<S> {
             }
             Method::Samc { t0 } => {
                 let t = self.moves;
-                self.bins.lnw[i] += if t > t0 { t0 as f64/t as f64 } else { 1.0 };
+                self.bins.lnw[i] += if t as f64 > t0 { t0/t as f64 } else { 1.0 };
             }
         }
     }

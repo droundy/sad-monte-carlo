@@ -28,14 +28,14 @@ for fname in sys.argv[1:]:
         plt.plot(energy, S[i,:], label='t=%g'%t)
         plt.title('$t=%.3g/%.3g' % (t, time[-1]))
         plt.ylabel('$S$')
-        plt.legend(loc='best')
+        # plt.legend(loc='best')
 
         plt.figure('Histogram')
         plt.title('$t=%.3g/%.3g' % (t, time[-1]))
         plt.ylabel('histogram')
         plt.plot(energy, histogram[i,:], label='t=%g'%t)
         #plt.legend(loc='best')
-        plt.pause(5.0)
+        plt.pause(3.0)
         print('on time', t)
 
 plt.ioff()
