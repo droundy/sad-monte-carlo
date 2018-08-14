@@ -1,7 +1,6 @@
 //! These are different Monte Carlo algorithms.
 
 pub mod plugin;
-pub mod sad;
 pub mod energy;
 
 use ::system::*;

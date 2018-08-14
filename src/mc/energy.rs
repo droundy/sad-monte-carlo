@@ -42,6 +42,8 @@ pub struct EnergyMCParams {
     pub _method: MethodParams,
     /// The seed for the random number generator.
     pub seed: Option<u64>,
+    /// The energy binsize.
+    energy_bin: Option<Energy>,
     _moves: MoveParams,
     _report: plugin::ReportParams,
     _movies: MoviesParams,
@@ -53,6 +55,7 @@ impl Default for EnergyMCParams {
         EnergyMCParams {
             _method: MethodParams::Sad { min_T: 0.2*units::EPSILON },
             seed: None,
+            energy_bin: None,
             _moves: MoveParams::TranslationScale(0.05*units::SIGMA),
             _report: plugin::ReportParams::default(),
             _movies: MoviesParams::default(),
@@ -147,7 +150,7 @@ impl Bins {
     }
     /// Find the energy corresponding to a given index.
     pub fn index_to_energy(&self, i: usize) -> Energy {
-        self.min + (i as f64)*self.width
+        self.min + (i as f64 + 0.5)*self.width
     }
     /// Make room in our arrays for a new energy value
     pub fn prepare_for_energy(&mut self, e: Energy) {
@@ -317,6 +320,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
     type Params = EnergyMCParams;
     type System = S;
     fn from_params(params: EnergyMCParams, system: S, save_as: ::std::path::PathBuf) -> Self {
+        let ewidth = params.energy_bin.unwrap_or(system.delta_energy().unwrap_or(Energy::new(1.0)));
         EnergyMC {
             method: Method::new(params._method, system.energy()),
             moves: 0,
@@ -326,8 +330,8 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             bins: Bins {
                 histogram: vec![1],
                 lnw: vec![Unitless::new(0.0)],
-                min: system.energy(),
-                width: system.delta_energy().unwrap_or(Energy::new(1.0)),
+                min: system.energy() - ewidth*0.5, // center initial energy in a bin!
+                width: ewidth,
             },
             translation_scale: match params._moves {
                 MoveParams::TranslationScale(x) => x,

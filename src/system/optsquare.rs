@@ -256,7 +256,8 @@ impl Cell {
     }
     /// Move the atom.  Return the previous position.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Vector3d<Length> {
-        let old = ::std::mem::replace(&mut self.positions[which], r);
+        // let old = ::std::mem::replace(&mut self.positions[which], r);
+        let old = ::std::mem::replace(unsafe { self.positions.get_unchecked_mut(which) }, r);
         let sc = self.get_subcell(r);
         self[sc].push(r);
         let oldsc = self.get_subcell(old);
@@ -543,7 +544,8 @@ impl SquareWell {
     /// `None` if the atom could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
         let mut de = units::EPSILON*0.0;
-        let from = self.cell.positions[which];
+        // let from = self.cell.positions[which];
+        let from = unsafe { *self.cell.positions.get_unchecked(which) };
         let wsqr = self.cell.well_width*self.cell.well_width;
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, from) {
             let dist2 = (r1-r).norm2();
@@ -645,7 +647,8 @@ impl UndoSystem for SquareWell {
         match self.last_change {
             Change::None => (),
             Change::Move{which, from, de} => {
-                let old = self.cell.positions[which];
+                // let old = self.cell.positions[which];
+                let old = unsafe { *self.cell.positions.get_unchecked(which) };
                 self.cell.move_atom(which, from);
                 self.E -= de;
                 self.last_change = Change::Move {
@@ -692,7 +695,7 @@ impl MovableSystem for SquareWell {
     fn move_once(&mut self, rng: &mut MyRng, mean_distance: Length) -> Option<Energy> {
         if self.cell.positions.len() > 0 {
             let which = rng.sample(Uniform::new(0, self.cell.positions.len()));
-            let to = self.cell.put_in_cell(self.cell.positions[which] + rng.vector()*mean_distance);
+            let to = self.cell.put_in_cell(unsafe { *self.cell.positions.get_unchecked(which) } + rng.vector()*mean_distance);
             self.move_atom(which, to)
         } else {
             None
