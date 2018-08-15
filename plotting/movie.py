@@ -12,6 +12,7 @@ my_entropy = {}
 my_time = {}
 my_color = {}
 max_iter = 0
+Smin = None
 for fname in sys.argv[1:]:
     print(fname)
     with open(fname) as f:
@@ -26,18 +27,24 @@ for fname in sys.argv[1:]:
         max_iter = len(my_time[fname])
     my_entropy[fname] = np.array(data['movies']['entropy'])
     my_histogram[fname] = np.array(data['movies']['histogram'])
+    if Smin is None:
+        Ebest = my_energy[fname];
+        Sbest = my_entropy[fname][-1,:]
+        Smin = Sbest[Sbest!=0].min() - Sbest.max()
 
+all_figures = set()
 plt.ion()
 while True:
     for i in range(max_iter):
-        plt.figure('Histogram')
-        plt.cla()
-        plt.figure('Entropy')
-        plt.cla()
+        for fig in all_figures:
+            fig.clf()
+        all_figures.add(plt.figure('Normed entropy'))
+        plt.plot(Ebest, Sbest - Sbest.max(), ':', color='#aaaaaa')
         for fname in my_energy.keys():
             if i < len(my_time[fname]):
                 t = my_time[fname][i]
-                plt.figure('Entropy')
+
+                all_figures.add(plt.figure('Entropy'))
                 if i > 0:
                     plt.plot(my_energy[fname], my_entropy[fname][i-1,:], my_color[fname],
                              alpha=0.2)
@@ -46,7 +53,23 @@ while True:
                 plt.title('$t=%.3g/%.3g' % (t, my_time[fname][-1]))
                 plt.ylabel('$S$')
                 plt.legend(loc='best')
-                plt.figure('Histogram')
+
+                all_figures.add(plt.figure('Normed entropy'))
+                if i > 0:
+                    plt.plot(my_energy[fname],
+                             my_entropy[fname][i-1,:]-my_entropy[fname][i-1,:].max(),
+                             my_color[fname],
+                             alpha=0.2)
+                plt.plot(my_energy[fname],
+                         my_entropy[fname][i,:]-my_entropy[fname][i,:].max(),
+                         my_color[fname],
+                         label=fname)
+                plt.title('$t=%.3g/%.3g' % (t, my_time[fname][-1]))
+                plt.ylabel('$S$')
+                plt.legend(loc='best')
+                plt.ylim(Smin, 0)
+
+                all_figures.add(plt.figure('Histogram'))
                 plt.title('$t=%.3g/%.3g' % (t, my_time[fname][-1]))
                 plt.ylabel('histogram')
                 if i > 0:
