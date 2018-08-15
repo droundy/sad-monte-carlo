@@ -9,6 +9,8 @@ use clapme::ClapMe;
 use serde_yaml;
 use serde;
 
+use atomicfile::AtomicFile;
+
 #[derive(ClapMe)]
 enum Params<MP, SP> {
     ResumeFrom(::std::path::PathBuf),
@@ -45,7 +47,7 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
 
     /// Create a simulation checkpoint.
     fn checkpoint(&self) {
-        let f = ::std::fs::File::create(self.save_as())
+        let f = AtomicFile::create(self.save_as())
             .expect(&format!("error creating file {:?}", self.save_as()));
         serde_yaml::to_writer(&f, self).expect("error writing checkpoint?!")
     }

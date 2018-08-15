@@ -12,7 +12,9 @@ extern crate serde_yaml;
 extern crate vector3d;
 extern crate rand;
 extern crate rand_core;
+extern crate tempfile;
 
 pub mod system;
 pub mod mc;
 pub mod rng;
+pub mod atomicfile;
