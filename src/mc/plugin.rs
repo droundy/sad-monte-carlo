@@ -126,14 +126,12 @@ impl PluginManager {
     }
 }
 
-fn no_time() -> Cell<Option<(time::Instant, u64)>> { Cell::new(None) }
-
 /// A plugin that terminates the simulation after a fixed number of iterations.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Report {
     max_iter: TimeToRun,
     /// This is when and where the simulation started.
-    #[serde(skip, default="no_time")]
+    #[serde(skip, default)]
     start: Cell<Option<(time::Instant, u64)>>,
     /// The user has requested that nothing be printed!
     pub quiet: bool,
