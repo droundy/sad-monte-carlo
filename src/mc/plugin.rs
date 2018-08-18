@@ -270,6 +270,8 @@ fn format_duration(secs: u64) -> String {
         format!("{} hours", hours)
     } else if mins < 1 {
         format!("{} seconds", secs)
+    } else if mins == 1 {
+        format!("1 minute {} seconds", secs)
     } else if hours < 1 {
         format!("{} minutes", mins)
     } else if hours < 2 {
