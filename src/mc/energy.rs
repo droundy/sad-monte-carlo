@@ -75,6 +75,15 @@ pub struct Bins {
     pub histogram: Vec<u64>,
     /// The ln weight for each energy bin.
     pub lnw: Vec<Unitless>,
+
+    /// Whether we have seen this since the last visit to maxentropy.
+    have_visited_since_maxentropy: Vec<bool>,
+    /// How many round trips have we seen at this energy.
+    round_trips: Vec<u64>,
+    /// The maximum entropy we have seen.
+    max_S: Unitless,
+    /// The index with the maximum entropy.
+    max_S_index: usize,
 }
 
 /// A square well fluid.
@@ -332,6 +341,10 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
                 lnw: vec![Unitless::new(0.0)],
                 min: system.energy() - ewidth*0.5, // center initial energy in a bin!
                 width: ewidth,
+                have_visited_since_maxentropy: vec![false],
+                round_trips: vec![0],
+                max_S: Unitless::new(0.),
+                max_S_index: 0,
             },
             translation_scale: match params._moves {
                 MoveParams::TranslationScale(x) => x,
@@ -370,6 +383,23 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
 
         self.bins.histogram[i] += 1;
         self.update_weights(e1);
+
+        if self.bins.lnw[i] > self.bins.max_S {
+            self.bins.max_S = self.bins.lnw[i];
+            self.bins.max_S_index = i;
+            for x in self.bins.have_visited_since_maxentropy.iter_mut() {
+                *x = true;
+            }
+        } else if i == self.bins.max_S_index {
+            if self.energy_to_index(e1) != i {
+                for x in self.bins.have_visited_since_maxentropy.iter_mut() {
+                    *x = false;
+                }
+            }
+        } else if !self.bins.have_visited_since_maxentropy[i] {
+            self.bins.have_visited_since_maxentropy[i] = true;
+            self.bins.round_trips[i] += 1;
+        }
 
         let plugins = [&self.report as &Plugin<Self>,
                        &self.movies,
