@@ -279,7 +279,7 @@ impl<MC: MonteCarlo> Plugin<MC> for Save {
                 }
             }
         } else {
-            self.next_output.set(self.next_output.get()*2)]
+            self.next_output.set(self.next_output.get()*2)
         }
     }
 }
