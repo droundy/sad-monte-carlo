@@ -443,6 +443,7 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
         if let Some(movie_time) = self.movie_time {
             let next_frame = self.next_frame.get();
             if mc.num_moves() == next_frame {
+                println!("        Saving movie after {} moves", next_frame);
                 // First, let's create the arrays for the time and
                 // energy indices.
                 self.time.borrow_mut().push(next_frame);
@@ -518,7 +519,8 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                 // Now decide when we need the next frame to be.
                 let following_frame = (next_frame as f64*movie_time) as u64;
                 self.next_frame.set(following_frame);
-                self.period.set(plugin::TimeToRun::Period(following_frame-next_frame));
+                self.period.set(plugin::TimeToRun::TotalMoves(following_frame));
+                return plugin::Action::Save;
             }
         }
         plugin::Action::None
