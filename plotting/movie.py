@@ -4,6 +4,16 @@ import yaml, sys
 import numpy as np
 import matplotlib.pyplot as plt
 
+def latex_float(x):
+    exp = np.log10(x*1.0)
+    if abs(exp) > 2:
+        x /= 10.0**exp
+        if ('%g' % x) == '1':
+            return r'10^{%.0f}' % (exp)
+        return r'%g\times 10^{%.0f}' % (x, exp)
+    else:
+        return '%g' % x
+
 allcolors = ['g','r','b',]
 
 my_energy = {}
@@ -50,7 +60,8 @@ while True:
                              alpha=0.2)
                 plt.plot(my_energy[fname], my_entropy[fname][i,:], my_color[fname],
                          label=fname)
-                plt.title('$t=%.3g/%.3g' % (t, my_time[fname][-1]))
+                plt.title('$t=%s/%s$' % (latex_float(t),
+                                         latex_float(my_time[fname][-1])))
                 plt.ylabel('$S$')
                 plt.legend(loc='best')
 
@@ -64,13 +75,15 @@ while True:
                          my_entropy[fname][i,:]-my_entropy[fname][i,:].max(),
                          my_color[fname],
                          label=fname)
-                plt.title('$t=%.3g/%.3g' % (t, my_time[fname][-1]))
+                plt.title('$t=%s/%s$' % (latex_float(t),
+                                         latex_float(my_time[fname][-1])))
                 plt.ylabel('$S$')
                 plt.legend(loc='best')
                 plt.ylim(Smin, 0)
 
                 all_figures.add(plt.figure('Histogram'))
-                plt.title('$t=%.3g/%.3g' % (t, my_time[fname][-1]))
+                plt.title('$t=%s/%s$' % (latex_float(t),
+                                         latex_float(my_time[fname][-1])))
                 plt.ylabel('histogram')
                 if i > 0:
                     plt.plot(my_energy[fname], my_histogram[fname][i-1,:], my_color[fname],
