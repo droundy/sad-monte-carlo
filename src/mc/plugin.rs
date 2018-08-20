@@ -222,41 +222,65 @@ impl<MC: MonteCarlo> Plugin<MC> for Report {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Save {
     next_output: Cell<u64>,
-    moves_left: Cell<u64>,
+    /// This is when and where the simulation started.
+    #[serde(skip, default)]
+    start: Cell<Option<(time::Instant, u64)>>,
+    /// How frequently to save...
+    #[serde(default)]
+    save_time_seconds: Option<f64>,
 }
 
 /// The parameter to define the save schedule
 #[derive(ClapMe, Debug)]
-pub struct SaveParams;
+pub struct SaveParams {
+    /// Maximum time between saves in hours
+    pub save_time: Option<f64>,
+}
 
 impl Default for SaveParams {
-    fn default() -> Self { SaveParams }
+    fn default() -> Self {
+        SaveParams { save_time: None, }
+    }
 }
 impl From<SaveParams> for Save {
-    fn from(_params: SaveParams) -> Self {
+    fn from(params: SaveParams) -> Self {
         Save {
             next_output: Cell::new(1),
-            moves_left: Cell::new(1),
+            start: Cell::new(Some((time::Instant::now(), 0))),
+            save_time_seconds: params.save_time.map(|h| 60.*60.*h),
         }
     }
 }
 impl<MC: MonteCarlo> Plugin<MC> for Save {
     fn run(&self, mc: &MC, _sys: &MC::System) -> Action {
-        let next_output = self.next_output.get();
-        let moves = mc.num_moves();
-        let action = if moves >= next_output {
-            self.next_output.set(next_output*2);
+        if mc.num_moves() >= self.next_output.get() {
             Action::Save
         } else {
             Action::None
-        };
-        if next_output > moves {
-            self.moves_left.set(next_output - moves);
         }
-        action
     }
     fn run_period(&self) -> TimeToRun {
-        TimeToRun::Period(self.next_output.get())
+        TimeToRun::TotalMoves(self.next_output.get())
+    }
+    fn save(&self, mc: &MC, _sys: &MC::System) {
+        if let Some(period) = self.save_time_seconds {
+            match self.start.get() {
+                Some((start_time, start_iter)) => {
+                    let moves = mc.num_moves();
+                    let runtime = start_time.elapsed();
+                    let time_per_move =
+                        duration_to_secs(runtime)/(moves - start_iter) as f64;
+                    let moves_per_period = 1 + (period/time_per_move) as u64;
+                    self.next_output.set(moves + moves_per_period);
+                }
+                None => {
+                    self.start.set(Some((time::Instant::now(), mc.num_moves())));
+                    self.next_output.set(mc.num_moves() + 1<<20);
+                }
+            }
+        } else {
+            self.next_output.set(self.next_output.get()*2)]
+        }
     }
 }
 
