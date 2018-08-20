@@ -34,6 +34,14 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
     fn from_args<S: ClapMe + Into<Self::System>>() -> Self {
         match <Params<Self::Params, S>>::from_args() {
             Params::_Params { _sys, _mc, save_as } => {
+                if let Some(ref save_as) = save_as {
+                    if let Ok(f) = ::std::fs::File::open(save_as) {
+                        if let Ok(s) = serde_yaml::from_reader(&f) {
+                            println!("Resuming from file {:?}", save_as);
+                            return s;
+                        }
+                    }
+                }
                 let save_as = save_as.unwrap_or(::std::path::PathBuf::from("resume.yaml"));
                 Self::from_params(_mc, _sys.into(), save_as)
             },
