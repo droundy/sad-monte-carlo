@@ -583,34 +583,18 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                 thousand_trips = Some(mc.index_to_energy(i));
             }
         }
-        if thousand_trips.is_some() {
-            println!("   {} * {} * {} * {} | {} currently {}",
-                     one_trip.unwrap(), ten_trips.unwrap(),
-                     hundred_trips.unwrap(), thousand_trips.unwrap(),
-                     mc.index_to_energy(mc.bins.max_S_index),
-                     sys.energy(),
-            );
-        } else if hundred_trips.is_some() {
-            println!("   {} * {} * {} * {} | {} currently {}",
-                     one_trip.unwrap(), ten_trips.unwrap(),
-                     hundred_trips.unwrap(), "-",
-                     mc.index_to_energy(mc.bins.max_S_index),
-                     sys.energy(),
-            );
-        } else if ten_trips.is_some() {
-            println!("   {} * {} * {} * {} | {} currently {}",
-                     one_trip.unwrap(), ten_trips.unwrap(),
-                     "-", "-",
-                     mc.index_to_energy(mc.bins.max_S_index),
-                     sys.energy(),
-            );
-        } else {
-            println!("   {} * {} * {} * {} | {} currently {}",
-                     one_trip.unwrap(), "-",
-                     "-", "-",
-                     mc.index_to_energy(mc.bins.max_S_index),
-                     sys.energy(),
-            );
-        }
+        let thousand_trips = thousand_trips.map(|e| format!("{}", e/units::EPSILON))
+            .unwrap_or("-".to_string());
+        let ten_trips = ten_trips.map(|e| format!("{}", e/units::EPSILON))
+            .unwrap_or("-".to_string());
+        let one_trip = one_trip.map(|e| format!("{}", e/units::EPSILON))
+            .unwrap_or("-".to_string());
+        let hundred_trips = hundred_trips.map(|e| format!("{}", e/units::EPSILON))
+            .unwrap_or("-".to_string());
+        println!("   {} * {} * {} * {} | {} currently {}",
+                 one_trip, ten_trips, hundred_trips, thousand_trips,
+                 mc.index_to_energy(mc.bins.max_S_index)/units::EPSILON,
+                 sys.energy()/units::EPSILON,
+        );
     }
 }
