@@ -327,6 +327,35 @@ impl<S: System> EnergyMC<S> {
             }
         }
     }
+
+    /// Estimate the temperature for a given energy
+    pub fn temperature(&self, energy: Energy) -> Energy {
+        let i = self.energy_to_index(energy);
+        let lnwi = self.bins.lnw[i];
+        let mut Tlo = Energy::new(0.);
+        for j in 0..i {
+            let lnwj = self.bins.lnw[j];
+            if lnwj > Unitless::new(0.) {
+                let Tj = (energy - self.index_to_energy(j))/(lnwi - lnwj);
+                if Tj > Tlo { Tlo = Tj; }
+            }
+        }
+        let mut Thi = Energy::new(1e300);
+        for j in i+1 .. self.bins.lnw.len() {
+            let lnwj = self.bins.lnw[j];
+            if lnwj > Unitless::new(0.) {
+                let Tj = (energy - self.index_to_energy(j))/(lnwi - lnwj);
+                if Tj < Thi { Thi = Tj; }
+            }
+        }
+        if Thi > Tlo && Tlo > Energy::new(0.) {
+            return 0.5*(Thi + Tlo);
+        }
+        if Tlo > Energy::new(0.) {
+            return Tlo;
+        }
+        return Thi;
+    }
 }
 
 impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
@@ -583,6 +612,18 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                 thousand_trips = Some(mc.index_to_energy(i));
             }
         }
+        let thousand_T = thousand_trips
+            .map(|e| format!(" ({})", mc.temperature(e)/units::EPSILON))
+            .unwrap_or("".to_string());
+        let hundred_T = hundred_trips
+            .map(|e| format!(" ({})", mc.temperature(e)/units::EPSILON))
+            .unwrap_or("".to_string());
+        let ten_T = ten_trips
+            .map(|e| format!(" ({})", mc.temperature(e)/units::EPSILON))
+            .unwrap_or("".to_string());
+        let one_T = one_trip
+            .map(|e| format!(" ({})", mc.temperature(e)/units::EPSILON))
+            .unwrap_or("".to_string());
         let thousand_trips = thousand_trips.map(|e| format!("{}", e/units::EPSILON))
             .unwrap_or("-".to_string());
         let ten_trips = ten_trips.map(|e| format!("{}", e/units::EPSILON))
@@ -591,8 +632,11 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
             .unwrap_or("-".to_string());
         let hundred_trips = hundred_trips.map(|e| format!("{}", e/units::EPSILON))
             .unwrap_or("-".to_string());
-        println!("   {} * {} * {} * {} | {} currently {}",
-                 one_trip, ten_trips, hundred_trips, thousand_trips,
+        println!("   {}{} * {}{} * {}{} * {}{} | {} currently {}",
+                 one_trip, one_T,
+                 ten_trips, ten_T,
+                 hundred_trips, hundred_T,
+                 thousand_trips, thousand_T,
                  mc.index_to_energy(mc.bins.max_S_index)/units::EPSILON,
                  sys.energy()/units::EPSILON,
         );
