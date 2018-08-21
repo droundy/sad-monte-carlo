@@ -169,11 +169,15 @@ impl Bins {
             // ensure we end up with enough room.
             self.histogram.insert(0, 0);
             self.lnw.insert(0, Unitless::new(0.0));
+            self.have_visited_since_maxentropy.insert(0, true);
+            self.round_trips.insert(0, 1);
             self.min -= self.width;
         }
         while e >= self.min + self.width*(self.lnw.len() as f64) {
             self.lnw.push(Unitless::new(0.0));
             self.histogram.push(0);
+            self.have_visited_since_maxentropy.push(true);
+            self.round_trips.push(1);
         }
     }
 }
@@ -342,7 +346,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
                 min: system.energy() - ewidth*0.5, // center initial energy in a bin!
                 width: ewidth,
                 have_visited_since_maxentropy: vec![false],
-                round_trips: vec![0],
+                round_trips: vec![1],
                 max_S: Unitless::new(0.),
                 max_S_index: 0,
             },
@@ -556,4 +560,57 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
         plugin::Action::None
     }
     fn run_period(&self) -> plugin::TimeToRun { self.period.get() }
+
+    /// This isn't really a movies thing, but there isn't a great
+    /// reason to create yet another plugin for an EnergyMC-specific
+    /// log message.
+    fn log(&self, mc: &EnergyMC<S>, sys: &S) {
+        let mut one_trip: Option<Energy> = None;
+        let mut ten_trips: Option<Energy> = None;
+        let mut hundred_trips: Option<Energy> = None;
+        let mut thousand_trips: Option<Energy> = None;
+        for (i, &trips) in mc.bins.round_trips.iter().enumerate() {
+            if one_trip.is_none() && trips >= 1 {
+                one_trip = Some(mc.index_to_energy(i));
+            }
+            if ten_trips.is_none() && trips >= 10 {
+                ten_trips = Some(mc.index_to_energy(i));
+            }
+            if hundred_trips.is_none() && trips >= 100 {
+                hundred_trips = Some(mc.index_to_energy(i));
+            }
+            if thousand_trips.is_none() && trips >= 1000 {
+                thousand_trips = Some(mc.index_to_energy(i));
+            }
+        }
+        if thousand_trips.is_some() {
+            println!("   {} * {} * {} * {} | {} currently {}",
+                     one_trip.unwrap(), ten_trips.unwrap(),
+                     hundred_trips.unwrap(), thousand_trips.unwrap(),
+                     mc.index_to_energy(mc.bins.max_S_index),
+                     sys.energy(),
+            );
+        } else if hundred_trips.is_some() {
+            println!("   {} * {} * {} * {} | {} currently {}",
+                     one_trip.unwrap(), ten_trips.unwrap(),
+                     hundred_trips.unwrap(), "-",
+                     mc.index_to_energy(mc.bins.max_S_index),
+                     sys.energy(),
+            );
+        } else if ten_trips.is_some() {
+            println!("   {} * {} * {} * {} | {} currently {}",
+                     one_trip.unwrap(), ten_trips.unwrap(),
+                     "-", "-",
+                     mc.index_to_energy(mc.bins.max_S_index),
+                     sys.energy(),
+            );
+        } else {
+            println!("   {} * {} * {} * {} | {} currently {}",
+                     one_trip.unwrap(), "-",
+                     "-", "-",
+                     mc.index_to_energy(mc.bins.max_S_index),
+                     sys.energy(),
+            );
+        }
+    }
 }
