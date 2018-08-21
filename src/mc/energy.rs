@@ -613,16 +613,16 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
             }
         }
         let thousand_T = thousand_trips
-            .map(|e| format!(" ({})", mc.temperature(e)/units::EPSILON))
+            .map(|e| format!(" ({:.2})", mc.temperature(e)/units::EPSILON))
             .unwrap_or("".to_string());
         let hundred_T = hundred_trips
-            .map(|e| format!(" ({})", mc.temperature(e)/units::EPSILON))
+            .map(|e| format!(" ({:.2})", mc.temperature(e)/units::EPSILON))
             .unwrap_or("".to_string());
         let ten_T = ten_trips
-            .map(|e| format!(" ({})", mc.temperature(e)/units::EPSILON))
+            .map(|e| format!(" ({:.2})", mc.temperature(e)/units::EPSILON))
             .unwrap_or("".to_string());
         let one_T = one_trip
-            .map(|e| format!(" ({})", mc.temperature(e)/units::EPSILON))
+            .map(|e| format!(" ({:.2})", mc.temperature(e)/units::EPSILON))
             .unwrap_or("".to_string());
         let thousand_trips = thousand_trips.map(|e| format!("{}", e/units::EPSILON))
             .unwrap_or("-".to_string());
