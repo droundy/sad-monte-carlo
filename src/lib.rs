@@ -18,3 +18,4 @@ pub mod system;
 pub mod mc;
 pub mod rng;
 pub mod atomicfile;
+pub mod prettyfloat;
