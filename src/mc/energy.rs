@@ -10,6 +10,7 @@ use dimensioned::Dimensionless;
 use rand::Rng;
 use std::default::Default;
 use std::cell::{RefCell,Cell};
+use ::prettyfloat::PrettyFloat;
 
 /// Parameters to configure a particular MC.
 #[derive(Debug, ClapMe)]
@@ -613,16 +614,20 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
             }
         }
         let thousand_T = thousand_trips
-            .map(|e| format!(" ({:.2})", mc.temperature(e)/units::EPSILON))
+            .map(|e| format!(" ({:.2})",
+                             PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
             .unwrap_or("".to_string());
         let hundred_T = hundred_trips
-            .map(|e| format!(" ({:.2})", mc.temperature(e)/units::EPSILON))
+            .map(|e| format!(" ({:.2})",
+                             PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
             .unwrap_or("".to_string());
         let ten_T = ten_trips
-            .map(|e| format!(" ({:.2})", mc.temperature(e)/units::EPSILON))
+            .map(|e| format!(" ({:.2})",
+                             PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
             .unwrap_or("".to_string());
         let one_T = one_trip
-            .map(|e| format!(" ({:.2})", mc.temperature(e)/units::EPSILON))
+            .map(|e| format!(" ({:.2})",
+                             PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
             .unwrap_or("".to_string());
         let thousand_trips = thousand_trips.map(|e| format!("{}", e/units::EPSILON))
             .unwrap_or("-".to_string());

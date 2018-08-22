@@ -3,7 +3,7 @@
 use std::fmt::{Display, Formatter, Result};
 
 /// Wrap this type around an `f64` in order to print it nicely.
-pub struct PrettyFloat(f64);
+pub struct PrettyFloat(pub f64);
 
 fn n_decimals(value: f64, digits: usize) -> usize {
     let log10 = value.abs().log10();
