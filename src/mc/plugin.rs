@@ -68,7 +68,9 @@ impl Action {
 /// plugins without duplicating code.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PluginManager {
+    #[serde(skip, default)]
     period: Cell<u64>,
+    #[serde(skip, default)]
     moves: Cell<u64>,
 }
 
@@ -169,6 +171,15 @@ impl From<ReportParams> for Report {
         }
     }
 }
+impl Report {
+    /// Allows a resuming simulation to get updated report parameters
+    /// from the flags.
+    pub fn update_from(&mut self, params: ReportParams) {
+        let other = Self::from(params);
+        self.max_iter = other.max_iter;
+        self.quiet = other.quiet;
+    }
+}
 impl<MC: MonteCarlo> Plugin<MC> for Report {
     fn run(&self, mc: &MC, _sys: &MC::System) -> Action {
         if let TimeToRun::TotalMoves(maxiter) = self.max_iter {
@@ -221,6 +232,7 @@ impl<MC: MonteCarlo> Plugin<MC> for Report {
 /// A plugin that schedules when to save
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Save {
+    #[serde(skip, default)]
     next_output: Cell<u64>,
     /// This is when and where the simulation started.
     #[serde(skip, default)]
@@ -249,6 +261,13 @@ impl From<SaveParams> for Save {
             start: Cell::new(Some((time::Instant::now(), 0))),
             save_time_seconds: params.save_time.map(|h| 60.*60.*h),
         }
+    }
+}
+impl Save {
+    /// Allows a resuming simulation to get updated save parameters
+    /// from the flags.
+    pub fn update_from(&mut self, params: SaveParams) {
+        self.save_time_seconds = params.save_time.map(|h| 60.*60.*h);
     }
 }
 impl<MC: MonteCarlo> Plugin<MC> for Save {

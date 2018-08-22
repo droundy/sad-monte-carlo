@@ -395,6 +395,10 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             manager: plugin::PluginManager::new(),
         }
     }
+    fn update_from_params(&mut self, params: Self::Params) {
+        self.report.update_from(params._report);
+        self.save.update_from(params._save);
+    }
 
     fn move_once(&mut self) {
         self.moves += 1;

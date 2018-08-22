@@ -30,14 +30,20 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
     /// Create this MonteCarlo from its parameters
     fn from_params(params: Self::Params, system: Self::System, save_as: ::std::path::PathBuf) -> Self;
 
+    /// This method is called when the program is resumed, so certain
+    /// flags may be updated, e.g. the maximum number of iterations to
+    /// extend a simulation.
+    fn update_from_params(&mut self, _params: Self::Params) {}
+
     /// Create a new simulation from command-line flags.
     fn from_args<S: ClapMe + Into<Self::System>>() -> Self {
         match <Params<Self::Params, S>>::from_args() {
             Params::_Params { _sys, _mc, save_as } => {
                 if let Some(ref save_as) = save_as {
                     if let Ok(f) = ::std::fs::File::open(save_as) {
-                        if let Ok(s) = serde_yaml::from_reader(&f) {
+                        if let Ok(mut s) = serde_yaml::from_reader::<_,Self>(&f) {
                             println!("Resuming from file {:?}", save_as);
+                            s.update_from_params(_mc);
                             return s;
                         }
                     }
