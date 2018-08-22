@@ -614,19 +614,15 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
             }
         }
         let thousand_T = thousand_trips
-            .map(|e| format!(" ({:.2})",
+            .map(|e| format!(" ({:.1})",
                              PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
             .unwrap_or("".to_string());
         let hundred_T = hundred_trips
-            .map(|e| format!(" ({:.2})",
+            .map(|e| format!(" ({:.1})",
                              PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
             .unwrap_or("".to_string());
         let ten_T = ten_trips
-            .map(|e| format!(" ({:.2})",
-                             PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
-            .unwrap_or("".to_string());
-        let one_T = one_trip
-            .map(|e| format!(" ({:.2})",
+            .map(|e| format!(" ({:.1})",
                              PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
             .unwrap_or("".to_string());
         let thousand_trips = thousand_trips.map(|e| format!("{}", e/units::EPSILON))
@@ -637,8 +633,8 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
             .unwrap_or("-".to_string());
         let hundred_trips = hundred_trips.map(|e| format!("{}", e/units::EPSILON))
             .unwrap_or("-".to_string());
-        println!("   {}{} * {}{} * {}{} * {}{} | {} currently {}",
-                 one_trip, one_T,
+        println!("   {} * {}{} * {}{} * {}{} | {} currently {}",
+                 one_trip,
                  ten_trips, ten_T,
                  hundred_trips, hundred_T,
                  thousand_trips, thousand_T,

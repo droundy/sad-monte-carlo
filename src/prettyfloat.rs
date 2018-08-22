@@ -1,11 +1,14 @@
 //! This module attempts to provide a %g formatter.
 
-use std::fmt::{Display, Formatter, Result};
+use std::fmt::{Display, Formatter, Result, Alignment};
 
 /// Wrap this type around an `f64` in order to print it nicely.
 pub struct PrettyFloat(pub f64);
 
 fn n_decimals(value: f64, digits: usize) -> usize {
+    if value == 0. {
+        return 0;
+    }
     let log10 = value.abs().log10();
     if log10 > digits as f64 {
         0
@@ -13,53 +16,115 @@ fn n_decimals(value: f64, digits: usize) -> usize {
         (digits as f64 - log10) as usize + 1
     }
 }
+#[test]
+fn test_n_decimals() {
+    assert_eq!(n_decimals(10.1, 1), 0);
+    assert_eq!(n_decimals(10.1, 2), 1);
+    assert_eq!(n_decimals(0.02, 1), 3);
+    assert_eq!(n_decimals(0.002, 1), 4);
+}
 
 impl Display for PrettyFloat {
     fn fmt(&self, f: &mut Formatter) -> Result {
         if let Some(precision) = f.precision() {
-            let sf = format!("{}", self.0);
-            let se = format!("{:e}", self.0);
-            let sf_prec = format!("{:.*}", n_decimals(self.0, precision), self.0);
-            let se_prec = format!("{:.*}", precision, self.0);
-            if sf.len() < se.len() {
-                if sf.len() < sf_prec.len() {
-                    if sf.len() < se_prec.len() {
-                        write!(f, "{}", sf)
-                    } else {
-                        write!(f, "{:e}", self.0)
-                    }
-                } else {
-                    if sf_prec.len() < se_prec.len() {
-                        write!(f, "{}", self.0)
-                    } else {
-                        write!(f, "{:.*e}", precision, self.0)
-                    }
+            let ndec = n_decimals(self.0, precision);
+            let options = &[format!("{}", self.0),
+                            format!("{:e}", self.0),
+                            format!("{:.*}", ndec, self.0),
+                            format!("{:.*e}", precision, self.0)];
+            let s = options.into_iter().min_by_key(|s| s.len()).unwrap();
+            if let Some(width) = f.width() {
+                // If we received a width, we use it
+                match f.align() {
+                    Some(Alignment::Left)    => write!(f, "{:<width$}", s, width = width),
+                    Some(Alignment::Right)   => write!(f, "{:>width$}", s, width = width),
+                    Some(Alignment::Center)  => write!(f, "{:^width$}", s, width = width),
+                    None => write!(f, "{:width$}", s, width = width),
                 }
             } else {
-                if se.len() < sf_prec.len() {
-                    if se.len() < se_prec.len() {
-                        write!(f, "{}", se)
-                    } else {
-                        write!(f, "{:e}", self.0)
-                    }
-                } else {
-                    if sf_prec.len() < se_prec.len() {
-                        write!(f, "{}", self.0)
-                    } else {
-                        write!(f, "{:.*e}", precision, self.0)
-                    }
-                }
+                f.write_str(s)
             }
         } else {
-            let sf = format!("{}", self.0);
-            let se = format!("{:e}", self.0);
-            if se.len() < sf.len() {
-                write!(f, "{:e}", self.0)
+            let options = &[format!("{}", self.0),
+                            format!("{:e}", self.0)];
+            let s = options.into_iter().min_by_key(|s| s.len()).unwrap();
+            if let Some(width) = f.width() {
+                // If we received a width, we use it
+                match f.align() {
+                    Some(Alignment::Left)    => write!(f, "{:<width$}", s, width = width),
+                    Some(Alignment::Right)   => write!(f, "{:>width$}", s, width = width),
+                    Some(Alignment::Center)  => write!(f, "{:^width$}", s, width = width),
+                    None => write!(f, "{:width$}", s, width = width),
+                }
             } else {
-                write!(f, "{}", self.0)
+                f.write_str(s)
             }
         }
     }
+}
+
+#[test]
+fn known_numbers() {
+    println!("0.1 default");
+    assert_eq!(&format!("{}", PrettyFloat(0.1)), "0.1");
+    println!("0.1 prec=1");
+    assert_eq!(&format!("{:.1}", PrettyFloat(0.1)), "0.1");
+    println!("0.1 prec=2");
+    assert_eq!(&format!("{:.2}", PrettyFloat(0.1)), "0.1");
+    println!("0.1 prec=3");
+    assert_eq!(&format!("{:.3}", PrettyFloat(0.1)), "0.1");
+    println!("0.1 prec=4");
+    assert_eq!(&format!("{:.4}", PrettyFloat(0.1)), "0.1");
+
+    println!("0.1 prec=1 width width");
+    assert_eq!(&format!("{:5}", PrettyFloat(0.1)), "0.1  ");
+    assert_eq!(&format!("{:<5}", PrettyFloat(0.1)), "0.1  ");
+    assert_eq!(&format!("{:^5}", PrettyFloat(0.1)), " 0.1 ");
+    assert_eq!(&format!("{:>5}", PrettyFloat(0.1)), "  0.1");
+
+    println!("10.1");
+    assert_eq!(&format!("{}", PrettyFloat(10.1)), "10.1");
+    println!("10.1 prec 1");
+    assert_eq!(&format!("{:.1}", PrettyFloat(10.1)), "10");
+    println!("10.1 prec 2");
+    assert_eq!(&format!("{:.2}", PrettyFloat(10.1)), "10.1");
+    println!("10.1 prec 3");
+    assert_eq!(&format!("{:.3}", PrettyFloat(10.1)), "10.1");
+    println!("10.1 prec 4");
+    assert_eq!(&format!("{:.4}", PrettyFloat(10.1)), "10.1");
+
+    println!("1.11111111");
+    assert_eq!(&format!("{}", PrettyFloat(1.11111111)), "1.11111111");
+    println!("1.11111111 prec 1");
+    assert_eq!(&format!("{:.1}", PrettyFloat(1.11111111)), "1.1");
+    println!("1.11111111 prec 2");
+    assert_eq!(&format!("{:.2}", PrettyFloat(1.11111111)), "1.11");
+    println!("1.11111111 prec 3");
+    assert_eq!(&format!("{:.3}", PrettyFloat(1.11111111)), "1.111");
+    println!("1.11111111 prec 4");
+    assert_eq!(&format!("{:.4}", PrettyFloat(1.11111111)), "1.1111");
+
+    println!("1.11111111e200");
+    assert_eq!(&format!("{}", PrettyFloat(1.11111111e200)), "1.11111111e200");
+    println!("1.11111111 prec 1");
+    assert_eq!(&format!("{:.1}", PrettyFloat(1.11111111e200)), "1.1e200");
+    println!("1.11111111 prec 2");
+    assert_eq!(&format!("{:.2}", PrettyFloat(1.11111111e200)), "1.11e200");
+    println!("1.11111111 prec 3");
+    assert_eq!(&format!("{:.3}", PrettyFloat(1.11111111e200)), "1.111e200");
+    println!("1.11111111 prec 4");
+    assert_eq!(&format!("{:.4}", PrettyFloat(1.11111111e200)), "1.1111e200");
+
+    println!("1e200");
+    assert_eq!(&format!("{}", PrettyFloat(1e200)), "1e200");
+    println!("1e200 prec 1");
+    assert_eq!(&format!("{:.1}", PrettyFloat(1e200)), "1e200");
+    println!("1e200 prec 2");
+    assert_eq!(&format!("{:.2}", PrettyFloat(1e200)), "1e200");
+    println!("1e200 prec 3");
+    assert_eq!(&format!("{:.3}", PrettyFloat(1e200)), "1e200");
+    println!("1e200 prec 4");
+    assert_eq!(&format!("{:.4}", PrettyFloat(1e200)), "1e200");
 }
 
 #[test]
