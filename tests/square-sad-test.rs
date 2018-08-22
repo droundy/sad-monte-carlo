@@ -20,10 +20,10 @@ fn energies_agree() {
     sparam._dim = square::CellDimensionsGivenNumber::CellWidth(box_diag);
     let mut mcnew = EnergyMC::from_params(EnergyMCParams::default(),
                                           optsquare::SquareWell::from(oparam),
-                                          ::std::path::PathBuf::from("/dev/null"));
+                                          ::std::path::PathBuf::from("/tmp/test.yaml"));
     let mut mcold = EnergyMC::from_params(EnergyMCParams::default(),
                                           square::SquareWell::from(sparam),
-                                          ::std::path::PathBuf::from("/dev/null"));
+                                          ::std::path::PathBuf::from("/tmp/test.yaml"));
     assert_eq!(mcnew.system.energy(), mcold.system.energy());
     for i in 0..10000 {
         mcnew.move_once();
