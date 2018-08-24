@@ -87,6 +87,8 @@ pub struct Bins {
     max_S_index: usize,
 }
 
+type SquarePlugins = Plugins![plugin::Report, Movies, plugin::Save];
+
 /// A square well fluid.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EnergyMC<S> {
@@ -115,7 +117,7 @@ pub struct EnergyMC<S> {
     report: plugin::Report,
     movies: Movies,
     save: plugin::Save,
-    manager: plugin::PluginManager,
+    manager: plugin::PluginManager<SquarePlugins>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -389,10 +391,14 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
 
             rng: ::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
             save_as: save_as,
-            report: plugin::Report::from(params._report),
-            movies: Movies::from(params._movies),
-            save: plugin::Save::from(params._save),
-            manager: plugin::PluginManager::new(),
+            report: plugin::Report::from(params._report.clone()),
+            movies: Movies::from(params._movies.clone()),
+            save: plugin::Save::from(params._save.clone()),
+            manager: plugin::PluginManager::new(plugins![
+                plugin::Report::from(params._report),
+                Movies::from(params._movies),
+                plugin::Save::from(params._save)
+            ]),
         }
     }
     fn update_from_params(&mut self, params: Self::Params) {
@@ -461,7 +467,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
 
 
 /// Do we want movies? Where?
-#[derive(ClapMe, Debug)]
+#[derive(ClapMe, Debug, Clone)]
 pub struct MoviesParams {
     /// How often (logarithmically) do we want a movie frame? If this
     /// is 2.0, it means we want a frame every time the number of

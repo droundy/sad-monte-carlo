@@ -34,6 +34,89 @@ pub trait Plugin<MC: MonteCarlo> {
     fn log(&self, _mc: &MC, _sys: &MC::System) {}
 }
 
+trait PluginList<MC: MonteCarlo> {
+    /// Run and do something.  If the simulation needs to be
+    /// terminated, `None` is returned.  If you want to modify
+    /// information, you will have to use interior mutability, because
+    /// I can't figure out any practical way to borrow `self` mutably
+    /// while still giving read access to the `MC`.
+    fn run(&self, _mc: &MC, _sys: &MC::System) -> Action { Action::None }
+    /// How often we need the plugin to run.  A `None` value means
+    /// that this plugin never needs to run.  Note that it is expected
+    /// that this period may change any time the plugin is called, so
+    /// this should be a cheap call as it may happen frequently.  Also
+    /// note that this is an upper, not a lower bound.
+    fn next_run(&self, _mc: &MC) -> u64 { 1u64 << 40 }
+    /// We might be about to die, so please do any cleanup or saving.
+    /// Note that the plugin state is stored on each checkpoint.  This
+    /// is called in response to `Action::Save` and `Action::Exit`.
+    fn save(&self, _mc: &MC, _sys: &MC::System) {}
+    /// Log to stdout any interesting data we think our user might
+    /// care about.  This is called in response to `Action::Save`,
+    /// `Action::Log` and `Action::Exit`.
+    fn log(&self, _mc: &MC, _sys: &MC::System) {}
+}
+/// An internal detail for implementing a heterogeneous list.
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+pub struct PluginCons<P1, Prest> {
+    first: P1,
+    rest: Prest,
+}
+impl<P1,Prest> PluginCons<P1, Prest> {
+    /// Start creating a list.
+    pub fn new(first: P1, rest: Prest) -> Self {
+        PluginCons { first, rest }
+    }
+}
+impl<MC: MonteCarlo, P1: Plugin<MC>, Prest: PluginList<MC>>
+    PluginList<MC> for PluginCons<P1, Prest>
+{
+    fn run(&self, mc: &MC, sys: &MC::System) -> Action {
+        let a = self.first.run(mc, sys);
+        let b = self.rest.run(mc, sys);
+        if a > b { a } else { b}
+    }
+    fn next_run(&self, mc: &MC) -> u64 {
+        // run plugins every trillion iterations minimum
+        let next_time = self.rest.next_run(mc);
+        match self.first.run_period() {
+            TimeToRun::Never => (),
+            TimeToRun::TotalMoves(moves) => {
+                if moves > mc.num_moves() && moves - mc.num_moves() < next_time {
+                    return moves - mc.num_moves();
+                }
+            }
+            TimeToRun::Period(period) => {
+                if period < next_time {
+                    return period;
+                }
+            }
+        }
+        next_time
+    }
+    fn save(&self, mc: &MC, sys: &MC::System) {
+        self.first.save(mc, sys);
+        self.rest.save(mc, sys);
+    }
+    fn log(&self, mc: &MC, sys: &MC::System) {
+        self.first.log(mc, sys);
+        self.rest.log(mc, sys);
+    }
+}
+/// An internal detail for implementing a heterogeneous list.
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+pub struct PluginNil;
+impl<MC: MonteCarlo> PluginList<MC> for PluginNil {
+    fn run(&self, _mc: &MC, _sys: &MC::System) -> Action {
+        Action::None
+    }
+    fn next_run(&self, _mc: &MC) -> u64 {
+        1 << 40
+    }
+    fn save(&self, _mc: &MC, _sys: &MC::System) {}
+    fn log(&self, _mc: &MC, _sys: &MC::System) {}
+}
+
 /// A time when we want to be run.
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub enum TimeToRun {
@@ -67,17 +150,58 @@ impl Action {
 /// A helper to enable Monte Carlo implementations to easily run their
 /// plugins without duplicating code.
 #[derive(Serialize, Deserialize, Debug)]
-pub struct PluginManager {
+pub struct PluginManager<PL> {
     #[serde(skip, default)]
     period: Cell<u64>,
     #[serde(skip, default)]
     moves: Cell<u64>,
+    /// The actual plugins.
+    pub plugins: PL,
 }
 
-impl PluginManager {
+// #[macro_export]
+// macro_rules! plugins {
+//     ( $first: expr, $( $x:expr ),* ) => {
+//         {
+//             PluginCons {
+//                 first: $first,
+//                 rest: plugins![$($x),*],
+//             }
+//         }
+//     };
+//     ( ) => {
+//         {
+//             PluginNil
+//         }
+//     };
+// }
+#[macro_export]
+macro_rules! plugins {
+    () => { $crate::mc::plugin::PluginNil };
+    (...$Rest:expr) => { $Rest };
+    ($a:expr) => { plugins![$a,] };
+    ($a:expr, $($tok:expr),*) => {
+        $crate::mc::plugin::PluginCons::new($a, plugins![$($tok),*])
+    };
+}
+#[macro_export]
+macro_rules! Plugins {
+    () => { $crate::mc::plugin::PluginNil };
+    (...$Rest:ty) => { $Rest };
+    ($A:ty) => { Plugins![$A,] };
+    ($A:ty, $($tok:ty),*) => {
+        $crate::mc::plugin::PluginCons<$A, Plugins![$($tok),*]>
+    };
+}
+
+impl<PL> PluginManager<PL> {
     /// Create a plugin manager.
-    pub fn new() -> PluginManager {
-        PluginManager { period: Cell::new(1), moves: Cell::new(0) }
+    pub fn new(plugins: PL) -> PluginManager<PL> {
+        PluginManager {
+            period: Cell::new(1),
+            moves: Cell::new(0),
+            plugins: plugins,
+        }
     }
     /// Run all the plugins, if needed.  This should always be called
     /// with the same set of plugins.  If you want different sets of
@@ -141,7 +265,7 @@ pub struct Report {
 
 /// The parameters to define the report information as well as stop
 /// time (which is part of the report).
-#[derive(ClapMe, Debug)]
+#[derive(ClapMe, Debug, Clone)]
 pub struct ReportParams {
     /// The maximum number of iterations to run.
     pub max_iter: Option<u64>,
@@ -243,7 +367,7 @@ pub struct Save {
 }
 
 /// The parameter to define the save schedule
-#[derive(ClapMe, Debug)]
+#[derive(ClapMe, Debug, Clone)]
 pub struct SaveParams {
     /// Maximum time between saves in hours
     pub save_time: Option<f64>,
