@@ -1,6 +1,5 @@
 //! These are different Monte Carlo algorithms.
 
-#[macro_use]
 pub mod plugin;
 pub mod energy;
 
