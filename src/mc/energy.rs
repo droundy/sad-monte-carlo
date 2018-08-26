@@ -25,6 +25,8 @@ pub enum MethodParams {
         /// The t0 parameter, determining how long to leave gamma=1.
         t0: f64,
     },
+    /// Wang-Landau
+    WL,
 }
 
 /// Parameters to configure the moves.
@@ -133,6 +135,15 @@ enum Method {
     Samc {
         t0: f64,
     },
+    /// Wang Landau
+    WL {
+        gamma: f64,
+        lowest_hist: u64,
+        highest_hist: u64,
+        total_hist: u64,
+        hist: Vec<u64>,
+        min_energy: Energy,
+    }
 }
 
 impl Method {
@@ -148,13 +159,21 @@ impl Method {
                     highest_hist: 1,
                 },
             MethodParams::Samc { t0 } => Method::Samc { t0 },
+            MethodParams::WL => Method::WL {
+                gamma: 1.0,
+                lowest_hist: 0,
+                highest_hist: 0,
+                total_hist: 0,
+                hist: Vec::new(),
+                min_energy: E,
+            },
         }
     }
 }
 
 impl Bins {
     /// Find the index corresponding to a given energy.  This should
-    /// panic if the energy is less than `min_energy_bin`.
+    /// panic if the energy is less than `min`.
     pub fn energy_to_index(&self, e: Energy) -> usize {
         *((e - self.min)/self.width).value() as usize
     }
@@ -185,7 +204,7 @@ impl Bins {
 
 impl<S: System> EnergyMC<S> {
     /// Find the index corresponding to a given energy.  This should
-    /// panic if the energy is less than `min_energy_bin`.
+    /// panic if the energy is less than `min`.
     pub fn energy_to_index(&self, e: Energy) -> usize {
         self.bins.energy_to_index(e)
     }
@@ -230,7 +249,7 @@ impl<S: System> EnergyMC<S> {
                 }
                 rejected
             }
-            Method::Samc { .. } => {
+            Method::Samc { .. } | Method::WL { .. } => {
                 let lnw1 = self.bins.lnw[i1].value();
                 let lnw2 = self.bins.lnw[i2].value();
                 lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
@@ -325,6 +344,59 @@ impl<S: System> EnergyMC<S> {
             Method::Samc { t0 } => {
                 let t = self.moves;
                 self.bins.lnw[i] += if t as f64 > t0 { t0/t as f64 } else { 1.0 };
+            }
+            Method::WL { ref mut gamma,
+                         ref mut lowest_hist, ref mut highest_hist, ref mut total_hist,
+                         ref mut hist, ref mut min_energy } => {
+                if hist.len() != self.bins.lnw.len() {
+                    // Oops, we found a new energy, so let's regroup.
+                    if *gamma != 1.0 || hist.len() == 0 {
+                        println!("    WL: Starting fresh with {} energies",
+                                 self.bins.lnw.len());
+                        *gamma = 1.0;
+                        *lowest_hist = 0;
+                        *highest_hist = 0;
+                        *total_hist = 0;
+                        *hist = vec![0; self.bins.lnw.len()];
+                        *min_energy = self.bins.min;
+                    } else {
+                        // We have to adjust our hist Vec, but can
+                        // keep our counts! We just pretend we already
+                        // knew there were more energies to be
+                        // found...
+                        while *min_energy > self.bins.min {
+                            *min_energy -= self.bins.width;
+                            hist.insert(0,0);
+                        }
+                        while hist.len() < self.bins.lnw.len() {
+                            hist.push(0);
+                        }
+                        *lowest_hist = 0;
+                    }
+                }
+                self.bins.lnw[i] += *gamma;
+                hist[i] += 1;
+                if hist[i] > *highest_hist {
+                    *highest_hist = hist[i];
+                }
+                *total_hist += 1;
+                if hist[i] == *lowest_hist + 1
+                    && hist.len() > 1
+                    && hist.iter().map(|&h|h).min() == Some(*lowest_hist+1)
+                {
+                    *lowest_hist = hist[i];
+                    if *lowest_hist as f64 >= 0.8**total_hist as f64 / hist.len() as f64 {
+                        *gamma *= 0.5;
+                        println!("    WL:  We have reached flatness {:.2} with min {}!",
+                                 PrettyFloat(*lowest_hist as f64*hist.len() as f64
+                                             / *total_hist as f64),
+                                 *lowest_hist);
+                        println!("         gamma => {}", PrettyFloat(*gamma));
+                        hist.iter_mut().map(|x| *x = 0).count();
+                        *total_hist = 0;
+                        *lowest_hist = 0;
+                    }
+                }
             }
         }
     }
@@ -481,7 +553,7 @@ impl Default for MoviesParams {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Movies {
     movie_time: Option<f64>,
-    next_frame: Cell<u64>,
+    which_frame: Cell<i32>,
     period: Cell<plugin::TimeToRun>,
     entropy: RefCell<Vec<Vec<f64>>>,
     histogram: RefCell<Vec<Vec<u64>>>,
@@ -493,7 +565,7 @@ impl From<MoviesParams> for Movies {
     fn from(params: MoviesParams) -> Self {
         Movies {
             movie_time: params.movie_time,
-            next_frame: Cell::new(1),
+            which_frame: Cell::new(1),
             period: Cell::new(if params.movie_time.is_some() {
                 plugin::TimeToRun::Period(1)
             } else {
@@ -509,12 +581,12 @@ impl From<MoviesParams> for Movies {
 impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
     fn run(&self, mc: &EnergyMC<S>, _sys: &S) -> plugin::Action {
         if let Some(movie_time) = self.movie_time {
-            let next_frame = self.next_frame.get();
-            if mc.num_moves() == next_frame {
-                println!("        Saving movie after {} moves", next_frame);
+            let moves = mc.num_moves();
+            if plugin::TimeToRun::TotalMoves(moves) == self.period.get() {
+                println!("Saving movie...");
                 // First, let's create the arrays for the time and
                 // energy indices.
-                self.time.borrow_mut().push(next_frame);
+                self.time.borrow_mut().push(moves);
                 let new_energy: Vec<_> =
                     (0 .. mc.bins.lnw.len()).map(|i| mc.index_to_energy(i)).collect();
                 let old_energy = self.energy.replace(new_energy.clone());
@@ -585,9 +657,14 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                 }
 
                 // Now decide when we need the next frame to be.
-                let following_frame = (next_frame as f64*movie_time) as u64;
-                self.next_frame.set(following_frame);
-                self.period.set(plugin::TimeToRun::TotalMoves(following_frame));
+                let mut which_frame = self.which_frame.get() + 1;
+                let mut next_time = (movie_time.powi(which_frame) + 0.5) as u64;
+                while next_time <= moves {
+                    which_frame += 1;
+                    next_time = (movie_time.powi(which_frame) + 0.5) as u64;
+                }
+                self.which_frame.set(which_frame);
+                self.period.set(plugin::TimeToRun::TotalMoves(next_time));
                 return plugin::Action::Save;
             }
         }
@@ -645,5 +722,12 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                  mc.index_to_energy(mc.bins.max_S_index)/units::EPSILON,
                  sys.energy()/units::EPSILON,
         );
+        if let Method::WL { lowest_hist, highest_hist, total_hist, .. } = mc.method {
+            println!("        WL:  flatness {:.1} with min {:.2} and max {:.2}!",
+                     PrettyFloat(lowest_hist as f64*mc.bins.lnw.len() as f64
+                                 / total_hist as f64),
+                     PrettyFloat(lowest_hist as f64),
+                     PrettyFloat(highest_hist as f64));
+        }
     }
 }
