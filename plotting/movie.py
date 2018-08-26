@@ -14,7 +14,7 @@ def latex_float(x):
     else:
         return '%g' % x
 
-allcolors = ['g','r','b',]
+allcolors = ['g','r','b','c',]
 
 my_energy = {}
 my_histogram = {}

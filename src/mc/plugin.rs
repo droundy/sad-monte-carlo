@@ -6,6 +6,7 @@ use super::*;
 use std::cell::Cell;
 use std::default::Default;
 use std::time;
+use prettyfloat::PrettyFloat;
 
 /// A `Plugin` is an object that can be used to configure a MonteCarlo
 /// simulation.  The plugin will be called regularly, and will have a
@@ -203,13 +204,13 @@ impl<MC: MonteCarlo> Plugin<MC> for Report {
                     let moves_left = if max >= moves { max - moves } else { 0 };
                     let time_left = (time_per_move*moves_left as f64) as u64;
                     println!("[{}] {}% complete after {} ({} left)",
-                             moves,
+                             PrettyFloat(moves as f64),
                              (100.*frac_complete) as isize,
                              format_duration(runtime.as_secs()),
                              format_duration(time_left));
                 } else {
                     println!("[{}] after {}",
-                             moves,
+                             PrettyFloat(moves as f64),
                              format_duration(runtime.as_secs()),
                     );
                 }

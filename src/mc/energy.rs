@@ -565,9 +565,9 @@ impl From<MoviesParams> for Movies {
     fn from(params: MoviesParams) -> Self {
         Movies {
             movie_time: params.movie_time,
-            which_frame: Cell::new(1),
+            which_frame: Cell::new(0),
             period: Cell::new(if params.movie_time.is_some() {
-                plugin::TimeToRun::Period(1)
+                plugin::TimeToRun::TotalMoves(1)
             } else {
                 plugin::TimeToRun::Never
             }),
