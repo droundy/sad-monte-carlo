@@ -53,44 +53,64 @@ while True:
         for fname in my_energy.keys():
             if i < len(my_time[fname]):
                 t = my_time[fname][i]
+                j = i
+            else:
+                j = -1
 
-                all_figures.add(plt.figure('Entropy'))
-                if i > 0:
-                    plt.plot(my_energy[fname], my_entropy[fname][i-1,:], my_color[fname],
-                             alpha=0.2)
-                plt.plot(my_energy[fname], my_entropy[fname][i,:], my_color[fname],
+            all_figures.add(plt.figure('Entropy'))
+            if j > 0:
+                plt.plot(my_energy[fname], my_entropy[fname][j-1,:], my_color[fname],
+                         alpha=0.2)
+            if j == -1:
+                plt.plot(my_energy[fname], my_entropy[fname][j,:], my_color[fname],
+                         label=fname+' '+latex_float(len(my_entropy[fname])),
+                         alpha=0.2)
+            else:
+                plt.plot(my_energy[fname], my_entropy[fname][j,:], my_color[fname],
                          label=fname)
-                plt.title('$t=%s/%s$' % (latex_float(t),
-                                         latex_float(my_time[fname][-1])))
-                plt.ylabel('$S$')
-                plt.legend(loc='best')
+            plt.title('$t=%s/%s$' % (latex_float(t),
+                                     latex_float(my_time[fname][-1])))
+            plt.ylabel('$S$')
+            plt.legend(loc='best')
 
-                all_figures.add(plt.figure('Normed entropy'))
-                if i > 0:
-                    plt.plot(my_energy[fname],
-                             my_entropy[fname][i-1,:]-my_entropy[fname][i-1,:].max(),
-                             my_color[fname],
-                             alpha=0.2)
+            all_figures.add(plt.figure('Normed entropy'))
+            if j > 0:
                 plt.plot(my_energy[fname],
-                         my_entropy[fname][i,:]-my_entropy[fname][i,:].max(),
+                         my_entropy[fname][i-1,:]-my_entropy[fname][j-1,:].max(),
+                         my_color[fname],
+                         alpha=0.2)
+            if j == -1:
+                plt.plot(my_energy[fname],
+                         my_entropy[fname][j,:]-my_entropy[fname][j,:].max(),
+                         my_color[fname],
+                         label=fname+' '+latex_float(len(my_entropy[fname])),
+                         alpha=0.2)
+            else:
+                plt.plot(my_energy[fname],
+                         my_entropy[fname][j,:]-my_entropy[fname][j,:].max(),
                          my_color[fname],
                          label=fname)
-                plt.title('$t=%s/%s$' % (latex_float(t),
-                                         latex_float(my_time[fname][-1])))
-                plt.ylabel('$S$')
-                plt.legend(loc='best')
-                plt.ylim(Smin, 0)
+            plt.title('$t=%s/%s$' % (latex_float(t),
+                                     latex_float(my_time[fname][-1])))
+            plt.ylabel('$S$')
+            plt.legend(loc='best')
+            plt.ylim(Smin, 0)
 
-                all_figures.add(plt.figure('Histogram'))
-                plt.title('$t=%s/%s$' % (latex_float(t),
-                                         latex_float(my_time[fname][-1])))
-                plt.ylabel('histogram')
-                if i > 0:
-                    plt.plot(my_energy[fname], my_histogram[fname][i-1,:], my_color[fname],
-                             alpha=0.2)
-                plt.plot(my_energy[fname], my_histogram[fname][i,:], my_color[fname],
+            all_figures.add(plt.figure('Histogram'))
+            plt.title('$t=%s/%s$' % (latex_float(t),
+                                     latex_float(my_time[fname][-1])))
+            plt.ylabel('histogram')
+            if j > 0:
+                plt.plot(my_energy[fname], my_histogram[fname][j-1,:], my_color[fname],
+                         alpha=0.2)
+            if j == -1:
+                plt.plot(my_energy[fname], my_histogram[fname][j,:], my_color[fname],
+                         label=fname+' '+latex_float(len(my_entropy[fname])),
+                         alpha=0.2)
+            else:
+                plt.plot(my_energy[fname], my_histogram[fname][j,:], my_color[fname],
                          label=fname)
-                plt.legend(loc='best')
+            plt.legend(loc='best')
         plt.pause(1.0)
 
 plt.ioff()
