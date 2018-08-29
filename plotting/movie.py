@@ -22,6 +22,8 @@ my_entropy = {}
 my_time = {}
 my_color = {}
 max_iter = 0
+my_gamma = {}
+my_gamma_t = {}
 Smin = None
 for fname in sys.argv[1:]:
     print(fname)
@@ -37,13 +39,23 @@ for fname in sys.argv[1:]:
         max_iter = len(my_time[fname])
     my_entropy[fname] = np.array(data['movies']['entropy'])
     my_histogram[fname] = np.array(data['movies']['histogram'])
+    my_gamma[fname] = np.array(data['movies']['gamma'])
+    my_gamma_t[fname] = np.array(data['movies']['gamma_time'])
     if Smin is None:
         Ebest = my_energy[fname];
         Sbest = my_entropy[fname][-1,:]
         Smin = Sbest[Sbest!=0].min() - Sbest.max()
 
-all_figures = set()
 plt.ion()
+
+plt.figure('gamma')
+for fname in my_energy.keys():
+        plt.loglog(my_gamma_t[fname], my_gamma[fname], label=fname)
+plt.legend(loc='best')
+plt.xlabel('$t$')
+plt.ylabel(r'$\gamma$')
+
+all_figures = set()
 while True:
     for i in range(max_iter):
         for fig in all_figures:
