@@ -259,19 +259,17 @@ impl<S: System> EnergyMC<S> {
     /// This updates the lnw based on the actual method in use.
     fn update_weights(&mut self, energy: Energy) {
         let i = self.energy_to_index(energy);
+        let gamma = self.gamma(); // compute gamma out front...
+        let old_lnw = self.bins.lnw[i];
+        self.bins.lnw[i] += gamma;
+        let mut gamma_changed = false;
         match self.method {
             Method::Sad { min_T, ref mut too_lo, ref mut too_hi, ref mut num_states,
                           ref mut tL, ref mut highest_hist, .. } => {
                 let histogram = &self.bins.histogram;
-                if *too_lo < *too_hi && energy >= *too_lo && energy <= *too_hi {
-                    let t = self.moves as f64;
-                    let tL = *tL as f64;
-                    let dE = *too_hi - *too_lo;
-                    let Ns = *num_states as f64;
-                    let Smean = dE/(3.0*min_T);
-
-                    let gamma = (Smean + t/tL)/(Smean + t/Ns*t/tL);
-                    self.bins.lnw[i] += gamma;
+                if *too_lo > *too_hi || energy < *too_lo || energy > *too_hi {
+                    // Ooops, we didn't want to add gamma after all...
+                    self.bins.lnw[i] = old_lnw;
                 }
 
                 if histogram[i] > *highest_hist {
@@ -314,6 +312,7 @@ impl<S: System> EnergyMC<S> {
                     }
                 }
                 if *tL == self.moves {
+                    gamma_changed = true;
                     // We just discovered a new important energy.
                     // Let's take this as an opportunity to revise our
                     // translation scale, and also to log the news.
@@ -341,10 +340,7 @@ impl<S: System> EnergyMC<S> {
                     }
                 }
             }
-            Method::Samc { t0 } => {
-                let t = self.moves;
-                self.bins.lnw[i] += if t as f64 > t0 { t0/t as f64 } else { 1.0 };
-            }
+            Method::Samc { .. } => {}
             Method::WL { ref mut gamma,
                          ref mut lowest_hist, ref mut highest_hist, ref mut total_hist,
                          ref mut hist, ref mut min_energy } => {
@@ -353,6 +349,7 @@ impl<S: System> EnergyMC<S> {
                     if *gamma != 1.0 || hist.len() == 0 {
                         println!("    WL: Starting fresh with {} energies",
                                  self.bins.lnw.len());
+                        gamma_changed = true;
                         *gamma = 1.0;
                         *lowest_hist = 0;
                         *highest_hist = 0;
@@ -374,7 +371,6 @@ impl<S: System> EnergyMC<S> {
                         *lowest_hist = 0;
                     }
                 }
-                self.bins.lnw[i] += *gamma;
                 hist[i] += 1;
                 if hist[i] > *highest_hist {
                     *highest_hist = hist[i];
@@ -386,6 +382,7 @@ impl<S: System> EnergyMC<S> {
                 {
                     *lowest_hist = hist[i];
                     if *lowest_hist as f64 >= 0.8**total_hist as f64 / hist.len() as f64 {
+                        gamma_changed = true;
                         *gamma *= 0.5;
                         println!("    WL:  We have reached flatness {:.2} with min {}!",
                                  PrettyFloat(*lowest_hist as f64*hist.len() as f64
@@ -398,6 +395,10 @@ impl<S: System> EnergyMC<S> {
                     }
                 }
             }
+        }
+        if gamma_changed {
+            self.movies.new_gamma(self.moves, gamma);
+            self.movies.new_gamma(self.moves, self.gamma());
         }
     }
 
@@ -428,6 +429,28 @@ impl<S: System> EnergyMC<S> {
             return Tlo;
         }
         return Thi;
+    }
+}
+
+impl<S> EnergyMC<S> {
+    fn gamma(&self) -> f64 {
+        match self.method {
+            Method::Sad { min_T, too_lo, too_hi, num_states, tL, .. } => {
+                let t = self.moves as f64;
+                let tL = tL as f64;
+                let dE = too_hi - too_lo;
+                let Ns = num_states as f64;
+                let Smean = dE/(3.0*min_T);
+                *((Smean + t/tL)/(Smean + t/Ns*t/tL)).value()
+            }
+            Method::Samc { t0 } => {
+                let t = self.moves as f64;
+                if t > t0 { t0/t } else { 1.0 }
+            }
+            Method::WL { gamma, .. } => {
+                gamma
+            }
+        }
     }
 }
 
@@ -559,6 +582,10 @@ pub struct Movies {
     histogram: RefCell<Vec<Vec<u64>>>,
     time: RefCell<Vec<u64>>,
     energy: RefCell<Vec<Energy>>,
+    #[serde(default)]
+    gamma: RefCell<Vec<f64>>,
+    #[serde(default)]
+    gamma_time: RefCell<Vec<u64>>,
 }
 
 impl From<MoviesParams> for Movies {
@@ -575,7 +602,15 @@ impl From<MoviesParams> for Movies {
             histogram: RefCell::new(Vec::new()),
             time: RefCell::new(Vec::new()),
             energy: RefCell::new(Vec::new()),
+            gamma: RefCell::new(Vec::new()),
+            gamma_time: RefCell::new(Vec::new()),
         }
+    }
+}
+impl Movies {
+    fn new_gamma(&self, t: u64, gamma: f64) {
+        self.gamma.borrow_mut().push(gamma);
+        self.gamma_time.borrow_mut().push(t);
     }
 }
 impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
@@ -584,6 +619,7 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
             let moves = mc.num_moves();
             if plugin::TimeToRun::TotalMoves(moves) == self.period.get() {
                 println!("Saving movie...");
+                self.new_gamma(moves, mc.gamma());
                 // First, let's create the arrays for the time and
                 // energy indices.
                 self.time.borrow_mut().push(moves);
