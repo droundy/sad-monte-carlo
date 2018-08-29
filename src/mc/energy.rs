@@ -436,12 +436,16 @@ impl<S> EnergyMC<S> {
     fn gamma(&self) -> f64 {
         match self.method {
             Method::Sad { min_T, too_lo, too_hi, num_states, tL, .. } => {
-                let t = self.moves as f64;
-                let tL = tL as f64;
-                let dE = too_hi - too_lo;
-                let Ns = num_states as f64;
-                let Smean = dE/(3.0*min_T);
-                *((Smean + t/tL)/(Smean + t/Ns*t/tL)).value()
+                if too_hi > too_lo {
+                    let t = self.moves as f64;
+                    let tL = tL as f64;
+                    let dE = too_hi - too_lo;
+                    let Ns = num_states as f64;
+                    let Smean = dE/(3.0*min_T);
+                    *((Smean + t/tL)/(Smean + t/Ns*t/tL)).value()
+                } else {
+                    0.0
+                }
             }
             Method::Samc { t0 } => {
                 let t = self.moves as f64;
