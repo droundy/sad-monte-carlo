@@ -754,20 +754,22 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
             .unwrap_or("-".to_string());
         let hundred_trips = hundred_trips.map(|e| format!("{}", e/units::EPSILON))
             .unwrap_or("-".to_string());
-        println!("   {} * {}{} * {}{} * {}{} | {} currently {}",
-                 one_trip,
-                 ten_trips, ten_T,
-                 hundred_trips, hundred_T,
-                 thousand_trips, thousand_T,
-                 mc.index_to_energy(mc.bins.max_S_index)/units::EPSILON,
-                 sys.energy()/units::EPSILON,
-        );
-        if let Method::WL { lowest_hist, highest_hist, total_hist, .. } = mc.method {
-            println!("        WL:  flatness {:.1} with min {:.2} and max {:.2}!",
-                     PrettyFloat(lowest_hist as f64*mc.bins.lnw.len() as f64
-                                 / total_hist as f64),
-                     PrettyFloat(lowest_hist as f64),
-                     PrettyFloat(highest_hist as f64));
+        if !mc.report.quiet {
+            println!("   {} * {}{} * {}{} * {}{} | {} currently {}",
+                     one_trip,
+                     ten_trips, ten_T,
+                     hundred_trips, hundred_T,
+                     thousand_trips, thousand_T,
+                     mc.index_to_energy(mc.bins.max_S_index)/units::EPSILON,
+                     sys.energy()/units::EPSILON,
+            );
+            if let Method::WL { lowest_hist, highest_hist, total_hist, .. } = mc.method {
+                println!("        WL:  flatness {:.1} with min {:.2} and max {:.2}!",
+                         PrettyFloat(lowest_hist as f64*mc.bins.lnw.len() as f64
+                                     / total_hist as f64),
+                         PrettyFloat(lowest_hist as f64),
+                         PrettyFloat(highest_hist as f64));
+            }
         }
     }
 }
