@@ -292,10 +292,15 @@ impl<MC: MonteCarlo> Plugin<MC> for Save {
                         duration_to_secs(runtime)/(moves - start_iter) as f64;
                     let moves_per_period = 1 + (period/time_per_move) as u64;
                     self.next_output.set(moves + moves_per_period);
+                    println!("        Took {:.2} seconds per move, {:.2} moves to next save",
+                             PrettyFloat(time_per_move),
+                             PrettyFloat(moves_per_period as f64));
                 }
                 None => {
                     self.start.set(Some((time::Instant::now(), mc.num_moves())));
                     self.next_output.set(mc.num_moves() + 1<<20);
+                    println!("We just restarted, setting next save at {} moves.",
+                             self.next_output.get());
                 }
             }
         } else {
