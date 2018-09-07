@@ -14,7 +14,8 @@ def latex_float(x):
     else:
         return '%g' % x
 
-allcolors = ['g','r','b','c',]
+allcolors = list(reversed(['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple',
+                           'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']))
 
 my_energy = {}
 my_histogram = {}
@@ -50,7 +51,7 @@ plt.ion()
 
 plt.figure('gamma')
 for fname in my_energy.keys():
-        plt.loglog(my_gamma_t[fname], my_gamma[fname], label=fname)
+        plt.loglog(my_gamma_t[fname], my_gamma[fname], color=my_color[fname], label=fname)
 plt.legend(loc='best')
 plt.xlabel('$t$')
 plt.ylabel(r'$\gamma$')
