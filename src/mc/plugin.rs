@@ -197,22 +197,22 @@ impl<MC: MonteCarlo> Plugin<MC> for Report {
             Some((start_time, start_iter)) => {
                 let moves = mc.num_moves();
                 let runtime = start_time.elapsed();
+                let time_per_move = duration_to_secs(runtime)/(moves - start_iter) as f64;
                 if let TimeToRun::TotalMoves(max) = self.max_iter {
-                    let time_per_move =
-                        duration_to_secs(runtime)/(moves - start_iter) as f64;
                     let frac_complete = moves as f64/max as f64;
                     let moves_left = if max >= moves { max - moves } else { 0 };
                     let time_left = (time_per_move*moves_left as f64) as u64;
-                    println!("[{}] {}% complete after {} ({} left)",
+                    println!("[{}] {}% complete after {} ({} left, {:.1}us per move)",
                              PrettyFloat(moves as f64),
                              (100.*frac_complete) as isize,
                              format_duration(runtime.as_secs()),
-                             format_duration(time_left));
+                             format_duration(time_left),
+                             PrettyFloat(time_per_move*1e6));
                 } else {
-                    println!("[{}] after {}",
+                    println!("[{}] after {} ({:.1}us per move)",
                              PrettyFloat(moves as f64),
                              format_duration(runtime.as_secs()),
-                    );
+                             PrettyFloat(time_per_move*1e6));
                 }
             }
             None => {
@@ -292,9 +292,6 @@ impl<MC: MonteCarlo> Plugin<MC> for Save {
                         duration_to_secs(runtime)/(moves - start_iter) as f64;
                     let moves_per_period = 1 + (period/time_per_move) as u64;
                     self.next_output.set(moves + moves_per_period);
-                    println!("        Took {:.2} seconds per move, {:.2} moves to next save",
-                             PrettyFloat(time_per_move),
-                             PrettyFloat(moves_per_period as f64));
                 }
                 None => {
                     self.start.set(Some((time::Instant::now(), mc.num_moves())));
