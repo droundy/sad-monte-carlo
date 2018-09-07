@@ -2,13 +2,7 @@
 
 use super::*;
 
-use dimensioned::Dimensionless;
-use dimensioned::{Cbrt,Abs};
-use vector3d::Vector3d;
 use rand::prelude::*;
-use rand::distributions::Uniform;
-use std::f64::consts::PI;
-use std::default::Default;
 
 /// The parameters needed to configure a square well system.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
@@ -32,11 +26,6 @@ pub struct Ising {
     last_changed: Option<(usize, Energy)>,
 }
 
-fn modulus(i: isize, sz: usize) -> usize {
-    let sz = sz as isize;
-    (((i % sz) + sz) % sz) as usize
-}
-
 impl From<IsingParams> for Ising {
     fn from(params: IsingParams) -> Ising {
         let mut ising = Ising {
@@ -45,6 +34,11 @@ impl From<IsingParams> for Ising {
             S: vec![1; params.N*params.N],
             last_changed: None,
         };
+        assert!(ising.N > 1); // otherwise, we are our own neighbor!
+        let mut rng = ::rng::MyRng::from_u64(10137);
+        for s in ising.S.iter_mut() {
+            *s = *rng.choose(&[-1,1]).unwrap();
+        }
         ising.E = ising.compute_energy();
         ising
     }
@@ -87,6 +81,44 @@ impl UndoSystem for Ising {
 
 impl MovableSystem for Ising {
     fn move_once(&mut self, rng: &mut MyRng, _: Length) -> Option<Energy> {
-        Some(self.E)
+        let i = rng.gen_range(0, self.N);
+        let j = rng.gen_range(0, self.N);
+        self.S[i+j*self.N] *= -1;
+        self.last_changed = Some((i+j*self.N, self.E));
+
+        let j2 = (j + 1) % self.N;
+        let mut neighbor_tot = self.S[i + j2*self.N];
+        let j2 = (j + self.N - 1) % self.N;
+        neighbor_tot += self.S[i + j2*self.N];
+        let i2 = (i + 1) % self.N;
+        neighbor_tot += self.S[i2 + j*self.N];
+        let i2 = (i + self.N - 1) % self.N;
+        neighbor_tot += self.S[i2 + j*self.N];
+        let e = neighbor_tot as f64 * self.S[i+j*self.N] as f64 * Energy::new(2.0);
+        self.E += e;
+        Some(e)
+    }
+}
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+fn energy_works_with_N(N: usize) {
+    let mut ising = Ising::from(IsingParams { N: N });
+
+    println!("starting energy...");
+    assert_eq!(ising.energy(), ising.compute_energy());
+
+    let mut rng = ::rng::MyRng::from_u64(10137);
+    for _ in 0..10000 {
+        ising.move_once(&mut rng, Length::new(0.0));
+        assert_eq!(ising.energy(), ising.compute_energy());
+    }
+}
+
+#[test]
+fn energy_works() {
+    for &n in &[2,3,10,15,137,150] {
+        println!("testing with N={}", n);
+        energy_works_with_N(n);
     }
 }
