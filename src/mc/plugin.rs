@@ -298,9 +298,7 @@ impl<MC: MonteCarlo> Plugin<MC> for Save {
                 }
                 None => {
                     self.start.set(Some((time::Instant::now(), mc.num_moves())));
-                    self.next_output.set(mc.num_moves() + 1<<20);
-                    println!("We just restarted, setting next save at {} moves.",
-                             self.next_output.get());
+                    self.next_output.set(mc.num_moves() + (1<<20));
                 }
             }
         } else {
