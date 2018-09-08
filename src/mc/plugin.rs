@@ -224,8 +224,9 @@ impl<MC: MonteCarlo> Plugin<MC> for Report {
         if self.quiet { return; }
         let accepted = mc.num_accepted_moves();
         let moves = mc.num_moves();
-        println!("        Accepted {}/{} = {:.0}% of the moves",
-                 accepted, moves, 100.0*accepted as f64/moves as f64);
+        println!("        Accepted {:.2}/{:.2} = {:.0}% of the moves",
+                 PrettyFloat(accepted as f64), PrettyFloat(moves as f64),
+                 100.0*accepted as f64/moves as f64);
     }
 }
 
