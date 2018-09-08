@@ -141,6 +141,7 @@ enum Method {
         lowest_hist: u64,
         highest_hist: u64,
         total_hist: u64,
+        num_states: f64,
         hist: Vec<u64>,
         min_energy: Energy,
     }
@@ -161,9 +162,10 @@ impl Method {
             MethodParams::Samc { t0 } => Method::Samc { t0 },
             MethodParams::WL => Method::WL {
                 gamma: 1.0,
-                lowest_hist: 0,
-                highest_hist: 0,
+                lowest_hist: 1,
+                highest_hist: 1,
                 total_hist: 0,
+                num_states: 1.0,
                 hist: Vec::new(),
                 min_energy: E,
             },
@@ -249,10 +251,19 @@ impl<S: System> EnergyMC<S> {
                 }
                 rejected
             }
-            Method::Samc { .. } | Method::WL { .. } => {
+            Method::Samc { .. } => {
                 let lnw1 = self.bins.lnw[i1].value();
                 let lnw2 = self.bins.lnw[i2].value();
                 lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
+            }
+            Method::WL { ref mut num_states, .. } => {
+                let lnw1 = self.bins.lnw[i1].value();
+                let lnw2 = self.bins.lnw[i2].value();
+                let rejected = lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp();
+                if !rejected && self.bins.histogram[i2] == 0 {
+                    *num_states += 1.0;
+                }
+                rejected
             }
         }
     }
@@ -343,7 +354,7 @@ impl<S: System> EnergyMC<S> {
             Method::Samc { .. } => {}
             Method::WL { ref mut gamma,
                          ref mut lowest_hist, ref mut highest_hist, ref mut total_hist,
-                         ref mut hist, ref mut min_energy } => {
+                         ref mut hist, ref mut min_energy, num_states } => {
                 if hist.len() != self.bins.lnw.len() {
                     // Oops, we found a new energy, so let's regroup.
                     if *gamma != 1.0 || hist.len() == 0 {
@@ -376,16 +387,19 @@ impl<S: System> EnergyMC<S> {
                     *highest_hist = hist[i];
                 }
                 *total_hist += 1;
+                let histogram = &self.bins.histogram;
                 if hist[i] == *lowest_hist + 1
                     && hist.len() > 1
-                    && hist.iter().map(|&h|h).min() == Some(*lowest_hist+1)
+                    && hist.iter().enumerate()
+                          .filter(|(i,_)| histogram[*i] != 0)
+                          .map(|(_,&h)|h).min() == Some(*lowest_hist+1)
                 {
                     *lowest_hist = hist[i];
-                    if *lowest_hist as f64 >= 0.8**total_hist as f64 / hist.len() as f64 {
+                    if *lowest_hist as f64 >= 0.8**total_hist as f64 / num_states {
                         gamma_changed = true;
                         *gamma *= 0.5;
                         println!("    WL:  We have reached flatness {:.2} with min {}!",
-                                 PrettyFloat(*lowest_hist as f64*hist.len() as f64
+                                 PrettyFloat(*lowest_hist as f64*num_states
                                              / *total_hist as f64),
                                  *lowest_hist);
                         println!("         gamma => {}", PrettyFloat(*gamma));
@@ -763,12 +777,25 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                      mc.index_to_energy(mc.bins.max_S_index)/units::EPSILON,
                      sys.energy()/units::EPSILON,
             );
-            if let Method::WL { lowest_hist, highest_hist, total_hist, .. } = mc.method {
-                println!("        WL:  flatness {:.1} with min {:.2} and max {:.2}!",
-                         PrettyFloat(lowest_hist as f64*mc.bins.lnw.len() as f64
+            if let Method::WL { lowest_hist, highest_hist, total_hist, num_states,
+                                ref hist, .. } = mc.method {
+                let mut lowest = 111111111;
+                let mut highest = 111111111;
+                for (i,&h) in hist.iter().enumerate() {
+                    if h == lowest_hist && mc.bins.histogram[i] != 0 {
+                        lowest = i;
+                    }
+                    if h == highest_hist && mc.bins.histogram[i] != 0 {
+                        highest = i;
+                    }
+                }
+                println!("        WL:  flatness {:.1} with min {:.2} at {} and max {:.2} at {}!",
+                         PrettyFloat(lowest_hist as f64*num_states as f64
                                      / total_hist as f64),
                          PrettyFloat(lowest_hist as f64),
-                         PrettyFloat(highest_hist as f64));
+                         mc.index_to_energy(lowest),
+                         PrettyFloat(highest_hist as f64),
+                         mc.index_to_energy(highest));
             }
         }
     }
