@@ -66,7 +66,7 @@ impl System for Ising {
         e
     }
     fn delta_energy(&self) -> Option<Energy> {
-        Some(2.*units::EPSILON)
+        Some(4.*units::EPSILON)
     }
 }
 
