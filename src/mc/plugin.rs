@@ -314,7 +314,7 @@ fn format_duration(secs: u64) -> String {
     } else if mins < 1 {
         format!("{} seconds", secs)
     } else if mins == 1 {
-        format!("1 minute {} seconds", secs)
+        format!("1 minute {} seconds", secs % 60)
     } else if hours < 1 {
         format!("{} minutes", mins)
     } else if hours < 2 {
