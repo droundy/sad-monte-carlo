@@ -4,7 +4,7 @@ set -ev
 
 cargo build --release
 
-STANDARD_FLAGS=( --movie-time '10^(1/4)' --translation-scale 1 --save-time 0.5 --max-iter 1e11 )
+STANDARD_FLAGS=( --movie-time '10^(1/4)' --translation-scale 1 --save-time 0.5 --max-iter 1e12 )
 
 rq run -R -J ising-15-sad target/release/ising-mc --N 15 --sad-min-T 0.1 --save-as ising-15-sad.yaml ${STANDARD_FLAGS[@]}
 
