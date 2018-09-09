@@ -398,11 +398,13 @@ impl<S: System> EnergyMC<S> {
                     if *lowest_hist as f64 >= 0.8**total_hist as f64 / num_states {
                         gamma_changed = true;
                         *gamma *= 0.5;
-                        println!("    WL:  We have reached flatness {:.2} with min {}!",
-                                 PrettyFloat(*lowest_hist as f64*num_states
-                                             / *total_hist as f64),
-                                 *lowest_hist);
-                        println!("         gamma => {}", PrettyFloat(*gamma));
+                        if *gamma > 1e-16 {
+                            println!("    WL:  We have reached flatness {:.2} with min {}!",
+                                     PrettyFloat(*lowest_hist as f64*num_states
+                                                 / *total_hist as f64),
+                                     *lowest_hist);
+                            println!("         gamma => {}", PrettyFloat(*gamma));
+                        }
                         hist.iter_mut().map(|x| *x = 0).count();
                         *total_hist = 0;
                         *lowest_hist = 0;
