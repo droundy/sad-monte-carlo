@@ -26,6 +26,7 @@ max_iter = 0
 my_gamma = {}
 my_gamma_t = {}
 Smin = None
+minT = 0.5
 for fname in sys.argv[1:]:
     print(fname)
     with open(fname) as f:
@@ -42,10 +43,19 @@ for fname in sys.argv[1:]:
     my_histogram[fname] = np.array(data['movies']['histogram'])
     my_gamma[fname] = np.array(data['movies']['gamma'])
     my_gamma_t[fname] = np.array(data['movies']['gamma_time'])
+    if 'Sad' in data['method']:
+        minT = data['method']['Sad']['min_T']
     if Smin is None:
         Ebest = my_energy[fname];
         Sbest = my_entropy[fname][-1,:]
         Smin = Sbest[Sbest!=0].min() - Sbest.max()
+
+EmaxS = Ebest[np.argmax(Sbest)]
+EminT = Ebest[np.argmax(Sbest*minT - Ebest)]
+ind_minT = np.argwhere(Ebest == EminT)[0][0]
+ind_maxS = np.argwhere(Ebest == EmaxS)[0][0]
+print(ind_minT, ind_maxS)
+Sbest_interesting = Sbest[np.argwhere(Ebest == EminT)[0][0]:np.argwhere(Ebest == EmaxS)[0][0]+1]
 
 plt.ion()
 
@@ -55,6 +65,21 @@ for fname in my_energy.keys():
 plt.legend(loc='best')
 plt.xlabel('$t$')
 plt.ylabel(r'$\gamma$')
+
+plt.figure('comparison')
+for fname in my_energy.keys():
+    errors = np.zeros(len(my_time[fname]))
+    ind_minT = np.argwhere(my_energy[fname] == EminT)[0][0]
+    ind_maxS = np.argwhere(my_energy[fname] == EmaxS)[0][0]
+    for i in range(len(my_time[fname])):
+        S_interesting = my_entropy[fname][i,ind_minT:ind_maxS+1]
+        e = S_interesting - Sbest_interesting
+        e -= e.mean()
+        errors[i] = np.sqrt((e**2).mean())
+    plt.loglog(my_time[fname], errors, color=my_color[fname], label=fname)
+plt.legend(loc='best')
+plt.xlabel('$t$')
+plt.ylabel(r'rms entropy error')
 
 all_figures = set()
 while True:
