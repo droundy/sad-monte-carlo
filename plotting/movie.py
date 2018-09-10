@@ -66,6 +66,7 @@ for fname in my_energy.keys():
 plt.legend(loc='best')
 plt.xlabel('$t$')
 plt.ylabel(r'$\gamma$')
+plt.ylim(1e-12, 1.1)
 
 def convex_hull(S):
     convexS = np.zeros_like(S)
@@ -170,11 +171,11 @@ while True:
                          my_entropy[fname][j,:]-my_entropy[fname][j,:].max(),
                          my_color[fname],
                          label=fname)
-                plt.plot(my_energy[fname],
-                         convex_hull(my_entropy[fname][j,:])-my_entropy[fname][j,:].max(),
-                         ':',
-                         color=my_color[fname],
-                         label=fname)
+                # plt.plot(my_energy[fname],
+                #          convex_hull(my_entropy[fname][j,:])-my_entropy[fname][j,:].max(),
+                #          ':',
+                #          color=my_color[fname],
+                #          label=fname)
             plt.title('$t=%s/%s$' % (latex_float(t),
                                      latex_float(my_time[fname][-1])))
             plt.ylabel('$S$')
