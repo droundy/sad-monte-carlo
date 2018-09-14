@@ -188,7 +188,35 @@ impl<'a> Iterator for NewNeighborIterator<'a> {
         }
     }
 }
+
 impl Cell {
+    /// Create a new Cell with specified dimensions and interaction length.
+    pub fn new(dim: &CellDimensions, interaction_length: Length) -> Self {
+        let box_diagonal = match dim {
+            CellDimensions::CellWidth(w) => {
+                Vector3d::new(w.x.abs(),w.y.abs(),w.z.abs())
+            },
+            CellDimensions::CellVolume(v) => {
+                let w = v.cbrt();
+                Vector3d::new(w,w,w)
+            }
+        };
+        let mut cells_x = (box_diagonal.x/interaction_length).value().floor() as usize;
+        let mut cells_y = (box_diagonal.y/interaction_length).value().floor() as usize;
+        let mut cells_z = (box_diagonal.z/interaction_length).value().floor() as usize;
+        if cells_z < 4 || cells_y < 4 || cells_x < 4 {
+            cells_z = 1;
+            cells_y = 1;
+            cells_x = 1;
+        }
+        Cell {
+            box_diagonal: box_diagonal,
+            well_width: interaction_length,
+            positions: Vec::new(),
+            num_subcells: Vector3d::new(cells_x,cells_y,cells_z),
+            subcells: vec![Vec::new(); cells_x*cells_y*cells_z],
+        }
+    }
     /// Atoms that may be within well_width of r.
     pub fn maybe_interacting_atoms<'a>(&'a self, r: Vector3d<Length>)
                                        -> impl Iterator<Item=Vector3d<Length>> + 'a {
@@ -579,33 +607,9 @@ impl SquareWell {
 
 impl From<SquareWellParams> for SquareWell {
     fn from(params: SquareWellParams) -> SquareWell {
-        let box_diagonal = match params._dim {
-            CellDimensions::CellWidth(w) => {
-                Vector3d::new(w.x.abs(),w.y.abs(),w.z.abs())
-            },
-            CellDimensions::CellVolume(v) => {
-                let w = v.cbrt();
-                Vector3d::new(w,w,w)
-            }
-        };
-        let biggest_wid = params.well_width*units::SIGMA;
-        let mut cells_x = (box_diagonal.x/biggest_wid).value().floor() as usize;
-        let mut cells_y = (box_diagonal.y/biggest_wid).value().floor() as usize;
-        let mut cells_z = (box_diagonal.z/biggest_wid).value().floor() as usize;
-        if cells_z < 4 || cells_y < 4 || cells_x < 4 {
-            cells_z = 1;
-            cells_y = 1;
-            cells_x = 1;
-        }
         SquareWell {
             E: 0.0*units::EPSILON,
-            cell: Cell {
-                box_diagonal: box_diagonal,
-                well_width: params.well_width*units::SIGMA,
-                positions: Vec::new(),
-                num_subcells: Vector3d::new(cells_x,cells_y,cells_z),
-                subcells: vec![Vec::new(); cells_x*cells_y*cells_z],
-            },
+            cell: Cell::new(&params._dim, params.well_width*units::SIGMA),
             possible_change: Change::None,
         }
     }
