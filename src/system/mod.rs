@@ -5,6 +5,7 @@ use super::rng::MyRng;
 
 pub mod units;
 pub mod cell;
+pub mod optcell;
 
 pub mod ising;
 pub mod square;
