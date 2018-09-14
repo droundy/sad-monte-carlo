@@ -9,7 +9,7 @@ use rand::distributions::Uniform;
 use std::f64::consts::PI;
 use std::default::Default;
 
-use super::cell::{Cell, CellDimensions};
+use super::optcell::{Cell, CellDimensions};
 
 /// The parameters needed to configure a square well system.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]

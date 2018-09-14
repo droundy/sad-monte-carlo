@@ -401,7 +401,7 @@ impl Cell {
 
 fn modulus(i: isize, sz: usize) -> usize {
     let sz = sz as isize;
-    (((i % sz) + sz) % sz) as usize
+    ((i + sz) % sz) as usize
 }
 
 impl ::std::ops::Index<Vector3d<isize>> for Cell {
