@@ -11,7 +11,7 @@ use sadmc::system::units;
 use sadmc::mc::MonteCarlo;
 use sadmc::mc::energy::{EnergyMC, EnergyMCParams};
 use sadmc::system::square::{SquareWell, SquareWellNParams};
-use sadmc::system::{Length, MovableSystem};
+use sadmc::system::{Length, MovableSystem, ConfirmSystem};
 use sadmc::system::optsquare;
 
 fn gen_sw(n_atoms: usize) -> SquareWell {
@@ -21,7 +21,8 @@ fn gen_sw(n_atoms: usize) -> SquareWell {
     // Randomize things a bit before beginning.
     let mut rng = sadmc::rng::MyRng::from_u64(1);
     for _ in 0..n_atoms*1000 {
-        sw.move_once(&mut rng, Length::new(1.0));
+        sw.plan_move(&mut rng, Length::new(1.0));
+        sw.confirm()
     }
     sw
 }
@@ -33,7 +34,8 @@ fn gen_optsw(n_atoms: usize) -> optsquare::SquareWell {
     // Randomize things a bit before beginning.
     let mut rng = sadmc::rng::MyRng::from_u64(1);
     for _ in 0..n_atoms*1000 {
-        sw.move_once(&mut rng, Length::new(1.0));
+        sw.plan_move(&mut rng, Length::new(1.0));
+        sw.confirm()
     }
     sw
 }
@@ -70,7 +72,10 @@ fn criterion_benchmark(c: &mut Criterion) {
                                  move |b, &&n_atoms| {
                                      let mut sw = gen_sw(n_atoms);
                                      let mut rng = sadmc::rng::MyRng::from_u64(2);
-                                     b.iter(|| sw.move_once(&mut rng, Length::new(0.1)))
+                                     b.iter(|| {
+                                         sw.plan_move(&mut rng, Length::new(0.1));
+                                         sw.confirm();
+                                     })
                                  },
                                  &[50, 100,
                                    200, 400
@@ -79,7 +84,10 @@ fn criterion_benchmark(c: &mut Criterion) {
                                  move |b, &&n_atoms| {
                                      let mut sw = gen_optsw(n_atoms);
                                      let mut rng = sadmc::rng::MyRng::from_u64(2);
-                                     b.iter(|| sw.move_once(&mut rng, Length::new(0.1)))
+                                     b.iter(|| {
+                                         sw.plan_move(&mut rng, Length::new(0.1));
+                                         sw.confirm();
+                                     });
                                  },
                                  &[50, 100,
                                    200, 400

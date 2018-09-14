@@ -520,15 +520,13 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
         let e1 = self.system.energy();
         let recent_scale = (1.0/self.moves as f64).sqrt();
         self.acceptance_rate *= 1. - recent_scale;
-        if let Some(_) = self.system.move_once(&mut self.rng, self.translation_scale) {
-            let e2 = self.system.energy();
+        if let Some(e2) = self.system.plan_move(&mut self.rng, self.translation_scale) {
             self.bins.prepare_for_energy(e2);
 
-            if self.reject_move(e1,e2) {
-                self.system.undo();
-            } else {
+            if !self.reject_move(e1,e2) {
                 self.accepted_moves += 1;
                 self.acceptance_rate += recent_scale;
+                self.system.confirm();
             }
         }
         let energy = self.system.energy();

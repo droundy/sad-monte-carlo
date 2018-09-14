@@ -23,7 +23,7 @@ pub struct Ising {
     /// The spins themselves
     S: Vec<i8>,
     /// The last change we made (and might want to undo).
-    last_changed: Option<(usize, Energy)>,
+    possible_change: Option<(usize, Energy)>,
 }
 
 impl From<IsingParams> for Ising {
@@ -32,7 +32,7 @@ impl From<IsingParams> for Ising {
             E: Energy::new(0.),
             N: params.N,
             S: vec![1; params.N*params.N],
-            last_changed: None,
+            possible_change: None,
         };
         assert!(ising.N > 1); // otherwise, we are our own neighbor!
         let mut rng = ::rng::MyRng::from_u64(10137);
@@ -70,9 +70,9 @@ impl System for Ising {
     }
 }
 
-impl UndoSystem for Ising {
-    fn undo(&mut self) {
-        if let Some((i, e)) = self.last_changed {
+impl ConfirmSystem for Ising {
+    fn confirm(&mut self) {
+        if let Some((i, e)) = self.possible_change {
             self.S[i] *= -1;
             self.E = e;
         }
@@ -80,11 +80,9 @@ impl UndoSystem for Ising {
 }
 
 impl MovableSystem for Ising {
-    fn move_once(&mut self, rng: &mut MyRng, _: Length) -> Option<Energy> {
+    fn plan_move(&mut self, rng: &mut MyRng, _: Length) -> Option<Energy> {
         let i = rng.gen_range(0, self.N);
         let j = rng.gen_range(0, self.N);
-        self.S[i+j*self.N] *= -1;
-        self.last_changed = Some((i+j*self.N, self.E));
 
         let j2 = (j + 1) % self.N;
         let mut neighbor_tot = self.S[i + j2*self.N];
@@ -94,8 +92,8 @@ impl MovableSystem for Ising {
         neighbor_tot += self.S[i2 + j*self.N];
         let i2 = (i + self.N - 1) % self.N;
         neighbor_tot += self.S[i2 + j*self.N];
-        let e = neighbor_tot as f64 * self.S[i+j*self.N] as f64 * Energy::new(2.0);
-        self.E += e;
+        let e = self.E - neighbor_tot as f64 * self.S[i+j*self.N] as f64 * Energy::new(2.0);
+        self.possible_change = Some((i+j*self.N, e));
         Some(e)
     }
 }
@@ -110,7 +108,8 @@ fn energy_works_with_N(N: usize) {
 
     let mut rng = ::rng::MyRng::from_u64(10137);
     for _ in 0..10000 {
-        ising.move_once(&mut rng, Length::new(0.0));
+        ising.plan_move(&mut rng, Length::new(0.0));
+        ising.confirm();
         assert_eq!(ising.energy(), ising.compute_energy());
     }
 }

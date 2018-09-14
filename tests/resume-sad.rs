@@ -18,6 +18,7 @@ fn test_resume_with(total_iters: u64, first_iters: u64) {
     }
     println!("root and dir are {:?} and {:?}", root, dir);
     let mut cmd = Command::new(root.join("energy-mc"));
+    cmd.env("RUST_BACKTRACE", "1");
     cmd.current_dir(dir.path())
         .args(&["--help"]);
     let out = cmd.output().expect("command failed to run");
@@ -33,9 +34,11 @@ fn test_resume_with(total_iters: u64, first_iters: u64) {
         "--acceptance-rate=0.5",
         ];
 
+    println!("About to start the big guy for {} moves", total_iters);
     let mut cmd = Command::new(root.join("energy-mc"));
     let total_max_iter = format!("--max-iter={}", total_iters);
     let first_max_iter = format!("--max-iter={}", first_iters);
+    cmd.env("RUST_BACKTRACE", "1");
     cmd.current_dir(dir.path())
         .args(common_flags)
         .args(&[&total_max_iter,
@@ -47,6 +50,7 @@ fn test_resume_with(total_iters: u64, first_iters: u64) {
     assert!(out.status.success());
     println!("FINISHED BIG SIMULATION\n\n\n");
 
+    println!("About to start the small guy ifrst");
     let mut cmd = Command::new(root.join("energy-mc"));
     cmd.current_dir(dir.path())
         .args(common_flags)
@@ -59,6 +63,7 @@ fn test_resume_with(total_iters: u64, first_iters: u64) {
     assert!(out.status.success());
     println!("FINISHED SHORT SIMULATION\n\n\n");
 
+    println!("About to start the small guy");
     let mut cmd = Command::new(root.join("energy-mc"));
     cmd.current_dir(dir.path())
         .args(common_flags)

@@ -51,15 +51,15 @@ pub struct SquareWell {
     /// The dimensions of the box.
     pub cell: Cell,
     /// The last change we made (and might want to undo).
-    last_change: Change,
+    possible_change: Change,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 enum Change {
-    Move { which: usize, from: Vector3d<Length>, de: Energy },
+    Move { which: usize, to: Vector3d<Length>, e: Energy },
     /// The added atom is always pushed to the end of the vector!
-    Add { de: Energy },
-    Remove { from: Vector3d<Length>, de: Energy },
+    Add { to: Vector3d<Length>, e: Energy },
+    Remove { which: usize, e: Energy },
     None,
 }
 
@@ -525,60 +525,55 @@ impl SquareWell {
     /// Add an atom at a given location.  Returns the change in
     /// energy, or `None` if the atom could not be placed there.
     pub fn add_atom_at(&mut self, r: Vector3d<Length>) -> Option<Energy> {
-        let mut de = units::EPSILON*0.0;
+        let mut e = self.E;
         for r1 in self.cell.maybe_interacting_atoms(r) {
             let dist2 = (r1-r).norm2();
             if dist2 < units::SIGMA*units::SIGMA {
-                self.last_change = Change::None;
+                self.possible_change = Change::None;
                 return None;
             } else if dist2 < self.cell.well_width*self.cell.well_width {
-                de -= units::EPSILON;
+                e -= units::EPSILON;
             }
         }
-        self.cell.add_atom_at(r);
-        self.last_change = Change::Add{ de };
-        self.E += de;
-        Some(de)
+        self.possible_change = Change::Add{ to: r, e };
+        Some(e)
     }
     /// Move a specified atom.  Returns the change in energy, or
     /// `None` if the atom could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
-        let mut de = units::EPSILON*0.0;
+        let mut e = self.E;
+        let wsqr = self.cell.well_width*self.cell.well_width;
         // let from = self.cell.positions[which];
         let from = unsafe { *self.cell.positions.get_unchecked(which) };
-        let wsqr = self.cell.well_width*self.cell.well_width;
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, from) {
             let dist2 = (r1-r).norm2();
             if dist2 < units::SIGMA*units::SIGMA {
-                self.last_change = Change::None;
+                self.possible_change = Change::None;
                 return None;
             }
             if dist2 < wsqr {
-                de -= units::EPSILON;
+                e -= units::EPSILON;
             }
         }
         for r1 in self.cell.maybe_interacting_atoms_excluding(from, from) {
             if (r1-from).norm2() < wsqr {
-                de += units::EPSILON;
+                e += units::EPSILON;
             }
         }
-        self.cell.move_atom(which, r);
-        self.last_change = Change::Move{ which, from, de };
-        self.E += de;
-        Some(de)
+        self.possible_change = Change::Move{ which, to: r, e };
+        Some(e)
     }
-    /// Remove the specified atom.  Returns the change in energy.
+    /// Plan to remove the specified atom.  Returns the change in energy.
     pub fn remove_atom_number(&mut self, which: usize) -> Energy {
-        let r = self.cell.remove_atom(which);
-        let mut de = units::EPSILON*0.0;
-        for r1 in self.cell.maybe_interacting_atoms(r) {
+        let r = self.cell.positions[which];
+        let mut e = self.E;
+        for r1 in self.cell.maybe_interacting_atoms_excluding(r, r) {
             if self.cell.closest_distance2(r1,r) < self.cell.well_width*self.cell.well_width {
-                de += units::EPSILON;
+                e += units::EPSILON;
             }
         }
-        self.last_change = Change::Remove{ from: r, de: de };
-        self.E += de;
-        de
+        self.possible_change = Change::Remove{ which, e };
+        e
     }
 }
 
@@ -611,7 +606,7 @@ impl From<SquareWellParams> for SquareWell {
                 num_subcells: Vector3d::new(cells_x,cells_y,cells_z),
                 subcells: vec![Vec::new(); cells_x*cells_y*cells_z],
             },
-            last_change: Change::None,
+            possible_change: Change::None,
         }
     }
 }
@@ -642,57 +637,45 @@ impl System for SquareWell {
     }
 }
 
-impl UndoSystem for SquareWell {
-    fn undo(&mut self) {
-        match self.last_change {
+impl ConfirmSystem for SquareWell {
+    fn confirm(&mut self) {
+        match self.possible_change {
             Change::None => (),
-            Change::Move{which, from, de} => {
-                // let old = self.cell.positions[which];
-                let old = unsafe { *self.cell.positions.get_unchecked(which) };
-                self.cell.move_atom(which, from);
-                self.E -= de;
-                self.last_change = Change::Move {
-                    which: which,
-                    from: old,
-                    de: -de,
-                };
+            Change::Move{which, to, e} => {
+                self.cell.move_atom(which, to);
+                self.E = e;
+                self.possible_change = Change::None;
             },
-            Change::Add{de} => {
-                let which = self.cell.positions.len()-1;
-                let old = self.cell.remove_atom(which);
-                self.E -= de;
-                self.last_change = Change::Remove {
-                    from: old,
-                    de: -de,
-                };
+            Change::Add{to, e} => {
+                self.cell.add_atom_at(to);
+                self.E = e;
+                self.possible_change = Change::None;
             },
-            Change::Remove{from, de} => {
-                self.cell.add_atom_at(from);
-                self.E -= de;
-                self.last_change = Change::Add {
-                    de: -de,
-                };
+            Change::Remove{which, e} => {
+                self.cell.remove_atom(which);
+                self.E = e;
+                self.possible_change = Change::None;
             },
         }
     }
 }
 
 impl GrandSystem for SquareWell {
-    fn add_atom(&mut self, rng: &mut MyRng) -> Option<Energy> {
+    fn plan_add(&mut self, rng: &mut MyRng) -> Option<Energy> {
         let r = self.cell.put_in_cell(
             Vector3d::new(Length::new(rng.sample(Uniform::new(0.0, self.cell.box_diagonal.x.value_unsafe))),
                           Length::new(rng.sample(Uniform::new(0.0, self.cell.box_diagonal.y.value_unsafe))),
                           Length::new(rng.sample(Uniform::new(0.0, self.cell.box_diagonal.z.value_unsafe)))));
         self.add_atom_at(r)
     }
-    fn remove_atom(&mut self, rng: &mut MyRng) -> Energy {
+    fn plan_remove(&mut self, rng: &mut MyRng) -> Energy {
         let which = rng.sample(Uniform::new(0, self.cell.positions.len()));
         self.remove_atom_number(which)
     }
 }
 
 impl MovableSystem for SquareWell {
-    fn move_once(&mut self, rng: &mut MyRng, mean_distance: Length) -> Option<Energy> {
+    fn plan_move(&mut self, rng: &mut MyRng, mean_distance: Length) -> Option<Energy> {
         if self.cell.positions.len() > 0 {
             let which = rng.sample(Uniform::new(0, self.cell.positions.len()));
             let to = self.cell.put_in_cell(unsafe { *self.cell.positions.get_unchecked(which) } + rng.vector()*mean_distance);
@@ -831,6 +814,7 @@ impl From<SquareWellNParams> for SquareWell {
                                                  j as f64*cell_width[1],
                                                  k as f64*cell_width[2])
                                    + offset[l]);
+                    sw.confirm();
                     // assert_eq!(sw.energy(), sw.compute_energy());
                     break;
                 }
@@ -853,7 +837,8 @@ fn closest_distance_matches(natoms: usize) {
     }
     let mut rng = MyRng::from_u64(1);
     for _ in 0..100000 {
-        sw.move_once(&mut rng, Length::new(1.0));
+        sw.plan_move(&mut rng, Length::new(1.0));
+        sw.confirm();
     }
     for &r1 in sw.cell.positions.iter() {
         for &r2 in sw.cell.positions.iter() {
@@ -883,7 +868,8 @@ fn maybe_interacting_needs_no_shifting(natoms: usize) {
     let mut sw = mk_sw(natoms, 0.3);
     let mut rng = MyRng::from_u64(1);
     for _ in 0..100000 {
-        sw.move_once(&mut rng, Length::new(1.0));
+        sw.plan_move(&mut rng, Length::new(1.0));
+        sw.confirm();
     }
     for &r1 in sw.cell.positions.iter() {
         for r2 in sw.cell.maybe_interacting_atoms(r1) {
@@ -927,7 +913,8 @@ fn maybe_interacting_includes_everything() {
     let mut sw = mk_sw(100, 0.3);
     let mut rng = MyRng::from_u64(1);
     for _ in 0..100000 {
-        sw.move_once(&mut rng, Length::new(1.0));
+        sw.plan_move(&mut rng, Length::new(1.0));
+        sw.confirm()
     }
     for &r1 in sw.cell.positions.iter() {
         sw.cell.verify_maybe_interacting_includes_everything(r1);
@@ -942,7 +929,8 @@ fn maybe_interacting_excluding_includes_everything(natoms: usize) {
         sw.cell.verify_maybe_interacting_excluding_includes_everything(r1, r1);
     }
     for _ in 0..100000 {
-        sw.move_once(&mut rng, Length::new(1.0));
+        sw.plan_move(&mut rng, Length::new(1.0));
+        sw.confirm();
     }
     println!("Finished moving stuff around...");
     for &r1 in sw.cell.positions.iter() {
@@ -976,7 +964,8 @@ fn energy_is_right() {
     let mut rng = MyRng::from_u64(1);
     for i in 0..1000 {
         println!("making move {}...", i);
-        sw.move_once(&mut rng, Length::new(1.0));
+        sw.plan_move(&mut rng, Length::new(1.0));
+        sw.confirm();
         assert_eq!(sw.energy(), sw.compute_energy());
     }
 }

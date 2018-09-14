@@ -56,26 +56,32 @@ pub trait System : ::serde::Serialize + ::serde::de::DeserializeOwned {
 }
 
 
-/// A system that can be reverted after a change is made.
-pub trait UndoSystem : System {
-    /// Revert the change, whatever it may have been.
-    fn undo(&mut self);
+/// A system that can have a change confirmed.
+pub trait ConfirmSystem : System {
+    /// Confirm the change, whatever it may have been.
+    fn confirm(&mut self);
 }
 
 /// A system that can be moved.
-pub trait MovableSystem : UndoSystem {
-    /// Moves an atom, and returns the change in energy of the system.
-    /// If, however, the move fails (i.e. has infinite energy), `None`
-    /// is returned, and no change is made to the system.
-    fn move_once(&mut self, &mut MyRng, mean_distance: Length) -> Option<Energy>;
+pub trait MovableSystem : ConfirmSystem {
+    /// Considers moving an atom, and returns the resulting energy of
+    /// the system.  If, however, the move is impossible (i.e. has
+    /// infinite energy), `None` is returned, and no change is made to
+    /// the system.  The atom is not actually moved until the change
+    /// is confirmed.
+    fn plan_move(&mut self, &mut MyRng, mean_distance: Length) -> Option<Energy>;
 }
 
 /// A system that can gain or lose atoms?
-pub trait GrandSystem : UndoSystem {
-    /// Adds an atom, and returns the change in energy of the system.
-    /// If, however, the move fails (i.e. has infinite energy), `None`
-    /// is returned, and no change is made to the system.
-    fn add_atom(&mut self, &mut MyRng) -> Option<Energy>;
-    /// Removes an atom, and returns the change in energy of the system.
-    fn remove_atom(&mut self, &mut MyRng) -> Energy;
+pub trait GrandSystem : ConfirmSystem {
+    /// Considers adding an atom, and returns the resulting energy of
+    /// the system.  If the add is impossible (i.e. has infinite
+    /// energy), `None` is returned, and no change is made to the
+    /// system.  The atom is not actually added until the change is
+    /// confirmed.
+    fn plan_add(&mut self, &mut MyRng) -> Option<Energy>;
+    /// Considers removing an atom, and returns the change in energy
+    /// of the system.  The atom is not actually removed until the
+    /// change is confirmed.
+    fn plan_remove(&mut self, &mut MyRng) -> Energy;
 }
