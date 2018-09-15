@@ -64,9 +64,8 @@ impl SquareWell {
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
         let mut e = self.E;
         let wsqr = self.cell.well_width*self.cell.well_width;
-        // let from = self.cell.positions[which];
-        let from = unsafe { *self.cell.positions.get_unchecked(which) };
-        for r1 in self.cell.maybe_interacting_atoms_excluding(r, from) {
+        let from = self.cell.positions[which];
+        for r1 in self.cell.maybe_interacting_atoms_excluding(r, which) {
             let dist2 = (r1-r).norm2();
             if dist2 < units::SIGMA*units::SIGMA {
                 self.possible_change = Change::None;
@@ -76,7 +75,7 @@ impl SquareWell {
                 e -= units::EPSILON;
             }
         }
-        for r1 in self.cell.maybe_interacting_atoms_excluding(from, from) {
+        for r1 in self.cell.maybe_interacting_atoms_excluding(from, which) {
             if (r1-from).norm2() < wsqr {
                 e += units::EPSILON;
             }
@@ -88,7 +87,7 @@ impl SquareWell {
     pub fn remove_atom_number(&mut self, which: usize) -> Energy {
         let r = self.cell.positions[which];
         let mut e = self.E;
-        for r1 in self.cell.maybe_interacting_atoms_excluding(r, r) {
+        for r1 in self.cell.maybe_interacting_atoms_excluding(r, which) {
             if self.cell.closest_distance2(r1,r) < self.cell.well_width*self.cell.well_width {
                 e += units::EPSILON;
             }
@@ -114,8 +113,8 @@ impl System for SquareWell {
     }
     fn compute_energy(&self) -> Energy {
         let mut e: Energy = units::EPSILON*0.0;
-        for &r1 in self.cell.positions.iter() {
-            for r2 in self.cell.maybe_interacting_atoms_excluding(r1, r1) {
+        for (which, &r1) in self.cell.positions.iter().enumerate() {
+            for r2 in self.cell.maybe_interacting_atoms_excluding(r1, which) {
                 if (r1-r2).norm2() < self.cell.well_width*self.cell.well_width {
                     e -= units::EPSILON;
                 }
@@ -380,8 +379,8 @@ fn maybe_interacting_needs_no_shifting(natoms: usize) {
         }
     }
     println!("starting with exclusion.");
-    for &r1 in sw.cell.positions.iter() {
-        for r2 in sw.cell.maybe_interacting_atoms_excluding(r1, r1) {
+    for (which, &r1) in sw.cell.positions.iter().enumerate() {
+        for r2 in sw.cell.maybe_interacting_atoms_excluding(r1, which) {
             assert_eq!(sw.cell.closest_distance2(r1,r2),
                        sw.cell.unsafe_closest_distance2(r1,r2));
             assert_eq!(sw.cell.closest_distance2(r1,r2),
@@ -392,10 +391,10 @@ fn maybe_interacting_needs_no_shifting(natoms: usize) {
     }
 }
 
-#[test]
-fn maybe_interacting_needs_no_shifting_n50() {
-    maybe_interacting_needs_no_shifting(50);
-}
+// #[test]
+// fn maybe_interacting_needs_no_shifting_n50() {
+//     maybe_interacting_needs_no_shifting(50);
+// }
 #[test]
 fn maybe_interacting_needs_no_shifting_n100() {
     maybe_interacting_needs_no_shifting(100);
@@ -422,20 +421,17 @@ fn maybe_interacting_includes_everything() {
 fn maybe_interacting_excluding_includes_everything(natoms: usize) {
     let mut sw = mk_sw(natoms, 0.3);
     let mut rng = MyRng::from_u64(1);
-    for &r1 in sw.cell.positions.iter() {
-        sw.cell.verify_maybe_interacting_excluding_includes_everything(r1, r1);
+    for (which, &r1) in sw.cell.positions.iter().enumerate() {
+        sw.cell.verify_maybe_interacting_excluding_includes_everything(r1, which);
     }
     for _ in 0..100000 {
         sw.plan_move(&mut rng, Length::new(1.0));
         sw.confirm();
     }
     println!("Finished moving stuff around...");
-    for &r1 in sw.cell.positions.iter() {
-        sw.cell.verify_maybe_interacting_excluding_includes_everything(r1, r1);
-        sw.cell.verify_maybe_interacting_excluding_includes_everything(r1, sw.cell.positions[0]);
-        sw.cell.verify_maybe_interacting_excluding_includes_everything(
-            r1,
-            Vector3d::new(0.5*units::SIGMA, 0.5*units::SIGMA, 0.5*units::SIGMA));
+    for (which, &r1) in sw.cell.positions.iter().enumerate() {
+        sw.cell.verify_maybe_interacting_excluding_includes_everything(r1, which);
+        sw.cell.verify_maybe_interacting_excluding_includes_everything(r1, 0);
     }
 }
 
@@ -455,14 +451,31 @@ fn maybe_interacting_excluding_includes_everything_n200() {
 }
 
 #[test]
-fn energy_is_right() {
-    let mut sw = SquareWell::from(SquareWellNParams::default());
+fn energy_is_right_n3() {
+    energy_is_right(3, 0.1);
+}
+#[test]
+fn energy_is_right_n50() {
+    energy_is_right(50, 0.3);
+}
+#[test]
+fn energy_is_right_n100() {
+    energy_is_right(100, 0.3);
+}
+#[test]
+fn energy_is_right_n200() {
+    energy_is_right(200, 0.3);
+}
+
+#[cfg(test)]
+fn energy_is_right(natoms: usize, ff: f64) {
+    let mut sw = mk_sw(natoms, ff);
     assert_eq!(sw.energy(), sw.compute_energy());
     let mut rng = MyRng::from_u64(1);
     for i in 0..1000 {
-        println!("making move {}...", i);
         sw.plan_move(&mut rng, Length::new(1.0));
         sw.confirm();
+        println!("after move {}... {} vs {}", i, sw.energy(), sw.compute_energy());
         assert_eq!(sw.energy(), sw.compute_energy());
     }
 }

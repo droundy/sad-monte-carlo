@@ -87,8 +87,9 @@ impl Cell {
     }
     /// Atoms that may be within well_width of r.  This excludes any
     /// atom that is located precisely at rprime.
-    pub fn maybe_interacting_atoms_excluding<'a>(&'a self, r: Vector3d<Length>, rprime: Vector3d<Length>)
-                                   -> impl Iterator<Item=Vector3d<Length>> + 'a {
+    pub fn maybe_interacting_atoms_excluding<'a>(&'a self, r: Vector3d<Length>, which: usize)
+                                                 -> impl Iterator<Item=Vector3d<Length>> + 'a {
+        let rprime = self.positions[which];
         if self.num_subcells.x == 1 {
             NewNeighborIterator {
                 cell: self,
@@ -357,12 +358,12 @@ impl Cell {
     }
 
     /// for testing
-    pub fn verify_maybe_interacting_excluding_includes_everything(&self, r1: Vector3d<Length>, exc: Vector3d<Length>) {
+    pub fn verify_maybe_interacting_excluding_includes_everything(&self, r1: Vector3d<Length>, exc: usize) {
         self.verify_subcells_include_everything();
         self.verify_subcells_include_nothing_out_of_place();
         let mi: Vec<_> = self.maybe_interacting_atoms_excluding(r1, exc).map(|r| self.put_in_cell(r)).collect();
         let d2s: Vec<_> = self.maybe_interacting_atoms_excluding(r1, exc).map(|r| (r-r1).norm2()).collect();
-        for &r2 in self.positions.iter().filter(|&&r2| r2 != exc) {
+        for &r2 in self.positions.iter().filter(|&&r2| r2 != self.positions[exc]) {
             let dist2 = self.closest_distance2(r1, r2);
             if dist2 <= self.well_width*self.well_width {
                 println!("==--> {} from {}", dist2, r2);
@@ -371,7 +372,8 @@ impl Cell {
                 }
                 if !mi.iter().any(|&rrr| self.closest_distance2(rrr, r2) < 1e-10*units::SIGMA*units::SIGMA) {
                     println!("");
-                    println!("==== excluding {} at d2 of {}", exc, self.closest_distance2(exc, r2));
+                    println!("==== excluding {} at d2 of {}", exc,
+                             self.closest_distance2(self.positions[exc], r2));
                     println!("==== r1 = {}", r1);
                     println!("==== r2 = {} missing", r2);
                     println!("  box_diagonal is {}", self.box_diagonal);

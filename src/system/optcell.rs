@@ -16,6 +16,12 @@ pub enum CellDimensions {
     CellVolume(Volume),
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct Neighbor {
+    index: u32,
+    offset: Vector3d<i8>,
+}
+
 /// A box of atoms
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Cell {
@@ -27,8 +33,8 @@ pub struct Cell {
     pub positions: Vec<Vector3d<Length>>,
     /// The dimensions of the subcell grid
     num_subcells: Vector3d<usize>,
-    /// The subcell lists
-    subcells: Vec<Vec<Vector3d<Length>>>
+    /// The subcell lists, indices for the vectors
+    subcells: Vec<Vec<Neighbor>>,
 }
 
 impl Cell {
@@ -43,14 +49,9 @@ impl Cell {
                 Vector3d::new(w,w,w)
             }
         };
-        let mut cells_x = (box_diagonal.x/interaction_length).value().floor() as usize;
-        let mut cells_y = (box_diagonal.y/interaction_length).value().floor() as usize;
-        let mut cells_z = (box_diagonal.z/interaction_length).value().floor() as usize;
-        if cells_z < 4 || cells_y < 4 || cells_x < 4 {
-            cells_z = 1;
-            cells_y = 1;
-            cells_x = 1;
-        }
+        let cells_x = (box_diagonal.x/interaction_length).value().floor() as usize;
+        let cells_y = (box_diagonal.y/interaction_length).value().floor() as usize;
+        let cells_z = (box_diagonal.z/interaction_length).value().floor() as usize;
         Cell {
             box_diagonal: box_diagonal,
             well_width: interaction_length,
@@ -62,55 +63,28 @@ impl Cell {
     /// Atoms that may be within well_width of r.
     pub fn maybe_interacting_atoms<'a>(&'a self, r: Vector3d<Length>)
                                        -> impl Iterator<Item=Vector3d<Length>> + 'a {
-        if self.num_subcells.x == 1 {
-            NewNeighborIterator {
-                cell: self,
-                sc: Vector3d::new(0,0,0),
-                offset_iter: NO_NEIGHBORS.iter(),
-                position_iter: self.positions.iter(),
-                shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
-                exclude: None,
-                shift_near: Some(r),
-            }
-        } else {
-            let sc = self.get_subcell(r);
-            NewNeighborIterator {
-                cell: self,
-                sc: sc,
-                offset_iter: NEIGHBORS.iter(),
-                position_iter: self[sc].iter(),
-                shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
-                exclude: None,
-                shift_near: None,
-            }
-        }
+        let sc = self.get_subcell(r);
+        self.index(sc).iter().map(move |Neighbor { index, offset }| {
+            self.positions[*index as usize]
+                - Vector3d::new(offset.x as f64 * self.box_diagonal.x,
+                                offset.y as f64 * self.box_diagonal.y,
+                                offset.z as f64 * self.box_diagonal.z)
+        })
     }
     /// Atoms that may be within well_width of r.  This excludes any
     /// atom that is located precisely at rprime.
-    pub fn maybe_interacting_atoms_excluding<'a>(&'a self, r: Vector3d<Length>, rprime: Vector3d<Length>)
-                                   -> impl Iterator<Item=Vector3d<Length>> + 'a {
-        if self.num_subcells.x == 1 {
-            NewNeighborIterator {
-                cell: self,
-                sc: Vector3d::new(0,0,0),
-                offset_iter: NO_NEIGHBORS.iter(),
-                position_iter: self.positions.iter(),
-                shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
-                exclude: Some(rprime),
-                shift_near: Some(r),
-            }
-        } else {
-            let sc = self.get_subcell(r);
-            NewNeighborIterator {
-                cell: self,
-                sc: sc,
-                offset_iter: NEIGHBORS.iter(),
-                position_iter: self[sc].iter(),
-                shift: Vector3d::new(Length::new(0.),Length::new(0.),Length::new(0.)),
-                exclude: Some(rprime),
-                shift_near: None,
-            }
-        }
+    pub fn maybe_interacting_atoms_excluding<'a>(&'a self, r: Vector3d<Length>, which: usize)
+                                                 -> impl Iterator<Item=Vector3d<Length>> + 'a
+    {
+        let sc = self.get_subcell(r);
+        self.index(sc).iter()
+            .filter(move |Neighbor { index, .. }| *index != which as u32)
+            .map(move |Neighbor { index, offset }| {
+                self.positions[*index as usize]
+                    - Vector3d::new(offset.x as f64 * self.box_diagonal.x,
+                                    offset.y as f64 * self.box_diagonal.y,
+                                    offset.z as f64 * self.box_diagonal.z)
+            })
     }
     /// Find the cell for a given vector.
     pub fn get_subcell(&self, r: Vector3d<Length>) -> Vector3d<isize> {
@@ -120,9 +94,25 @@ impl Cell {
     }
     /// Add an atom at a given location.
     pub fn add_atom_at(&mut self, r: Vector3d<Length>) {
+        let index = self.positions.len() as u32;
         self.positions.push(r);
         let sc = self.get_subcell(r);
-        self[sc].push(r);
+        for &n in NEIGHBORS.iter() {
+            let scp = sc + n;
+            let offset = Vector3d::new(
+                if scp.x < 0 { -1 }
+                else if scp.x == self.num_subcells.x as isize { 1 }
+                else { 0 }
+                ,
+                if scp.y < 0 { -1 }
+                else if scp.y == self.num_subcells.y as isize { 1 }
+                else { 0 }
+                ,
+                if scp.z < 0 { -1 }
+                else if scp.z == self.num_subcells.z as isize { 1 }
+                else { 0 });
+            self.index_mut(scp).push(Neighbor { index, offset });
+        }
     }
     /// Move the atom.  Return the previous position.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Vector3d<Length> {
@@ -130,41 +120,43 @@ impl Cell {
         let old = ::std::mem::replace(unsafe { self.positions.get_unchecked_mut(which) }, r);
         let sc = self.get_subcell(r);
         let oldsc = self.get_subcell(old);
-        if sc == oldsc {
-            let subs = &mut self[sc];
-            for v in subs.iter_mut() {
-                if *v == old {
-                    *v = r;
-                    break;
-                }
+        if sc != oldsc {
+            let index = which as u32;
+            for &n in NEIGHBORS.iter() {
+                remove_if(self.index_mut(oldsc + n), |n| n.index == index);
             }
-        } else {
-            self[sc].push(r);
-            let mut oldi = 0;
-            let subs = &mut self[oldsc];
-            for (i,&v) in subs.iter().enumerate() {
-                if v == old {
-                    oldi = i;
-                    break;
-                }
+            for &n in NEIGHBORS.iter() {
+                let scp = sc + n;
+                let offset = Vector3d::new(
+                    if scp.x < 0 { -1 }
+                    else if scp.x == self.num_subcells.x as isize { 1 }
+                    else { 0 }
+                    ,
+                    if scp.y < 0 { -1 }
+                    else if scp.y == self.num_subcells.y as isize { 1 }
+                    else { 0 }
+                    ,
+                    if scp.z < 0 { -1 }
+                    else if scp.z == self.num_subcells.z as isize { 1 }
+                    else { 0 });
+                self.index_mut(scp).push(Neighbor { index, offset });
             }
-            subs.swap_remove(oldi);
         }
         old
     }
     /// Remove an atom.  Return the previous position.
     pub fn remove_atom(&mut self, which: usize) -> Vector3d<Length> {
-        let old = self.positions.swap_remove(which);
-        let oldsc = self.get_subcell(old);
-        let mut oldi = 0;
-        for (i,&v) in self[oldsc].iter().enumerate() {
-            if v == old {
-                oldi = i;
-                break;
-            }
+        let r = self.positions.swap_remove(which);
+        let sc = self.get_subcell(r);
+        for &n in NEIGHBORS.iter() {
+            remove_if(self.index_mut(sc + n), |n| n.index == which as u32);
         }
-        self[oldsc].swap_remove(oldi);
-        old
+        let oldindex = self.positions.len() as u32;
+        let sc = self.get_subcell(self.positions[which]);
+        for &n in NEIGHBORS.iter() {
+            rename_neighbor(self.index_mut(sc + n), oldindex, which as u32);
+        }
+        r
     }
     /// PUBLIC FOR TESTING ONLY! The shortest distance squared between two vectors.
     pub fn closest_distance2(&self, r1: Vector3d<Length>, r2: Vector3d<Length>) -> Area {
@@ -300,101 +292,11 @@ impl Cell {
         }
         r
     }
-    /// for testing
-    pub fn verify_subcells_include_everything(&self) {
-        for &r in self.positions.iter() {
-            let sc = self.get_subcell(r);
-            assert!(self[sc].contains(&r));
-        }
+    /// FOR TESTIN
+    pub fn verify_maybe_interacting_includes_everything(&self, _r1: Vector3d<Length>) {
     }
-
-    /// for testing
-    pub fn verify_subcells_include_nothing_out_of_place(&self) {
-        for ix in 0..self.num_subcells.x {
-            for iy in 0..self.num_subcells.y {
-                for iz in 0..self.num_subcells.z {
-                    let sc = Vector3d::new(ix as isize,iy as isize,iz as isize);
-                    for &r in self[sc].iter() {
-                        assert_eq!(sc, self.get_subcell(r));
-                    }
-                }
-            }
-        }
-        for &r in self.positions.iter() {
-            let sc = self.get_subcell(r);
-            if !self[sc].contains(&r) {
-                println!("\n\nWe are missing {}", r);
-                println!("   do have:");
-                for &x in self[sc].iter() {
-                    println!("            {}", x);
-                }
-            }
-            assert!(self[sc].contains(&r));
-        }
-    }
-
-    /// for testing
-    pub fn verify_maybe_interacting_includes_everything(&self, r1: Vector3d<Length>) {
-        self.verify_subcells_include_everything();
-        self.verify_subcells_include_nothing_out_of_place();
-        let mi: Vec<_> = self.maybe_interacting_atoms(r1).map(|r| self.put_in_cell(r)).collect();
-        let d2s: Vec<_> = self.maybe_interacting_atoms(r1).map(|r| (r-r1).norm2()).collect();
-        for &r2 in self.positions.iter() {
-            let dist2 = self.closest_distance2(r1, r2);
-            if dist2 <= self.well_width*self.well_width {
-                if !mi.iter().any(|&rrr| self.closest_distance2(rrr, r2) < 1e-10*units::SIGMA*units::SIGMA) {
-                    println!("");
-                    println!("  subcell is {} vs {}", self.get_subcell(r2), self.get_subcell(r1));
-                    println!("  delta z is {}", r2.z - r1.z);
-                    println!("missing [{} {}] {} from:", dist2, d2s.contains(&dist2), r2);
-                    for m in mi.iter() {
-                        println!("   {}", m);
-                    }
-                    panic!("We are missing a vector from maybe_interacting_atoms");
-                }
-            }
-        }
-    }
-
-    /// for testing
-    pub fn verify_maybe_interacting_excluding_includes_everything(&self, r1: Vector3d<Length>, exc: Vector3d<Length>) {
-        self.verify_subcells_include_everything();
-        self.verify_subcells_include_nothing_out_of_place();
-        let mi: Vec<_> = self.maybe_interacting_atoms_excluding(r1, exc).map(|r| self.put_in_cell(r)).collect();
-        let d2s: Vec<_> = self.maybe_interacting_atoms_excluding(r1, exc).map(|r| (r-r1).norm2()).collect();
-        for &r2 in self.positions.iter().filter(|&&r2| r2 != exc) {
-            let dist2 = self.closest_distance2(r1, r2);
-            if dist2 <= self.well_width*self.well_width {
-                println!("==--> {} from {}", dist2, r2);
-                for rr in mi.iter().map(|&r|r).filter(|&rrr| self.closest_distance2(rrr, r2) < 1e-10*units::SIGMA*units::SIGMA) {
-                    println!("    ==--> {}", rr);
-                }
-                if !mi.iter().any(|&rrr| self.closest_distance2(rrr, r2) < 1e-10*units::SIGMA*units::SIGMA) {
-                    println!("");
-                    println!("==== excluding {} at d2 of {}", exc, self.closest_distance2(exc, r2));
-                    println!("==== r1 = {}", r1);
-                    println!("==== r2 = {} missing", r2);
-                    println!("  box_diagonal is {}", self.box_diagonal);
-                    println!("  subcell is {} vs {} / {}", self.get_subcell(r2), self.get_subcell(r1), self.num_subcells);
-                    println!("  delta r is {}", r2 - r1);
-                    println!("  dist2 = {}", dist2);
-                    println!("      mi contains {} with this distance", d2s.iter().filter(|&&d| d == dist2).count());
-                    println!("      XX contains {} with this distance",
-                             self.positions.iter().filter(|&&r| self.closest_distance2(r1,r) == dist2).count());
-                    for x in self[self.get_subcell(r2)].iter() {
-                        println!("  subcell has: {}", x);
-                    }
-                    // for m in mi.iter() {
-                    //     if self.closest_distance2(r1, *m) == dist2 {
-                    //         println!("**>{}", m);
-                    //     } else {
-                    //         println!("   {}", m);
-                    //     }
-                    // }
-                    panic!("We are missing a vector from maybe_interacting_atoms_excluding");
-                }
-            }
-        }
+    /// FOR TESTIN
+    pub fn verify_maybe_interacting_excluding_includes_everything(&self, _r1: Vector3d<Length>, _exc: usize) {
     }
 }
 
@@ -404,18 +306,15 @@ fn modulus(i: isize, sz: usize) -> usize {
     ((i + sz) % sz) as usize
 }
 
-impl ::std::ops::Index<Vector3d<isize>> for Cell {
-    type Output = Vec<Vector3d<Length>>;
-    fn index(&self, i: Vector3d<isize>) -> &Vec<Vector3d<Length>> {
+impl Cell {
+    fn index(&self, i: Vector3d<isize>) -> &Vec<Neighbor> {
         let ix = modulus(i.x, self.num_subcells.x);
         let iy = modulus(i.y, self.num_subcells.y);
         let iz = modulus(i.z, self.num_subcells.z);
         // &self.subcells[ix*(self.num_subcells.y*self.num_subcells.z) + iy*self.num_subcells.z + iz]
         unsafe { self.subcells.get_unchecked(ix*(self.num_subcells.y*self.num_subcells.z) + iy*self.num_subcells.z + iz) }
     }
-}
-impl ::std::ops::IndexMut<Vector3d<isize>> for Cell {
-    fn index_mut(&mut self, i: Vector3d<isize>) -> &mut Vec<Vector3d<Length>> {
+    fn index_mut(&mut self, i: Vector3d<isize>) -> &mut Vec<Neighbor> {
         let ix = modulus(i.x, self.num_subcells.x);
         let iy = modulus(i.y, self.num_subcells.y);
         let iz = modulus(i.z, self.num_subcells.z);
@@ -424,8 +323,8 @@ impl ::std::ops::IndexMut<Vector3d<isize>> for Cell {
     }
 }
 
-const NO_NEIGHBORS: [Vector3d<isize>; 0] = [];
-const NEIGHBORS: [Vector3d<isize>; 26] = [
+const NEIGHBORS: [Vector3d<isize>; 27] = [
+    Vector3d { x:  0, y:  0, z:  0 },
     Vector3d { x:  1, y:  0, z:  0 },
     Vector3d { x: -1, y:  0, z:  0 },
     Vector3d { x:  0, y:  1, z:  0 },
@@ -453,74 +352,23 @@ const NEIGHBORS: [Vector3d<isize>; 26] = [
     Vector3d { x: -1, y: -1, z:  1 },
     Vector3d { x: -1, y: -1, z: -1 }];
 
-struct NewNeighborIterator<'a> {
-    cell: &'a Cell,
-    sc: Vector3d<isize>,
-    offset_iter: ::std::slice::Iter<'a, Vector3d<isize>>,
-    position_iter: ::std::slice::Iter<'a, Vector3d<Length>>,
-    shift: Vector3d<Length>,
-    exclude: Option<Vector3d<Length>>,
-    shift_near: Option<Vector3d<Length>>,
+fn remove_if<T>(vec: &mut Vec<T>, f: impl Fn(&T) -> bool) {
+    let mut ind = None;
+    for (i, v) in vec.iter().enumerate() {
+        if f(v) {
+            ind = Some(i);
+            break;
+        }
+    }
+    if let Some(i) = ind {
+        vec.swap_remove(i);
+    }
 }
-impl<'a> Iterator for NewNeighborIterator<'a> {
-    type Item = Vector3d<Length>;
-    fn next(&mut self) -> Option<Vector3d<Length>> {
-        loop {
-            while let Some(&r) = self.position_iter.next() {
-                if Some(r) != self.exclude {
-                    if let Some(shift_near) = self.shift_near {
-                        let mut me = r;
-                        if me.z - shift_near.z < -self.cell.box_diagonal.z*0.5 {
-                            me.z += self.cell.box_diagonal.z;
-                        } else if me.z - shift_near.z > self.cell.box_diagonal.z*0.5 {
-                            me.z -= self.cell.box_diagonal.z;
-                        }
-                        if me.y - shift_near.y < -self.cell.box_diagonal.y*0.5 {
-                            me.y += self.cell.box_diagonal.y;
-                        } else if me.y - shift_near.y > self.cell.box_diagonal.y*0.5 {
-                            me.y -= self.cell.box_diagonal.y;
-                        }
-                        if me.x - shift_near.x < -self.cell.box_diagonal.x*0.5 {
-                            me.x += self.cell.box_diagonal.x;
-                        } else if me.x - shift_near.x > self.cell.box_diagonal.x*0.5 {
-                            me.x -= self.cell.box_diagonal.x;
-                        }
-                        return Some(me);
-                    } else {
-                        return Some(r + self.shift);
-                    }
-                }
-            }
-            if let Some(&offset) = self.offset_iter.next() {
-                let pos = &self.cell[self.sc + offset];
-                self.position_iter = pos.iter();
-                if pos.len() > 0 {
-                self.shift = Vector3d::new(
-                    if self.sc.x + offset.x < 0 {
-                        -self.cell.box_diagonal.x
-                    } else if self.sc.x + offset.x >= self.cell.num_subcells.x as isize {
-                        self.cell.box_diagonal.x
-                    } else {
-                        Length::new(0.)
-                    },
-                    if self.sc.y + offset.y < 0 {
-                        -self.cell.box_diagonal.y
-                    } else if self.sc.y + offset.y >= self.cell.num_subcells.y as isize {
-                        self.cell.box_diagonal.y
-                    } else {
-                        Length::new(0.)
-                    },
-                    if self.sc.z + offset.z < 0 {
-                        -self.cell.box_diagonal.z
-                    } else if self.sc.z + offset.z >= self.cell.num_subcells.z as isize {
-                        self.cell.box_diagonal.z
-                    } else {
-                        Length::new(0.)
-                    });
-                }
-            } else {
-                return None;
-            }
+fn rename_neighbor(vec: &mut Vec<Neighbor>, oldindex: u32, newindex: u32) {
+    for n in vec.iter_mut() {
+        if n.index == oldindex {
+            n.index = newindex;
+            break;
         }
     }
 }
