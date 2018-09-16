@@ -32,8 +32,10 @@ pub struct Cell {
     /// The atom positions
     pub positions: Vec<Vector3d<Length>>,
     /// The dimensions of the subcell grid
+    #[serde(skip, default)]
     num_subcells: Vector3d<usize>,
     /// The subcell lists, indices for the vectors
+    #[serde(skip, default)]
     subcells: Vec<Vec<Neighbor>>,
 }
 
@@ -49,15 +51,26 @@ impl Cell {
                 Vector3d::new(w,w,w)
             }
         };
-        let cells_x = (box_diagonal.x/interaction_length).value().floor() as usize;
-        let cells_y = (box_diagonal.y/interaction_length).value().floor() as usize;
-        let cells_z = (box_diagonal.z/interaction_length).value().floor() as usize;
-        Cell {
+        let mut cell = Cell {
             box_diagonal: box_diagonal,
             well_width: interaction_length,
             positions: Vec::new(),
-            num_subcells: Vector3d::new(cells_x,cells_y,cells_z),
-            subcells: vec![Vec::new(); cells_x*cells_y*cells_z],
+            num_subcells: Vector3d::default(),
+            subcells: Vec::new(),
+        };
+        cell.update_caches();
+        cell
+    }
+    /// Update the subcell lists, which seem wasteful to save.
+    pub fn update_caches(&mut self) {
+        let cells_x = (self.box_diagonal.x/self.well_width).value().floor() as usize;
+        let cells_y = (self.box_diagonal.y/self.well_width).value().floor() as usize;
+        let cells_z = (self.box_diagonal.z/self.well_width).value().floor() as usize;
+        self.num_subcells = Vector3d::new(cells_x,cells_y,cells_z);
+        self.subcells = vec![Vec::new(); cells_x*cells_y*cells_z];
+        let positions = self.positions.clone();
+        for (i,&r) in positions.iter().enumerate() {
+            self.add_to_subcells(i as u32, r);
         }
     }
     /// Atoms that may be within well_width of r.
@@ -96,6 +109,9 @@ impl Cell {
     pub fn add_atom_at(&mut self, r: Vector3d<Length>) {
         let index = self.positions.len() as u32;
         self.positions.push(r);
+        self.add_to_subcells(index, r);
+    }
+    fn add_to_subcells(&mut self, index: u32, r: Vector3d<Length>) {
         let sc = self.get_subcell(r);
         for &n in NEIGHBORS.iter() {
             let scp = sc + n;
@@ -125,22 +141,7 @@ impl Cell {
             for &n in NEIGHBORS.iter() {
                 remove_if(self.index_mut(oldsc + n), |n| n.index == index);
             }
-            for &n in NEIGHBORS.iter() {
-                let scp = sc + n;
-                let offset = Vector3d::new(
-                    if scp.x < 0 { -1 }
-                    else if scp.x == self.num_subcells.x as isize { 1 }
-                    else { 0 }
-                    ,
-                    if scp.y < 0 { -1 }
-                    else if scp.y == self.num_subcells.y as isize { 1 }
-                    else { 0 }
-                    ,
-                    if scp.z < 0 { -1 }
-                    else if scp.z == self.num_subcells.z as isize { 1 }
-                    else { 0 });
-                self.index_mut(scp).push(Neighbor { index, offset });
-            }
+            self.add_to_subcells(index, r);
         }
         old
     }

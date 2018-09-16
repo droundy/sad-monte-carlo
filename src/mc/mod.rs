@@ -44,6 +44,7 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
                         if let Ok(mut s) = serde_yaml::from_reader::<_,Self>(&f) {
                             println!("Resuming from file {:?}", save_as);
                             s.update_from_params(_mc);
+                            s.system_mut().update_caches();
                             return s;
                         }
                     }
@@ -72,6 +73,9 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
 
     /// Return the system!
     fn system(&self) -> &Self::System;
+
+    /// Return the system, but mutable!
+    fn system_mut(&mut self) -> &mut Self::System;
 
     /// The number of moves that have been made.
     fn num_moves(&self) -> u64;

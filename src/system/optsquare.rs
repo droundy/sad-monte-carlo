@@ -122,6 +122,9 @@ impl System for SquareWell {
         }
         e*0.5
     }
+    fn update_caches(&mut self) {
+        self.cell.update_caches();
+    }
     fn delta_energy(&self) -> Option<Energy> {
         Some(units::EPSILON)
     }

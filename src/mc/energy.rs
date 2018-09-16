@@ -561,6 +561,9 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
     fn system(&self) -> &Self::System {
         &self.system
     }
+    fn system_mut(&mut self) -> &mut Self::System {
+        &mut self.system
+    }
     fn num_moves(&self) -> u64 {
         self.moves
     }

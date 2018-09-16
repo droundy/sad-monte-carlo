@@ -56,6 +56,11 @@ pub trait System : ::serde::Serialize + ::serde::de::DeserializeOwned {
     fn lowest_possible_energy(&self) -> Option<Energy> {
         None
     }
+    /// Update any cached info after resume.  This is to make it
+    /// possible for a system to avoid saving information that is easy
+    /// and safe to recompute when restarting.
+    fn update_caches(&mut self) {
+    }
 }
 
 
