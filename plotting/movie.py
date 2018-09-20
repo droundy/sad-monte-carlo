@@ -146,8 +146,8 @@ while True:
                 j = i
             else:
                 j = -1
-            if fname == fnames[0]:
-                print('frame', i, 'with', t, 'iterations')
+            #if fname == fnames[0]:
+            #    print('frame', i, 'with', t, 'iterations')
 
             # all_figures.add(plt.figure('Entropy'))
             # if j > 0:
