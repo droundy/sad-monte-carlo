@@ -324,6 +324,9 @@ impl GrandSystem for SquareWell {
         let which = rng.sample(Uniform::new(0, self.positions.len()));
         self.remove_atom_number(which)
     }
+    fn num_atoms(&self) -> usize {
+        self.positions.len()
+    }
 }
 
 impl MovableSystem for SquareWell {

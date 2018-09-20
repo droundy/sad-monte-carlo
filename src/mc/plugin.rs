@@ -67,7 +67,7 @@ impl Action {
 
 /// A helper to enable Monte Carlo implementations to easily run their
 /// plugins without duplicating code.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PluginManager {
     #[serde(skip, default)]
     period: Cell<u64>,

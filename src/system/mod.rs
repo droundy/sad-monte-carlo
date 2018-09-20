@@ -81,7 +81,7 @@ pub trait MovableSystem : ConfirmSystem {
 }
 
 /// A system that can gain or lose atoms?
-pub trait GrandSystem : ConfirmSystem {
+pub trait GrandSystem : MovableSystem {
     /// Considers adding an atom, and returns the resulting energy of
     /// the system.  If the add is impossible (i.e. has infinite
     /// energy), `None` is returned, and no change is made to the
@@ -92,4 +92,6 @@ pub trait GrandSystem : ConfirmSystem {
     /// of the system.  The atom is not actually removed until the
     /// change is confirmed.
     fn plan_remove(&mut self, &mut MyRng) -> Energy;
+    /// The number of atoms
+    fn num_atoms(&self) -> usize;
 }

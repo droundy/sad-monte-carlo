@@ -2,6 +2,7 @@
 
 pub mod plugin;
 pub mod energy;
+pub mod energy_number;
 
 use ::system::*;
 use clapme::ClapMe;
