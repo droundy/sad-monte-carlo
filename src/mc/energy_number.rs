@@ -127,6 +127,8 @@ pub struct Bins {
     num_E: usize,
     /// The number of bins occupied
     num_states: usize,
+    /// Time of last new discovery
+    t_last: u64,
 }
 
 /// A square well fluid.
@@ -430,6 +432,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
                 max_N: 0,
                 num_E: 1,
                 num_states: 1,
+                t_last: 1,
             },
             move_plan: params._moves,
             addremove_probability: {
@@ -504,6 +507,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
 
         if self.bins.histogram[i] == 0 {
             self.bins.num_states += 1;
+            self.bins.t_last = self.moves;
         }
         self.bins.histogram[i] += 1;
         self.update_weights(e1);
@@ -732,13 +736,15 @@ impl<S: GrandSystem> Plugin<EnergyNumberMC<S>> for Movies {
         let hundred_trips = hundred_trips.map(|e| format!("{}", e))
             .unwrap_or("-".to_string());
         if !mc.report.quiet {
-            println!("   {} * {}{} * {}{} * {}{} | {} currently {}",
+            println!("   {} * {}{} * {}{} * {}{} | {} currently {} {{{} {:.2}}}",
                      one_trip,
                      ten_trips, ten_T,
                      hundred_trips, hundred_T,
                      thousand_trips, thousand_T,
                      mc.index_to_state(mc.bins.max_S_index),
                      State::new(sys),
+                     mc.bins.num_states,
+                     PrettyFloat(mc.moves as f64/mc.bins.t_last as f64),
             );
             if let Method::WL { lowest_hist, highest_hist, total_hist, ref hist, .. } = mc.method {
                 let mut lowest = 111111111;
