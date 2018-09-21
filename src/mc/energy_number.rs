@@ -440,13 +440,13 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
                     addremove_probability
                 } else {
                     // This is the case where we will dynamically
-                    // adjust this probability.  Start out always
+                    // adjust this probability.  Start out very often
                     // adding or removing, since we begin with zero
                     // atoms.  Also because adding and removing is the
                     // most "random" way to change the system, so
                     // modulo rejection we should prefer to
                     // add/remove.
-                    1.0
+                    0.5
                 }
             },
             system: system,
@@ -508,6 +508,34 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
         if self.bins.histogram[i] == 0 {
             self.bins.num_states += 1;
             self.bins.t_last = self.moves;
+        }
+        if self.moves % self.bins.t_last == 0 {
+            if let MoveParams::AcceptanceRate(r) = self.move_plan {
+                let old_addremove_prob = self.addremove_probability;
+                let overall_acceptance_rate =
+                    self.accepted_moves as f64 / self.moves as f64;
+                let acceptance_rate = self.bins.num_addremove_accepted as f64
+                    / self.bins.num_addremove_attempts as f64;
+                let translation_acceptance_rate =
+                    (self.accepted_moves - self.bins.num_addremove_accepted) as f64
+                    / (self.moves - self.bins.num_addremove_attempts) as f64;
+                let new_p = (r - translation_acceptance_rate)
+                      /(acceptance_rate - translation_acceptance_rate);
+                if !new_p.is_nan() {
+                    if new_p > 0.999 {
+                        self.addremove_probability = 0.999;
+                    } else {
+                        self.addremove_probability = new_p;
+                    }
+                }
+                if !self.report.quiet && (self.addremove_probability - old_addremove_prob).abs() > 0.001 {
+                    println!("        new addremove_probability: {:.3}",
+                             self.addremove_probability);
+                    println!("        acceptance rate {:.1}% [add/remove: {:.1}%]",
+                             100.0*overall_acceptance_rate,
+                             100.0*acceptance_rate);
+                }
+            }
         }
         self.bins.histogram[i] += 1;
         self.update_weights(e1);
