@@ -708,8 +708,8 @@ impl<S: GrandSystem> Plugin<EnergyNumberMC<S>> for Movies {
                      ten_trips, ten_T,
                      hundred_trips, hundred_T,
                      thousand_trips, thousand_T,
-                     mc.index_to_state(mc.bins.max_S_index).E/units::EPSILON,
-                     sys.energy()/units::EPSILON,
+                     mc.index_to_state(mc.bins.max_S_index),
+                     State::new(sys),
             );
             if let Method::WL { lowest_hist, highest_hist, total_hist, ref hist, .. } = mc.method {
                 let mut lowest = 111111111;
