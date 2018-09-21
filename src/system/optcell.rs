@@ -152,10 +152,14 @@ impl Cell {
         for &n in NEIGHBORS.iter() {
             remove_if(self.index_mut(sc + n), |n| n.index == which as u32);
         }
-        let oldindex = self.positions.len() as u32;
-        let sc = self.get_subcell(self.positions[which]);
-        for &n in NEIGHBORS.iter() {
-            rename_neighbor(self.index_mut(sc + n), oldindex, which as u32);
+        if self.positions.len() != which {
+            // When we swap_removed the atom, another atom got its
+            // index changed, and we need to adjust for that.
+            let oldindex = self.positions.len() as u32;
+            let sc = self.get_subcell(self.positions[which]);
+            for &n in NEIGHBORS.iter() {
+                rename_neighbor(self.index_mut(sc + n), oldindex, which as u32);
+            }
         }
         r
     }
