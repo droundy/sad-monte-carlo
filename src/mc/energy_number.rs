@@ -25,7 +25,7 @@ pub enum MethodParams {
 }
 
 /// Parameters to configure the moves.
-#[derive(Serialize, Deserialize, Debug, ClapMe, Clone)]
+#[derive(Serialize, Deserialize, Debug, ClapMe, Clone, Copy)]
 pub enum MoveParams {
     /// This means you chose to be explicit about translation scale etc.
     _Explicit {
@@ -109,9 +109,9 @@ pub struct Bins {
     /// The number of translation moves accepted at each number of atoms
     pub num_translation_accepted: Vec<u64>,
     /// The number of adds/removes tried at each number of atoms
-    pub num_addremove_attempts: Vec<u64>,
+    pub num_addremove_attempts: u64,
     /// The number of adds/removes accepted at each number of atoms
-    pub num_addremove_accepted: Vec<u64>,
+    pub num_addremove_accepted: u64,
 
     /// Whether we have seen this since the last visit to maxentropy.
     have_visited_since_maxentropy: Vec<bool>,
@@ -146,8 +146,8 @@ pub struct EnergyNumberMC<S> {
     pub bins: Bins,
     /// The move plan
     pub move_plan: MoveParams,
-    /// The "recent" acceptance rate.
-    pub acceptance_rate: f64,
+    /// The current add/remove probability
+    pub addremove_probability: f64,
     /// The random number generator.
     pub rng: ::rng::MyRng,
     /// Where to save the resume file.
@@ -218,11 +218,11 @@ impl Bins {
             // ensure we end up with enough room.
             let mut newbins = self.clone();
             newbins.max_N = if e.N > self.max_N { e.N } else { self.max_N };
-            while newbins.min < e.E {
+            while newbins.min > e.E {
                 newbins.min -= self.width;
                 newbins.num_E += 1;
             }
-            while newbins.emax() >= e.E {
+            while newbins.emax() <= e.E {
                 newbins.num_E += 1;
             }
             newbins.lnw = vec![Unitless::new(0.); newbins.nbins()];
@@ -230,16 +230,12 @@ impl Bins {
             newbins.translation_scale = vec![self.translation_scale[0]; newbins.max_N+1];
             newbins.num_translation_attempts = vec![0; newbins.max_N+1];
             newbins.num_translation_accepted = vec![0; newbins.max_N+1];
-            newbins.num_addremove_attempts = vec![0; newbins.max_N+1];
-            newbins.num_addremove_accepted = vec![0; newbins.max_N+1];
             newbins.have_visited_since_maxentropy = vec![false; newbins.nbins()];
             newbins.round_trips = vec![0; newbins.nbins()];
             for n in 0..self.max_N+1 {
                 newbins.translation_scale[n] = self.translation_scale[n];
                 newbins.num_translation_attempts[n] = self.num_translation_attempts[n];
                 newbins.num_translation_accepted[n] = self.num_translation_accepted[n];
-                newbins.num_addremove_attempts[n] = self.num_addremove_attempts[n];
-                newbins.num_addremove_accepted[n] = self.num_addremove_accepted[n];
             }
             for i in 0..self.lnw.len() {
                 let s = self.index_to_state(i);
@@ -414,7 +410,6 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
             moves: 0,
             time_L: 0,
             accepted_moves: 0,
-            acceptance_rate: 0.5, // arbitrary starting guess.
             bins: Bins {
                 histogram: vec![1],
                 lnw: vec![Unitless::new(0.0)],
@@ -424,8 +419,8 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
                 }],
                 num_translation_attempts: vec![0],
                 num_translation_accepted: vec![0],
-                num_addremove_attempts: vec![0],
-                num_addremove_accepted: vec![0],
+                num_addremove_attempts: 0,
+                num_addremove_accepted: 0,
                 min: system.energy() - ewidth*0.5, // center initial energy in a bin!
                 width: ewidth,
                 have_visited_since_maxentropy: vec![false],
@@ -437,6 +432,20 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
                 num_states: 1,
             },
             move_plan: params._moves,
+            addremove_probability: {
+                if let MoveParams::_Explicit { addremove_probability, .. } = params._moves {
+                    addremove_probability
+                } else {
+                    // This is the case where we will dynamically
+                    // adjust this probability.  Start out always
+                    // adding or removing, since we begin with zero
+                    // atoms.  Also because adding and removing is the
+                    // most "random" way to change the system, so
+                    // modulo rejection we should prefer to
+                    // add/remove.
+                    1.0
+                }
+            },
             system: system,
 
             rng: ::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
@@ -455,19 +464,39 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
     fn move_once(&mut self) {
         self.moves += 1;
         let e1 = State::new(&self.system);
-        let recent_scale = (1.0/self.moves as f64).sqrt();
-        self.acceptance_rate *= 1. - recent_scale;
-        self.bins.num_translation_attempts[e1.N] += 1;
-        if let Some(e2) = self.system.plan_move(&mut self.rng,
-                                                self.bins.translation_scale[e1.N]) {
-            let e2 = State { E: e2, N: e1.N };
-            self.bins.prepare_for_state(e2);
 
-            if !self.reject_move(e1,e2) {
-                self.accepted_moves += 1;
-                self.bins.num_translation_accepted[e1.N] += 1;
-                self.acceptance_rate += recent_scale;
-                self.system.confirm();
+        if self.rng.gen::<f64>() > self.addremove_probability {
+            self.bins.num_translation_attempts[e1.N] += 1;
+            if let Some(e2) = self.system.plan_move(&mut self.rng,
+                                                    self.bins.translation_scale[e1.N]) {
+                let e2 = State { E: e2, N: e1.N };
+                self.bins.prepare_for_state(e2);
+                if !self.reject_move(e1,e2) {
+                    self.accepted_moves += 1;
+                    self.bins.num_translation_accepted[e1.N] += 1;
+                    self.system.confirm();
+                }
+            }
+        } else {
+            self.bins.num_addremove_attempts += 1;
+            let option_e2 = if self.rng.gen::<u64>() & 1 == 0 {
+                // add
+                self.system.plan_add(&mut self.rng).map(|e2| State { E: e2, N: e1.N+1 })
+            } else {
+                // remove
+                if e1.N > 1 {
+                    Some(State { E: self.system.plan_remove(&mut self.rng), N: e1.N-1})
+                } else {
+                    None
+                }
+            };
+            if let Some(e2) = option_e2 {
+                self.bins.prepare_for_state(e2);
+                if !self.reject_move(e1,e2) {
+                    self.accepted_moves += 1;
+                    self.bins.num_addremove_accepted += 1;
+                    self.system.confirm();
+                }
             }
         }
         let energy = State::new(&self.system);
