@@ -601,9 +601,10 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
 /// Do we want movies? Where?
 #[derive(ClapMe, Debug)]
 pub struct MoviesParams {
-    /// How often (logarithmically) do we want a movie frame? If this
-    /// is 2.0, it means we want a frame every time the number of
-    /// iterations doubles.
+    // How often (logarithmically) do we want a movie frame? If this
+    // is 2.0, it means we want a frame every time the number of
+    // iterations doubles.
+    /// 2.0 means a frame every time iterations double.
     pub movie_time: Option<f64>,
 }
 
