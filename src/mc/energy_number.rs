@@ -125,6 +125,8 @@ pub struct Bins {
     max_N: usize,
     /// The number of energy bins
     num_E: usize,
+    /// The number of bins occupied
+    num_states: usize,
 }
 
 /// A square well fluid.
@@ -168,7 +170,6 @@ enum Method {
         lowest_hist: u64,
         highest_hist: u64,
         total_hist: u64,
-        num_states: f64,
         hist: Vec<u64>,
         min_energy: Energy,
     }
@@ -183,7 +184,6 @@ impl Method {
                 lowest_hist: 1,
                 highest_hist: 1,
                 total_hist: 0,
-                num_states: 1.0,
                 hist: Vec::new(),
                 min_energy: E,
             },
@@ -276,13 +276,10 @@ impl<S: GrandSystem> EnergyNumberMC<S> {
                 let lnw2 = self.bins.lnw[i2].value();
                 lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
             }
-            Method::WL { ref mut num_states, .. } => {
+            Method::WL { .. } => {
                 let lnw1 = self.bins.lnw[i1].value();
                 let lnw2 = self.bins.lnw[i2].value();
                 let rejected = lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp();
-                if !rejected && self.bins.histogram[i2] == 0 {
-                    *num_states += 1.0;
-                }
                 rejected
             }
         }
@@ -297,7 +294,8 @@ impl<S: GrandSystem> EnergyNumberMC<S> {
             Method::Samc { .. } => {}
             Method::WL { ref mut gamma,
                          ref mut lowest_hist, ref mut highest_hist, ref mut total_hist,
-                         ref mut hist, ref mut min_energy, num_states } => {
+                         ref mut hist, ref mut min_energy } => {
+                let num_states = self.bins.num_states as f64;
                 if hist.len() != self.bins.lnw.len() {
                     // Oops, we found a new energy, so let's regroup.
                     if *gamma != 1.0 || hist.len() == 0 {
@@ -436,6 +434,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
                 max_S_index: 0,
                 max_N: 0,
                 num_E: 1,
+                num_states: 1,
             },
             move_plan: params._moves,
             system: system,
@@ -474,6 +473,9 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
         let energy = State::new(&self.system);
         let i = self.state_to_index(energy);
 
+        if self.bins.histogram[i] == 0 {
+            self.bins.num_states += 1;
+        }
         self.bins.histogram[i] += 1;
         self.update_weights(e1);
 
@@ -708,8 +710,7 @@ impl<S: GrandSystem> Plugin<EnergyNumberMC<S>> for Movies {
                      mc.index_to_state(mc.bins.max_S_index).E/units::EPSILON,
                      sys.energy()/units::EPSILON,
             );
-            if let Method::WL { lowest_hist, highest_hist, total_hist, num_states,
-                                ref hist, .. } = mc.method {
+            if let Method::WL { lowest_hist, highest_hist, total_hist, ref hist, .. } = mc.method {
                 let mut lowest = 111111111;
                 let mut highest = 111111111;
                 for (i,&h) in hist.iter().enumerate() {
@@ -721,7 +722,7 @@ impl<S: GrandSystem> Plugin<EnergyNumberMC<S>> for Movies {
                     }
                 }
                 println!("        WL:  flatness {:.1} with min {:.2} at {} and max {:.2} at {}!",
-                         PrettyFloat(lowest_hist as f64*num_states as f64
+                         PrettyFloat(lowest_hist as f64*mc.bins.num_states as f64
                                      / total_hist as f64),
                          PrettyFloat(lowest_hist as f64),
                          mc.index_to_state(lowest).E,
