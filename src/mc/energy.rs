@@ -555,7 +555,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
         let i = self.state_to_index(energy);
 
         self.bins.histogram[i] += 1;
-        self.update_weights(e1);
+        self.update_weights(energy);
 
         if self.bins.lnw[i] > self.bins.max_S {
             self.bins.max_S = self.bins.lnw[i];

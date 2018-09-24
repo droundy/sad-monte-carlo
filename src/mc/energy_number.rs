@@ -172,13 +172,12 @@ enum Method {
         lowest_hist: u64,
         highest_hist: u64,
         total_hist: u64,
-        hist: Vec<u64>,
-        min_energy: Energy,
+        bins: Bins,
     }
 }
 
 impl Method {
-    fn new(p: MethodParams, E: Energy) -> Self {
+    fn new<S: GrandSystem>(p: MethodParams, sys: &S, ewidth: Energy) -> Self {
         match p {
             MethodParams::Samc { t0 } => Method::Samc { t0 },
             MethodParams::WL => Method::WL {
@@ -186,8 +185,25 @@ impl Method {
                 lowest_hist: 1,
                 highest_hist: 1,
                 total_hist: 0,
-                hist: Vec::new(),
-                min_energy: E,
+                bins: Bins {
+                    histogram: vec![1],
+                    lnw: vec![Unitless::new(0.0)],
+                    translation_scale: vec![0.05*units::SIGMA],
+                    num_translation_attempts: vec![0],
+                    num_translation_accepted: vec![0],
+                    num_addremove_attempts: 0,
+                    num_addremove_accepted: 0,
+                    min: sys.energy() - ewidth*0.5, // center initial energy in a bin!
+                    width: ewidth,
+                    have_visited_since_maxentropy: vec![false],
+                    round_trips: vec![1],
+                    max_S: Unitless::new(0.),
+                    max_S_index: 0,
+                    max_N: 0,
+                    num_E: 1,
+                    num_states: 1,
+                    t_last: 1,
+                }
             },
         }
     }
@@ -212,8 +228,9 @@ impl Bins {
     fn nbins(&self) -> usize {
         self.num_E*(self.max_N+1)
     }
-    /// Make room in our arrays for a new energy value
-    pub fn prepare_for_state(&mut self, e: State) {
+    /// Make room in our arrays for a new energy value.  Returns true
+    /// if we had to make changes.
+    pub fn prepare_for_state(&mut self, e: State) -> bool {
         assert!(self.width > Energy::new(0.0));
         if e.N > self.max_N || e.E < self.min || e.E >= self.emax() {
             // this is a little wasteful, but seems the easiest way to
@@ -248,6 +265,9 @@ impl Bins {
                 newbins.round_trips[j] = self.round_trips[i];
             }
             *self = newbins;
+            true
+        } else {
+            false
         }
     }
 }
@@ -274,7 +294,22 @@ impl<S: GrandSystem> EnergyNumberMC<S> {
                 let lnw2 = self.bins.lnw[i2].value();
                 lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
             }
-            Method::WL { .. } => {
+            Method::WL { ref mut bins, ref mut gamma, ref mut lowest_hist, ref mut highest_hist, ref mut total_hist, .. } => {
+                if bins.prepare_for_state(e2) {
+                    // Oops, we found a new energy, so let's regroup.
+                    if *gamma != 1.0 || bins.histogram.len() == 0 {
+                        self.movies.new_gamma(self.moves, *gamma);
+                        self.movies.new_gamma(self.moves, 1.0);
+                        println!("    WL: Starting fresh with {} energies",
+                                 self.bins.lnw.len());
+                        *gamma = 1.0;
+                        *lowest_hist = 0;
+                        *highest_hist = 0;
+                        *total_hist = 0;
+                    } else {
+                        // We can keep our counts!
+                    }
+                }
                 let lnw1 = self.bins.lnw[i1].value();
                 let lnw2 = self.bins.lnw[i2].value();
                 let rejected = lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp();
@@ -291,50 +326,21 @@ impl<S: GrandSystem> EnergyNumberMC<S> {
         match self.method {
             Method::Samc { .. } => {}
             Method::WL { ref mut gamma,
-                         ref mut lowest_hist, ref mut highest_hist, ref mut total_hist,
-                         ref mut hist, ref mut min_energy } => {
+                         ref mut lowest_hist, ref mut highest_hist, ref mut total_hist, ref mut bins } => {
                 let num_states = self.bins.num_states as f64;
-                if hist.len() != self.bins.lnw.len() {
-                    // Oops, we found a new energy, so let's regroup.
-                    if *gamma != 1.0 || hist.len() == 0 {
-                        println!("    WL: Starting fresh with {} energies",
-                                 self.bins.lnw.len());
-                        gamma_changed = true;
-                        *gamma = 1.0;
-                        *lowest_hist = 0;
-                        *highest_hist = 0;
-                        *total_hist = 0;
-                        *hist = vec![0; self.bins.lnw.len()];
-                        *min_energy = self.bins.min;
-                    } else {
-                        // We have to adjust our hist Vec, but can
-                        // keep our counts! We just pretend we already
-                        // knew there were more energies to be
-                        // found...
-                        while *min_energy > self.bins.min {
-                            *min_energy -= self.bins.width;
-                            hist.insert(0,0);
-                        }
-                        while hist.len() < self.bins.lnw.len() {
-                            hist.push(0);
-                        }
-                        *lowest_hist = 0;
-                    }
-                }
-                hist[i] += 1;
-                if hist[i] > *highest_hist {
-                    *highest_hist = hist[i];
+                bins.histogram[i] += 1;
+                if bins.histogram[i] > *highest_hist {
+                    *highest_hist = bins.histogram[i];
                 }
                 *total_hist += 1;
                 let histogram = &self.bins.histogram;
-                if hist[i] == *lowest_hist + 1
-                    && hist.len() > 1
-                    && hist.iter().enumerate()
+                if bins.histogram[i] == *lowest_hist + 1
+                    && bins.histogram.iter().enumerate()
                           .filter(|(i,_)| histogram[*i] != 0)
                           .map(|(_,&h)|h).min() == Some(*lowest_hist+1)
                 {
-                    *lowest_hist = hist[i];
-                    if *lowest_hist as f64 >= 0.8**total_hist as f64 / num_states {
+                    *lowest_hist = bins.histogram[i];
+                    if bins.histogram.len() > 1 && *lowest_hist as f64 >= 0.8**total_hist as f64 / num_states {
                         gamma_changed = true;
                         *gamma *= 0.5;
                         if *gamma > 1e-16 {
@@ -344,7 +350,7 @@ impl<S: GrandSystem> EnergyNumberMC<S> {
                                      *lowest_hist);
                             println!("         gamma => {}", PrettyFloat(*gamma));
                         }
-                        hist.iter_mut().map(|x| *x = 0).count();
+                        bins.histogram.iter_mut().map(|x| *x = 0).count();
                         *total_hist = 0;
                         *lowest_hist = 0;
                     }
@@ -408,7 +414,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
     fn from_params(params: EnergyNumberMCParams, system: S, save_as: ::std::path::PathBuf) -> Self {
         let ewidth = params.energy_bin.unwrap_or(system.delta_energy().unwrap_or(Energy::new(1.0)));
         EnergyNumberMC {
-            method: Method::new(params._method, system.energy()),
+            method: Method::new(params._method, &system, ewidth),
             moves: 0,
             time_L: 0,
             accepted_moves: 0,
@@ -528,8 +534,8 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
                         self.addremove_probability = new_p;
                     }
                 }
-                if !self.report.quiet && (self.addremove_probability - old_addremove_prob).abs() > 0.001 {
-                    println!("        new addremove_probability: {:.3}",
+                if !self.report.quiet && (self.addremove_probability - old_addremove_prob).abs() > 0.01 {
+                    println!("        new addremove_probability: {:.2}",
                              self.addremove_probability);
                     println!("        acceptance rate {:.1}% [add/remove: {:.1}%]",
                              100.0*overall_acceptance_rate,
@@ -538,7 +544,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
             }
         }
         self.bins.histogram[i] += 1;
-        self.update_weights(e1);
+        self.update_weights(energy);
 
         if self.bins.lnw[i] > self.bins.max_S {
             self.bins.max_S = self.bins.lnw[i];
@@ -774,24 +780,26 @@ impl<S: GrandSystem> Plugin<EnergyNumberMC<S>> for Movies {
                      mc.bins.num_states,
                      PrettyFloat(mc.moves as f64/mc.bins.t_last as f64),
             );
-            if let Method::WL { lowest_hist, highest_hist, total_hist, ref hist, .. } = mc.method {
-                let mut lowest = 111111111;
-                let mut highest = 111111111;
-                for (i,&h) in hist.iter().enumerate() {
-                    if h == lowest_hist && mc.bins.histogram[i] != 0 {
-                        lowest = i;
+            if let Method::WL { lowest_hist, highest_hist, total_hist, ref bins, .. } = mc.method {
+                if total_hist > 0 {
+                    let mut lowest = 123456789;
+                    let mut highest = 123456789;
+                    for (i,&h) in bins.histogram.iter().enumerate() {
+                        if h == lowest_hist && mc.bins.histogram[i] != 0 {
+                            lowest = i;
+                        }
+                        if h == highest_hist && mc.bins.histogram[i] != 0 {
+                            highest = i;
+                        }
                     }
-                    if h == highest_hist && mc.bins.histogram[i] != 0 {
-                        highest = i;
-                    }
+                    println!("        WL:  flatness {:.1} with min {:.2} at {} and max {:.2} at {}!",
+                             PrettyFloat(lowest_hist as f64*mc.bins.num_states as f64
+                                         / total_hist as f64),
+                             PrettyFloat(lowest_hist as f64),
+                             mc.index_to_state(lowest),
+                             PrettyFloat(highest_hist as f64),
+                             mc.index_to_state(highest));
                 }
-                println!("        WL:  flatness {:.1} with min {:.2} at {} and max {:.2} at {}!",
-                         PrettyFloat(lowest_hist as f64*mc.bins.num_states as f64
-                                     / total_hist as f64),
-                         PrettyFloat(lowest_hist as f64),
-                         mc.index_to_state(lowest).E,
-                         PrettyFloat(highest_hist as f64),
-                         mc.index_to_state(highest).E);
             }
         }
     }
