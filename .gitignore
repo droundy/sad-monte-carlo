@@ -4,3 +4,4 @@
 **/*.rs.bk
 *.out
 *.yaml
+.tmp*
