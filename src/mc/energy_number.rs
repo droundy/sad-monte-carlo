@@ -140,8 +140,6 @@ pub struct EnergyNumberMC<S> {
     method: Method,
     /// The number of moves that have been made.
     pub moves: u64,
-    /// The last move where we discovered a new energy.
-    pub time_L: u64,
     /// The number of moves that have been accepted.
     pub accepted_moves: u64,
     /// The energy bins.
@@ -416,7 +414,6 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
         EnergyNumberMC {
             method: Method::new(params._method, &system, ewidth),
             moves: 0,
-            time_L: 0,
             accepted_moves: 0,
             bins: Bins {
                 histogram: vec![1],
