@@ -91,16 +91,11 @@ impl MovableSystem for LatticeGas {
 
 impl GrandSystem for LatticeGas {
     fn plan_add(&mut self, rng: &mut MyRng) -> Option<Energy> {
-        if self.natoms == self.L*self.L {
-            // No room for more!
+        let i = rng.gen_range(0, self.L);
+        let j = rng.gen_range(0, self.L);
+        if self.N[i+j*self.L] == 1 {
             self.possible_change = None;
             return None;
-        }
-        let mut i = rng.gen_range(0, self.L);
-        let mut j = rng.gen_range(0, self.L);
-        while self.N[i+j*self.L] == 1 {
-            i = rng.gen_range(0, self.L);
-            j = rng.gen_range(0, self.L);
         }
         let j2 = (j + 1) % self.L;
         let mut neighbor_tot = self.N[i + j2*self.L];
@@ -119,12 +114,11 @@ impl GrandSystem for LatticeGas {
             self.possible_change = None;
             return self.E;
         }
-        let mut i = rng.gen_range(0, self.L);
-        let mut j = rng.gen_range(0, self.L);
-        while self.N[i+j*self.L] == 0 {
-            i = rng.gen_range(0, self.L);
-            j = rng.gen_range(0, self.L);
-        }
+        let which = rng.gen_range(0, self.natoms);
+        let index = self.N.iter().enumerate().filter(|(_,&n)| n == 1).enumerate()
+            .filter(move |(i,_)| *i == which).map(|(_,(i,_))| i).next().unwrap();
+        let j = index / self.L;
+        let i = index % self.L;
         let j2 = (j + 1) % self.L;
         let mut neighbor_tot = self.N[i + j2*self.L];
         let j2 = (j + self.L - 1) % self.L;
