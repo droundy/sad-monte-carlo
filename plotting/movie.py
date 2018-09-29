@@ -67,7 +67,7 @@ for fname in fnames:
 plt.legend(loc='best')
 plt.xlabel('$t$')
 plt.ylabel(r'$\gamma$')
-plt.ylim(1e-12, 1.1)
+# plt.ylim(1e-12, 1.1)
 
 def convex_hull(S):
     convexS = np.zeros_like(S)
