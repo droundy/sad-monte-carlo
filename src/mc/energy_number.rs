@@ -601,14 +601,14 @@ pub struct MoviesParams {
     /// 2.0 means a frame every time iterations double.
     pub time: Option<f64>,
     /// The name of the movie file.
-    pub filename: Option<::std::path::PathBuf>,
+    pub name: Option<::std::path::PathBuf>,
 }
 
 impl Default for MoviesParams {
     fn default() -> Self {
         MoviesParams {
             time: None,
-            filename: None,
+            name: None,
         }
     }
 }
@@ -616,7 +616,7 @@ impl Default for MoviesParams {
 /// A plugin that saves movie data.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Movies {
-    filename: Option<::std::path::PathBuf>,
+    name: Option<::std::path::PathBuf>,
     movie_time: Option<f64>,
     which_frame: Cell<i32>,
     period: Cell<plugin::TimeToRun>,
@@ -628,7 +628,7 @@ pub struct Movies {
 impl From<MoviesParams> for Movies {
     fn from(params: MoviesParams) -> Self {
         Movies {
-            filename: params.filename,
+            name: params.name,
             movie_time: params.time,
             which_frame: Cell::new(0),
             period: Cell::new(if params.time.is_some() {
@@ -659,8 +659,8 @@ impl<S: GrandSystem> Plugin<EnergyNumberMC<S>> for Movies {
                 // energy indices.
                 self.time.borrow_mut().push(moves);
 
-                ::std::fs::create_dir_all(&self.filename.clone().unwrap()).unwrap();
-                let mut spath = self.filename.clone().unwrap();
+                ::std::fs::create_dir_all(&self.name.clone().unwrap()).unwrap();
+                let mut spath = self.name.clone().unwrap();
                 spath.push(format!("S-{:016}.dat", mc.num_moves()));
                 let mut f = File::create(spath).unwrap();
                 for energy in mc.bins.energies() {
@@ -675,7 +675,7 @@ impl<S: GrandSystem> Plugin<EnergyNumberMC<S>> for Movies {
                     writeln!(f).unwrap();
                 }
 
-                let mut hpath = self.filename.clone().unwrap();
+                let mut hpath = self.name.clone().unwrap();
                 hpath.push(format!("h-{:016}.dat", mc.num_moves()));
                 let mut f = File::create(hpath).unwrap();
                 for energy in mc.bins.energies() {
