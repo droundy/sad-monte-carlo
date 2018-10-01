@@ -11,6 +11,8 @@ use rand::Rng;
 use std::default::Default;
 use std::cell::{RefCell,Cell};
 use ::prettyfloat::PrettyFloat;
+use std::fs::File;
+use std::io::Write;
 
 /// Parameters to configure a particular MC.
 #[derive(Debug, ClapMe)]
@@ -49,7 +51,7 @@ pub struct EnergyNumberMCParams {
     energy_bin: Option<Energy>,
     _moves: MoveParams,
     _report: plugin::ReportParams,
-    _movies: MoviesParams,
+    movie: MoviesParams,
     _save: plugin::SaveParams,
 }
 
@@ -64,7 +66,7 @@ impl Default for EnergyNumberMCParams {
                 addremove_probability: 0.05,
             },
             _report: plugin::ReportParams::default(),
-            _movies: MoviesParams::default(),
+            movie: MoviesParams::default(),
             _save: plugin::SaveParams::default(),
         }
     }
@@ -219,6 +221,12 @@ impl Bins {
             E: self.min + ((i/(self.max_N+1)) as f64 + 0.5)*self.width,
             N: i % (self.max_N+1),
         }
+    }
+    fn energies(&self) -> impl Iterator<Item=Energy> {
+        let n = self.num_E;
+        let min = self.min;
+        let w = self.width;
+        (0..n).map(move |i| min + w*(i as f64 + 0.5))
     }
     fn emax(&self) -> Energy {
         self.min + self.width*(self.num_E as f64)
@@ -457,7 +465,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
             rng: ::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
             save_as: save_as,
             report: plugin::Report::from(params._report),
-            movies: Movies::from(params._movies),
+            movies: Movies::from(params.movie),
             save: plugin::Save::from(params._save),
             manager: plugin::PluginManager::new(),
         }
@@ -591,13 +599,16 @@ pub struct MoviesParams {
     // is 2.0, it means we want a frame every time the number of
     // iterations doubles.
     /// 2.0 means a frame every time iterations double.
-    pub movie_time: Option<f64>,
+    pub time: Option<f64>,
+    /// The name of the movie file.
+    pub filename: Option<::std::path::PathBuf>,
 }
 
 impl Default for MoviesParams {
     fn default() -> Self {
         MoviesParams {
-            movie_time: None,
+            time: None,
+            filename: None,
         }
     }
 }
@@ -605,33 +616,27 @@ impl Default for MoviesParams {
 /// A plugin that saves movie data.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Movies {
+    filename: Option<::std::path::PathBuf>,
     movie_time: Option<f64>,
     which_frame: Cell<i32>,
     period: Cell<plugin::TimeToRun>,
-    entropy: RefCell<Vec<Vec<f64>>>,
-    histogram: RefCell<Vec<Vec<u64>>>,
     time: RefCell<Vec<u64>>,
-    energy: RefCell<Vec<Energy>>,
-    #[serde(default)]
     gamma: RefCell<Vec<f64>>,
-    #[serde(default)]
     gamma_time: RefCell<Vec<u64>>,
 }
 
 impl From<MoviesParams> for Movies {
     fn from(params: MoviesParams) -> Self {
         Movies {
-            movie_time: params.movie_time,
+            filename: params.filename,
+            movie_time: params.time,
             which_frame: Cell::new(0),
-            period: Cell::new(if params.movie_time.is_some() {
+            period: Cell::new(if params.time.is_some() {
                 plugin::TimeToRun::TotalMoves(1)
             } else {
                 plugin::TimeToRun::Never
             }),
-            entropy: RefCell::new(Vec::new()),
-            histogram: RefCell::new(Vec::new()),
             time: RefCell::new(Vec::new()),
-            energy: RefCell::new(Vec::new()),
             gamma: RefCell::new(Vec::new()),
             gamma_time: RefCell::new(Vec::new()),
         }
@@ -653,59 +658,36 @@ impl<S: GrandSystem> Plugin<EnergyNumberMC<S>> for Movies {
                 // First, let's create the arrays for the time and
                 // energy indices.
                 self.time.borrow_mut().push(moves);
-                let new_energy: Vec<_> =
-                    (0 .. mc.bins.lnw.len()).map(|i| mc.index_to_state(i).E).collect();
-                let old_energy = self.energy.replace(new_energy.clone());
 
-                let histogram = &mc.bins.histogram;
-                let lnw = &mc.bins.lnw;
-                let entropy: Vec<_> = (0..new_energy.len()).map(|i| {
-                    *lnw[i].value()
-                }).collect();
-                if new_energy == old_energy {
-                    // We can just add a row.
-                    let mut S = self.entropy.borrow_mut();
-                    S.push(entropy);
-                    let mut hist_movie = self.histogram.borrow_mut();
-                    hist_movie.push(histogram.clone());
-                } else {
-                    let energy = self.energy.borrow().clone();
-                    let mut left_zeros = 0;
-                    for e in energy.iter() {
-                        if !old_energy.contains(e) {
-                            left_zeros += 1;
-                        } else {
-                            break;
-                        }
+                ::std::fs::create_dir_all(&self.filename.clone().unwrap()).unwrap();
+                let mut spath = self.filename.clone().unwrap();
+                spath.push(format!("S-{:016}.dat", mc.num_moves()));
+                let mut f = File::create(spath).unwrap();
+                for energy in mc.bins.energies() {
+                    write!(f, "{}\t", PrettyFloat(*(energy/units::EPSILON).value())).unwrap();
+                }
+                writeln!(f).unwrap();
+                for N in 0 .. mc.bins.max_N+1 {
+                    write!(f, "{}", mc.bins.lnw[N]).unwrap();
+                    for i in 1..mc.bins.num_E {
+                        write!(f, "\t{}", mc.bins.lnw[N + i*(mc.bins.max_N + 1)]).unwrap();
                     }
-                    let mut right_zeros = 0;
-                    for e in energy.iter().rev() {
-                        if !old_energy.contains(e) {
-                            right_zeros += 1;
-                        } else {
-                            break;
-                        }
+                    writeln!(f).unwrap();
+                }
+
+                let mut hpath = self.filename.clone().unwrap();
+                hpath.push(format!("h-{:016}.dat", mc.num_moves()));
+                let mut f = File::create(hpath).unwrap();
+                for energy in mc.bins.energies() {
+                    write!(f, "{}\t", PrettyFloat(*(energy/units::EPSILON).value())).unwrap();
+                }
+                writeln!(f).unwrap();
+                for N in 0 .. mc.bins.max_N+1 {
+                    write!(f, "{}", mc.bins.histogram[N]).unwrap();
+                    for i in 1..mc.bins.num_E {
+                        write!(f, "\t{}", mc.bins.histogram[N + i*(mc.bins.max_N + 1)]).unwrap();
                     }
-                    let mut S = self.entropy.borrow_mut();
-                    for v in S.iter_mut() {
-                        for _ in 0..right_zeros {
-                            v.push(0.);
-                        }
-                        for _ in 0..left_zeros {
-                            v.insert(0,0.);
-                        }
-                    }
-                    let mut hist_movie = self.histogram.borrow_mut();
-                    for v in hist_movie.iter_mut() {
-                        for _ in 0..right_zeros {
-                            v.push(0);
-                        }
-                        for _ in 0..left_zeros {
-                            v.insert(0,0);
-                        }
-                    }
-                    S.push(entropy);
-                    hist_movie.push(histogram.clone());
+                    writeln!(f).unwrap();
                 }
 
                 // Now decide when we need the next frame to be.
