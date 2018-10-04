@@ -17,7 +17,7 @@ use ::prettyfloat::PrettyFloat;
 pub enum MethodParams {
     /// Samc
     Samc {
-        /// The t0 parameter, determining how long to leave gamma=1.
+        /// Use SAMC with t0, determining how long to leave gamma=1.
         t0: f64,
     },
     /// Wang-Landau
@@ -25,11 +25,16 @@ pub enum MethodParams {
 }
 
 /// Parameters to configure the moves.
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, ClapMe, Clone, Copy)]
 pub enum MoveParams {
-    /// The rms distance of moves
-    TranslationScale(Length),
-    /// Adjust translation scale to reach acceptance rate.
+    /// This means you chose to be explicit about translation scale etc.
+    _Explicit {
+        /// The rms distance of translations
+        translation_scale: Length,
+        /// The fraction of attempted changes that are adds or removes
+        addremove_probability: f64,
+    },
+    /// Adjust translation scale and add/remove probability to reach acceptance rate.
     AcceptanceRate(f64),
 }
 
@@ -44,19 +49,22 @@ pub struct NumberMCParams {
     T: Energy,
     _moves: MoveParams,
     _report: plugin::ReportParams,
-    _movies: MoviesParams,
+    movie: MoviesParams,
     _save: plugin::SaveParams,
 }
 
 impl Default for NumberMCParams {
     fn default() -> Self {
         NumberMCParams {
-            _method: MethodParams::Samc { t0: 1e3 },
+            _method: MethodParams::WL,
+            T: Energy::new(1.0),
             seed: None,
-            T: 1.0*units::EPSILON,
-            _moves: MoveParams::TranslationScale(0.05*units::SIGMA),
+            _moves: MoveParams::_Explicit{
+                translation_scale: 0.05*units::SIGMA,
+                addremove_probability: 0.05,
+            },
             _report: plugin::ReportParams::default(),
-            _movies: MoviesParams::default(),
+            movie: MoviesParams::default(),
             _save: plugin::SaveParams::default(),
         }
     }
@@ -66,28 +74,44 @@ impl Default for NumberMCParams {
 /// should make this code easier to transition to a grand ensemble.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct State {
+    /// The energy
+    pub E: Energy,
     /// The number of atoms
     pub N: usize,
 }
 impl ::std::fmt::Display for State {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "{}", self.N)
+        if self.E == Energy::new(0.) {
+            write!(f, "{}", self.N)
+        } else {
+            write!(f, "{}:{}", self.N, PrettyFloat(*(self.E/units::EPSILON).value()))
+        }
     }
 }
 impl State {
     /// Find the state of a system
     pub fn new<S: GrandSystem>(sys: &S) -> State {
-        State { N: sys.num_atoms() }
+        State { E: sys.energy(), N: sys.num_atoms() }
     }
 }
 
 /// This defines the energy bins.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Bins {
-    /// The number of times we have been at each energy.
+    /// The number of times we have been at each state.
     pub histogram: Vec<u64>,
-    /// The ln weight for each energy bin.
+    /// The ln weight for each state.
     pub lnw: Vec<Unitless>,
+    /// The current translation scale for each number of atoms
+    pub translation_scale: Vec<Length>,
+    /// The number of translation moves tried at each number of atoms
+    pub num_translation_attempts: Vec<u64>,
+    /// The number of translation moves accepted at each number of atoms
+    pub num_translation_accepted: Vec<u64>,
+    /// The number of adds/removes tried at each number of atoms
+    pub num_addremove_attempts: u64,
+    /// The number of adds/removes accepted at each number of atoms
+    pub num_addremove_accepted: u64,
 
     /// Whether we have seen this since the last visit to maxentropy.
     have_visited_since_maxentropy: Vec<bool>,
@@ -97,6 +121,12 @@ pub struct Bins {
     max_S: Unitless,
     /// The index with the maximum entropy.
     max_S_index: usize,
+    /// The maximum number of atoms
+    max_N: usize,
+    /// The number of bins occupied
+    num_states: usize,
+    /// Time of last new discovery
+    t_last: u64,
 }
 
 /// A square well fluid.
@@ -104,35 +134,31 @@ pub struct Bins {
 pub struct NumberMC<S> {
     /// The system we are simulating.
     pub system: S,
+    /// The temperature.
+    T: Energy,
     /// The method we use
     method: Method,
     /// The number of moves that have been made.
     pub moves: u64,
-    /// The last move where we discovered a new energy.
-    pub time_L: u64,
     /// The number of moves that have been accepted.
     pub accepted_moves: u64,
     /// The energy bins.
     pub bins: Bins,
     /// The move plan
     pub move_plan: MoveParams,
-    /// The current translation scale
-    pub translation_scale: Length,
-    /// The "recent" acceptance rate.
-    pub acceptance_rate: f64,
+    /// The current add/remove probability
+    pub addremove_probability: f64,
     /// The random number generator.
     pub rng: ::rng::MyRng,
     /// Where to save the resume file.
     pub save_as: ::std::path::PathBuf,
-    /// The temperature.
-    pub T: Energy,
     report: plugin::Report,
     movies: Movies,
     save: plugin::Save,
     manager: plugin::PluginManager,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 enum Method {
     /// Samc
     Samc {
@@ -144,8 +170,7 @@ enum Method {
         lowest_hist: u64,
         highest_hist: u64,
         total_hist: u64,
-        num_states: f64,
-        hist: Vec<u64>,
+        bins: Bins,
     }
 }
 
@@ -158,8 +183,22 @@ impl Method {
                 lowest_hist: 1,
                 highest_hist: 1,
                 total_hist: 0,
-                num_states: 1.0,
-                hist: Vec::new(),
+                bins: Bins {
+                    histogram: vec![1],
+                    lnw: vec![Unitless::new(0.0)],
+                    translation_scale: vec![0.05*units::SIGMA],
+                    num_translation_attempts: vec![0],
+                    num_translation_accepted: vec![0],
+                    num_addremove_attempts: 0,
+                    num_addremove_accepted: 0,
+                    have_visited_since_maxentropy: vec![false],
+                    round_trips: vec![1],
+                    max_S: Unitless::new(0.),
+                    max_S_index: 0,
+                    max_N: 0,
+                    num_states: 1,
+                    t_last: 1,
+                }
             },
         }
     }
@@ -173,47 +212,70 @@ impl Bins {
     }
     /// Find the energy corresponding to a given index.
     pub fn index_to_state(&self, i: usize) -> State {
-        State { N: i }
-    }
-    /// Make room in our arrays for a new energy value
-    pub fn prepare_for_state(&mut self, e: State) {
-        let n = e.N;
-        while n >= self.lnw.len() {
-            self.lnw.push(Unitless::new(0.0));
-            self.histogram.push(0);
-            self.have_visited_since_maxentropy.push(true);
-            self.round_trips.push(1);
+        State {
+            E: Energy::new(0.),
+            N: i,
         }
+    }
+    /// Make room in our arrays for a new energy value.  Returns true
+    /// if we had to make changes.
+    pub fn prepare_for_state(&mut self, e: State) -> bool {
+        let mut made_change = false;
+        while e.N > self.lnw.len() {
+            self.max_N += 1;
+            self.lnw.push(Unitless::new(0.));
+            self.histogram.push(0);
+            self.num_translation_accepted.push(0);
+            self.num_translation_attempts.push(0);
+            self.round_trips.push(1);
+            self.have_visited_since_maxentropy.push(false);
+            let last = self.translation_scale.pop().unwrap();
+            self.translation_scale.push(last);
+            self.translation_scale.push(last);
+            made_change = true;
+        }
+        made_change
     }
 }
 
-impl<S: System> NumberMC<S> {
-    /// Find the index corresponding to a given energy.  This should
-    /// panic if the energy is less than `min`.
+impl<S: GrandSystem> NumberMC<S> {
+    /// Find the index corresponding to a given state.
     pub fn state_to_index(&self, s: State) -> usize {
         self.bins.state_to_index(s)
     }
-    /// Find the energy corresponding to a given index.
+    /// Find the state corresponding to a given index.
     pub fn index_to_state(&self, i: usize) -> State {
         self.bins.index_to_state(i)
     }
 
     /// This decides whether to reject the move based on the actual
     /// method in use.
-    fn reject_move(&mut self, n1: usize, e1: Energy, n2: usize, e2: Energy) -> bool {
-        let i1 = self.state_to_index(State { N: n1 });
-        let i2 = self.state_to_index(State { N: n2 });
-        let lnw1 = *self.bins.lnw[i1].value() + e1/self.T;
-        let lnw2 = *self.bins.lnw[i2].value() + e2/self.T;
+    fn reject_move(&mut self, e1: State, e2: State) -> bool {
+        let i1 = self.state_to_index(e1);
+        let i2 = self.state_to_index(e2);
+        let lnw1 = *(self.bins.lnw[i1] + e1.E/self.T).value();
+        let lnw2 = *(self.bins.lnw[i2] + e2.E/self.T).value();
         match self.method {
             Method::Samc { .. } => {
                 lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
             }
-            Method::WL { ref mut num_states, .. } => {
-                let rejected = lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp();
-                if !rejected && self.bins.histogram[i2] == 0 {
-                    *num_states += 1.0;
+            Method::WL { ref mut bins, ref mut gamma, ref mut lowest_hist, ref mut highest_hist, ref mut total_hist, .. } => {
+                if bins.prepare_for_state(e2) {
+                    // Oops, we found a new energy, so let's regroup.
+                    if *gamma != 1.0 || bins.histogram.len() == 0 {
+                        self.movies.new_gamma(self.moves, *gamma);
+                        self.movies.new_gamma(self.moves, 1.0);
+                        println!("    WL: Starting fresh with {} numbers",
+                                 self.bins.lnw.len());
+                        *gamma = 1.0;
+                        *lowest_hist = 0;
+                        *highest_hist = 0;
+                        *total_hist = 0;
+                    } else {
+                        // We can keep our counts!
+                    }
                 }
+                let rejected = lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp();
                 rejected
             }
         }
@@ -227,44 +289,21 @@ impl<S: System> NumberMC<S> {
         match self.method {
             Method::Samc { .. } => {}
             Method::WL { ref mut gamma,
-                         ref mut lowest_hist, ref mut highest_hist, ref mut total_hist,
-                         ref mut hist, num_states } => {
-                if hist.len() != self.bins.lnw.len() {
-                    // Oops, we found a new number, so let's regroup.
-                    if *gamma != 1.0 || hist.len() == 0 {
-                        println!("    WL: Starting fresh with {} energies",
-                                 self.bins.lnw.len());
-                        gamma_changed = true;
-                        *gamma = 1.0;
-                        *lowest_hist = 0;
-                        *highest_hist = 0;
-                        *total_hist = 0;
-                        *hist = vec![0; self.bins.lnw.len()];
-                    } else {
-                        // We have to adjust our hist Vec, but can
-                        // keep our counts! We just pretend we already
-                        // knew there were more energies to be
-                        // found...
-                        while hist.len() < self.bins.lnw.len() {
-                            hist.push(0);
-                        }
-                        *lowest_hist = 0;
-                    }
-                }
-                hist[i] += 1;
-                if hist[i] > *highest_hist {
-                    *highest_hist = hist[i];
+                         ref mut lowest_hist, ref mut highest_hist, ref mut total_hist, ref mut bins } => {
+                let num_states = self.bins.num_states as f64;
+                bins.histogram[i] += 1;
+                if bins.histogram[i] > *highest_hist {
+                    *highest_hist = bins.histogram[i];
                 }
                 *total_hist += 1;
                 let histogram = &self.bins.histogram;
-                if hist[i] == *lowest_hist + 1
-                    && hist.len() > 1
-                    && hist.iter().enumerate()
+                if bins.histogram[i] == *lowest_hist + 1
+                    && bins.histogram.iter().enumerate()
                           .filter(|(i,_)| histogram[*i] != 0)
                           .map(|(_,&h)|h).min() == Some(*lowest_hist+1)
                 {
-                    *lowest_hist = hist[i];
-                    if *lowest_hist as f64 >= 0.8**total_hist as f64 / num_states {
+                    *lowest_hist = bins.histogram[i];
+                    if bins.histogram.len() > 1 && *lowest_hist as f64 >= 0.8**total_hist as f64 / num_states {
                         gamma_changed = true;
                         *gamma *= 0.5;
                         if *gamma > 1e-16 {
@@ -274,7 +313,7 @@ impl<S: System> NumberMC<S> {
                                      *lowest_hist);
                             println!("         gamma => {}", PrettyFloat(*gamma));
                         }
-                        hist.iter_mut().map(|x| *x = 0).count();
+                        bins.histogram.iter_mut().map(|x| *x = 0).count();
                         *total_hist = 0;
                         *lowest_hist = 0;
                     }
@@ -309,29 +348,48 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
         NumberMC {
             method: Method::new(params._method),
             moves: 0,
-            time_L: 0,
-            accepted_moves: 0,
-            acceptance_rate: 0.5, // arbitrary starting guess.
             T: params.T,
+            accepted_moves: 0,
             bins: Bins {
                 histogram: vec![1],
                 lnw: vec![Unitless::new(0.0)],
+                translation_scale: vec![match params._moves {
+                    MoveParams::_Explicit { translation_scale, .. } => translation_scale,
+                    _ => 0.05*units::SIGMA,
+                }],
+                num_translation_attempts: vec![0],
+                num_translation_accepted: vec![0],
+                num_addremove_attempts: 0,
+                num_addremove_accepted: 0,
                 have_visited_since_maxentropy: vec![false],
                 round_trips: vec![1],
                 max_S: Unitless::new(0.),
                 max_S_index: 0,
-            },
-            translation_scale: match params._moves {
-                MoveParams::TranslationScale(x) => x,
-                _ => 0.05*units::SIGMA,
+                max_N: 0,
+                num_states: 1,
+                t_last: 1,
             },
             move_plan: params._moves,
+            addremove_probability: {
+                if let MoveParams::_Explicit { addremove_probability, .. } = params._moves {
+                    addremove_probability
+                } else {
+                    // This is the case where we will dynamically
+                    // adjust this probability.  Start out very often
+                    // adding or removing, since we begin with zero
+                    // atoms.  Also because adding and removing is the
+                    // most "random" way to change the system, so
+                    // modulo rejection we should prefer to
+                    // add/remove.
+                    0.5
+                }
+            },
             system: system,
 
             rng: ::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
             save_as: save_as,
             report: plugin::Report::from(params._report),
-            movies: Movies::from(params._movies),
+            movies: Movies::from(params.movie),
             save: plugin::Save::from(params._save),
             manager: plugin::PluginManager::new(),
         }
@@ -343,21 +401,77 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
 
     fn move_once(&mut self) {
         self.moves += 1;
-        let e1 = self.system.energy();
-        let n1 = self.system.num_atoms();
-        let i1 = self.state_to_index(State { N: n1 });
-        let recent_scale = (1.0/self.moves as f64).sqrt();
-        self.acceptance_rate *= 1. - recent_scale;
-        if let Some(e2) = self.system.plan_move(&mut self.rng, self.translation_scale) {
-            if !self.reject_move(n1, e1, n1, e2) {
-                self.accepted_moves += 1;
-                self.acceptance_rate += recent_scale;
-                self.system.confirm();
+        let e1 = State::new(&self.system);
+
+        if self.rng.gen::<f64>() > self.addremove_probability {
+            self.bins.num_translation_attempts[e1.N] += 1;
+            if let Some(e2) = self.system.plan_move(&mut self.rng,
+                                                    self.bins.translation_scale[e1.N]) {
+                let e2 = State { E: e2, N: e1.N };
+                self.bins.prepare_for_state(e2);
+                if !self.reject_move(e1,e2) {
+                    self.accepted_moves += 1;
+                    self.bins.num_translation_accepted[e1.N] += 1;
+                    self.system.confirm();
+                }
+            }
+        } else {
+            self.bins.num_addremove_attempts += 1;
+            let option_e2 = if self.rng.gen::<u64>() & 1 == 0 {
+                // add
+                self.system.plan_add(&mut self.rng).map(|e2| State { E: e2, N: e1.N+1 })
+            } else {
+                // remove
+                if e1.N > 1 {
+                    Some(State { E: self.system.plan_remove(&mut self.rng), N: e1.N-1})
+                } else {
+                    None
+                }
+            };
+            if let Some(e2) = option_e2 {
+                self.bins.prepare_for_state(e2);
+                if !self.reject_move(e1,e2) {
+                    self.accepted_moves += 1;
+                    self.bins.num_addremove_accepted += 1;
+                    self.system.confirm();
+                }
             }
         }
         let energy = State::new(&self.system);
         let i = self.state_to_index(energy);
 
+        if self.bins.histogram[i] == 0 {
+            self.bins.num_states += 1;
+            self.bins.t_last = self.moves;
+        }
+        if self.moves % self.bins.t_last == 0 {
+            if let MoveParams::AcceptanceRate(r) = self.move_plan {
+                let old_addremove_prob = self.addremove_probability;
+                let overall_acceptance_rate =
+                    self.accepted_moves as f64 / self.moves as f64;
+                let acceptance_rate = self.bins.num_addremove_accepted as f64
+                    / self.bins.num_addremove_attempts as f64;
+                let translation_acceptance_rate =
+                    (self.accepted_moves - self.bins.num_addremove_accepted) as f64
+                    / (self.moves - self.bins.num_addremove_attempts) as f64;
+                let new_p = (r - translation_acceptance_rate)
+                      /(acceptance_rate - translation_acceptance_rate);
+                if !new_p.is_nan() {
+                    if new_p > 0.999 {
+                        self.addremove_probability = 0.999;
+                    } else {
+                        self.addremove_probability = new_p;
+                    }
+                }
+                if !self.report.quiet && (self.addremove_probability - old_addremove_prob).abs() > 0.01 {
+                    println!("        new addremove_probability: {:.2}",
+                             self.addremove_probability);
+                    println!("        acceptance rate {:.1}% [add/remove: {:.1}%]",
+                             100.0*overall_acceptance_rate,
+                             100.0*acceptance_rate);
+                }
+            }
+        }
         self.bins.histogram[i] += 1;
         self.update_weights(energy);
 
@@ -368,7 +482,7 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
                 *x = true;
             }
         } else if i == self.bins.max_S_index {
-            if i1 != i {
+            if self.state_to_index(e1) != i {
                 for x in self.bins.have_visited_since_maxentropy.iter_mut() {
                     *x = false;
                 }
@@ -409,13 +523,13 @@ pub struct MoviesParams {
     // is 2.0, it means we want a frame every time the number of
     // iterations doubles.
     /// 2.0 means a frame every time iterations double.
-    pub movie_time: Option<f64>,
+    pub time: Option<f64>,
 }
 
 impl Default for MoviesParams {
     fn default() -> Self {
         MoviesParams {
-            movie_time: None,
+            time: None,
         }
     }
 }
@@ -423,30 +537,29 @@ impl Default for MoviesParams {
 /// A plugin that saves movie data.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Movies {
+    entropy: RefCell<Vec<Vec<f64>>>,
+    histogram: RefCell<Vec<Vec<u64>>>,
+
     movie_time: Option<f64>,
     which_frame: Cell<i32>,
     period: Cell<plugin::TimeToRun>,
-    entropy: RefCell<Vec<Vec<f64>>>,
-    histogram: RefCell<Vec<Vec<u64>>>,
     time: RefCell<Vec<u64>>,
-    #[serde(default)]
     gamma: RefCell<Vec<f64>>,
-    #[serde(default)]
     gamma_time: RefCell<Vec<u64>>,
 }
 
 impl From<MoviesParams> for Movies {
     fn from(params: MoviesParams) -> Self {
         Movies {
-            movie_time: params.movie_time,
+            movie_time: params.time,
+            entropy: RefCell::new(Vec::new()),
+            histogram: RefCell::new(Vec::new()),
             which_frame: Cell::new(0),
-            period: Cell::new(if params.movie_time.is_some() {
+            period: Cell::new(if params.time.is_some() {
                 plugin::TimeToRun::TotalMoves(1)
             } else {
                 plugin::TimeToRun::Never
             }),
-            entropy: RefCell::new(Vec::new()),
-            histogram: RefCell::new(Vec::new()),
             time: RefCell::new(Vec::new()),
             gamma: RefCell::new(Vec::new()),
             gamma_time: RefCell::new(Vec::new()),
@@ -482,6 +595,7 @@ impl<S: GrandSystem> Plugin<NumberMC<S>> for Movies {
                         h.push(0);
                     }
                 }
+
                 let mut S = self.entropy.borrow_mut();
                 S.push(entropy);
                 let mut hist_movie = self.histogram.borrow_mut();
@@ -534,30 +648,33 @@ impl<S: GrandSystem> Plugin<NumberMC<S>> for Movies {
         let hundred_trips = hundred_trips.map(|e| format!("{}", e))
             .unwrap_or("-".to_string());
         if !mc.report.quiet {
-            println!("   {} * {} * {} * {} | {} currently {}",
+            println!("   {} * {} * {} * {} | {} currently {} {{{} {:.2}}}",
                      one_trip, ten_trips, hundred_trips, thousand_trips,
-                     mc.index_to_state(mc.bins.max_S_index).N,
-                     sys.energy()/units::EPSILON,
+                     mc.index_to_state(mc.bins.max_S_index),
+                     State::new(sys),
+                     mc.bins.num_states,
+                     PrettyFloat(mc.moves as f64/mc.bins.t_last as f64),
             );
-            if let Method::WL { lowest_hist, highest_hist, total_hist, num_states,
-                                ref hist, .. } = mc.method {
-                let mut lowest = 111111111;
-                let mut highest = 111111111;
-                for (i,&h) in hist.iter().enumerate() {
-                    if h == lowest_hist && mc.bins.histogram[i] != 0 {
-                        lowest = i;
+            if let Method::WL { lowest_hist, highest_hist, total_hist, ref bins, .. } = mc.method {
+                if total_hist > 0 {
+                    let mut lowest = 123456789;
+                    let mut highest = 123456789;
+                    for (i,&h) in bins.histogram.iter().enumerate() {
+                        if h == lowest_hist && mc.bins.histogram[i] != 0 {
+                            lowest = i;
+                        }
+                        if h == highest_hist && mc.bins.histogram[i] != 0 {
+                            highest = i;
+                        }
                     }
-                    if h == highest_hist && mc.bins.histogram[i] != 0 {
-                        highest = i;
-                    }
+                    println!("        WL:  flatness {:.1} with min {:.2} at {} and max {:.2} at {}!",
+                             PrettyFloat(lowest_hist as f64*mc.bins.num_states as f64
+                                         / total_hist as f64),
+                             PrettyFloat(lowest_hist as f64),
+                             mc.index_to_state(lowest),
+                             PrettyFloat(highest_hist as f64),
+                             mc.index_to_state(highest));
                 }
-                println!("        WL:  flatness {:.1} with min {:.2} at {} and max {:.2} at {}!",
-                         PrettyFloat(lowest_hist as f64*num_states as f64
-                                     / total_hist as f64),
-                         PrettyFloat(lowest_hist as f64),
-                         mc.index_to_state(lowest),
-                         PrettyFloat(highest_hist as f64),
-                         mc.index_to_state(highest));
             }
         }
     }
