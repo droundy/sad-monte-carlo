@@ -452,8 +452,10 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
                 let new_p = (r - translation_acceptance_rate)
                       /(acceptance_rate - translation_acceptance_rate);
                 if !new_p.is_nan() {
-                    if new_p > 0.999 {
-                        self.addremove_probability = 0.999;
+                    if new_p > 0.99 {
+                        self.addremove_probability = 0.99;
+                    } else if new_p < 0.01 {
+                        self.addremove_probability = 0.01;
                     } else {
                         self.addremove_probability = new_p;
                     }
