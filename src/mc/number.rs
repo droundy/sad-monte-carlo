@@ -121,8 +121,6 @@ pub struct Bins {
     max_S: Unitless,
     /// The index with the maximum entropy.
     max_S_index: usize,
-    /// The maximum number of atoms
-    max_N: usize,
     /// The number of bins occupied
     num_states: usize,
     /// Time of last new discovery
@@ -195,7 +193,6 @@ impl Method {
                     round_trips: vec![1],
                     max_S: Unitless::new(0.),
                     max_S_index: 0,
-                    max_N: 0,
                     num_states: 1,
                     t_last: 1,
                 }
@@ -221,8 +218,7 @@ impl Bins {
     /// if we had to make changes.
     pub fn prepare_for_state(&mut self, e: State) -> bool {
         let mut made_change = false;
-        while e.N > self.lnw.len() {
-            self.max_N += 1;
+        while e.N+1 > self.lnw.len() {
             self.lnw.push(Unitless::new(0.));
             self.histogram.push(0);
             self.num_translation_accepted.push(0);
@@ -365,7 +361,6 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
                 round_trips: vec![1],
                 max_S: Unitless::new(0.),
                 max_S_index: 0,
-                max_N: 0,
                 num_states: 1,
                 t_last: 1,
             },
