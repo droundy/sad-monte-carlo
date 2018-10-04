@@ -2,6 +2,7 @@
 
 pub mod plugin;
 pub mod energy;
+pub mod number;
 pub mod energy_number;
 pub mod energy_number_no_translation;
 
