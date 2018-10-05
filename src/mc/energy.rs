@@ -478,8 +478,7 @@ impl<S> EnergyMC<S> {
                     let tL = tL as f64;
                     let dE = too_hi - too_lo;
                     let Ns = num_states as f64;
-                    let Smean = dE/(3.0*min_T);
-                    *((Smean + t/tL)/(Smean + t/Ns*t/tL)).value()
+                    *((dE/min_T + t/tL)/(dE/min_T + t/Ns*t/tL)).value()
                 } else {
                     0.0
                 }
