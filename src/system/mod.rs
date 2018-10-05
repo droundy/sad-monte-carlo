@@ -19,6 +19,9 @@ pub type Unitless = units::Unitless<f64>;
 /// An energy
 pub type Energy = units::Energy<f64>;
 
+/// An energy squared
+pub type EnergySquared = units::EnergySquared<f64>;
+
 /// A distance
 pub type Length = units::Distance<f64>;
 

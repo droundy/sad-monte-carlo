@@ -102,6 +102,10 @@ pub struct Bins {
     pub histogram: Vec<u64>,
     /// The ln weight for each state.
     pub lnw: Vec<Unitless>,
+    /// The total energy for each state.
+    pub total_energy: Vec<Energy>,
+    /// The total energy squared for each state.
+    pub total_energy_squared: Vec<EnergySquared>,
     /// The current translation scale for each number of atoms
     pub translation_scale: Vec<Length>,
     /// The number of translation moves tried at each number of atoms
@@ -184,6 +188,8 @@ impl Method {
                 bins: Bins {
                     histogram: vec![1],
                     lnw: vec![Unitless::new(0.0)],
+                    total_energy: vec![Energy::new(0.0)],
+                    total_energy_squared: vec![EnergySquared::new(0.0)],
                     translation_scale: vec![0.05*units::SIGMA],
                     num_translation_attempts: vec![0],
                     num_translation_accepted: vec![0],
@@ -220,6 +226,8 @@ impl Bins {
         let mut made_change = false;
         while e.N+1 > self.lnw.len() {
             self.lnw.push(Unitless::new(0.));
+            self.total_energy.push(Energy::new(0.));
+            self.total_energy_squared.push(EnergySquared::new(0.));
             self.histogram.push(0);
             self.num_translation_accepted.push(0);
             self.num_translation_attempts.push(0);
@@ -349,6 +357,8 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
             bins: Bins {
                 histogram: vec![1],
                 lnw: vec![Unitless::new(0.0)],
+                total_energy: vec![Energy::new(0.0)],
+                total_energy_squared: vec![EnergySquared::new(0.0)],
                 translation_scale: vec![match params._moves {
                     MoveParams::_Explicit { translation_scale, .. } => translation_scale,
                     _ => 0.05*units::SIGMA,
@@ -470,6 +480,8 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
             }
         }
         self.bins.histogram[i] += 1;
+        self.bins.total_energy[i] += energy.E;
+        self.bins.total_energy_squared[i] += energy.E*energy.E;
         self.update_weights(energy);
 
         if self.bins.lnw[i] > self.bins.max_S {

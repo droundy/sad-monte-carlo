@@ -17,6 +17,7 @@ make_units! {
         DENSITY: Density = (Unitless / Distance / Distance / Distance);
         PRESSURE: Pressure = (Energy / Distance / Distance / Distance);
         FORCE: Force = (Energy / Distance);
+        ENERGY_SQUARED: EnergySquared = (Energy*Energy);
     }
 
     constants {
