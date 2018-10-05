@@ -51,7 +51,7 @@ pub struct EnergyNumberMCParams {
     energy_bin: Option<Energy>,
     _moves: MoveParams,
     _report: plugin::ReportParams,
-    movie: MoviesParams,
+    movie: Option<MoviesParams>,
     _save: plugin::SaveParams,
 }
 
@@ -66,7 +66,7 @@ impl Default for EnergyNumberMCParams {
                 addremove_probability: 0.05,
             },
             _report: plugin::ReportParams::default(),
-            movie: MoviesParams::default(),
+            movie: None,
             _save: plugin::SaveParams::default(),
         }
     }
@@ -592,25 +592,16 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
 }
 
 
-/// Do we want movies? Where?
-#[derive(ClapMe, Debug)]
+/// How should the movie be?
+#[derive(ClapMe, Debug, Clone)]
 pub struct MoviesParams {
     // How often (logarithmically) do we want a movie frame? If this
     // is 2.0, it means we want a frame every time the number of
     // iterations doubles.
     /// 2.0 means a frame every time iterations double.
-    pub time: Option<f64>,
+    pub time: f64,
     /// The name of the movie file.
-    pub name: Option<::std::path::PathBuf>,
-}
-
-impl Default for MoviesParams {
-    fn default() -> Self {
-        MoviesParams {
-            time: None,
-            name: None,
-        }
-    }
+    pub name: ::std::path::PathBuf,
 }
 
 /// A plugin that saves movie data.
@@ -625,17 +616,17 @@ pub struct Movies {
     gamma_time: RefCell<Vec<u64>>,
 }
 
-impl From<MoviesParams> for Movies {
-    fn from(params: MoviesParams) -> Self {
+impl From<Option<MoviesParams>> for Movies {
+    fn from(params: Option<MoviesParams>) -> Self {
         Movies {
-            name: params.name,
-            movie_time: params.time,
-            which_frame: Cell::new(0),
-            period: Cell::new(if params.time.is_some() {
+            period: Cell::new(if params.is_some() {
                 plugin::TimeToRun::TotalMoves(1)
             } else {
                 plugin::TimeToRun::Never
             }),
+            name: params.clone().map(|x| x.name.clone()),
+            movie_time: params.map(|x| x.time),
+            which_frame: Cell::new(0),
             time: RefCell::new(Vec::new()),
             gamma: RefCell::new(Vec::new()),
             gamma_time: RefCell::new(Vec::new()),
