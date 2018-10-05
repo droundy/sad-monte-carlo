@@ -2,7 +2,7 @@
 
 use super::*;
 
-use dimensioned::Dimensionless;
+use dimensioned::{Dimensionless, Sqrt};
 use vector3d::Vector3d;
 use rand::prelude::*;
 use rand::distributions::Uniform;
@@ -185,6 +185,9 @@ impl MovableSystem for SquareWell {
         } else {
             None
         }
+    }
+    fn max_size(&self) -> Length {
+        self.cell.box_diagonal.norm2().sqrt()
     }
 }
 

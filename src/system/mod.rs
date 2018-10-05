@@ -82,6 +82,10 @@ pub trait MovableSystem : ConfirmSystem {
     /// the system.  The atom is not actually moved until the change
     /// is confirmed.
     fn plan_move(&mut self, &mut MyRng, mean_distance: Length) -> Option<Energy>;
+    /// A maximum reasonable value for mean_distance.
+    fn max_size(&self) -> Length {
+        Length::new(1.0)
+    }
 }
 
 /// A system that can gain or lose atoms?

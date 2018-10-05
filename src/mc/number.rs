@@ -454,13 +454,47 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
                 let old_addremove_prob = self.addremove_probability;
                 let overall_acceptance_rate =
                     self.accepted_moves as f64 / self.moves as f64;
-                let acceptance_rate = self.bins.num_addremove_accepted as f64
+                let addremove_acceptance_rate =
+                    self.bins.num_addremove_accepted as f64
                     / self.bins.num_addremove_attempts as f64;
+                let translation_goal = if addremove_acceptance_rate > r {
+                    // addremove has too high an acceptance rate, so
+                    // we want translations to have too low an
+                    // acceptance rate.
+                    r*r
+                } else {
+                    // addremove has too low an acceptance rate, so we
+                    // want translations to have a higher acceptance
+                    // rate.
+                    r.sqrt()
+                };
                 let translation_acceptance_rate =
                     (self.accepted_moves - self.bins.num_addremove_accepted) as f64
                     / (self.moves - self.bins.num_addremove_attempts) as f64;
+                // Fine-tune the translation scales.
+                for i in 2..self.bins.lnw.len() {
+                    if self.bins.num_translation_attempts[i] == 0 {
+                        continue;
+                    }
+                    let old_scale = self.bins.translation_scale[i];
+                    let my_rate = self.bins.num_translation_accepted[i] as f64
+                        / self.bins.num_translation_attempts[i] as f64;
+                    let s = (my_rate/translation_goal).sqrt();
+                    let s = if s < 0.8 { 0.8 } else if s > 1.2 { 1.2 } else { s };
+                    self.bins.translation_scale[i] *= s;
+                    if self.bins.translation_scale[i] > self.system.max_size() {
+                        self.bins.translation_scale[i] = self.system.max_size();
+                    }
+                    if !self.report.quiet && self.bins.translation_scale[i] != old_scale {
+                        println!("        new translation scale for N={}: {:.3}",
+                                 i, self.bins.translation_scale[i]);
+                        println!("          acceptance rate {:.1}%", 100.0*my_rate);
+                    }
+                }
+                // Now adjust the addremove probability to try to get
+                // the net acceptance rate to match our goal "r".
                 let new_p = (r - translation_acceptance_rate)
-                      /(acceptance_rate - translation_acceptance_rate);
+                      /(addremove_acceptance_rate - translation_acceptance_rate);
                 if !new_p.is_nan() {
                     if new_p > 0.99 {
                         self.addremove_probability = 0.99;
@@ -475,7 +509,7 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
                              self.addremove_probability);
                     println!("        acceptance rate {:.1}% [add/remove: {:.1}%]",
                              100.0*overall_acceptance_rate,
-                             100.0*acceptance_rate);
+                             100.0*addremove_acceptance_rate);
                 }
             }
         }
@@ -634,7 +668,7 @@ impl<S: GrandSystem> Plugin<NumberMC<S>> for Movies {
         let mut ten_trips: Option<State> = None;
         let mut hundred_trips: Option<State> = None;
         let mut thousand_trips: Option<State> = None;
-        for (i, &trips) in mc.bins.round_trips.iter().enumerate() {
+        for (i, &trips) in mc.bins.round_trips.iter().enumerate().rev() {
             if one_trip.is_none() && trips >= 1 {
                 one_trip = Some(mc.index_to_state(i));
             }
