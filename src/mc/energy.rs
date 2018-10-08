@@ -47,6 +47,10 @@ pub struct EnergyMCParams {
     pub seed: Option<u64>,
     /// The energy binsize.
     energy_bin: Option<Energy>,
+    /// The lowest energy to allow.
+    min_allowed_energy: Option<Energy>,
+    /// The highest energy to allow.
+    max_allowed_energy: Option<Energy>,
     _moves: MoveParams,
     _report: plugin::ReportParams,
     _movies: MoviesParams,
@@ -58,6 +62,8 @@ impl Default for EnergyMCParams {
         EnergyMCParams {
             _method: MethodParams::Sad { min_T: 0.2*units::EPSILON },
             seed: None,
+            min_allowed_energy: None,
+            max_allowed_energy: None,
             energy_bin: None,
             _moves: MoveParams::TranslationScale(0.05*units::SIGMA),
             _report: plugin::ReportParams::default(),
@@ -121,6 +127,10 @@ pub struct EnergyMC<S> {
     pub time_L: u64,
     /// The number of moves that have been accepted.
     pub accepted_moves: u64,
+    /// The lowest energy to allow.
+    min_allowed_energy: Option<Energy>,
+    /// The highest energy to allow.
+    max_allowed_energy: Option<Energy>,
     /// The energy bins.
     pub bins: Bins,
     /// The move plan
@@ -238,6 +248,16 @@ impl<S: System> EnergyMC<S> {
     /// This decides whether to reject the move based on the actual
     /// method in use.
     fn reject_move(&mut self, e1: State, e2: State) -> bool {
+        if let Some(maxe) = self.max_allowed_energy {
+            if e2.E > maxe {
+                return true;
+            }
+        }
+        if let Some(mine) = self.min_allowed_energy {
+            if e2.E < mine {
+                return true;
+            }
+        }
         let i1 = self.state_to_index(e1);
         let i2 = self.state_to_index(e2);
         match self.method {
@@ -399,7 +419,11 @@ impl<S: System> EnergyMC<S> {
                         while hist.len() < self.bins.lnw.len() {
                             hist.push(0);
                         }
-                        *lowest_hist = 0;
+                        for (i,h) in hist.iter().cloned().enumerate() {
+                            if self.bins.histogram[i] > 0 && h < *lowest_hist {
+                                *lowest_hist = h;
+                            }
+                        }
                     }
                 }
                 hist[i] += 1;
@@ -423,11 +447,15 @@ impl<S: System> EnergyMC<S> {
                                      PrettyFloat(*lowest_hist as f64*num_states
                                                  / *total_hist as f64),
                                      *lowest_hist);
-                            println!("         gamma => {}", PrettyFloat(*gamma));
+                            report_wl_flatness(*lowest_hist, *highest_hist, *total_hist,
+                                               num_states, hist, &self.bins);
                         }
-                        hist.iter_mut().map(|x| *x = 0).count();
+                        for h in hist.iter_mut() {
+                            *h = 0;
+                        }
                         *total_hist = 0;
                         *lowest_hist = 0;
+                        *highest_hist = 0;
                     }
                 }
             }
@@ -505,6 +533,8 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             time_L: 0,
             accepted_moves: 0,
             acceptance_rate: 0.5, // arbitrary starting guess.
+            min_allowed_energy: params.min_allowed_energy,
+            max_allowed_energy: params.max_allowed_energy,
             bins: Bins {
                 histogram: vec![1],
                 lnw: vec![Unitless::new(0.0)],
@@ -804,24 +834,34 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
             );
             if let Method::WL { lowest_hist, highest_hist, total_hist, num_states,
                                 ref hist, .. } = mc.method {
-                let mut lowest = 111111111;
-                let mut highest = 111111111;
-                for (i,&h) in hist.iter().enumerate() {
-                    if h == lowest_hist && mc.bins.histogram[i] != 0 {
-                        lowest = i;
-                    }
-                    if h == highest_hist && mc.bins.histogram[i] != 0 {
-                        highest = i;
-                    }
-                }
-                println!("        WL:  flatness {:.1} with min {:.2} at {} and max {:.2} at {}!",
-                         PrettyFloat(lowest_hist as f64*num_states as f64
-                                     / total_hist as f64),
-                         PrettyFloat(lowest_hist as f64),
-                         mc.index_to_state(lowest).E,
-                         PrettyFloat(highest_hist as f64),
-                         mc.index_to_state(highest).E);
+                report_wl_flatness(lowest_hist, highest_hist, total_hist, num_states,
+                                   hist, &mc.bins);
             }
         }
+    }
+}
+
+fn report_wl_flatness(lowest_hist: u64, highest_hist: u64, total_hist: u64,
+                      num_states: f64, hist: &[u64], bins: &Bins) {
+    if total_hist > 0 && hist.len() > 1 {
+        let mut lowest = 111111111;
+        let mut highest = 111111111;
+        for (i,&h) in hist.iter().enumerate() {
+            if h == lowest_hist && bins.histogram[i] != 0 {
+                lowest = i;
+            }
+            if h == highest_hist && bins.histogram[i] != 0 {
+                highest = i;
+            }
+        }
+        assert!(highest != 111111111);
+        assert!(lowest != 111111111);
+        println!("        WL:  flatness {:.1} with min {:.2} at {} and max {:.2} at {} (with total {})!",
+                 PrettyFloat(lowest_hist as f64*num_states as f64
+                             / total_hist as f64),
+                 PrettyFloat(lowest_hist as f64),
+                 bins.index_to_state(lowest).E,
+                 PrettyFloat(highest_hist as f64),
+                 bins.index_to_state(highest).E, total_hist);
     }
 }
