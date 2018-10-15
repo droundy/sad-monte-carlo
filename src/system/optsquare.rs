@@ -88,7 +88,7 @@ impl SquareWell {
         let r = self.cell.positions[which];
         let mut e = self.E;
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, which) {
-            if self.cell.closest_distance2(r1,r) < self.cell.well_width*self.cell.well_width {
+            if (r1-r).norm2() < self.cell.well_width*self.cell.well_width {
                 e += units::EPSILON;
             }
         }

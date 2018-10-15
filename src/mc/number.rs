@@ -618,11 +618,11 @@ impl Movies {
 impl<S: GrandSystem> Plugin<NumberMC<S>> for Movies {
     fn run(&self, mc: &NumberMC<S>, sys: &S) -> plugin::Action {
         if let Some(movie_time) = self.movie_time {
-            assert_eq!(sys.energy(), sys.compute_energy());
-            assert!(sys.energy() <= Energy::new(0.0));
             let moves = mc.num_moves();
             if plugin::TimeToRun::TotalMoves(moves) == self.period.get() {
                 println!("Saving movie...");
+                assert_eq!(sys.energy(), sys.compute_energy());
+                assert!(sys.energy() <= Energy::new(0.0));
                 self.new_gamma(moves, mc.gamma());
                 // First, let's create the arrays for the time and
                 // energy indices.
