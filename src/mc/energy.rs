@@ -52,8 +52,7 @@ impl SadVersion {
                 max(previous_parameter, new_Stot - f)
             }
             SadVersion::SadOverT2 => {
-                let f = old_dE_over_T*old_Ns*min(1., 3.*(1.-old_tL/tL));
-                (dE_over_T*Ns - f)*tL
+                (dE_over_T*Ns*(1./3.) - old_dE_over_T*old_Ns*(1./3.))*tL + previous_parameter
             }
         }
     }
