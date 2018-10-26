@@ -117,14 +117,14 @@ pub struct Bins {
     /// The number of adds/removes accepted at each number of atoms
     pub num_addremove_accepted: u64,
 
-    /// Whether we have seen this since the last visit to maxentropy.
-    have_visited_since_maxentropy: Vec<bool>,
+    /// Whether we have seen this since the last visit to maxlnw.
+    have_visited_since_maxlnw: Vec<bool>,
     /// How many round trips have we seen at this energy.
     round_trips: Vec<u64>,
-    /// The maximum entropy we have seen.
-    max_S: Unitless,
-    /// The index with the maximum entropy.
-    max_S_index: usize,
+    /// The maximum lnw we have seen.
+    maxlnw: Unitless,
+    /// The index with the maximum lnw.
+    maxlnw_index: usize,
     /// The number of bins occupied
     num_states: usize,
     /// Time of last new discovery
@@ -195,10 +195,10 @@ impl Method {
                     num_translation_accepted: vec![0],
                     num_addremove_attempts: 0,
                     num_addremove_accepted: 0,
-                    have_visited_since_maxentropy: vec![false],
+                    have_visited_since_maxlnw: vec![false],
                     round_trips: vec![1],
-                    max_S: Unitless::new(0.),
-                    max_S_index: 0,
+                    maxlnw: Unitless::new(0.),
+                    maxlnw_index: 0,
                     num_states: 1,
                     t_last: 1,
                 }
@@ -232,7 +232,7 @@ impl Bins {
             self.num_translation_accepted.push(0);
             self.num_translation_attempts.push(0);
             self.round_trips.push(1);
-            self.have_visited_since_maxentropy.push(false);
+            self.have_visited_since_maxlnw.push(false);
             let last = self.translation_scale.pop().unwrap();
             self.translation_scale.push(last);
             self.translation_scale.push(last);
@@ -367,10 +367,10 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
                 num_translation_accepted: vec![0],
                 num_addremove_attempts: 0,
                 num_addremove_accepted: 0,
-                have_visited_since_maxentropy: vec![false],
+                have_visited_since_maxlnw: vec![false],
                 round_trips: vec![1],
-                max_S: Unitless::new(0.),
-                max_S_index: 0,
+                maxlnw: Unitless::new(0.),
+                maxlnw_index: 0,
                 num_states: 1,
                 t_last: 1,
             },
@@ -518,20 +518,20 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
         self.bins.total_energy_squared[i] += energy.E*energy.E;
         self.update_weights(energy);
 
-        if self.bins.lnw[i] > self.bins.max_S {
-            self.bins.max_S = self.bins.lnw[i];
-            self.bins.max_S_index = i;
-            for x in self.bins.have_visited_since_maxentropy.iter_mut() {
+        if self.bins.lnw[i] > self.bins.maxlnw {
+            self.bins.maxlnw = self.bins.lnw[i];
+            self.bins.maxlnw_index = i;
+            for x in self.bins.have_visited_since_maxlnw.iter_mut() {
                 *x = true;
             }
-        } else if i == self.bins.max_S_index {
+        } else if i == self.bins.maxlnw_index {
             if self.state_to_index(e1) != i {
-                for x in self.bins.have_visited_since_maxentropy.iter_mut() {
+                for x in self.bins.have_visited_since_maxlnw.iter_mut() {
                     *x = false;
                 }
             }
-        } else if !self.bins.have_visited_since_maxentropy[i] {
-            self.bins.have_visited_since_maxentropy[i] = true;
+        } else if !self.bins.have_visited_since_maxlnw[i] {
+            self.bins.have_visited_since_maxlnw[i] = true;
             self.bins.round_trips[i] += 1;
         }
 
@@ -580,7 +580,7 @@ impl Default for MoviesParams {
 /// A plugin that saves movie data.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Movies {
-    entropy: RefCell<Vec<Vec<f64>>>,
+    lnw: RefCell<Vec<Vec<f64>>>,
     histogram: RefCell<Vec<Vec<u64>>>,
 
     movie_time: Option<f64>,
@@ -595,7 +595,7 @@ impl From<MoviesParams> for Movies {
     fn from(params: MoviesParams) -> Self {
         Movies {
             movie_time: params.time,
-            entropy: RefCell::new(Vec::new()),
+            lnw: RefCell::new(Vec::new()),
             histogram: RefCell::new(Vec::new()),
             which_frame: Cell::new(0),
             period: Cell::new(if params.time.is_some() {
@@ -629,20 +629,19 @@ impl<S: GrandSystem> Plugin<NumberMC<S>> for Movies {
                 self.time.borrow_mut().push(moves);
 
                 let histogram = mc.bins.histogram.clone();
-                let entropy: Vec<_> = mc.bins.lnw.iter().map(|v| *v.value()).collect();
-                for entr in self.entropy.borrow_mut().iter_mut() {
-                    while entr.len() < entropy.len() {
-                        entr.push(0.);
+                let lnw: Vec<_> = mc.bins.lnw.iter().map(|v| *v.value()).collect();
+                for val in self.lnw.borrow_mut().iter_mut() {
+                    while val.len() < lnw.len() {
+                        val.push(0.);
                     }
                 }
                 for h in self.histogram.borrow_mut().iter_mut() {
-                    while h.len() < entropy.len() {
+                    while h.len() < lnw.len() {
                         h.push(0);
                     }
                 }
 
-                let mut S = self.entropy.borrow_mut();
-                S.push(entropy);
+                self.lnw.borrow_mut().push(lnw);
                 let mut hist_movie = self.histogram.borrow_mut();
                 hist_movie.push(histogram);
 
@@ -695,7 +694,7 @@ impl<S: GrandSystem> Plugin<NumberMC<S>> for Movies {
         if !mc.report.quiet {
             println!("   {} * {} * {} * {} | {} currently {} {{{} {:.2}}}",
                      one_trip, ten_trips, hundred_trips, thousand_trips,
-                     mc.index_to_state(mc.bins.max_S_index),
+                     mc.index_to_state(mc.bins.maxlnw_index),
                      State::new(sys),
                      mc.bins.num_states,
                      PrettyFloat(mc.moves as f64/mc.bins.t_last as f64),
