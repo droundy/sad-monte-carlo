@@ -5,17 +5,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def latex_float(x):
-    exp = np.log10(x*1.0)
+    exp = int(np.log10(x*1.0))
     if abs(exp) > 2:
         x /= 10.0**exp
-        if ('%g' % x) == '1':
+        if ('%.1g' % x) == '1':
             return r'10^{%.0f}' % (exp)
-        return r'%g\times 10^{%.0f}' % (x, exp)
+        return r'%.1g\times10^{%.0f}' % (x, exp)
     else:
         return '%g' % x
 
 allcolors = list(reversed(['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple',
-                           'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']))
+                           'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan',
+                           'xkcd:lightblue', 'xkcd:puke']))
 
 my_energy = {}
 my_histogram = {}
@@ -93,23 +94,23 @@ def convex_hull_T(E, S):
             T[i] = (E[i+1]-E[i-1])/(convexS[i+1]-convexS[i-1])
     return T
 
-Tbest_interesting = convex_hull_T(Ebest_interesting, Sbest_interesting)
-plt.figure('temperature-comparison')
-for fname in my_energy.keys():
-    if my_energy[fname][0] <= EminT:
-        errors = np.zeros(len(my_time[fname]))
-        ind_minT = np.argwhere(my_energy[fname] == EminT)[0][0]
-        ind_maxS = np.argwhere(my_energy[fname] == EmaxS)[0][0]
-        E_interesting = my_energy[fname][ind_minT:ind_maxS+1]
-        for i in range(len(my_time[fname])):
-            S_interesting = my_entropy[fname][i,ind_minT:ind_maxS+1]
-            T_interesting = convex_hull_T(E_interesting, S_interesting)
-            e = (T_interesting - Tbest_interesting)/Tbest_interesting
-            errors[i] = np.sqrt((e**2).mean())
-        plt.loglog(my_time[fname], errors, color=my_color[fname], label=fname)
-plt.legend(loc='best')
-plt.xlabel('$t$')
-plt.ylabel(r'rms relative error in $T$')
+# Tbest_interesting = convex_hull_T(Ebest_interesting, Sbest_interesting)
+# plt.figure('temperature-comparison')
+# for fname in my_energy.keys():
+#     if my_energy[fname][0] <= EminT:
+#         errors = np.zeros(len(my_time[fname]))
+#         ind_minT = np.argwhere(my_energy[fname] == EminT)[0][0]
+#         ind_maxS = np.argwhere(my_energy[fname] == EmaxS)[0][0]
+#         E_interesting = my_energy[fname][ind_minT:ind_maxS+1]
+#         for i in range(len(my_time[fname])):
+#             S_interesting = my_entropy[fname][i,ind_minT:ind_maxS+1]
+#             T_interesting = convex_hull_T(E_interesting, S_interesting)
+#             e = (T_interesting - Tbest_interesting)/Tbest_interesting
+#             errors[i] = np.sqrt((e**2).mean())
+#         plt.loglog(my_time[fname], errors, color=my_color[fname], label=fname)
+# plt.legend(loc='best')
+# plt.xlabel('$t$')
+# plt.ylabel(r'rms relative error in $T$')
 
 plt.figure('comparison')
 for fname in fnames:
@@ -137,9 +138,9 @@ while True:
             fig.clf()
         all_figures.add(plt.figure('Normed entropy'))
         plt.plot(Ebest, Sbest - Sbest.max(), ':', color='#aaaaaa')
-        all_figures.add(plt.figure('Temperature'))
-        plt.semilogy(Ebest_interesting,
-                     convex_hull_T(Ebest_interesting, Sbest_interesting), ':', color='#aaaaaa')
+        # all_figures.add(plt.figure('Temperature'))
+        # plt.semilogy(Ebest_interesting,
+        #              convex_hull_T(Ebest_interesting, Sbest_interesting), ':', color='#aaaaaa')
         for fname in fnames:
             if i < len(my_time[fname]):
                 t = my_time[fname][i]
@@ -193,25 +194,25 @@ while True:
             plt.legend(loc='best')
             plt.ylim(Smin, 0)
 
-            all_figures.add(plt.figure('Temperature'))
-            T = convex_hull_T(my_energy[fname], my_entropy[fname][j,:])
-            if len(T[T>0]) > 1:
-                if j == -1:
-                    plt.semilogy(my_energy[fname][T>0],
-                                 T[T>0],
-                                 color=my_color[fname],
-                                 label=fname+' '+latex_float(len(my_entropy[fname])),
-                                 alpha=0.5)
-                else:
-                    plt.semilogy(my_energy[fname][T>0],
-                                 T[T>0],
-                                 color=my_color[fname],
-                                 label=fname)
-            plt.title('$t=%s/%s$' % (latex_float(t),
-                                     latex_float(my_time[fname][-1])))
-            plt.ylabel('$T$')
-            plt.legend(loc='best')
-            # plt.ylim(Tbest_interesting.min(), Tbest_interesting.max())
+            # all_figures.add(plt.figure('Temperature'))
+            # T = convex_hull_T(my_energy[fname], my_entropy[fname][j,:])
+            # if len(T[T>0]) > 1:
+            #     if j == -1:
+            #         plt.semilogy(my_energy[fname][T>0],
+            #                      T[T>0],
+            #                      color=my_color[fname],
+            #                      label=fname+' '+latex_float(len(my_entropy[fname])),
+            #                      alpha=0.5)
+            #     else:
+            #         plt.semilogy(my_energy[fname][T>0],
+            #                      T[T>0],
+            #                      color=my_color[fname],
+            #                      label=fname)
+            # plt.title('$t=%s/%s$' % (latex_float(t),
+            #                          latex_float(my_time[fname][-1])))
+            # plt.ylabel('$T$')
+            # plt.legend(loc='best')
+            # # plt.ylim(Tbest_interesting.min(), Tbest_interesting.max())
 
             all_figures.add(plt.figure('Histogram'))
             plt.title('$t=%s/%s$' % (latex_float(t),
@@ -228,7 +229,7 @@ while True:
                 plt.plot(my_energy[fname], my_histogram[fname][j,:], my_color[fname],
                          label=fname)
             plt.legend(loc='best')
-        plt.pause(1.0)
+        plt.pause(0.1)
 
 plt.ioff()
 plt.show()
