@@ -12,6 +12,52 @@ use std::default::Default;
 use std::cell::{RefCell,Cell};
 use ::prettyfloat::PrettyFloat;
 
+fn min(a: f64, b: f64) -> f64 { if a < b { a } else { b } }
+fn max(a: f64, b: f64) -> f64 { if a > b { a } else { b } }
+
+/// Which experimental version of SAD are we doing?
+#[derive(Serialize, Deserialize, Debug, ClapMe, Clone, Copy)]
+pub enum SadVersion {
+    /// Sad
+    Sad,
+    /// New sad with 1/t behavior
+    SadOverT,
+    /// New sad with 1/t^2 behavior
+    SadOverT2
+}
+
+impl SadVersion {
+    fn compute_gamma(&self, latest_parameter: f64, t: f64, tL: f64, num_states: f64) -> f64 {
+        if latest_parameter == 0.0 {
+            0.0
+        } else {
+            match *self {
+                SadVersion::Sad =>
+                    (latest_parameter + t/tL)/(latest_parameter + t/num_states*(t/tL)),
+                SadVersion::SadOverT => latest_parameter/(latest_parameter + t),
+                SadVersion::SadOverT2 =>
+                    (latest_parameter+t*num_states)/(latest_parameter + t*t),
+            }
+        }
+    }
+    fn compute_latest_parameter(&self, dE_over_T: f64, Ns: f64, tL: f64,
+                                old_dE_over_T: f64, old_Ns: f64, old_tL: f64,
+                                previous_parameter: f64) -> f64 {
+        match *self {
+            SadVersion::Sad => dE_over_T,
+            SadVersion::SadOverT => {
+                let old_Stot = old_dE_over_T*(1./3.)*old_Ns;
+                let new_Stot = dE_over_T*(1./3.)*Ns;
+                let f = old_Stot*min(1., (tL/old_tL).ln());
+                max(previous_parameter, new_Stot - f)
+            }
+            SadVersion::SadOverT2 => {
+                (dE_over_T*Ns*0.5 - old_dE_over_T*old_Ns*0.5)*tL + previous_parameter
+            }
+        }
+    }
+}
+
 /// Parameters to configure a particular MC.
 #[derive(Debug, ClapMe)]
 pub enum MethodParams {
@@ -19,6 +65,8 @@ pub enum MethodParams {
     Sad {
         /// The minimum temperature we are interested in.
         min_T: Energy,
+        /// Which experimental version of SAD?
+        version: SadVersion,
     },
     /// Samc
     Samc {
@@ -60,7 +108,10 @@ pub struct EnergyMCParams {
 impl Default for EnergyMCParams {
     fn default() -> Self {
         EnergyMCParams {
-            _method: MethodParams::Sad { min_T: 0.2*units::EPSILON },
+            _method: MethodParams::Sad {
+                min_T: 0.2*units::EPSILON,
+                version: SadVersion::Sad,
+            },
             seed: None,
             min_allowed_energy: None,
             max_allowed_energy: None,
@@ -159,6 +210,8 @@ enum Method {
         tL: u64,
         num_states: u64,
         highest_hist: u64,
+        version: SadVersion,
+        latest_parameter: f64,
     },
     /// Samc
     Samc {
@@ -179,7 +232,7 @@ enum Method {
 impl Method {
     fn new(p: MethodParams, E: Energy) -> Self {
         match p {
-            MethodParams::Sad { min_T } =>
+            MethodParams::Sad { min_T, version } =>
                 Method::Sad {
                     min_T,
                     too_lo: E,
@@ -187,6 +240,8 @@ impl Method {
                     tL: 0,
                     num_states: 1,
                     highest_hist: 1,
+                    version: version,
+                    latest_parameter: 0.,
                 },
             MethodParams::Samc { t0 } => Method::Samc { t0 },
             MethodParams::WL => Method::WL {
@@ -261,7 +316,7 @@ impl<S: System> EnergyMC<S> {
         let i1 = self.state_to_index(e1);
         let i2 = self.state_to_index(e2);
         match self.method {
-            Method::Sad { too_lo, too_hi, min_T,  .. } => {
+            Method::Sad { too_lo, too_hi, min_T, version,  .. } => {
                 let lnw = &self.bins.lnw;
                 let lnw1 = if e1.E < too_lo {
                     lnw[self.state_to_index(State { E: too_lo })] + (e1.E - too_lo)/min_T
@@ -282,7 +337,16 @@ impl<S: System> EnergyMC<S> {
                     // Here we do changes that need only happen when
                     // we encounter an energy we have never seen before.
                     match &mut self.method {
-                        Method::Sad { ref mut num_states, ref mut tL, .. } => {
+                        Method::Sad { ref mut num_states, ref mut tL,
+                                      ref mut latest_parameter, .. } => {
+                            *latest_parameter = version.compute_latest_parameter(
+                                *((too_hi - too_lo)/min_T).value(),
+                                (*num_states + 1) as f64,
+                                self.moves as f64,
+                                *((too_hi - too_lo)/min_T).value(),
+                                *num_states as f64,
+                                *tL as f64,
+                                *latest_parameter);
                             *num_states += 1;
                             *tL = self.moves;
                         }
@@ -316,7 +380,8 @@ impl<S: System> EnergyMC<S> {
         let mut gamma_changed = false;
         match self.method {
             Method::Sad { min_T, ref mut too_lo, ref mut too_hi, ref mut num_states,
-                          ref mut tL, ref mut highest_hist, .. } => {
+                          ref mut tL, ref mut highest_hist,
+                          version, ref mut latest_parameter, .. } => {
                 let histogram = &self.bins.histogram;
                 if *too_lo > *too_hi || energy.E < *too_lo || energy.E > *too_hi {
                     // Ooops, we didn't want to add gamma after all...
@@ -325,8 +390,8 @@ impl<S: System> EnergyMC<S> {
 
                 if histogram[i] > *highest_hist {
                     *highest_hist = histogram[i];
+                    let old_num_states = *num_states;
                     if energy.E > *too_hi {
-                        *tL = self.moves;
                         let ihi = self.bins.state_to_index(State { E: *too_hi });
                         for j in 0 .. histogram.len() {
                             let ej = self.bins.index_to_state(j).E;
@@ -340,9 +405,17 @@ impl<S: System> EnergyMC<S> {
                                 }
                             }
                         }
+                        *latest_parameter = version.compute_latest_parameter(
+                            *((energy.E - *too_lo)/min_T).value(),
+                            *num_states as f64,
+                            self.moves as f64,
+                            *((*too_hi - *too_lo)/min_T).value(),
+                            old_num_states as f64,
+                            *tL as f64,
+                            *latest_parameter);
+                        *tL = self.moves;
                         *too_hi = energy.E;
                     } else if energy.E < *too_lo {
-                        *tL = self.moves;
                         let ilo = self.bins.state_to_index(State { E: *too_lo });
                         for j in 0 .. histogram.len() {
                             let ej = self.bins.index_to_state(j).E;
@@ -359,6 +432,15 @@ impl<S: System> EnergyMC<S> {
                                 }
                             }
                         }
+                        *latest_parameter = version.compute_latest_parameter(
+                            *((*too_hi - energy.E)/min_T).value(),
+                            *num_states as f64,
+                            self.moves as f64,
+                            *((*too_hi - *too_lo)/min_T).value(),
+                            old_num_states as f64,
+                            *tL as f64,
+                            *latest_parameter);
+                        *tL = self.moves;
                         *too_lo = energy.E;
                     }
                 }
@@ -500,16 +582,9 @@ impl<S: System> EnergyMC<S> {
 impl<S> EnergyMC<S> {
     fn gamma(&self) -> f64 {
         match self.method {
-            Method::Sad { min_T, too_lo, too_hi, num_states, tL, .. } => {
-                if too_hi > too_lo {
-                    let t = self.moves as f64;
-                    let tL = tL as f64;
-                    let dE = too_hi - too_lo;
-                    let Ns = num_states as f64;
-                    *((dE/min_T + t/tL)/(dE/min_T + t/Ns*t/tL)).value()
-                } else {
-                    0.0
-                }
+            Method::Sad { num_states, tL, version, latest_parameter, .. } => {
+                version.compute_gamma(latest_parameter, self.moves as f64,
+                                      tL as f64, num_states as f64)
             }
             Method::Samc { t0 } => {
                 let t = self.moves as f64;
