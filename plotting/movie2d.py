@@ -27,7 +27,6 @@ for my_histogram in sorted(glob.iglob("samc-1e6-64-movie.yaml/h*.dat")):
     plt.colorbar()
     #~ plt.axis([-xL , 0 , 0 , yL])
     plt.pause(.01)
-    break
 plt.ioff()
 
 
