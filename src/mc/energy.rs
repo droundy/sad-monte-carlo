@@ -303,16 +303,6 @@ impl<S: System> EnergyMC<S> {
     /// This decides whether to reject the move based on the actual
     /// method in use.
     fn reject_move(&mut self, e1: State, e2: State) -> bool {
-        if let Some(maxe) = self.max_allowed_energy {
-            if e2.E > maxe {
-                return true;
-            }
-        }
-        if let Some(mine) = self.min_allowed_energy {
-            if e2.E < mine {
-                return true;
-            }
-        }
         let i1 = self.state_to_index(e1);
         let i2 = self.state_to_index(e2);
         match self.method {
@@ -646,13 +636,24 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
         let recent_scale = (1.0/self.moves as f64).sqrt();
         self.acceptance_rate *= 1. - recent_scale;
         if let Some(e2) = self.system.plan_move(&mut self.rng, self.translation_scale) {
-            let e2 = State { E: e2 };
-            self.bins.prepare_for_state(e2);
+            let mut out_of_bounds = false;
+            if let Some(maxe) = self.max_allowed_energy {
+                out_of_bounds = e2 > maxe;
+            }
+            if let Some(mine) = self.min_allowed_energy {
+                if e2 < mine {
+                    out_of_bounds = true;
+                }
+            }
+            if !out_of_bounds {
+                let e2 = State { E: e2 };
+                self.bins.prepare_for_state(e2);
 
-            if !self.reject_move(e1,e2) {
-                self.accepted_moves += 1;
-                self.acceptance_rate += recent_scale;
-                self.system.confirm();
+                if !self.reject_move(e1,e2) {
+                    self.accepted_moves += 1;
+                    self.acceptance_rate += recent_scale;
+                    self.system.confirm();
+                }
             }
         }
         let energy = State::new(&self.system);
