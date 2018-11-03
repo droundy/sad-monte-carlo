@@ -32,6 +32,7 @@ fn test_resume_with(total_iters: u64, first_iters: u64) {
         "--well-width=1.3",
         "--sad-min-T=0.5",
         "--acceptance-rate=0.5",
+        "--sad-version-sad",
         ];
 
     println!("About to start the big guy for {} moves", total_iters);
