@@ -510,8 +510,11 @@ impl<S: System> EnergyMC<S> {
                 }
                 *total_hist += 1;
                 let histogram = &self.bins.histogram;
+                let max_energy = *min_energy + (hist.len() as f64)*self.bins.width;
                 if hist[i] == *lowest_hist + 1
                     && hist.len() > 1
+                    && (self.min_allowed_energy.is_none() || self.min_allowed_energy.unwrap() >= *min_energy)
+                    && (self.max_allowed_energy.is_none() || self.max_allowed_energy.unwrap() <= max_energy)
                     && hist.iter().enumerate()
                           .filter(|(i,_)| histogram[*i] != 0)
                           .map(|(_,&h)|h).min() == Some(*lowest_hist+1)
@@ -937,14 +940,20 @@ fn report_wl_flatness(lowest_hist: u64, highest_hist: u64, total_hist: u64,
                 highest = i;
             }
         }
-        assert!(highest != 111111111);
-        assert!(lowest != 111111111);
+        let lowest_energy = if lowest == 111111111 {
+            bins.index_to_state(0).E - bins.width
+        } else {
+            bins.index_to_state(lowest).E
+        };
+        let highest_energy = if highest == 111111111 {
+            bins.index_to_state(0).E - bins.width
+        } else {
+            bins.index_to_state(highest).E
+        };
         println!("        WL:  flatness {:.1} with min {:.2} at {} and max {:.2} at {} (with total {})!",
                  PrettyFloat(lowest_hist as f64*num_states as f64
                              / total_hist as f64),
-                 PrettyFloat(lowest_hist as f64),
-                 bins.index_to_state(lowest).E,
-                 PrettyFloat(highest_hist as f64),
-                 bins.index_to_state(highest).E, total_hist);
+                 PrettyFloat(lowest_hist as f64), lowest_energy,
+                 PrettyFloat(highest_hist as f64), highest_energy, total_hist);
     }
 }
