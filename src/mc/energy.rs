@@ -230,7 +230,9 @@ enum Method {
 }
 
 impl Method {
-    fn new(p: MethodParams, E: Energy) -> Self {
+    fn new(p: MethodParams, E: Energy, dE: Energy,
+           min_allowed_energy: Option<Energy>,
+           max_allowed_energy: Option<Energy>) -> Self {
         match p {
             MethodParams::Sad { min_T, version } =>
                 Method::Sad {
@@ -246,10 +248,14 @@ impl Method {
             MethodParams::Samc { t0 } => Method::Samc { t0 },
             MethodParams::WL => Method::WL {
                 gamma: 1.0,
-                lowest_hist: 1,
+                lowest_hist: if min_allowed_energy.is_some() && max_allowed_energy.is_some() { 0 } else { 1 },
                 highest_hist: 1,
                 total_hist: 0,
-                num_states: 1.0,
+                num_states: if let (Some(mine), Some(maxe)) = (min_allowed_energy, max_allowed_energy) {
+                    *((maxe - mine)/dE).value()
+                } else {
+                    1.0
+                },
                 hist: Vec::new(),
                 min_energy: E,
             },
@@ -350,11 +356,11 @@ impl<S: System> EnergyMC<S> {
                 let lnw2 = self.bins.lnw[i2].value();
                 lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
             }
-            Method::WL { ref mut num_states, .. } => {
+            Method::WL { ref mut num_states, lowest_hist, .. } => {
                 let lnw1 = self.bins.lnw[i1].value();
                 let lnw2 = self.bins.lnw[i2].value();
                 let rejected = lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp();
-                if !rejected && self.bins.histogram[i2] == 0 {
+                if !rejected && self.bins.histogram[i2] == 0 && lowest_hist > 0 {
                     *num_states += 1.0;
                 }
                 rejected
@@ -469,7 +475,7 @@ impl<S: System> EnergyMC<S> {
                          ref mut hist, ref mut min_energy, num_states } => {
                 if hist.len() != self.bins.lnw.len() {
                     // Oops, we found a new energy, so let's regroup.
-                    if *gamma != 1.0 || hist.len() == 0 {
+                    if hist.len() == 0 || (*gamma != 1.0 && *lowest_hist > 0) {
                         println!("    WL: Starting fresh with {} energies",
                                  self.bins.lnw.len());
                         gamma_changed = true;
@@ -593,7 +599,8 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
     fn from_params(params: EnergyMCParams, system: S, save_as: ::std::path::PathBuf) -> Self {
         let ewidth = params.energy_bin.unwrap_or(system.delta_energy().unwrap_or(Energy::new(1.0)));
         EnergyMC {
-            method: Method::new(params._method, system.energy()),
+            method: Method::new(params._method, system.energy(), ewidth,
+                                params.min_allowed_energy, params.max_allowed_energy),
             moves: 0,
             time_L: 0,
             accepted_moves: 0,
