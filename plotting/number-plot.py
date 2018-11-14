@@ -20,6 +20,7 @@ allcolors = list(reversed(['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'ta
 my_histogram = {}
 current_histogram = {}
 my_entropy = {}
+my_volume = {}
 current_free_energy = {}
 current_total_energy = {}
 my_temperature = {}
@@ -37,6 +38,7 @@ for fname in fnames:
     data = yaml.load(yaml_data)
     current_histogram[fname] = np.array(data['bins']['histogram'])
     current_free_energy[fname] = np.array(data['bins']['lnw'])
+    my_volume[fname] = float(data['system']['cell']['box_diagonal']['x'])**3
     current_total_energy[fname] = np.array(data['bins']['total_energy'])
     my_color[fname] = allcolors.pop()
     my_time[fname] = np.array(data['movies']['time'])
@@ -56,7 +58,6 @@ for fname in fnames:
 plt.figure('gamma')
 for fname in fnames:
         plt.loglog(my_gamma_t[fname], my_gamma[fname], color=my_color[fname], label=fname)
-        print(my_gamma[fname])
 plt.legend(loc='best')
 plt.xlabel('$t$')
 plt.ylabel(r'$\gamma$')
@@ -101,8 +102,9 @@ for fname in fnames:
         S = (U-F)/T
         S = S-S[0]
         SN = np.arange(0, len(S), 1) 
-        plt.plot(S/SN,
+        plt.plot((np.pi/6)*SN/my_volume[fname],S/SN,
                    color=my_color[fname], label=fname)
+        plt.xlabel(r'$\eta$')
 
         
 plt.legend(loc='best')
@@ -111,7 +113,7 @@ plt.figure('excess internal energy/N')
 for fname in fnames:
         U = current_total_energy[fname]/current_histogram[fname]
         UN = np.arange(0, len(U), 1) 
-        plt.plot(U/UN,
+        plt.plot((np.pi/6)*UN/my_volume[fname],U/UN,
                    color=my_color[fname], label=fname)
 
         
