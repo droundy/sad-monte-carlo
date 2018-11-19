@@ -27,7 +27,7 @@ max_iter = 0
 my_gamma = {}
 my_gamma_t = {}
 Smin = None
-minT = 0.5
+minT = 1.0
 fnames = sys.argv[1:]
 for fname in fnames:
     print(fname)
@@ -56,7 +56,7 @@ EmaxS = Ebest[np.argmax(Sbest)]
 EminT = Ebest[np.argmax(Sbest*minT - Ebest)]
 ind_minT = np.argwhere(Ebest == EminT)[0][0]
 ind_maxS = np.argwhere(Ebest == EmaxS)[0][0]
-print('energies:', Ebest[ind_minT], Ebest[ind_maxS])
+print('energies:', Ebest[ind_minT], 'at temperature', minT, 'and max entropy', Ebest[ind_maxS])
 Sbest_interesting = Sbest[np.argwhere(Ebest == EminT)[0][0]:np.argwhere(Ebest == EmaxS)[0][0]+1]
 Ebest_interesting = Ebest[np.argwhere(Ebest == EminT)[0][0]:np.argwhere(Ebest == EmaxS)[0][0]+1]
 
@@ -132,7 +132,9 @@ plt.xlabel('$t$')
 plt.ylabel(r'rms entropy error')
 
 all_figures = set()
-while True:
+keep_going = True
+while keep_going:
+    keep_going = False
     for i in range(max_iter):
         for fig in all_figures:
             fig.clf()
