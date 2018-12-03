@@ -12,18 +12,11 @@ use std::default::Default;
 use std::cell::{RefCell,Cell};
 use ::prettyfloat::PrettyFloat;
 
-fn min(a: f64, b: f64) -> f64 { if a < b { a } else { b } }
-fn max(a: f64, b: f64) -> f64 { if a > b { a } else { b } }
-
 /// Which experimental version of SAD are we doing?
-#[derive(Serialize, Deserialize, Debug, ClapMe, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, ClapMe, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SadVersion {
     /// Sad
     Sad,
-    /// New sad with 1/t behavior
-    SadOverT,
-    /// New sad with 1/t^2 behavior
-    SadOverT2
 }
 
 impl SadVersion {
@@ -34,26 +27,14 @@ impl SadVersion {
             match *self {
                 SadVersion::Sad =>
                     (latest_parameter + t/tL)/(latest_parameter + t/num_states*(t/tL)),
-                SadVersion::SadOverT => latest_parameter/(latest_parameter + t),
-                SadVersion::SadOverT2 =>
-                    (latest_parameter+t*num_states)/(latest_parameter + t*t),
             }
         }
     }
-    fn compute_latest_parameter(&self, dE_over_T: f64, Ns: f64, tL: f64,
-                                old_dE_over_T: f64, old_Ns: f64, old_tL: f64,
-                                previous_parameter: f64) -> f64 {
+    fn compute_latest_parameter(&self, dE_over_T: f64, _Ns: f64, _tL: f64,
+                                _old_dE_over_T: f64, _old_Ns: f64, _old_tL: f64,
+                                _previous_parameter: f64) -> f64 {
         match *self {
             SadVersion::Sad => dE_over_T,
-            SadVersion::SadOverT => {
-                let old_Stot = old_dE_over_T*(1./3.)*old_Ns;
-                let new_Stot = dE_over_T*(1./3.)*Ns;
-                let f = old_Stot*min(1., (tL/old_tL).ln());
-                max(previous_parameter, new_Stot - f)
-            }
-            SadVersion::SadOverT2 => {
-                (dE_over_T*Ns*0.5 - old_dE_over_T*old_Ns*0.5)*tL + previous_parameter
-            }
         }
     }
 }
@@ -65,8 +46,6 @@ pub enum MethodParams {
     Sad {
         /// The minimum temperature we are interested in.
         min_T: Energy,
-        /// Which experimental version of SAD?
-        version: SadVersion,
     },
     /// Samc
     Samc {
@@ -110,7 +89,6 @@ impl Default for EnergyMCParams {
         EnergyMCParams {
             _method: MethodParams::Sad {
                 min_T: 0.2*units::EPSILON,
-                version: SadVersion::Sad,
             },
             seed: None,
             min_allowed_energy: None,
@@ -234,7 +212,7 @@ impl Method {
            min_allowed_energy: Option<Energy>,
            max_allowed_energy: Option<Energy>) -> Self {
         match p {
-            MethodParams::Sad { min_T, version } =>
+            MethodParams::Sad { min_T } =>
                 Method::Sad {
                     min_T,
                     too_lo: E,
@@ -242,7 +220,7 @@ impl Method {
                     tL: 0,
                     num_states: 1,
                     highest_hist: 1,
-                    version: version,
+                    version: SadVersion::Sad,
                     latest_parameter: 0.,
                 },
             MethodParams::Samc { t0 } => Method::Samc { t0 },
