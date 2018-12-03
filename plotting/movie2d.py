@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import glob
 import os
 from matplotlib.colors import LogNorm
+from scipy.interpolate import griddata
 from io import StringIO
 
 
@@ -108,17 +109,6 @@ plt.xlabel('Energy')
 plt.ylabel('Number of Atoms')
 plt.colorbar()
 
-E2d, N2d = np.meshgrid(Es, Ns[:-1])
-plt.figure()
-print(temp.shape, N2d.shape, E2d.shape)
-plt.contourf(temp.T, N2d.T, E2d.T)
-plt.title('Energy')
-plt.xlabel('T')
-plt.ylabel('Number of Atoms')
-plt.xlim(0, 5)
-plt.ylim(0, nNs)
-plt.colorbar()
-
 plt.figure()
 almostchempot = np.zeros((nNs,nEs))
 chempot = np.zeros((nNs,nEs))
@@ -158,6 +148,42 @@ plt.pcolor(E_edges , N_edges , Pexc , norm = LogNorm(vmin=.01 , vmax = 100))
 plt.title('Pressure Excess')
 plt.xlabel('Energy')
 plt.ylabel('Number of Atoms')
+plt.colorbar()
+
+
+plt.figure()
+
+print('starting meshgrid')
+Tmax = 0.5
+pmin = 2.5
+pmax = 7.0
+T_grid, p_grid = np.meshgrid(np.linspace(0, Tmax, 501), np.linspace(0, pmax, 201));
+
+E2d, N2d = np.meshgrid(Es, Ns[:-1])
+
+p_total = Pexc + N2d*temp/64
+
+total_size = E2d.shape[0]*E2d.shape[1]
+E_grid = griddata((np.reshape(temp, total_size), np.reshape(p_total, total_size)), np.reshape(E2d, total_size),
+                  (T_grid, p_grid), method='nearest')
+N_grid = griddata((np.reshape(temp, total_size), np.reshape(p_total, total_size)), np.reshape(N2d, total_size),
+                  (T_grid, p_grid), method='nearest')
+mu_grid = griddata((np.reshape(temp, total_size), np.reshape(p_total, total_size)), np.reshape(chempot, total_size),
+                   (T_grid, p_grid), method='nearest')
+print('finished griddata')
+
+plt.pcolor(T_grid, p_grid, mu_grid)
+print('finished pcolor')
+
+plt.plot(np.reshape(temp, total_size), np.reshape(p_total, total_size), 'w.')
+print('finished dots')
+
+plt.title(r'$\mu$')
+plt.xlabel('$T$')
+plt.ylabel('$p$')
+plt.xlim(0, Tmax)
+plt.ylim(pmin, pmax)
+# plt.axes().set_aspect('equal')
 plt.colorbar()
 
 plt.pause(.1)
