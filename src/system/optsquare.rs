@@ -95,6 +95,36 @@ impl SquareWell {
         self.possible_change = Change::Remove{ which, e };
         e
     }
+    fn compute_energy_slowly(&self) -> Energy {
+        let mut e: Energy = units::EPSILON*0.0;
+        for &r1 in self.cell.positions.iter() {
+            for &r2 in self.cell.positions.iter() {
+                let mut r12 = r1 - r2;
+                while r12.x > self.cell.well_width/2.0 {
+                    r12.x -= self.cell.well_width;
+                }
+                while r12.y > self.cell.well_width/2.0 {
+                    r12.y -= self.cell.well_width;
+                }
+                while r12.z > self.cell.well_width/2.0 {
+                    r12.z -= self.cell.well_width;
+                }
+                while r12.x < -self.cell.well_width/2.0 {
+                    r12.x += self.cell.well_width;
+                }
+                while r12.y < -self.cell.well_width/2.0 {
+                    r12.y += self.cell.well_width;
+                }
+                while r12.z < -self.cell.well_width/2.0 {
+                    r12.z += self.cell.well_width;
+                }
+                if r12.norm2() < self.cell.well_width*self.cell.well_width {
+                    e -= units::EPSILON;
+                }
+            }
+        }
+        e*0.5
+    }
 }
 
 impl From<SquareWellParams> for SquareWell {
@@ -133,6 +163,9 @@ impl System for SquareWell {
     }
     fn lowest_possible_energy(&self) -> Option<Energy> {
         Some(-(self.cell.positions.len() as f64)*(self.max_interaction() as f64)*units::EPSILON)
+    }
+    fn verify_energy(&self) {
+        assert_eq!(self.E, self.compute_energy_slowly());
     }
 }
 

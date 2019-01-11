@@ -620,6 +620,9 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
 
     fn move_once(&mut self) {
         self.moves += 1;
+        if self.moves % (self.bins.histogram.len() as u64*self.bins.histogram.len() as u64*1000) == 0 {
+            self.system.verify_energy();
+        }
         let e1 = State::new(&self.system);
         let recent_scale = (1.0/self.moves as f64).sqrt();
         self.acceptance_rate *= 1. - recent_scale;

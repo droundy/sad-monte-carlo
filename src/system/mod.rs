@@ -65,6 +65,9 @@ pub trait System : ::serde::Serialize + ::serde::de::DeserializeOwned {
     /// and safe to recompute when restarting.
     fn update_caches(&mut self) {
     }
+    /// Verify as well as we can that the energy is currently correct.
+    fn verify_energy(&self) {
+    }
 }
 
 
