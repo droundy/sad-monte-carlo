@@ -94,6 +94,7 @@ impl PluginManager {
                 todo = todo.and(p.run(mc, sys));
             }
             if todo >= plugin::Action::Log {
+                sys.verify_energy();
                 for p in plugins.iter() {
                     p.log(mc, sys);
                 }
