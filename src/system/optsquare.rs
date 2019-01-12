@@ -100,25 +100,26 @@ impl SquareWell {
         for &r1 in self.cell.positions.iter() {
             for &r2 in self.cell.positions.iter() {
                 let mut r12 = r1 - r2;
-                while r12.x > self.cell.well_width/2.0 {
-                    r12.x -= self.cell.well_width;
+                println!("     simple dist {}", r12.norm2().sqrt());
+                while r12.x > self.cell.box_diagonal.x/2.0 {
+                    r12.x -= self.cell.box_diagonal.x;
                 }
-                while r12.y > self.cell.well_width/2.0 {
-                    r12.y -= self.cell.well_width;
+                while r12.y > self.cell.box_diagonal.y/2.0 {
+                    r12.y -= self.cell.box_diagonal.y;
                 }
-                while r12.z > self.cell.well_width/2.0 {
-                    r12.z -= self.cell.well_width;
+                while r12.z > self.cell.box_diagonal.z/2.0 {
+                    r12.z -= self.cell.box_diagonal.z;
                 }
-                while r12.x < -self.cell.well_width/2.0 {
-                    r12.x += self.cell.well_width;
+                while r12.x < -self.cell.box_diagonal.x/2.0 {
+                    r12.x += self.cell.box_diagonal.x;
                 }
-                while r12.y < -self.cell.well_width/2.0 {
-                    r12.y += self.cell.well_width;
+                while r12.y < -self.cell.box_diagonal.y/2.0 {
+                    r12.y += self.cell.box_diagonal.y;
                 }
-                while r12.z < -self.cell.well_width/2.0 {
-                    r12.z += self.cell.well_width;
+                while r12.z < -self.cell.box_diagonal.z/2.0 {
+                    r12.z += self.cell.box_diagonal.z;
                 }
-                if r12.norm2() < self.cell.well_width*self.cell.well_width {
+                if r12.norm2() < self.cell.well_width*self.cell.well_width && r1 != r2 {
                     e -= units::EPSILON;
                 }
             }
@@ -353,6 +354,7 @@ impl From<SquareWellNParams> for SquareWell {
                                                  k as f64*cell_width[2])
                                    + offset[l]);
                     sw.confirm();
+                    sw.verify_energy();
                     // assert_eq!(sw.energy(), sw.compute_energy());
                     break;
                 }
