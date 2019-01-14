@@ -100,7 +100,6 @@ impl SquareWell {
         for &r1 in self.cell.positions.iter() {
             for &r2 in self.cell.positions.iter() {
                 let mut r12 = r1 - r2;
-                println!("     simple dist {}", r12.norm2().sqrt());
                 while r12.x > self.cell.box_diagonal.x/2.0 {
                     r12.x -= self.cell.box_diagonal.x;
                 }
