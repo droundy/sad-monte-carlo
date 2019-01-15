@@ -36,15 +36,16 @@ for fname in fnames:
     with open(fname) as f:
         yaml_data = f.read()
     data = yaml.load(yaml_data)
+    my_temperature[fname] = data['T']
     current_histogram[fname] = np.array(data['bins']['histogram'])
-    current_free_energy[fname] = np.array(data['bins']['lnw'])
+    current_free_energy[fname] = -my_temperature[fname]*np.array(data['bins']['lnw'])
+    current_free_energy[fname] = current_free_energy[fname]-current_free_energy[fname][0]
     my_volume[fname] = float(data['system']['cell']['box_diagonal']['x'])**3
     current_total_energy[fname] = np.array(data['bins']['total_energy'])
     my_color[fname] = allcolors.pop()
     my_time[fname] = np.array(data['movies']['time'])
     if len(my_time[fname]) > max_iter:
         max_iter = len(my_time[fname])
-    my_temperature[fname] = data['T']
     my_entropy[fname] = np.array(data['movies']['lnw'])
     my_histogram[fname] = np.array(data['movies']['histogram'])
     my_gamma[fname] = np.array(data['movies']['gamma'], dtype=float)
@@ -67,7 +68,7 @@ plt.figure('histograms')
 for fname in fnames:
         plt.plot(current_histogram[fname], 
                    color=my_color[fname], label=fname)
-        print(my_histogram[fname])
+        #print(my_histogram[fname])
 plt.legend(loc='best')
 
 plt.figure('excess free energy')
@@ -114,6 +115,28 @@ for fname in fnames:
         U = current_total_energy[fname]/current_histogram[fname]
         UN = np.arange(0, len(U), 1) 
         plt.plot((np.pi/6)*UN/my_volume[fname],U/UN,
+                   color=my_color[fname], label=fname)
+
+plt.figure('Pressure')
+for fname in fnames:
+        U = current_total_energy[fname]/current_histogram[fname]
+        F = current_free_energy[fname]
+        V = my_volume[fname]
+        T = my_temperature[fname]
+        N = len(F)
+        p = np.zeros(N-1)
+        p_exc = np.zeros(N-1)
+        for i in range(0,N-1):
+                u = F[i+1]-F[i] # dN = 1
+                p_exc[i] = (-F[i]+u*(i+.5))/V
+                p[i] = (-F[i]+u*(i+.5))/V+(i+.5)*T/V
+        UN = np.arange(0.5, N-1, 1)
+        print(len(UN), len(p))
+        plt.ylabel('Pressure')
+        plt.xlabel(r'$\eta$')
+        plt.plot((np.pi/6)*UN/my_volume[fname],p,
+                   color=my_color[fname], label=fname)
+        plt.plot((np.pi/6)*UN/my_volume[fname],p_exc,'--',
                    color=my_color[fname], label=fname)
 
         
