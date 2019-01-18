@@ -41,6 +41,7 @@ impl SadVersion {
 
 /// Parameters to configure a particular MC.
 #[derive(Debug, ClapMe)]
+#[allow(non_camel_case_types)]
 pub enum MethodParams {
     /// Sad
     Sad {
@@ -54,6 +55,8 @@ pub enum MethodParams {
     },
     /// Wang-Landau
     WL,
+    /// 1/t Wang-Landau
+    inv_t_wl,
 }
 
 /// Parameters to configure the moves.
@@ -204,6 +207,7 @@ enum Method {
         num_states: f64,
         hist: Vec<u64>,
         min_energy: Energy,
+        inv_t: bool,
     }
 }
 
@@ -236,6 +240,21 @@ impl Method {
                 },
                 hist: Vec::new(),
                 min_energy: E,
+                inv_t: false,
+            },
+            MethodParams::inv_t_wl => Method::WL {
+                gamma: 1.0,
+                lowest_hist: if min_allowed_energy.is_some() && max_allowed_energy.is_some() { 0 } else { 1 },
+                highest_hist: 1,
+                total_hist: 0,
+                num_states: if let (Some(mine), Some(maxe)) = (min_allowed_energy, max_allowed_energy) {
+                    *((maxe - mine)/dE).value()
+                } else {
+                    1.0
+                },
+                hist: Vec::new(),
+                min_energy: E,
+                inv_t: true,
             },
         }
     }
@@ -450,7 +469,7 @@ impl<S: System> EnergyMC<S> {
             Method::Samc { .. } => {}
             Method::WL { ref mut gamma,
                          ref mut lowest_hist, ref mut highest_hist, ref mut total_hist,
-                         ref mut hist, ref mut min_energy, num_states } => {
+                         ref mut hist, ref mut min_energy, num_states, inv_t } => {
                 if hist.len() != self.bins.lnw.len() {
                     // Oops, we found a new energy, so let's regroup.
                     if hist.len() == 0 || (*gamma != 1.0 && *lowest_hist > 0) {
@@ -498,7 +517,9 @@ impl<S: System> EnergyMC<S> {
                           .map(|(_,&h)|h).min() == Some(*lowest_hist+1)
                 {
                     *lowest_hist = hist[i];
-                    if *lowest_hist as f64 >= 0.8**total_hist as f64 / num_states {
+                    if (inv_t && *lowest_hist > 0) ||
+                       *lowest_hist as f64 >= 0.8**total_hist as f64 / num_states
+                    {
                         gamma_changed = true;
                         *gamma *= 0.5;
                         if *gamma > 1e-16 {
@@ -567,8 +588,13 @@ impl<S> EnergyMC<S> {
                 let t = self.moves as f64;
                 if t > t0 { t0/t } else { 1.0 }
             }
-            Method::WL { gamma, .. } => {
-                gamma
+            Method::WL { gamma, num_states, inv_t, .. } => {
+                let t = self.moves as f64;
+                if !inv_t || gamma < (num_states as f64)/t {
+                    gamma
+                } else {
+                    (num_states as f64)/t
+                }
             }
         }
     }
