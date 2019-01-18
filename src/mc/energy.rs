@@ -590,7 +590,7 @@ impl<S> EnergyMC<S> {
             }
             Method::WL { gamma, num_states, inv_t, .. } => {
                 let t = self.moves as f64;
-                if !inv_t || gamma < (num_states as f64)/t {
+                if !inv_t || gamma > (num_states as f64)/t {
                     gamma
                 } else {
                     (num_states as f64)/t
