@@ -304,6 +304,7 @@ impl Bins {
             // this is a little wasteful, but seems the easiest way to
             // ensure we end up with enough room.
             self.histogram.insert(0, 0);
+            self.t_found.insert(0, 0);
             self.lnw.insert(0, Unitless::new(0.0));
             self.have_visited_since_maxentropy.insert(0, true);
             self.round_trips.insert(0, 1);
@@ -312,6 +313,7 @@ impl Bins {
         while e >= self.min + self.width*(self.lnw.len() as f64) {
             self.lnw.push(Unitless::new(0.0));
             self.histogram.push(0);
+            self.t_found.push(0);
             self.have_visited_since_maxentropy.push(true);
             self.round_trips.push(1);
         }
