@@ -8,6 +8,7 @@ pub mod cell;
 pub mod optcell;
 
 pub mod ising;
+pub mod dynein;
 pub mod lattice_gas;
 pub mod square;
 pub mod optsquare;
