@@ -1,4 +1,5 @@
-//! An implementation of SAD (Statistical Association, Dynamical version).
+//! An implementation of broad histogram methods that have fixed
+//! temperature and varying number of particles.
 
 #![allow(non_snake_case)]
 
