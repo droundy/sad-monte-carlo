@@ -1,19 +1,21 @@
-//! A square well fluid.
+//! The Ising model
 
 use super::*;
 
 use rand::prelude::*;
 
-/// The parameters needed to configure a square well system.
+/// The parameters needed to configure an Ising model.
+///
+/// These parameters are normally set via command-line arguments.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
 #[allow(non_snake_case)]
 pub struct IsingParams {
     /// Width of the square grid
-    N: usize,
+    pub N: usize,
 }
 
 #[allow(non_snake_case)]
-/// A square well fluid.
+/// An Ising model.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Ising {
     /// The energy of the system
