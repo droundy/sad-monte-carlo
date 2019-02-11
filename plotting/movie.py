@@ -16,7 +16,7 @@ def latex_float(x):
 
 allcolors = list(reversed(['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple',
                            'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan',
-                           'xkcd:lightblue', 'xkcd:puke']))
+                           'xkcd:lightblue', 'xkcd:puke', 'xkcd:puce', 'xkcd:turquoise']))
 
 my_energy = {}
 my_histogram = {}
@@ -134,7 +134,7 @@ plt.ylabel(r'rms entropy error')
 all_figures = set()
 keep_going = True
 while keep_going:
-    keep_going = False
+    # keep_going = False
     for i in range(max_iter):
         for fig in all_figures:
             fig.clf()
