@@ -37,9 +37,11 @@ for fname in fnames:
         yaml_data = f.read()
     data = yaml.load(yaml_data)
     current_histogram[fname] = np.array(data['bins']['histogram'])
+    my_temperature[fname] = data['T']
     current_free_energy[fname] = np.array(data['bins']['lnw'])
     my_volume[fname] = float(data['system']['cell']['box_diagonal']['x'])**3
     current_total_energy[fname] = np.array(data['bins']['total_energy'])
+    my_volume[fname] = float(data['system']['cell']['box_diagonal']['x'])**3
     my_color[fname] = allcolors.pop()
     my_time[fname] = np.array(data['movies']['time'])
     if len(my_time[fname]) > max_iter:
@@ -86,6 +88,27 @@ while keep_going:
             plt.plot(my_histogram[fname][j,:], my_color[fname],
                      label=fname)
             plt.legend(loc='best')
+
+            all_figures.add(plt.figure('Pressure'))
+            plt.title('$t=%s/%s$' % (latex_float(t),
+                                     latex_float(my_time[fname][-1])))
+            plt.ylabel('Pressure')
+            V = my_volume[fname]
+            T = my_temperature[fname]
+            F = -my_free_energy[fname][j,:]*T
+            N = len(F)
+            p = np.zeros(N-1)
+            p_exc = np.zeros(N-1)
+            for i in range(0,N-1):
+                u = F[i+1]-F[i] # dN = 1
+                p_exc[i] = (-F[i]+u*(i+.5))/V
+                p[i] = (-F[i]+u*(i+.5))/V+(i+.5)*T/V
+            UN = np.arange(0.5, N-1, 1)
+            print(len(UN), len(p))
+            plt.plot(UN, p, my_color[fname],
+                     label=fname)
+            plt.legend(loc='best')
+
         plt.pause(0.1)
 
 plt.ioff()

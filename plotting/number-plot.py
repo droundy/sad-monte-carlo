@@ -137,7 +137,7 @@ for fname in fnames:
         plt.plot((np.pi/6)*UN/my_volume[fname],p,
                    color=my_color[fname], label=fname)
         plt.plot((np.pi/6)*UN/my_volume[fname],p_exc,'--',
-                   color=my_color[fname], label=fname)
+                   color=my_color[fname], label=fname + ' pexc')
 
         
 plt.legend(loc='best')
