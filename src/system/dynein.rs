@@ -1,23 +1,21 @@
-//! The Ising model
+//! A square well fluid.
 
 use super::*;
 
 use rand::prelude::*;
 
-/// The parameters needed to configure an Ising model.
-///
-/// These parameters are normally set via command-line arguments.
+/// The parameters needed to configure a square well system.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
 #[allow(non_snake_case)]
-pub struct IsingParams {
+pub struct DyneinParams {
     /// Width of the square grid
-    pub N: usize,
+    N: usize,
 }
 
 #[allow(non_snake_case)]
-/// An Ising model.
+/// A square well fluid.
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Ising {
+pub struct Dynein {
     /// The energy of the system
     E: Energy,
     /// The dimensions of the box.
@@ -28,25 +26,25 @@ pub struct Ising {
     possible_change: Option<(usize, Energy)>,
 }
 
-impl From<IsingParams> for Ising {
-    fn from(params: IsingParams) -> Ising {
-        let mut ising = Ising {
+impl From<DyneinParams> for Dynein {
+    fn from(params: DyneinParams) -> Dynein {
+        let mut dynein = Dynein {
             E: Energy::new(0.),
             N: params.N,
             S: vec![1; params.N*params.N],
             possible_change: None,
         };
-        assert!(ising.N > 1); // otherwise, we are our own neighbor!
+        assert!(dynein.N > 1); // otherwise, we are our own neighbor!
         let mut rng = ::rng::MyRng::from_u64(10137);
-        for s in ising.S.iter_mut() {
+        for s in dynein.S.iter_mut() {
             *s = *rng.choose(&[-1,1]).unwrap();
         }
-        ising.E = ising.compute_energy();
-        ising
+        dynein.E = dynein.compute_energy();
+        dynein
     }
 }
 
-impl System for Ising {
+impl System for Dynein {
     fn energy(&self) -> Energy {
         self.E
     }
@@ -72,7 +70,7 @@ impl System for Ising {
     }
 }
 
-impl ConfirmSystem for Ising {
+impl ConfirmSystem for Dynein {
     fn confirm(&mut self) {
         if let Some((i, e)) = self.possible_change {
             self.S[i] *= -1;
@@ -81,7 +79,7 @@ impl ConfirmSystem for Ising {
     }
 }
 
-impl MovableSystem for Ising {
+impl MovableSystem for Dynein {
     fn plan_move(&mut self, rng: &mut MyRng, _: Length) -> Option<Energy> {
         let i = rng.gen_range(0, self.N);
         let j = rng.gen_range(0, self.N);
@@ -103,16 +101,16 @@ impl MovableSystem for Ising {
 #[cfg(test)]
 #[allow(non_snake_case)]
 fn energy_works_with_N(N: usize) {
-    let mut ising = Ising::from(IsingParams { N: N });
+    let mut Dynein = Dynein::from(DyneinParams { N: N });
 
     println!("starting energy...");
-    assert_eq!(ising.energy(), ising.compute_energy());
+    assert_eq!(Dynein.energy(), Dynein.compute_energy());
 
     let mut rng = ::rng::MyRng::from_u64(10137);
     for _ in 0..10000 {
-        ising.plan_move(&mut rng, Length::new(0.0));
-        ising.confirm();
-        assert_eq!(ising.energy(), ising.compute_energy());
+        Dynein.plan_move(&mut rng, Length::new(0.0));
+        Dynein.confirm();
+        assert_eq!(Dynein.energy(), Dynein.compute_energy());
     }
 }
 

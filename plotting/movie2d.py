@@ -23,33 +23,31 @@ lnw = data['bins']['lnw'] = np.array(yaml_data['bins']['lnw'])
 #print(np.shape(lnw))
 
 
-#~ plt.ion()
-#~ for my_histogram in sorted(glob.iglob("samc-1e6-64-movie.yaml/h*.dat")):
-    #~ # my_entropy = my_histogram ... switch h to S
-    #~ plt.clf()
-    #~ #print(my_histogram)
-    #~ datah = np.loadtxt(my_histogram, ndmin=2)
-    #~ #print(datah)
-    #~ histogram = datah[1:,:]
-    #~ Eh = datah[0,:]
-    #~ nE = len(Eh)
-    #~ nN = len(histogram[:,0])
+plt.ion()
+for my_histogram in sorted(glob.iglob("%s/S*.dat" % filename)):
+    # my_entropy = my_histogram ... switch h to S
+    plt.clf()
+    #print(my_histogram)
+    datah = np.loadtxt(my_histogram, ndmin=2)
+    #print(datah)
+    histogram = datah[1:,:]
+    Eh = datah[0,:]
+    nE = len(Eh)
+    nN = len(histogram[:,0])
 
-    #~ N = np.arange(0 , nN+1 , 1)
+    N = np.arange(0 , nN+1 , 1)
 
-    #~ plt.pcolor(Eh , N , histogram)
-    #~ plt.title('Energy Number Histogram')
-    #~ plt.xlabel('Energy')
-    #~ plt.ylabel('Number of Atoms')
-    #~ plt.colorbar()
-  #  plt.axis([-xL , 0 , 0 , yL])
-    #~ plt.pause(.01)
-#~ plt.ioff()
+    plt.pcolor(Eh , N , histogram)
+    plt.title('Energy Number Histogram')
+    plt.xlabel('Energy')
+    plt.ylabel('Number of Atoms')
+    plt.colorbar()
+    # plt.axis([-xL , 0 , 0 , yL])
+    plt.pause(.01)
 
-
-#~ plt.figure()
-#~ plt.ion()
-for my_entropy in sorted(glob.iglob("samc-1e6-64-movie.yaml/S*.dat")):
+plt.figure()
+plt.ion()
+for my_entropy in sorted(glob.iglob("%s/S*.dat" % filename)):
     my_entropy = my_entropy.replace(' ',',')
     #~ #print(my_entropy)
     plt.clf()
@@ -78,7 +76,7 @@ for my_entropy in sorted(glob.iglob("samc-1e6-64-movie.yaml/S*.dat")):
     #~ plt.ylabel('Number of Atoms')
     #~ plt.colorbar()
     #~ plt.pause(.1)
-#~ plt.ioff()  
+plt.ioff()  
 
 dataS = np.loadtxt(my_entropy, ndmin=2)
 entropy = dataS[1:,:]

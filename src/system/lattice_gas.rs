@@ -1,26 +1,28 @@
-//! A square well fluid.
+//! A lattice gas
 
 use super::*;
 
 use rand::prelude::*;
 
-/// The parameters needed to configure a square well system.
+/// The parameters needed to configure a lattice gas
+///
+/// These parameters are normally set via command-line arguments.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
 #[allow(non_snake_case)]
 pub struct LatticeGasParams {
     /// Width of the square grid
-    L: usize,
+    pub L: usize,
 }
 
 #[allow(non_snake_case)]
-/// A square well fluid.
+/// A lattice gas
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LatticeGas {
     /// The energy of the system
     E: Energy,
     /// The dimensions of the box.
     pub L: usize,
-    /// The spins themselves
+    /// The lattice sites (and whether they are occupied)
     N: Vec<i8>,
     /// The last change we made (and might want to undo).
     possible_change: Option<(usize, Energy)>,

@@ -17,16 +17,20 @@ use ::prettyfloat::PrettyFloat;
 pub enum SadVersion {
     /// Sad
     Sad,
+    /// Sad, aggressive version
+    SadAggressive,
 }
 
 impl SadVersion {
-    fn compute_gamma(&self, latest_parameter: f64, t: f64, tL: f64, num_states: f64) -> f64 {
+    fn compute_gamma(&self, latest_parameter: f64, t: f64, tL: f64, tF: f64, num_states: f64) -> f64 {
         if latest_parameter == 0.0 {
             0.0
         } else {
             match *self {
                 SadVersion::Sad =>
                     (latest_parameter + t/tL)/(latest_parameter + t/num_states*(t/tL)),
+                SadVersion::SadAggressive =>
+                    (latest_parameter + t/tF)/(latest_parameter + t/num_states*(t/tF)),
             }
         }
     }
@@ -35,15 +39,22 @@ impl SadVersion {
                                 _previous_parameter: f64) -> f64 {
         match *self {
             SadVersion::Sad => dE_over_T,
+            SadVersion::SadAggressive => dE_over_T,
         }
     }
 }
 
 /// Parameters to configure a particular MC.
 #[derive(Debug, ClapMe)]
+#[allow(non_camel_case_types)]
 pub enum MethodParams {
     /// Sad
     Sad {
+        /// The minimum temperature we are interested in.
+        min_T: Energy,
+    },
+    /// Aggressive version of sad
+    SadAggressive {
         /// The minimum temperature we are interested in.
         min_T: Energy,
     },
@@ -54,6 +65,8 @@ pub enum MethodParams {
     },
     /// Wang-Landau
     WL,
+    /// 1/t Wang-Landau
+    inv_t_wl,
 }
 
 /// Parameters to configure the moves.
@@ -130,6 +143,8 @@ pub struct Bins {
     pub width: Energy,
     /// The number of times we have been at each energy.
     pub histogram: Vec<u64>,
+    /// The iteration when we found each energy.
+    pub t_found: Vec<u64>,
     /// The ln weight for each energy bin.
     pub lnw: Vec<Unitless>,
 
@@ -186,6 +201,7 @@ enum Method {
         too_lo: Energy,
         too_hi: Energy,
         tL: u64,
+        tF: u64,
         num_states: u64,
         highest_hist: u64,
         version: SadVersion,
@@ -204,6 +220,7 @@ enum Method {
         num_states: f64,
         hist: Vec<u64>,
         min_energy: Energy,
+        inv_t: bool,
     }
 }
 
@@ -218,9 +235,22 @@ impl Method {
                     too_lo: E,
                     too_hi: E,
                     tL: 0,
+                    tF: 0,
                     num_states: 1,
                     highest_hist: 1,
                     version: SadVersion::Sad,
+                    latest_parameter: 0.,
+                },
+            MethodParams::SadAggressive { min_T } =>
+                Method::Sad {
+                    min_T,
+                    too_lo: E,
+                    too_hi: E,
+                    tL: 0,
+                    tF: 0,
+                    num_states: 1,
+                    highest_hist: 1,
+                    version: SadVersion::SadAggressive,
                     latest_parameter: 0.,
                 },
             MethodParams::Samc { t0 } => Method::Samc { t0 },
@@ -236,6 +266,21 @@ impl Method {
                 },
                 hist: Vec::new(),
                 min_energy: E,
+                inv_t: false,
+            },
+            MethodParams::inv_t_wl => Method::WL {
+                gamma: 1.0,
+                lowest_hist: if min_allowed_energy.is_some() && max_allowed_energy.is_some() { 0 } else { 1 },
+                highest_hist: 1,
+                total_hist: 0,
+                num_states: if let (Some(mine), Some(maxe)) = (min_allowed_energy, max_allowed_energy) {
+                    *((maxe - mine)/dE).value()
+                } else {
+                    1.0
+                },
+                hist: Vec::new(),
+                min_energy: E,
+                inv_t: true,
             },
         }
     }
@@ -259,6 +304,7 @@ impl Bins {
             // this is a little wasteful, but seems the easiest way to
             // ensure we end up with enough room.
             self.histogram.insert(0, 0);
+            self.t_found.insert(0, 0);
             self.lnw.insert(0, Unitless::new(0.0));
             self.have_visited_since_maxentropy.insert(0, true);
             self.round_trips.insert(0, 1);
@@ -267,6 +313,7 @@ impl Bins {
         while e >= self.min + self.width*(self.lnw.len() as f64) {
             self.lnw.push(Unitless::new(0.0));
             self.histogram.push(0);
+            self.t_found.push(0);
             self.have_visited_since_maxentropy.push(true);
             self.round_trips.push(1);
         }
@@ -309,7 +356,8 @@ impl<S: System> EnergyMC<S> {
                 let rejected = lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp();
                 if !rejected && self.bins.histogram[i2] == 0 && e2.E < too_hi && e2.E > too_lo {
                     // Here we do changes that need only happen when
-                    // we encounter an energy we have never seen before.
+                    // we encounter an energy in our important range
+                    // that we have never seen before.
                     match &mut self.method {
                         Method::Sad { ref mut num_states, ref mut tL,
                                       ref mut latest_parameter, .. } => {
@@ -354,7 +402,7 @@ impl<S: System> EnergyMC<S> {
         let mut gamma_changed = false;
         match self.method {
             Method::Sad { min_T, ref mut too_lo, ref mut too_hi, ref mut num_states,
-                          ref mut tL, ref mut highest_hist,
+                          ref mut tL, ref mut tF, ref mut highest_hist,
                           version, ref mut latest_parameter, .. } => {
                 let histogram = &self.bins.histogram;
                 if *too_lo > *too_hi || energy.E < *too_lo || energy.E > *too_hi {
@@ -420,6 +468,11 @@ impl<S: System> EnergyMC<S> {
                 }
                 if *tL == self.moves {
                     gamma_changed = true;
+                    // Set tF to the latest discovery time in the
+                    // range of energies that we actually care about.
+                    let ilo = self.bins.state_to_index(State { E: *too_lo });
+                    let ihi = self.bins.state_to_index(State { E: *too_hi });
+                    *tF = *self.bins.t_found[ilo..ihi+1].iter().max().unwrap();
                     // We just discovered a new important energy.
                     // Let's take this as an opportunity to revise our
                     // translation scale, and also to log the news.
@@ -450,7 +503,7 @@ impl<S: System> EnergyMC<S> {
             Method::Samc { .. } => {}
             Method::WL { ref mut gamma,
                          ref mut lowest_hist, ref mut highest_hist, ref mut total_hist,
-                         ref mut hist, ref mut min_energy, num_states } => {
+                         ref mut hist, ref mut min_energy, num_states, inv_t } => {
                 if hist.len() != self.bins.lnw.len() {
                     // Oops, we found a new energy, so let's regroup.
                     if hist.len() == 0 || (*gamma != 1.0 && *lowest_hist > 0) {
@@ -498,7 +551,9 @@ impl<S: System> EnergyMC<S> {
                           .map(|(_,&h)|h).min() == Some(*lowest_hist+1)
                 {
                     *lowest_hist = hist[i];
-                    if *lowest_hist as f64 >= 0.8**total_hist as f64 / num_states {
+                    if (inv_t && *lowest_hist > 0) ||
+                       *lowest_hist as f64 >= 0.8**total_hist as f64 / num_states
+                    {
                         gamma_changed = true;
                         *gamma *= 0.5;
                         if *gamma > 1e-16 {
@@ -559,16 +614,21 @@ impl<S: System> EnergyMC<S> {
 impl<S> EnergyMC<S> {
     fn gamma(&self) -> f64 {
         match self.method {
-            Method::Sad { num_states, tL, version, latest_parameter, .. } => {
+            Method::Sad { num_states, tL, tF, version, latest_parameter, .. } => {
                 version.compute_gamma(latest_parameter, self.moves as f64,
-                                      tL as f64, num_states as f64)
+                                      tL as f64, tF as f64, num_states as f64)
             }
             Method::Samc { t0 } => {
                 let t = self.moves as f64;
                 if t > t0 { t0/t } else { 1.0 }
             }
-            Method::WL { gamma, .. } => {
-                gamma
+            Method::WL { gamma, num_states, inv_t, .. } => {
+                let t = self.moves as f64;
+                if !inv_t || gamma > (num_states as f64)/t {
+                    gamma
+                } else {
+                    (num_states as f64)/t
+                }
             }
         }
     }
@@ -590,6 +650,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             max_allowed_energy: params.max_allowed_energy,
             bins: Bins {
                 histogram: vec![1],
+                t_found: vec![0],
                 lnw: vec![Unitless::new(0.0)],
                 min: system.energy() - ewidth*0.5, // center initial energy in a bin!
                 width: ewidth,
@@ -650,6 +711,10 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
         let energy = State::new(&self.system);
         let i = self.state_to_index(energy);
 
+        // track the time we found each energy.
+        if self.bins.histogram[i] == 0 {
+            self.bins.t_found[i] = self.moves;
+        }
         self.bins.histogram[i] += 1;
         self.update_weights(energy);
 
