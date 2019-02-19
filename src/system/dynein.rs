@@ -1,27 +1,42 @@
-//! A square well fluid.
+//! A dynein walk.
 
 use super::*;
 
 use rand::prelude::*;
 
-/// The parameters needed to configure a square well system.
+/// The parameters needed to configure dynein walking.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
 #[allow(non_snake_case)]
 pub struct DyneinParams {
-    /// Width of the square grid
-    N: usize,
+    /// Leg Angles
+    nm: usize,
+    fm: usize,
+    l: usize
+
 }
 
 #[allow(non_snake_case)]
-/// A square well fluid.
+/// A dynein model.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Dynein {
     /// The energy of the system
     E: Energy,
-    /// The dimensions of the box.
-    pub N: usize,
-    /// The spins themselves
-    S: Vec<i8>,
+    /// The leg angles
+    pub nm: usize,
+    pub fm: usize,
+    /// The displacement of foot domain
+    pub l: usize,
+    /// The stalk length.
+    Ls: usize,  
+    /// The tail length.
+    Lt: usize, 
+    /// The spins themselves (Change This)
+    ///S: Vec<i8>, (Disregard this)   
+    /// The Spring Constants
+    kb: 
+    kub:
+
+
     /// The last change we made (and might want to undo).
     possible_change: Option<(usize, Energy)>,
 }
@@ -101,16 +116,16 @@ impl MovableSystem for Dynein {
 #[cfg(test)]
 #[allow(non_snake_case)]
 fn energy_works_with_N(N: usize) {
-    let mut Dynein = Dynein::from(DyneinParams { N: N });
+    let mut dynein = dynein::from(DyneinParams { N: N });
 
     println!("starting energy...");
-    assert_eq!(Dynein.energy(), Dynein.compute_energy());
+    assert_eq!(dynein.energy(), dynein.compute_energy());
 
     let mut rng = ::rng::MyRng::from_u64(10137);
     for _ in 0..10000 {
-        Dynein.plan_move(&mut rng, Length::new(0.0));
-        Dynein.confirm();
-        assert_eq!(Dynein.energy(), Dynein.compute_energy());
+        dynein.plan_move(&mut rng, Length::new(0.0));
+        dynein.confirm();
+        assert_eq!(dynein.energy(), dynein.compute_energy());
     }
 }
 
