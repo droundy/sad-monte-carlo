@@ -1,15 +1,19 @@
-//! A square well fluid.
+//! A dynein walk.
 
 use super::*;
 
 use rand::prelude::*;
 
-/// The parameters needed to configure a square well system.
+/// The parameters needed to configure a dynein system.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
 #[allow(non_snake_case)]
 pub struct DyneinParams {
     /// Width of the square grid
-    N: usize,
+    pub N: usize,
+    /// Stalk length in nm
+    pub Ls: f64,
+    /// Tail length in nm
+    pub Lt: f64,
 }
 
 #[allow(non_snake_case)]
