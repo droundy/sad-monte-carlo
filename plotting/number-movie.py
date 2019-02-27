@@ -61,13 +61,13 @@ all_figures = set()
 keep_going = True
 while keep_going:
     #keep_going = False
-    for i in range(max_iter):
+    for ii in range(max_iter):
         for fig in all_figures:
             fig.clf()
         for fname in fnames:
-            if i < len(my_time[fname]):
-                t = my_time[fname][i]
-                j = i
+            if ii < len(my_time[fname]):
+                t = my_time[fname][ii]
+                j = ii
             else:
                 j = -1
 

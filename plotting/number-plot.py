@@ -139,6 +139,32 @@ for fname in fnames:
         plt.plot((np.pi/6)*UN/my_volume[fname],p_exc,'--',
                    color=my_color[fname], label=fname + ' pexc')
 
+
+plt.figure('Gibbs')
+for fname in fnames:
+        U = current_total_energy[fname]/current_histogram[fname]
+        F = current_free_energy[fname]
+        V = my_volume[fname]
+        T = my_temperature[fname]
+        N = len(F)
+        p = np.zeros(N-1)
+        p_exc = np.zeros(N-1)
+        for i in range(0,N-1):
+                u = F[i+1]-F[i] # dN = 1
+                p_exc[i] = (-F[i]+u*(i+.5))/V
+                p[i] = (-F[i]+u*(i+.5))/V+(i+.5)*T/V
+        G = np.zeros(N-2)
+        p_integer = np.zeros(N-2)
+        for j in range(1,N-2):
+                p_integer[j] = (p[j]+p[j+1])/2
+                G[j] = F[j] + V*p_integer[j]
+        plt.ylabel('Gibbs')
+        plt.xlabel('Pressure')
+        print(len(G))
+        plt.plot(p_integer,G,
+                   color=my_color[fname], label=fname)
+
+
         
 plt.legend(loc='best')
 plt.show()
