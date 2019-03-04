@@ -121,8 +121,8 @@ for fname in fnames:
         for i in range(len(my_time[fname])):
             S_interesting = my_entropy[fname][i,ind_minT:ind_maxS+1]
             e = S_interesting - Sbest_interesting
-            e -= e.mean()
-            errors[i] = np.sqrt((e**2).mean())
+            e -= e[Sbest_interesting!=0.0].mean()
+            errors[i] = np.sqrt((e[Sbest_interesting!=0.0]**2).mean())
         plt.loglog(my_time[fname], errors, color=my_color[fname], label=fname)
     else:
         print("We cannot compare with", fname, "because it doesn't have all the energies")
