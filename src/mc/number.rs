@@ -23,6 +23,11 @@ pub enum MethodParams {
     },
     /// Wang-Landau
     WL,
+    /// SAD
+    Sad {
+        /// The maximum chemical potential that we care about.
+        mu_max: Energy,
+    },
 }
 
 /// Parameters to configure the moves.
@@ -113,6 +118,8 @@ pub struct Bins {
     pub num_translation_attempts: Vec<u64>,
     /// The number of translation moves accepted at each number of atoms
     pub num_translation_accepted: Vec<u64>,
+    /// The iteration when we found each number of atoms.
+    pub t_found: Vec<u64>,
     /// The number of adds/removes tried at each number of atoms
     pub num_addremove_attempts: u64,
     /// The number of adds/removes accepted at each number of atoms
@@ -167,6 +174,14 @@ enum Method {
     Samc {
         t0: f64,
     },
+    /// Samc
+    Sad {
+        mu_max: Energy,
+        too_many: usize,
+        tF: u64,
+        highest_hist: u64,
+        latest_parameter: f64,
+    },
     /// Wang Landau
     WL {
         gamma: f64,
@@ -181,6 +196,13 @@ impl Method {
     fn new(p: MethodParams) -> Self {
         match p {
             MethodParams::Samc { t0 } => Method::Samc { t0 },
+            MethodParams::Sad { mu_max } => Method::Sad {
+                mu_max,
+                too_many: 1,
+                tF: 0,
+                highest_hist: 1,
+                latest_parameter: 0.,
+            },
             MethodParams::WL => Method::WL {
                 gamma: 1.0,
                 lowest_hist: 1,
@@ -194,6 +216,7 @@ impl Method {
                     translation_scale: vec![0.05*units::SIGMA],
                     num_translation_attempts: vec![0],
                     num_translation_accepted: vec![0],
+                    t_found: vec![0],
                     num_addremove_attempts: 0,
                     num_addremove_accepted: 0,
                     have_visited_since_maxlnw: vec![false],
@@ -233,6 +256,7 @@ impl Bins {
             self.num_translation_accepted.push(0);
             self.num_translation_attempts.push(0);
             self.round_trips.push(1);
+            self.t_found.push(0);
             self.have_visited_since_maxlnw.push(false);
             let last = self.translation_scale.pop().unwrap();
             self.translation_scale.push(last);
@@ -264,6 +288,22 @@ impl<S: GrandSystem> NumberMC<S> {
             Method::Samc { .. } => {
                 lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
             }
+            Method::Sad { too_many, mu_max, .. } => {
+                let lnw = &self.bins.lnw;
+                let lnw1 = if e1.N > too_many {
+                    let max_slope = *(mu_max/self.T).value();
+                    *(lnw[too_many] + (e1.N - too_many) as f64/max_slope).value()
+                } else {
+                    lnw1
+                };
+                let lnw2 = if e2.N > too_many {
+                    let max_slope = *(mu_max/self.T).value();
+                    *(lnw[too_many] + (e2.N - too_many) as f64/max_slope).value()
+                } else {
+                    lnw2
+                };
+                lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
+            }
             Method::WL { ref mut bins, ref mut gamma, ref mut lowest_hist, ref mut highest_hist, ref mut total_hist, .. } => {
                 if bins.prepare_for_state(e2) {
                     // Oops, we found a new energy, so let's regroup.
@@ -289,10 +329,50 @@ impl<S: GrandSystem> NumberMC<S> {
     fn update_weights(&mut self, energy: State) {
         let i = self.state_to_index(energy);
         let gamma = self.gamma(); // compute gamma out front...
+        let old_lnw = self.bins.lnw[i];
         self.bins.lnw[i] += gamma;
         let mut gamma_changed = false;
+        let n = i; // number of atoms is also the index.
         match self.method {
             Method::Samc { .. } => {}
+            Method::Sad { mu_max, ref mut too_many, ref mut tF, ref mut highest_hist,
+                          ref mut latest_parameter, .. } => {
+                let histogram = &self.bins.histogram;
+                if n > *too_many {
+                    // Ooops, we didn't want to add gamma after all...
+                    self.bins.lnw[i] = old_lnw;
+                }
+
+                if histogram[i] > *highest_hist {
+                    *highest_hist = histogram[i];
+                    if n > *too_many {
+                        let ihi = *too_many;
+                        for j in ihi+1 .. histogram.len() {
+                            let lnw = &mut self.bins.lnw;
+                            lnw[j] = if histogram[j] != 0 {
+                                lnw[ihi] + (j - ihi) as f64 *mu_max/self.T
+                            } else {
+                                Unitless::new(0.0)
+                            };
+                        }
+                        *latest_parameter = *(*too_many as f64 *mu_max/self.T).value();
+                        *too_many = n;
+
+                        gamma_changed = true;
+                        // Set tF to the latest discovery time in the
+                        // range of energies that we actually care about.
+                        *tF = *self.bins.t_found[0..n+1].iter().max().unwrap();
+                        // We just discovered a new important number of atoms.
+                        // Should we take this as an opportunity to
+                        // revise our translation scale? We should definitely
+                        // log the news.
+                        if !self.report.quiet {
+                            println!("    sad: [{}]:  0 < {} < {}",
+                                     self.moves, *too_many, self.bins.histogram.len()+1);
+                        }
+                    }
+                }
+            }
             Method::WL { ref mut gamma,
                          ref mut lowest_hist, ref mut highest_hist, ref mut total_hist, ref mut bins } => {
                 let num_states = self.bins.num_states as f64;
@@ -339,6 +419,16 @@ impl<S> NumberMC<S> {
                 let t = self.moves as f64;
                 if t > t0 { t0/t } else { 1.0 }
             }
+            Method::Sad { latest_parameter, too_many, tF, .. } => {
+                let t = self.moves as f64;
+                let tF = tF as f64;
+                let too_many = too_many as f64;
+                if latest_parameter == 0.0 {
+                    0.0
+                } else {
+                    (latest_parameter + t/tF)/(latest_parameter + t/too_many*(t/tF))
+                }
+            }
             Method::WL { gamma, .. } => {
                 gamma
             }
@@ -366,6 +456,7 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
                 }],
                 num_translation_attempts: vec![0],
                 num_translation_accepted: vec![0],
+                t_found: vec![0],
                 num_addremove_attempts: 0,
                 num_addremove_accepted: 0,
                 have_visited_since_maxlnw: vec![false],
@@ -449,6 +540,7 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
         if self.bins.histogram[i] == 0 {
             self.bins.num_states += 1;
             self.bins.t_last = self.moves;
+            self.bins.t_found[i] = self.moves;
         }
         if self.moves % self.bins.t_last == 0 {
             if let MoveParams::AcceptanceRate(r) = self.move_plan {
