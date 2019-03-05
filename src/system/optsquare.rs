@@ -118,8 +118,19 @@ impl SquareWell {
                 while r12.z < -self.cell.box_diagonal.z/2.0 {
                     r12.z += self.cell.box_diagonal.z;
                 }
-                if r12.norm2() < self.cell.well_width*self.cell.well_width && r1 != r2 {
-                    e -= units::EPSILON;
+                for i in -1..2 {
+                    for j in -1..2 {
+                        for k in -1..2 {
+                            let lattice_vector = Vector3d::new(self.cell.box_diagonal.x*(i as f64),
+                                                               self.cell.box_diagonal.y*(j as f64),
+                                                               self.cell.box_diagonal.z*(k as f64));
+                            let r = r12 + lattice_vector;
+                            let dist2 = r.norm2();
+                            if dist2 < self.cell.well_width*self.cell.well_width && dist2 > 0.0*units::SIGMA*units::SIGMA {
+                                e -= units::EPSILON;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -130,14 +141,10 @@ impl SquareWell {
 impl From<SquareWellParams> for SquareWell {
     fn from(params: SquareWellParams) -> SquareWell {
         let cell = Cell::new(&params._dim, params.well_width*units::SIGMA);
-        if cell.well_width > cell.box_diagonal.x*0.5 ||
-           cell.well_width > cell.box_diagonal.y*0.5 ||
-           cell.well_width > cell.box_diagonal.z*0.5
+        if cell.well_width > cell.box_diagonal.x ||
+           cell.well_width > cell.box_diagonal.y ||
+           cell.well_width > cell.box_diagonal.z
         {
-            // FIXME: I think that the Cell can handle small cells
-            // like this, but compute_energy_slowly does not do it
-            // correctly.  Do we want to make compute_energy_slowly
-            // more clever instead?
             panic!("The cell is not large enough for the well width, sorry!");
         }
         SquareWell {
