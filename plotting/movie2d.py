@@ -5,9 +5,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob
 import os
+import math
 from matplotlib.colors import LogNorm
 from scipy.interpolate import griddata
 from io import StringIO
+
 
 
 filename = sys.argv[1]
@@ -20,10 +22,11 @@ with open(f, 'r') as stream:
 
 data = yaml_data
 lnw = data['bins']['lnw'] = np.array(yaml_data['bins']['lnw'])
-#print(np.shape(lnw))
+print(np.shape(lnw))
+print(lnw , "test")
 
-
-plt.ion()
+plt.figure()
+#~ plt.ion()
 for my_histogram in sorted(glob.iglob("%s/S*.dat" % filename)):
     # my_entropy = my_histogram ... switch h to S
     plt.clf()
@@ -37,16 +40,16 @@ for my_histogram in sorted(glob.iglob("%s/S*.dat" % filename)):
 
     N = np.arange(0 , nN+1 , 1)
 
-    plt.pcolor(Eh , N , histogram)
-    plt.title('Energy Number Histogram')
-    plt.xlabel('Energy')
-    plt.ylabel('Number of Atoms')
-    plt.colorbar()
-    # plt.axis([-xL , 0 , 0 , yL])
-    plt.pause(.01)
+    #~ plt.pcolor(Eh , N , histogram)
+    #~ plt.title('Energy Number Histogram')
+    #~ plt.xlabel('Energy')
+    #~ plt.ylabel('Number of Atoms')
+    #~ plt.colorbar()
+    #~ # plt.axis([-xL , 0 , 0 , yL])
+    #~ plt.pause(.01)
 
 plt.figure()
-plt.ion()
+#~ plt.ion()
 for my_entropy in sorted(glob.iglob("%s/S*.dat" % filename)):
     my_entropy = my_entropy.replace(' ',',')
     #~ #print(my_entropy)
@@ -58,8 +61,8 @@ for my_entropy in sorted(glob.iglob("%s/S*.dat" % filename)):
     Es = dataS[0,:]
     nNs = len(entropy[:,0])
     nEs = len(Es)
-    #~ print("nEs", nEs)
-    #~ print("nNs",nNs)
+    #print("nEs", nEs)
+    #~ #print("nNs",nNs)
     Ns = np.arange(0 , nNs+1 , 1)
     
     E_edges = np.zeros(len(Es)+1)
@@ -76,7 +79,7 @@ for my_entropy in sorted(glob.iglob("%s/S*.dat" % filename)):
     #~ plt.ylabel('Number of Atoms')
     #~ plt.colorbar()
     #~ plt.pause(.1)
-plt.ioff()  
+#~ plt.ioff()  
 
 dataS = np.loadtxt(my_entropy, ndmin=2)
 entropy = dataS[1:,:]
@@ -86,7 +89,8 @@ nEs = len(Es)
 E_edges = np.zeros(len(Es)+1)
 dE = 1
 
-#~ np.loadtxt(my_entropy[-1], ndim = 2)
+plt.figure()
+#~ #np.loadtxt(my_entropy[-1], ndim = 2)
 temp = np.zeros((nNs,nEs))
 for i in range(nNs):
     for j in range(1,nEs-1):
@@ -101,11 +105,11 @@ if len(Es) > 1:
     N_edges = Ns + 0.5
     N_edges[0] = 0
 print(temp[temp>0])
-plt.pcolor(E_edges , N_edges , temp , norm = LogNorm(vmin=.01 , vmax = 100))
-plt.title('Temperature')
-plt.xlabel('Energy')
-plt.ylabel('Number of Atoms')
-plt.colorbar()
+#~ plt.pcolor(E_edges , N_edges , temp , norm = LogNorm(vmin=.01 , vmax = 100))
+#~ plt.title('Temperature')
+#~ plt.xlabel('Energy')
+#~ plt.ylabel('Number of Atoms')
+#~ plt.colorbar()
 
 plt.figure()
 almostchempot = np.zeros((nNs,nEs))
@@ -124,11 +128,11 @@ if len(Es) > 1:
     N_edges = Ns + 0.5
     N_edges[0] = 0
 #print(temp[temp>0])
-plt.pcolor(E_edges , N_edges , chempot , norm = LogNorm(vmin=.01 , vmax = 100))
-plt.title('Chemical Potential')
-plt.xlabel('Energy')
-plt.ylabel('Number of Atoms')
-plt.colorbar()
+#~ plt.pcolor(E_edges , N_edges , chempot , norm = LogNorm(vmin=.01 , vmax = 100))
+#~ plt.title('Chemical Potential')
+#~ plt.xlabel('Energy')
+#~ plt.ylabel('Number of Atoms')
+#~ plt.colorbar()
 
 plt.figure()
 Pexc = np.zeros((nNs,nEs))
@@ -142,11 +146,12 @@ if len(Es) > 1:
     N_edges = Ns + 0.5
     N_edges[0] = 0
 #print(temp[temp>0])
-plt.pcolor(E_edges , N_edges , Pexc , norm = LogNorm(vmin=.01 , vmax = 100))
-plt.title('Pressure Excess')
-plt.xlabel('Energy')
-plt.ylabel('Number of Atoms')
-plt.colorbar()
+#~ plt.pcolor(E_edges , N_edges , Pexc , norm = LogNorm(vmin=.01 , vmax = 100))
+#~ plt.title('Pressure Excess')
+#~ plt.xlabel('Energy')
+#~ plt.ylabel('Number of Atoms')
+#~ plt.colorbar()
+
 
 
 plt.figure()
@@ -176,14 +181,52 @@ print('finished pcolor')
 plt.plot(np.reshape(temp, total_size), np.reshape(p_total, total_size), 'w.')
 print('finished dots')
 
-plt.title(r'$\mu$')
-plt.xlabel('$T$')
-plt.ylabel('$p$')
-plt.xlim(0, Tmax)
-plt.ylim(pmin, pmax)
-# plt.axes().set_aspect('equal')
-plt.colorbar()
 
 plt.pause(.1)
-plt.show()
+#~ plt.show()
+
+numE = data['bins']['num_E']
+print(numE , "num e")
+
+maxN = data['bins']['max_N']
+print(maxN , "MAX N")
+
+multi = np.zeros((maxN,numE))
+
+#wrap the multiplicity from the yaml file into something 2d
+for n in range(maxN-1):
+    for i in range(1,numE-1):
+        multi[n,i] = lnw[n + i*(maxN +1)]
+print(multi , "mulitplicity")
+
+
+
+zexc = 0
+#beta = 1 / Temp
+
+#The range needs to change or the indexing in the loop needs to be converted
+#to the actual Energy
+for n in range(maxN-1):
+    for e in range(numE-1):
+        if not np.isfinite(np.exp((temp[n,e])**-1 * (-e + chempot[n,e] * n))):
+            zexc = zexc
+        else:
+            zexc += np.exp((temp[n,e])**-1 * (-e + chempot[n,e] * n))
+print(zexc,"Z EXCESS")
+#~ for E in range(len(Energy)):
+    #~ uexc += gexc[E] * E * math.exp(-beta * E / zexc)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
