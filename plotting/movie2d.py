@@ -21,13 +21,10 @@ with open(f, 'r') as stream:
     yaml_data = yaml.load(stream)
 
 data = yaml_data
-lnw = data['bins']['lnw'] = np.array(yaml_data['bins']['lnw'])
-print(np.shape(lnw))
-print(lnw , "test")
 
 plt.figure()
 #~ plt.ion()
-for my_histogram in sorted(glob.iglob("%s/S*.dat" % filename)):
+for my_histogram in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
     # my_entropy = my_histogram ... switch h to S
     plt.clf()
     #print(my_histogram)
@@ -50,7 +47,7 @@ for my_histogram in sorted(glob.iglob("%s/S*.dat" % filename)):
 
 plt.figure()
 #~ plt.ion()
-for my_entropy in sorted(glob.iglob("%s/S*.dat" % filename)):
+for my_entropy in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
     my_entropy = my_entropy.replace(' ',',')
     #~ #print(my_entropy)
     plt.clf()
@@ -185,21 +182,38 @@ print('finished dots')
 plt.pause(.1)
 #~ plt.show()
 
+lnw = np.array(yaml_data['bins']['lnw'])
+print(np.shape(lnw))
+print(lnw , "test")
+
 numE = data['bins']['num_E']
 print(numE , "num e")
 
 maxN = data['bins']['max_N']
 print(maxN , "MAX N")
 
-multi = np.zeros((maxN,numE))
+EE, NN = np.meshgrid(Es, np.arange(0, maxN+1))
+
+multi = np.zeros((maxN+1,numE))
+print(EE.shape)
+assert(len(lnw) == (maxN+1)*numE)
+print('multi.shape', multi.shape)
+
 
 #wrap the multiplicity from the yaml file into something 2d
-for n in range(maxN-1):
-    for i in range(1,numE-1):
-        multi[n,i] = lnw[n + i*(maxN +1)]
+for n in range(maxN+1):
+    for i in range(0,numE):
+        multi[n,i] = lnw[n + i*(maxN +1)] FIXME is this lng?
 print(multi , "mulitplicity")
 
 
+T = 0.5
+mu = 1.0
+beta = 1/T
+gibbs_exponent = -beta*(EE - mu*NN)
+
+Zexc = (multi*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()
+print('Zexc', Zexc)
 
 zexc = 0
 #beta = 1 / Temp
@@ -207,7 +221,7 @@ zexc = 0
 #The range needs to change or the indexing in the loop needs to be converted
 #to the actual Energy
 for n in range(maxN-1):
-    for e in range(numE-1):
+    for e in range(numE):
         if not np.isfinite(np.exp((temp[n,e])**-1 * (-e + chempot[n,e] * n))):
             zexc = zexc
         else:
