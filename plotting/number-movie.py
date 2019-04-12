@@ -84,10 +84,10 @@ while keep_going:
             all_figures.add(plt.figure('Histogram'))
             plt.title('$t=%s/%s$' % (latex_float(t),
                                      latex_float(my_time[fname][-1])))
-            plt.ylabel('histogram')
             plt.plot(my_histogram[fname][j,:], my_color[fname],
                      label=fname)
-            plt.legend(loc='best')
+            #plt.ylim(0)
+            #plt.legend(loc='best')
 
             all_figures.add(plt.figure('Pressure'))
             plt.title('$t=%s/%s$' % (latex_float(t),
@@ -108,6 +108,10 @@ while keep_going:
             plt.plot(UN, p, my_color[fname],
                      label=fname)
             plt.legend(loc='best')
+        plt.figure('Histogram')
+        plt.ylabel('histogram')
+        plt.ylim(0)
+        plt.legend(loc='best')
 
         plt.pause(0.1)
 

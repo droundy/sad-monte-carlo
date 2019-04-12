@@ -1,14 +1,14 @@
 #!/bin/sh
 #SBATCH --ntasks 1
 #SBATCH --cpus-per-task 1
-#SBATCH --output samc-2x2x2-T1.0-t0-1e7.out
+#SBATCH --output samc-2x2x2-T1.0-t0-1e6.out
 
 set -ev
 
 hostname
-nice -19 ../target/release/number-mc --T 1 --samc-t0 1e10 --save-as samc-2x2x2-T1.0-t0-1e10.yaml --acceptance-rate 0.5 --cell-volume '4*2^3*pi/6/0.545' --movie-time "10^(1/4)" --well-width 1.5 --save-time 0.5 > samc-2x2x2-T1.0-t0-1e10.out &
-nice -19 ../target/release/number-mc --T 1 --samc-t0 1e9 --save-as samc-2x2x2-T1.0-t0-1e9.yaml --acceptance-rate 0.5 --cell-volume '4*2^3*pi/6/0.545' --movie-time "10^(1/4)" --well-width 1.5 --save-time 0.5 > samc-2x2x2-T1.0-t0-1e9.out &
-nice -19 ../target/release/number-mc --T 1 --samc-t0 1e8 --save-as samc-2x2x2-T1.0-t0-1e8.yaml --acceptance-rate 0.5 --cell-volume '4*2^3*pi/6/0.545' --movie-time "10^(1/4)" --well-width 1.5 --save-time 0.5 > samc-2x2x2-T1.0-t0-1e8.out &
+nice -19 ../target/release/number-mc --T 1 --samc-t0 1e3 --save-as samc-2x2x2-T1.0-t0-1e3.yaml --acceptance-rate 0.5 --cell-volume '4*2^3*pi/6/0.545' --movie-time "10^(1/4)" --well-width 1.5 --save-time 0.5 > samc-2x2x2-T1.0-t0-1e3.out &
+nice -19 ../target/release/number-mc --T 1 --samc-t0 1e4 --save-as samc-2x2x2-T1.0-t0-1e4.yaml --acceptance-rate 0.5 --cell-volume '4*2^3*pi/6/0.545' --movie-time "10^(1/4)" --well-width 1.5 --save-time 0.5 > samc-2x2x2-T1.0-t0-1e4.out &
+nice -19 ../target/release/number-mc --T 1 --samc-t0 1e5 --save-as samc-2x2x2-T1.0-t0-1e5.yaml --acceptance-rate 0.5 --cell-volume '4*2^3*pi/6/0.545' --movie-time "10^(1/4)" --well-width 1.5 --save-time 0.5 > samc-2x2x2-T1.0-t0-1e5.out &
 
 
-nice -19 ../target/release/number-mc --T 1 --samc-t0 1e7 --save-as samc-2x2x2-T1.0-t0-1e7.yaml --acceptance-rate 0.5 --cell-volume '4*2^3*pi/6/0.545' --movie-time "10^(1/4)" --well-width 1.5 --save-time 0.5
+nice -19 ../target/release/number-mc --T 1 --samc-t0 1e6 --save-as samc-2x2x2-T1.0-t0-1e6.yaml --acceptance-rate 0.5 --cell-volume '4*2^3*pi/6/0.545' --movie-time "10^(1/4)" --well-width 1.5 --save-time 0.5
