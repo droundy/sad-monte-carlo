@@ -77,7 +77,7 @@ while keep_going:
                      label=fname)
             plt.title('$t=%s/%s$' % (latex_float(t),
                                      latex_float(my_time[fname][-1])))
-            plt.ylabel('$F/kT$')
+            plt.ylabel('$F_{exc}/kT$')
             plt.legend(loc='best')
             #plt.ylim(Smin, 0)
 
