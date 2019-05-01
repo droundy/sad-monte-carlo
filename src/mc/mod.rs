@@ -24,6 +24,8 @@ enum Params<MP, SP> {
     },
 }
 
+const VERSION : &str = git_version::git_describe!("--always", "--dirty");
+
 /// A Monte Carlo algorithm.
 pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
     /// A type defining a new Monte Carlo.
@@ -40,6 +42,7 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
 
     /// Create a new simulation from command-line flags.
     fn from_args<S: ClapMe + Into<Self::System>>() -> Self {
+        println!("git version: {}", VERSION);
         match <Params<Self::Params, S>>::from_args() {
             Params::_Params { _sys, _mc, save_as } => {
                 if let Some(ref save_as) = save_as {
