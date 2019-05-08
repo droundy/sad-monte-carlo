@@ -63,9 +63,10 @@ print((nNs), 'len of nNs')
 print((nEs), 'len of nEs')
 
 
-TTT, mumumu = np.meshgrid(np.linspace(0, 10, 50), np.linspace(-9, 9, 50))
+TTT, mumumu = np.meshgrid(np.linspace(0, 10, 50), np.linspace(-19, 9, 50))
 NNN = np.zeros_like(TTT)
 UUU = np.zeros_like(TTT)
+PPP = np.zeros_like(TTT)
 for i in range(TTT.shape[0]):
     for j in range(TTT.shape[1]):
         T = TTT[i,j]
@@ -78,6 +79,7 @@ for i in range(TTT.shape[0]):
         Zgrand = (g_exc*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()
         NNN[i,j] = (NN*g_exc*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()/Zgrand
         UUU[i,j] = (EE*g_exc*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()/Zgrand
+        PPP[i,j] = NNN[i,j]*T/V + T/V*(np.log(Zgrand) + np.log(gibbs_exponent.max()*len(gibbs_exponent)))
     print('mu = {}, T = {}'.format(mu,T))
 
 plt.contourf(TTT, mumumu, NNN, 100)
@@ -93,7 +95,15 @@ plt.title('U')
 plt.xlabel('T')
 plt.ylabel(r'$\mu$')
 
-TTT, ppp = np.meshgrid(np.linspace(0, 40, 100), np.linspace(0, 20, 100))
+plt.figure()
+plt.contourf(TTT, mumumu, PPP, 100)
+plt.colorbar()
+plt.contour(TTT, mumumu, PPP, linewidth=2, color='white')
+plt.title('p')
+plt.xlabel('T')
+plt.ylabel(r'$\mu$')
+
+TTT, ppp = np.meshgrid(np.linspace(0, 2, 10), np.linspace(0, 0.00001, 10))
 NNN = np.zeros_like(TTT)
 UUU = np.zeros_like(TTT)
 for i in range(TTT.shape[0]):
@@ -104,17 +114,20 @@ for i in range(TTT.shape[0]):
         Fid =  NN*T*np.log(NN/V*T**1.5) - NN*T
         Fid[NN==0] = 0
 
-        mulo = -100
+        mulo = -10000
         muhi = 10000
         while muhi - mulo > 1e-3:
             mu = 0.5*(muhi + mulo)
             gibbs_exponent = -beta*(Fid + EE - mu*NN)
             Zgrand = (g_exc*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()
-            pguess = T/V*(np.log(Zgrand) + np.log(gibbs_exponent.max()*len(gibbs_exponent)))
-            if pguess > p:
+            pguess_excess = T/V*(np.log(Zgrand) + np.log(gibbs_exponent.max()*len(gibbs_exponent)))
+            N_guess = (NN*g_exc*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()/Zgrand
+            pguess_ideal = N_guess*T/V
+            if pguess_excess + pguess_ideal > p:
                 muhi = mu
             else:
                 mulo = mu
+        print('pguess =', pguess_ideal + pguess_excess, pguess_ideal, pguess_excess)
 
         NNN[i,j] = (NN*g_exc*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()/Zgrand
         UUU[i,j] = (EE*g_exc*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()/Zgrand
