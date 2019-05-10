@@ -56,6 +56,7 @@ for n in range(maxN+1):
     for i in range(0,numE):
         g_exc[n,i] = lnw[n + i*(maxN +1)]
 print(g_exc , "mulitplicity")
+g_exc -= g_exc[0,0] # set entropy to be zero when there are no atoms.  There is only one such microstate.
 
 print((maxN), 'len of maxN')
 print((numE), 'len of numE')
@@ -75,10 +76,7 @@ for i in range(TTT.shape[0]):
         beta = 1/T
         Fid =  NN*T*np.log(NN/V*T**1.5) - NN*T
         Fid[NN==0] = 0
-        # ~ gibbs_exponent = -beta*(Fid + EE - mu*NN)
-        #using omega + muN(mu,T)  = F. 
-        #Maybe this was wrong but I dont have a E in my definition. 
-        gibbs_exponent = -beta*(Fid - mu*NN)
+        gibbs_exponent = -beta*(Fid + EE - mu*NN)
 
         Zgrand = (g_exc*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()
         NNN[i,j] = (NN*g_exc*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()/Zgrand
