@@ -67,6 +67,7 @@ TTT, mumumu = np.meshgrid(np.linspace(0, 10, 50), np.linspace(-19, 9, 50))
 NNN = np.zeros_like(TTT)
 UUU = np.zeros_like(TTT)
 PPP = np.zeros_like(TTT)
+TrotterP = np.zeros_like(TTT)
 for i in range(TTT.shape[0]):
     for j in range(TTT.shape[1]):
         T = TTT[i,j]
@@ -74,12 +75,16 @@ for i in range(TTT.shape[0]):
         beta = 1/T
         Fid =  NN*T*np.log(NN/V*T**1.5) - NN*T
         Fid[NN==0] = 0
-        gibbs_exponent = -beta*(Fid + EE - mu*NN)
+        # ~ gibbs_exponent = -beta*(Fid + EE - mu*NN)
+        #using omega + muN(mu,T)  = F. 
+        #Maybe this was wrong but I dont have a E in my definition. 
+        gibbs_exponent = -beta*(Fid - mu*NN)
 
         Zgrand = (g_exc*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()
         NNN[i,j] = (NN*g_exc*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()/Zgrand
         UUU[i,j] = (EE*g_exc*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()/Zgrand
         PPP[i,j] = NNN[i,j]*T/V + T/V*(np.log(Zgrand) + np.log(gibbs_exponent.max()*len(gibbs_exponent)))
+        TrotterP[i,j] = NNN[i,j]*T/V + T*np.log(Zgrand) / V
     print('mu = {}, T = {}'.format(mu,T))
 
 plt.contourf(TTT, mumumu, NNN, 100)
@@ -103,7 +108,15 @@ plt.title('p')
 plt.xlabel('T')
 plt.ylabel(r'$\mu$')
 
-TTT, ppp = np.meshgrid(np.linspace(0, 2, 10), np.linspace(0, 0.00001, 10))
+plt.figure()
+plt.contourf(TTT, mumumu, TrotterP, 100)
+plt.colorbar()
+plt.contour(TTT, mumumu, TrotterP, linewidth=2, color='white')
+plt.title('Trotter p')
+plt.xlabel('T')
+plt.ylabel(r'$\mu$')
+
+TTT, ppp = np.meshgrid(np.linspace(0, 1, 10), np.linspace(0, 0.00001, 10))
 NNN = np.zeros_like(TTT)
 UUU = np.zeros_like(TTT)
 for i in range(TTT.shape[0]):
@@ -147,8 +160,6 @@ plt.title('N')
 plt.xlabel('T')
 plt.ylabel(r'p')
 plt.show()
-
-
 
 
 
