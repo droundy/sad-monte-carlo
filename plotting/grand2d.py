@@ -81,8 +81,8 @@ for i in range(TTT.shape[0]):
         Zgrand = (g_exc*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()
         NNN[i,j] = (NN*g_exc*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()/Zgrand
         UUU[i,j] = (EE*g_exc*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()/Zgrand
-        PPP[i,j] = NNN[i,j]*T/V + T/V*(np.log(Zgrand) + np.log(gibbs_exponent.max()*len(gibbs_exponent)))
-        TrotterP[i,j] = NNN[i,j]*T/V + T*np.log(Zgrand) / V
+        PPP[i,j] = T/V*(np.log(Zgrand) + np.log(gibbs_exponent.max()*len(gibbs_exponent)))
+        TrotterP[i,j] = T*np.log(Zgrand) / V
     print('mu = {}, T = {}'.format(mu,T))
 
 plt.contourf(TTT, mumumu, NNN, 100)
