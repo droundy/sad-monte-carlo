@@ -56,6 +56,8 @@ for my_entropy in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
     #print(dataS)
     entropy = dataS[1:,:]
     Es = dataS[0,:]
+    print(entropy[0:3,:])
+    print(Es)
     nNs = len(entropy[:,0])
     nEs = len(Es)
     # ~ #print("nEs", nEs)
@@ -72,12 +74,13 @@ for my_entropy in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
     N_edges[0] = 0
     min_entropy = min(entropy[entropy != 0])
     print('min_entropy', min_entropy)
-    plt.pcolor(E_edges , N_edges, entropy - entropy[0,-1]-6300, vmin=0)
-    plt.title('Energy Number Entropy')
-    plt.xlabel('Energy')
-    plt.ylabel('Number of Atoms')
-    plt.colorbar()
-    plt.pause(.1)
+    if len(entropy) > 1:
+        plt.pcolor(E_edges , N_edges, entropy - entropy[1,-1], vmin=-500)
+        plt.title('Energy Number Entropy')
+        plt.xlabel('Energy')
+        plt.ylabel('Number of Atoms')
+        plt.colorbar()
+        plt.pause(.1)
 plt.ioff()  
 
 dataS = np.loadtxt(my_entropy, ndmin=2)
