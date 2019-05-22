@@ -70,7 +70,9 @@ for my_entropy in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
     E_edges[-1] = Es[-1]
     N_edges = Ns + 0.5
     N_edges[0] = 0
-    plt.pcolor(E_edges , N_edges, entropy - entropy[0,-1])
+    min_entropy = min(entropy[entropy != 0])
+    print('min_entropy', min_entropy)
+    plt.pcolor(E_edges , N_edges, entropy - entropy[0,-1]-6300, vmin=0)
     plt.title('Energy Number Entropy')
     plt.xlabel('Energy')
     plt.ylabel('Number of Atoms')
@@ -218,33 +220,33 @@ beta = 1/T
 Fid = NN*T*np.log(NN/V*T**1.5) - NN*T
 gibbs_exponent = -beta*(Fid + EE - mu*NN)
 
-N_for_this_mu = 
+# N_for_this_mu = 
 
-Zexc = (multi*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()
-print('Zexc', Zexc)
+# Zexc = (multi*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()
+# print('Zexc', Zexc)
 
 
-#beta = 1 / Temp
+# #beta = 1 / Temp
 
-#The range needs to change or the indexing in the loop needs to be converted
-#to the actual Energy
-# ~ for n in range(maxN-1):
-    # ~ for e in range(numE):
-        # ~ if not np.isfinite(np.exp((temp[n,e])**-1 * (-e + chempot[n,e] * n))):
-            # ~ zexc = zexc
-        # ~ else:
-            # ~ zexc += np.exp((temp[n,e])**-1 * (-e + chempot[n,e] * n))
-# ~ print(zexc,"Z EXCESS")
+# #The range needs to change or the indexing in the loop needs to be converted
+# #to the actual Energy
+# # ~ for n in range(maxN-1):
+#     # ~ for e in range(numE):
+#         # ~ if not np.isfinite(np.exp((temp[n,e])**-1 * (-e + chempot[n,e] * n))):
+#             # ~ zexc = zexc
+#         # ~ else:
+#             # ~ zexc += np.exp((temp[n,e])**-1 * (-e + chempot[n,e] * n))
+# # ~ print(zexc,"Z EXCESS")
 
-grandU = np.zeros((nNs,nEs))
-zexc = 0
-for i in range(nNs):
-    for j in range(nEs):
-        grandU[i,j] += math.log(((multi[i,j] * j * np.exp((1 / temp[i,j]) * (-j + chempot[i,j] * i)))))
-        zexc += multi[i,j]*(1/(temp[i,j]) * (-j + chempot[i,j] * i))
+# grandU = np.zeros((nNs,nEs))
+# zexc = 0
+# for i in range(nNs):
+#     for j in range(nEs):
+#         grandU[i,j] += math.log(((multi[i,j] * j * np.exp((1 / temp[i,j]) * (-j + chempot[i,j] * i)))))
+#         zexc += multi[i,j]*(1/(temp[i,j]) * (-j + chempot[i,j] * i))
         
-#~ for E in range(len(Energy)):
-    #~ uexc += gexc[E] * E * math.exp(-beta * E / zexc)
+# #~ for E in range(len(Energy)):
+#     #~ uexc += gexc[E] * E * math.exp(-beta * E / zexc)
 
 
 
