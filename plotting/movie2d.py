@@ -75,7 +75,7 @@ for my_entropy in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
     min_entropy = min(entropy[entropy != 0])
     print('min_entropy', min_entropy)
     if len(entropy) > 1:
-        plt.pcolor(E_edges , N_edges, entropy - entropy[1,-1], vmin=-500)
+        plt.pcolor(E_edges , N_edges, entropy - entropy[1,-1], vmin=-800)
         plt.title('Energy Number Entropy')
         plt.xlabel('Energy')
         plt.ylabel('Number of Atoms')
