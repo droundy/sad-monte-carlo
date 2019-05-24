@@ -498,7 +498,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
                 self.system.plan_add(&mut self.rng).map(|e2| State { E: e2, N: e1.N+1 })
             } else {
                 // remove
-                if e1.N > 1 {
+                if e1.N > 0 {
                     Some(State { E: self.system.plan_remove(&mut self.rng), N: e1.N-1})
                 } else {
                     None
