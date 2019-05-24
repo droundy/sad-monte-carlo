@@ -17,8 +17,6 @@ use ::prettyfloat::PrettyFloat;
 pub enum SadVersion {
     /// Sad
     Sad,
-    /// Sad, aggressive version
-    SadAggressive,
 }
 
 impl SadVersion {
@@ -28,8 +26,6 @@ impl SadVersion {
         } else {
             match *self {
                 SadVersion::Sad =>
-                    (latest_parameter + t/tL)/(latest_parameter + t/num_states*(t/tL)),
-                SadVersion::SadAggressive =>
                     (latest_parameter + t/tF)/(latest_parameter + t/num_states*(t/tF)),
             }
         }
@@ -39,7 +35,6 @@ impl SadVersion {
                                 _previous_parameter: f64) -> f64 {
         match *self {
             SadVersion::Sad => dE_over_T,
-            SadVersion::SadAggressive => dE_over_T,
         }
     }
 }
@@ -50,11 +45,6 @@ impl SadVersion {
 pub enum MethodParams {
     /// Sad
     Sad {
-        /// The minimum temperature we are interested in.
-        min_T: Energy,
-    },
-    /// Aggressive version of sad
-    SadAggressive {
         /// The minimum temperature we are interested in.
         min_T: Energy,
     },
@@ -239,18 +229,6 @@ impl Method {
                     num_states: 1,
                     highest_hist: 1,
                     version: SadVersion::Sad,
-                    latest_parameter: 0.,
-                },
-            MethodParams::SadAggressive { min_T } =>
-                Method::Sad {
-                    min_T,
-                    too_lo: E,
-                    too_hi: E,
-                    tL: 0,
-                    tF: 0,
-                    num_states: 1,
-                    highest_hist: 1,
-                    version: SadVersion::SadAggressive,
                     latest_parameter: 0.,
                 },
             MethodParams::Samc { t0 } => Method::Samc { t0 },
