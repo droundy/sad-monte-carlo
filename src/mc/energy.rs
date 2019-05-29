@@ -550,10 +550,10 @@ impl<S: System> EnergyMC<S> {
                         *lowest_hist = 0;
                         *highest_hist = 0;
                     }
-                }
-                if inv_t && *gamma > (num_states as f64)/(self.moves as f64) {
-                    println!("    1/t-WL:  Switching to 1/t!");
-                    switch_to_samc = Some(num_states as f64);
+                    if inv_t && *gamma < (num_states as f64)/(self.moves as f64) {
+                        println!("    1/t-WL:  Switching to 1/t!");
+                        switch_to_samc = Some(num_states as f64);
+                    }
                 }
             }
         }
