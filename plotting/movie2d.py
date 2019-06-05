@@ -46,6 +46,8 @@ for my_histogram in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
     # ~ # plt.axis([-xL , 0 , 0 , yL])
     plt.pause(.01)
 
+plt.savefig('energy-number-histogram.png', transparent=True)
+
 plt.figure()
 plt.ion()
 for my_entropy in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
@@ -250,18 +252,4 @@ gibbs_exponent = -beta*(Fid + EE - mu*NN)
         
 # #~ for E in range(len(Energy)):
 #     #~ uexc += gexc[E] * E * math.exp(-beta * E / zexc)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
