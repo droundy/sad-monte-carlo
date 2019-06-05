@@ -23,8 +23,11 @@ with open(f, 'r') as stream:
 data = yaml_data
 V = data['system']['cell']['box_diagonal']['x']*data['system']['cell']['box_diagonal']['y']*data['system']['cell']['box_diagonal']['z']
 
+os.system("rm -f tmp*.png") # clean up any preexisting png files
+
 plt.figure()
 plt.ion()
+i = 0
 for my_histogram in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
     # ~ my_entropy = my_histogram ... switch h to S
     plt.clf()
@@ -39,13 +42,20 @@ for my_histogram in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
     N = np.arange(0 , nN+1 , 1)
 
     plt.pcolor(Eh , N , histogram)
+    plt.xlim(-252,0)
+    plt.ylim(0,37)
     plt.title('Energy Number Histogram')
     plt.xlabel('Energy')
     plt.ylabel('Number of Atoms')
     plt.colorbar()
     # ~ # plt.axis([-xL , 0 , 0 , yL])
     plt.pause(.01)
+    fname = 'tmp%06d.png'%i # create a file name for this frame
+    plt.savefig(fname)
+    i += 1
 
+os.system("convert  -delay 50 tmp*.png -loop 2 energy-number-histogram.gif") # make the movie
+os.system("rm tmp*.png") # clean up all these png files we created
 plt.savefig('energy-number-histogram.png', transparent=True)
 
 plt.figure()
