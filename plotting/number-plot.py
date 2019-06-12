@@ -176,19 +176,33 @@ for fname in fnames:
         T = my_temperature[fname]
         beta = 1/T
         Nmax = len(Fexc_N)-1
-        N_N = np.arange(0, Nmax, 1)
-        # print(len(N_N))
+        for i in range(Nmax-1):            #This takes out the last element of the array to make it size Nmax
+            Fexc_NR = np.zeros(Nmax-1)
+            Fexc_NR[i] = Fexc_N[i]
+        N_N = np.arange(1, Nmax, 1)
+        # print(len(Fexc_NR))
         Fid_N = N_N*T*np.log(N_N/V/nQ) - N_N*T
-        print(len(Fid_N))
+        # print(len(Fid_N))
 # # you need to figure out the indexing for Z grand. Make sure it sums over all number. Get a 60 vs 61 index error.
-#         for i in range(len(all_mu)):
-#             mu = all_mu[i]
-#             # Zgrand = \sum_N e^{-\beta(Fid(N) + Fexc_N - mu N)}
-#             Zgrand_exponents = -beta*(Fid_N+Fexc_N-mu*N_N)
-#             print(Zgrand_exponents)
-#             # offset = Zgrand_exponents.max()
-#             # Zgrand_exponents -= offset
-#             # Zgrand = e^(Zgrand_exponents.sum())
-#         print(Zgrand)
+        for i in range(len(all_mu)):
+            mu = all_mu[i]
+            # Zgrand = \sum_N e^{-\beta(Fid(N) + Fexc_N - mu N)}
+            Zgrand_exponents = -beta*(Fid_N+Fexc_NR-mu*N_N)
+            # print(Zgrand_exponents)
+            offset = Zgrand_exponents.max()
+            Zgrand_exponents -= offset
+            Zgrand = np.exp(Zgrand_exponents).sum()
+            # print(Zgrand)
+        print(Zgrand)
+        for i in range(len(all_mu)):
+            #Grand_U = \sum_N Uexc_N*e^{-\beta(Fid(N) + Fexc_N - mu N)}/Z_grand
+            exponents = -beta*(Fid_N+Fexc_NR-mu*N_N)
+            offset = exponents.max()
+            exponents -= offset
+            all_exp = np.exp(exponents).sum()
+            Grand_U = Uexc_N*all_exp/Zgrand
+        plt.plot(Grand_U,
+                   color=my_color[fname], label=fname)
+
 
 plt.show()
