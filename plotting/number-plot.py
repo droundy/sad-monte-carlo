@@ -164,7 +164,7 @@ for fname in fnames:
                    color=my_color[fname], label=fname)
 plt.legend(loc='best')
 
-all_mu = np.linspace(-10, 10, 300)
+all_mu = np.linspace(-10, 200, 30000)
 # nQ = (mkT/2pi hbar^2)^1.5
 nQ = 0.001 # HOKEY
 
@@ -176,33 +176,31 @@ for fname in fnames:
         T = my_temperature[fname]
         beta = 1/T
         Nmax = len(Fexc_N)-1
-        for i in range(Nmax-1):            #This takes out the last element of the array to make it size Nmax
-            Fexc_NR = np.zeros(Nmax-1)
-            Fexc_NR[i] = Fexc_N[i]
-        N_N = np.arange(1, Nmax, 1)
+        N_N = np.arange(0, Nmax+1, 1)
         # print(len(Fexc_NR))
         Fid_N = N_N*T*np.log(N_N/V/nQ) - N_N*T
+        Fid_N[0] = 0
         # print(len(Fid_N))
 # # you need to figure out the indexing for Z grand. Make sure it sums over all number. Get a 60 vs 61 index error.
+        Grand_U = np.zeros_like(all_mu)
+        Grand_N = np.zeros_like(all_mu)
         for i in range(len(all_mu)):
             mu = all_mu[i]
             # Zgrand = \sum_N e^{-\beta(Fid(N) + Fexc_N - mu N)}
-            Zgrand_exponents = -beta*(Fid_N+Fexc_NR-mu*N_N)
+            Zgrand_exponents = -beta*(Fid_N+Fexc_N-mu*N_N)
             # print(Zgrand_exponents)
             offset = Zgrand_exponents.max()
             Zgrand_exponents -= offset
             Zgrand = np.exp(Zgrand_exponents).sum()
-            # print(Zgrand)
-        print(Zgrand)
-        for i in range(len(all_mu)):
-            #Grand_U = \sum_N Uexc_N*e^{-\beta(Fid(N) + Fexc_N - mu N)}/Z_grand
-            exponents = -beta*(Fid_N+Fexc_NR-mu*N_N)
-            offset = exponents.max()
-            exponents -= offset
-            all_exp = np.exp(exponents).sum()
-            Grand_U = Uexc_N*all_exp/Zgrand
-        plt.plot(Grand_U,
+            Grand_U[i] = (Uexc_N*np.exp(Zgrand_exponents)).sum()/Zgrand
+            Grand_N[i] = (N_N*np.exp(Zgrand_exponents)).sum()/Zgrand
+        plt.plot(Grand_N, Grand_U,'-',
                    color=my_color[fname], label=fname)
+        plt.plot(current_total_energy[fname]/current_histogram[fname], ':',
+                   color=my_color[fname], label='canonical '+fname)
+        plt.ylabel('Uexc')
+        plt.xlabel('N')
+        plt.legend(loc='best')
 
 
 plt.show()
