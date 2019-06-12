@@ -3,7 +3,7 @@
 import yaml, sys
 import numpy as np
 import matplotlib.pyplot as plt
- 
+
 def latex_float(x):
     exp = np.log10(x*1.0)
     if abs(exp) > 2:
@@ -66,23 +66,23 @@ plt.ylabel(r'$\gamma$')
 
 plt.figure('histograms')
 for fname in fnames:
-        plt.plot(current_histogram[fname], 
+        plt.plot(current_histogram[fname],
                    color=my_color[fname], label=fname)
         #print(my_histogram[fname])
 plt.legend(loc='best')
 
 plt.figure('excess free energy')
 for fname in fnames:
-        plt.plot(current_free_energy[fname], 
+        plt.plot(current_free_energy[fname],
                    color=my_color[fname], label=fname)
-        
+
 plt.legend(loc='best')
 
 plt.figure('excess internal energy')
 for fname in fnames:
-        plt.plot(current_total_energy[fname]/current_histogram[fname], 
+        plt.plot(current_total_energy[fname]/current_histogram[fname],
                    color=my_color[fname], label=fname)
-        
+
 plt.legend(loc='best')
 
 plt.figure('excess entropy')
@@ -102,18 +102,18 @@ for fname in fnames:
         T = my_temperature[fname]
         S = (U-F)/T
         S = S-S[0]
-        SN = np.arange(0, len(S), 1) 
+        SN = np.arange(0, len(S), 1)
         plt.plot((np.pi/6)*SN/my_volume[fname],S/SN,
                    color=my_color[fname], label=fname)
         plt.xlabel(r'$\eta$')
 
-        
+
 plt.legend(loc='best')
 
 plt.figure('excess internal energy/N')
 for fname in fnames:
         U = current_total_energy[fname]/current_histogram[fname]
-        UN = np.arange(0, len(U), 1) 
+        UN = np.arange(0, len(U), 1)
         plt.plot((np.pi/6)*UN/my_volume[fname],U/UN,
                    color=my_color[fname], label=fname)
 
@@ -131,7 +131,7 @@ for fname in fnames:
                 p_exc[i] = (-F[i]+u*(i+.5))/V
                 p[i] = (-F[i]+u*(i+.5))/V+(i+.5)*T/V
         UN = np.arange(0.5, N-1, 1)
-        print(len(UN), len(p))
+        #print(len(UN), len(p))
         plt.ylabel('Pressure')
         plt.xlabel(r'$\eta$')
         plt.plot((np.pi/6)*UN/my_volume[fname],p,
@@ -160,7 +160,6 @@ for fname in fnames:
                 G[j] = F[j] + V*p_integer[j]
         plt.ylabel('Gibbs')
         plt.xlabel('Pressure')
-        print(len(G))
         plt.plot(p_integer,G,
                    color=my_color[fname], label=fname)
 plt.legend(loc='best')
@@ -178,16 +177,18 @@ for fname in fnames:
         beta = 1/T
         Nmax = len(Fexc_N)-1
         N_N = np.arange(0, Nmax, 1)
-
+        # print(len(N_N))
         Fid_N = N_N*T*np.log(N_N/V/nQ) - N_N*T
-
-        for i in range(len(all_mu)):
-            mu = all_mu[i]
-            # Zgrand = \sum_N e^{-\beta(Fid(N) + Fexc_N - mu N)}
-            Zgrand_exponents = -beta*(Fid_N+Fexc_N-mu*N_N)
-            offset = Zgrand_exponents.max()
-            Zgrand_exponents -= offset
-            Zgrand = Zgrand_exponents.sum()
-
+        print(len(Fid_N))
+# # you need to figure out the indexing for Z grand. Make sure it sums over all number. Get a 60 vs 61 index error.
+#         for i in range(len(all_mu)):
+#             mu = all_mu[i]
+#             # Zgrand = \sum_N e^{-\beta(Fid(N) + Fexc_N - mu N)}
+#             Zgrand_exponents = -beta*(Fid_N+Fexc_N-mu*N_N)
+#             print(Zgrand_exponents)
+#             # offset = Zgrand_exponents.max()
+#             # Zgrand_exponents -= offset
+#             # Zgrand = e^(Zgrand_exponents.sum())
+#         print(Zgrand)
 
 plt.show()
