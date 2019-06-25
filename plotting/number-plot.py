@@ -202,5 +202,45 @@ for fname in fnames:
         plt.xlabel('N')
         plt.legend(loc='best')
 
+plt.figure('Grand S_Excess')
+for fname in fnames:
+        Uexc_N = current_total_energy[fname]/current_histogram[fname]
+        Fexc_N = current_free_energy[fname]
+        T = my_temperature[fname]
+        Sexc_N = (U-F)/T
+        Sexc_N = Sexc_N-Sexc_N[0]
+        V = my_volume[fname]
+        beta = 1/T
+        Nmax = len(Fexc_N)-1
+        N_N = np.arange(0, Nmax+1, 1)
+        Grand_S = np.zeros_like(all_mu)
+        Grand_N = np.zeros_like(all_mu)
+        for i in range(len(all_mu)):
+            mu = all_mu[i]
+            # Zgrand = \sum_N e^{-\beta(Fid(N) + Fexc_N - mu N)}
+            Zgrand_exponents = -beta*(Fid_N+Fexc_N-mu*N_N)
+            offset = Zgrand_exponents.max()
+            Zgrand_exponents -= offset
+            Zgrand = np.exp(Zgrand_exponents).sum()
+            Grand_S[i] = (Sexc_N*np.exp(Zgrand_exponents)).sum()/Zgrand
+            Grand_N[i] = (N_N*np.exp(Zgrand_exponents)).sum()/Zgrand
+        plt.plot(Grand_N, Grand_S,':',
+                    color=my_color[fname], label=fname)
+
+print(len(Grand_U))
+
+plt.figure('Grand P_exc')
+for fname in fnames:
+    Uexc_N = current_total_energy[fname]/current_histogram[fname]
+    Fexc_N = current_free_energy[fname]
+    T = my_temperature[fname]
+    V = my_volume[fname]
+    Grand_Pexc = np.zeros_like(all_mu)
+    for i in range(len(all_mu)):
+        Grand_Pexc[i] = (T*Grand_S[i] + mu * Grand_N[i] - Grand_U[i])/V
+    plt.plot(Grand_N, Grand_Pexc,':',
+                color=my_color[fname], label=fname)
+
+
 
 plt.show()
