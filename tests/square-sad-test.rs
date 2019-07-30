@@ -18,12 +18,12 @@ fn energies_agree() {
     let mut oparam = optsquare::SquareWellNParams::default();
     oparam._dim = optsquare::CellDimensionsGivenNumber::CellWidth(box_diag);
     sparam._dim = square::CellDimensionsGivenNumber::CellWidth(box_diag);
+    let tempd = tempfile::TempDir::new().unwrap();
+    let yaml_file = tempd.path().join("test.yaml");
     let mut mcnew = EnergyMC::from_params(EnergyMCParams::default(),
-                                          optsquare::SquareWell::from(oparam),
-                                          ::std::path::PathBuf::from("/tmp/test.yaml"));
+                                          optsquare::SquareWell::from(oparam), yaml_file.clone());
     let mut mcold = EnergyMC::from_params(EnergyMCParams::default(),
-                                          square::SquareWell::from(sparam),
-                                          ::std::path::PathBuf::from("/tmp/test.yaml"));
+                                          square::SquareWell::from(sparam), yaml_file.clone());
     assert_eq!(mcnew.system.energy(), mcold.system.energy());
     for i in 0..10000 {
         mcnew.move_once();
