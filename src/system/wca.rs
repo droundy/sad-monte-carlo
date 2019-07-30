@@ -13,15 +13,15 @@ use super::optcell::{Cell, CellDimensions};
 
 /// The parameters needed to configure a square well system.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
-pub struct SquareWellParams {
+pub struct WcaParams {
     well_width: Unitless,
     _dim: CellDimensions,
 }
 
 #[allow(non_snake_case)]
 /// A square well fluid.
-#[derive(Serialize, Deserialize, Debug)] 
-pub struct SquareWell {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Wca {
     /// The energy of the system
     E: Energy,
     /// The dimensions of the box.
@@ -39,7 +39,7 @@ enum Change {
     None,
 }
 
-impl SquareWell {
+impl Wca {
     /// Add an atom at a given location.  Returns the change in
     /// energy, or `None` if the atom could not be placed there.
     pub fn add_atom_at(&mut self, r: Vector3d<Length>) -> Option<Energy> {
@@ -135,8 +135,8 @@ impl SquareWell {
     }
 }
 
-impl From<SquareWellParams> for SquareWell {
-    fn from(params: SquareWellParams) -> SquareWell {
+impl From<WcaParams> for Wca {
+    fn from(params: WcaParams) -> Wca {
         let cell = Cell::new(&params._dim, params.well_width*units::SIGMA);
         if cell.well_width > cell.box_diagonal.x ||
            cell.well_width > cell.box_diagonal.y ||
@@ -144,7 +144,7 @@ impl From<SquareWellParams> for SquareWell {
         {
             panic!("The cell is not large enough for the well width, sorry!");
         }
-        SquareWell {
+        Wca {
             E: 0.0*units::EPSILON,
             cell,
             possible_change: Change::None,
@@ -152,7 +152,7 @@ impl From<SquareWellParams> for SquareWell {
     }
 }
 
-impl System for SquareWell {
+impl System for Wca {
     fn energy(&self) -> Energy {
         self.E
     }
@@ -174,11 +174,11 @@ impl System for SquareWell {
         Some(0.0*units::EPSILON)
     }
     fn verify_energy(&self) {
-        assert_eq!(self.E, self.compute_energy_slowly());
+        assert_eq!(self.E, self.compute_energy());
     }
 }
 
-impl ConfirmSystem for SquareWell {
+impl ConfirmSystem for Wca {
     fn confirm(&mut self) {
         match self.possible_change {
             Change::None => (),
@@ -201,7 +201,7 @@ impl ConfirmSystem for SquareWell {
     }
 }
 
-impl GrandSystem for SquareWell {
+impl GrandSystem for Wca {
     fn plan_add(&mut self, rng: &mut MyRng) -> Option<Energy> {
         let r = self.cell.put_in_cell(
             Vector3d::new(Length::new(rng.sample(Uniform::new(0.0, self.cell.box_diagonal.x.value_unsafe))),
@@ -218,7 +218,7 @@ impl GrandSystem for SquareWell {
     }
 }
 
-impl MovableSystem for SquareWell {
+impl MovableSystem for Wca {
     fn plan_move(&mut self, rng: &mut MyRng, mean_distance: Length) -> Option<Energy> {
         if self.cell.positions.len() > 0 {
             let which = rng.sample(Uniform::new(0, self.cell.positions.len()));
@@ -249,7 +249,7 @@ pub enum CellDimensionsGivenNumber {
 /// Parameters needed to configure a finite-N square-well system.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
 #[allow(non_snake_case)]
-pub struct SquareWellNParams {
+pub struct WcaNParams {
     /// The width of the well, relative to the diameter.
     pub well_width: Unitless,
     /// The sice of the cell.
@@ -258,9 +258,9 @@ pub struct SquareWellNParams {
     pub N: usize,
 }
 
-impl Default for SquareWellNParams {
+impl Default for WcaNParams {
     fn default() -> Self {
-        SquareWellNParams {
+        WcaNParams {
             well_width: Unitless::new(1.3),
             _dim: CellDimensionsGivenNumber::FillingFraction(Unitless::new(0.3)),
             N: 100,
@@ -268,8 +268,8 @@ impl Default for SquareWellNParams {
     }
 }
 
-impl From<SquareWellNParams> for SquareWell {
-    fn from(params: SquareWellNParams) -> SquareWell {
+impl From<WcaNParams> for Wca {
+    fn from(params: WcaNParams) -> Wca {
         let n = params.N;
         let dim: CellDimensions = match params._dim {
             CellDimensionsGivenNumber::CellWidth(v)
@@ -279,7 +279,7 @@ impl From<SquareWellNParams> for SquareWell {
             CellDimensionsGivenNumber::FillingFraction(f)
                 => CellDimensions::CellVolume((n as f64)*(PI*units::SIGMA*units::SIGMA*units::SIGMA/6.0)/f),
         };
-        let mut sw = SquareWell::from(SquareWellParams {
+        let mut sw = Wca::from(WcaParams {
             _dim: dim,
             well_width: params.well_width,
         });
@@ -502,9 +502,9 @@ fn energy_is_right(natoms: usize, ff: f64) {
 }
 
 #[cfg(test)]
-fn mk_sw(natoms: usize, ff: f64) -> SquareWell {
-    let mut param = SquareWellNParams::default();
+fn mk_sw(natoms: usize, ff: f64) -> Wca {
+    let mut param = WcaNParams::default();
     param._dim = CellDimensionsGivenNumber::FillingFraction(Unitless::new(ff));
     param.N = natoms;
-    SquareWell::from(param)
+    Wca::from(param)
 }
