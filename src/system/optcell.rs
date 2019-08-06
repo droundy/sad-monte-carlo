@@ -27,8 +27,8 @@ struct Neighbor {
 pub struct Cell {
     /// The dimensions of the box.
     pub box_diagonal: Vector3d<Length>,
-    /// The well width.
-    pub well_width: Length,
+    /// Distance where repulaive potential goes to zero.
+    pub r_cutoff: Length,
     /// The atom positions
     pub positions: Vec<Vector3d<Length>>,
     /// The dimensions of the subcell grid
@@ -53,7 +53,7 @@ impl Cell {
         };
         let mut cell = Cell {
             box_diagonal: box_diagonal,
-            well_width: interaction_length,
+            r_cutoff: interaction_length,
             positions: Vec::new(),
             num_subcells: Vector3d::default(),
             subcells: Vec::new(),
@@ -63,9 +63,9 @@ impl Cell {
     }
     /// Update the subcell lists, which seem wasteful to save.
     pub fn update_caches(&mut self) {
-        let cells_x = (self.box_diagonal.x/self.well_width).value().floor() as usize;
-        let cells_y = (self.box_diagonal.y/self.well_width).value().floor() as usize;
-        let cells_z = (self.box_diagonal.z/self.well_width).value().floor() as usize;
+        let cells_x = (self.box_diagonal.x/self.r_cutoff).value().floor() as usize;
+        let cells_y = (self.box_diagonal.y/self.r_cutoff).value().floor() as usize;
+        let cells_z = (self.box_diagonal.z/self.r_cutoff).value().floor() as usize;
         self.num_subcells = Vector3d::new(cells_x,cells_y,cells_z);
         self.subcells = vec![Vec::new(); cells_x*cells_y*cells_z];
         let positions = self.positions.clone();
@@ -73,7 +73,7 @@ impl Cell {
             self.add_to_subcells(i as u32, r);
         }
     }
-    /// Atoms that may be within well_width of r.
+    /// Atoms that may be within r_cutoff of r.
     pub fn maybe_interacting_atoms<'a>(&'a self, r: Vector3d<Length>)
                                        -> impl Iterator<Item=Vector3d<Length>> + 'a {
         let sc = self.get_subcell(r);
@@ -84,7 +84,7 @@ impl Cell {
                                 offset.z as f64 * self.box_diagonal.z)
         })
     }
-    /// Atoms that may be within well_width of r.  This excludes any
+    /// Atoms that may be within r_cutoff of r.  This excludes any
     /// atom that is located precisely at rprime.
     pub fn maybe_interacting_atoms_excluding<'a>(&'a self, r: Vector3d<Length>, which: usize)
                                                  -> impl Iterator<Item=Vector3d<Length>> + 'a

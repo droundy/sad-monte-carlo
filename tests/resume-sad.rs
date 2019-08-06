@@ -29,7 +29,7 @@ fn test_resume_with(total_iters: u64, first_iters: u64) {
     let common_flags = &[
         "--N=100",
         "--filling-fraction=0.3",
-        "--well-width=1.3",
+        "--r-cutoff=1.3",
         "--sad-min-T=0.5",
         "--acceptance-rate=0.5",
         ];

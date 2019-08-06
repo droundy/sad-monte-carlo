@@ -14,7 +14,7 @@ use super::optcell::{Cell, CellDimensions};
 /// The parameters needed to configure a square well system.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
 pub struct WcaParams {
-    well_width: Unitless,
+    r_cutoff: Unitless,
     _dim: CellDimensions,
 }
 
@@ -49,7 +49,7 @@ impl Wca {
             if dist2 < units::SIGMA*units::SIGMA {
                 self.possible_change = Change::None;
                 return None;
-            } else if dist2 < self.cell.well_width*self.cell.well_width {
+            } else if dist2 < self.cell.r_cutoff*self.cell.r_cutoff {
                 e -= units::EPSILON;
             }
         }
@@ -60,7 +60,7 @@ impl Wca {
     /// `None` if the atom could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
         let mut e = self.E;
-        let wsqr = self.cell.well_width*self.cell.well_width;
+        let wsqr = self.cell.r_cutoff*self.cell.r_cutoff;
         let from = self.cell.positions[which];
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, which) {
             let dist2 = (r1-r).norm2();
@@ -85,7 +85,7 @@ impl Wca {
         let r = self.cell.positions[which];
         let mut e = self.E;
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, which) {
-            if (r1-r).norm2() < self.cell.well_width*self.cell.well_width {
+            if (r1-r).norm2() < self.cell.r_cutoff*self.cell.r_cutoff {
                 e += units::EPSILON;
             }
         }
@@ -123,7 +123,7 @@ impl Wca {
                                                                self.cell.box_diagonal.z*(k as f64));
                             let r = r12 + lattice_vector;
                             let dist2 = r.norm2();
-                            if dist2 < self.cell.well_width*self.cell.well_width && dist2 > 0.0*units::SIGMA*units::SIGMA {
+                            if dist2 < self.cell.r_cutoff*self.cell.r_cutoff && dist2 > 0.0*units::SIGMA*units::SIGMA {
                                 e -= units::EPSILON;
                             }
                         }
@@ -137,10 +137,10 @@ impl Wca {
 
 impl From<WcaParams> for Wca {
     fn from(params: WcaParams) -> Wca {
-        let cell = Cell::new(&params._dim, params.well_width*units::SIGMA);
-        if cell.well_width > cell.box_diagonal.x ||
-           cell.well_width > cell.box_diagonal.y ||
-           cell.well_width > cell.box_diagonal.z
+        let cell = Cell::new(&params._dim, params.r_cutoff*units::SIGMA);
+        if cell.r_cutoff > cell.box_diagonal.x ||
+           cell.r_cutoff > cell.box_diagonal.y ||
+           cell.r_cutoff > cell.box_diagonal.z
         {
             panic!("The cell is not large enough for the well width, sorry!");
         }
@@ -160,7 +160,7 @@ impl System for Wca {
         let mut e: Energy = units::EPSILON*0.0;
         for (which, &r1) in self.cell.positions.iter().enumerate() {
             for r2 in self.cell.maybe_interacting_atoms_excluding(r1, which) {
-                if (r1-r2).norm2() < self.cell.well_width*self.cell.well_width {
+                if (r1-r2).norm2() < self.cell.r_cutoff*self.cell.r_cutoff {
                     e -= units::EPSILON;
                 }
             }
@@ -251,7 +251,7 @@ pub enum CellDimensionsGivenNumber {
 #[allow(non_snake_case)]
 pub struct WcaNParams {
     /// The width of the well, relative to the diameter.
-    pub well_width: Unitless,
+    pub r_cutoff: Unitless,
     /// The sice of the cell.
     pub _dim: CellDimensionsGivenNumber,
     /// The number of atoms.
@@ -261,7 +261,7 @@ pub struct WcaNParams {
 impl Default for WcaNParams {
     fn default() -> Self {
         WcaNParams {
-            well_width: Unitless::new(1.3),
+            r_cutoff: Unitless::new(1.3),
             _dim: CellDimensionsGivenNumber::FillingFraction(Unitless::new(0.3)),
             N: 100,
         }
@@ -281,7 +281,7 @@ impl From<WcaNParams> for Wca {
         };
         let mut sw = Wca::from(WcaParams {
             _dim: dim,
-            well_width: params.well_width,
+            r_cutoff: params.r_cutoff,
         });
 
         // Atoms will be initially placed on a face centered cubic (fcc) grid
