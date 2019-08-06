@@ -59,7 +59,7 @@ impl Wca {
         for r1 in self.cell.maybe_interacting_atoms(r) {
             let dist2 = (r1-r).norm2();
             if dist2 < self.cell.r_cutoff*self.cell.r_cutoff {
-                e += potential(dist2)
+                e += potential(dist2);
             }
         }
         self.possible_change = Change::Add{ to: r, e };
