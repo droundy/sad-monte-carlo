@@ -11,6 +11,7 @@ use std::default::Default;
 
 use super::optcell::{Cell, CellDimensions};
 
+
 /// The parameters needed to configure a square well system.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
 pub struct WcaParams {
@@ -39,6 +40,17 @@ enum Change {
     None,
 }
 
+fn potential(r_squared: Area) -> Energy {
+    let r_cutoff: Length = 2.0_f64.powf(1.0/6.0)*units::SIGMA;
+    let r_cutoff_squared: Area = r_cutoff*r_cutoff;
+    let sig_sqr = units::SIGMA*units::SIGMA;
+    if r_squared < r_cutoff_squared {
+        4.0*units::EPSILON*((sig_sqr/r_squared).powi(6) - (sig_sqr/r_squared).powi(3)) + units::EPSILON
+    } else {
+        0.0*units::EPSILON
+    }
+}
+
 impl Wca {
     /// Add an atom at a given location.  Returns the change in
     /// energy, or `None` if the atom could not be placed there.
@@ -46,11 +58,8 @@ impl Wca {
         let mut e = self.E;
         for r1 in self.cell.maybe_interacting_atoms(r) {
             let dist2 = (r1-r).norm2();
-            if dist2 < units::SIGMA*units::SIGMA {
-                self.possible_change = Change::None;
-                return None;
-            } else if dist2 < self.cell.r_cutoff*self.cell.r_cutoff {
-                e -= units::EPSILON;
+            if dist2 < self.cell.r_cutoff*self.cell.r_cutoff {
+                e += potential(dist2)
             }
         }
         self.possible_change = Change::Add{ to: r, e };
