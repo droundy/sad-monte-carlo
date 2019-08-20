@@ -12,15 +12,15 @@ use std::default::Default;
 use super::optcell::{Cell, CellDimensions};
 
 
-/// The parameters needed to configure a square well system.
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
-pub struct WcaParams {
-    r_cutoff: Unitless,
-    _dim: CellDimensions,
-}
+/// The parameters needed to configure a Weeks-Chandler-Anderson (WCA) system.
+//#[derive(Serialize, Deserialize, Debug, ClapMe)]
+//pub struct WcaParams {
+//    r_cutoff: Unitless,
+//    _dim: CellDimensions,
+//}
 
 #[allow(non_snake_case)]
-/// A square well fluid.
+/// A WCA fluid.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Wca {
     /// The energy of the system
@@ -32,14 +32,20 @@ pub struct Wca {
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+/// Define the types of changes that can be made to the system
 enum Change {
+    /// Move an atom already in the system
     Move { which: usize, to: Vector3d<Length>, e: Energy },
+    /// Add an atom to the system
     /// The added atom is always pushed to the end of the vector!
     Add { to: Vector3d<Length>, e: Energy },
+    /// Remove an atom from the system
     Remove { which: usize, e: Energy },
+    /// Make no changes to the system
     None,
 }
 
+/// Define the WCA interaction potential and criteria
 fn potential(r_squared: Area) -> Energy {
     let r_cutoff: Length = 2.0_f64.powf(1.0/6.0)*units::SIGMA;
     let r_cutoff_squared: Area = r_cutoff*r_cutoff;
@@ -255,11 +261,11 @@ pub enum CellDimensionsGivenNumber {
     FillingFraction(Unitless),
 }
 
-/// Parameters needed to configure a finite-N square-well system.
+/// Parameters needed to configure a finite-N WCAl system.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
 #[allow(non_snake_case)]
 pub struct WcaNParams {
-    /// The width of the well, relative to the diameter.
+    /// The interaction distance defined in terms of SIGMA.
     pub r_cutoff: Unitless,
     /// The sice of the cell.
     pub _dim: CellDimensionsGivenNumber,
