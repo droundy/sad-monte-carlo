@@ -13,11 +13,10 @@ use super::optcell::{Cell, CellDimensions};
 
 
 /// The parameters needed to configure a Weeks-Chandler-Anderson (WCA) system.
-//#[derive(Serialize, Deserialize, Debug, ClapMe)]
-//pub struct WcaParams {
-//    r_cutoff: Unitless,
-//    _dim: CellDimensions,
-//}
+#[derive(Serialize, Deserialize, Debug, ClapMe)]
+pub struct WcaParams {
+   _dim: CellDimensions,
+}
 
 #[allow(non_snake_case)]
 /// A WCA fluid.
@@ -45,9 +44,13 @@ enum Change {
     None,
 }
 
+fn r_cutoff() -> Length {
+    2.0_f64.powf(1.0/6.0)*units::SIGMA
+}
+
 /// Define the WCA interaction potential and criteria
 fn potential(r_squared: Area) -> Energy {
-    let r_cutoff: Length = 2.0_f64.powf(1.0/6.0)*units::SIGMA;
+    let r_cutoff: Length = r_cutoff();
     let r_cutoff_squared: Area = r_cutoff*r_cutoff;
     let sig_sqr = units::SIGMA*units::SIGMA;
     if r_squared < r_cutoff_squared {
@@ -152,7 +155,7 @@ impl Wca {
 
 impl From<WcaParams> for Wca {
     fn from(params: WcaParams) -> Wca {
-        let cell = Cell::new(&params._dim, params.r_cutoff*units::SIGMA);
+        let cell = Cell::new(&params._dim, r_cutoff());
         if cell.r_cutoff > cell.box_diagonal.x ||
            cell.r_cutoff > cell.box_diagonal.y ||
            cell.r_cutoff > cell.box_diagonal.z
@@ -265,8 +268,6 @@ pub enum CellDimensionsGivenNumber {
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
 #[allow(non_snake_case)]
 pub struct WcaNParams {
-    /// The interaction distance defined in terms of SIGMA.
-    pub r_cutoff: Unitless,
     /// The sice of the cell.
     pub _dim: CellDimensionsGivenNumber,
     /// The number of atoms.
@@ -276,7 +277,6 @@ pub struct WcaNParams {
 impl Default for WcaNParams {
     fn default() -> Self {
         WcaNParams {
-            r_cutoff: Unitless::new(1.3),
             _dim: CellDimensionsGivenNumber::FillingFraction(Unitless::new(0.3)),
             N: 100,
         }
@@ -296,7 +296,6 @@ impl From<WcaNParams> for Wca {
         };
         let mut sw = Wca::from(WcaParams {
             _dim: dim,
-            r_cutoff: params.r_cutoff,
         });
 
         // Atoms will be initially placed on a face centered cubic (fcc) grid
