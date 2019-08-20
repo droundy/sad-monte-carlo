@@ -1,4 +1,4 @@
-//!r_cutoffr_cutoffr_cutoff //! A square well fluid.
+//! A square well fluid.
 
 use super::*;
 
@@ -14,7 +14,7 @@ use super::optcell::{Cell, CellDimensions};
 /// The parameters needed to configure a square well system.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
 pub struct SquareWellParams {
-    r_cutoff: Unitless,
+    well_width: Unitless,
     _dim: CellDimensions,
 }
 
@@ -41,7 +41,7 @@ enum Change {
 
 impl SquareWell {
     fn max_interaction(&self) -> u64 {
-        max_balls_within(self.cell.r_cutoff)
+        max_balls_within(self.cell.well_width)
     }
     /// Add an atom at a given location.  Returns the change in
     /// energy, or `None` if the atom could not be placed there.
@@ -52,7 +52,7 @@ impl SquareWell {
             if dist2 < units::SIGMA*units::SIGMA {
                 self.possible_change = Change::None;
                 return None;
-            } else if dist2 < self.cell.r_cutoff*self.cell.r_cutoff {
+            } else if dist2 < self.cell.well_width*self.cell.well_width {
                 e -= units::EPSILON;
             }
         }
@@ -63,7 +63,7 @@ impl SquareWell {
     /// `None` if the atom could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
         let mut e = self.E;
-        let wsqr = self.cell.r_cutoff*self.cell.r_cutoff;
+        let wsqr = self.cell.well_width*self.cell.well_width;
         let from = self.cell.positions[which];
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, which) {
             let dist2 = (r1-r).norm2();
@@ -88,7 +88,7 @@ impl SquareWell {
         let r = self.cell.positions[which];
         let mut e = self.E;
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, which) {
-            if (r1-r).norm2() < self.cell.r_cutoff*self.cell.r_cutoff {
+            if (r1-r).norm2() < self.cell.well_width*self.cell.well_width {
                 e += units::EPSILON;
             }
         }
@@ -126,7 +126,7 @@ impl SquareWell {
                                                                self.cell.box_diagonal.z*(k as f64));
                             let r = r12 + lattice_vector;
                             let dist2 = r.norm2();
-                            if dist2 < self.cell.r_cutoff*self.cell.r_cutoff && dist2 > 0.0*units::SIGMA*units::SIGMA {
+                            if dist2 < self.cell.well_width*self.cell.well_width && dist2 > 0.0*units::SIGMA*units::SIGMA {
                                 e -= units::EPSILON;
                             }
                         }
@@ -140,10 +140,10 @@ impl SquareWell {
 
 impl From<SquareWellParams> for SquareWell {
     fn from(params: SquareWellParams) -> SquareWell {
-        let cell = Cell::new(&params._dim, params.r_cutoff*units::SIGMA);
-        if cell.r_cutoff > cell.box_diagonal.x ||
-           cell.r_cutoff > cell.box_diagonal.y ||
-           cell.r_cutoff > cell.box_diagonal.z
+        let cell = Cell::new(&params._dim, params.well_width*units::SIGMA);
+        if cell.well_width > cell.box_diagonal.x ||
+           cell.well_width > cell.box_diagonal.y ||
+           cell.well_width > cell.box_diagonal.z
         {
             panic!("The cell is not large enough for the well width, sorry!");
         }
@@ -163,7 +163,7 @@ impl System for SquareWell {
         let mut e: Energy = units::EPSILON*0.0;
         for (which, &r1) in self.cell.positions.iter().enumerate() {
             for r2 in self.cell.maybe_interacting_atoms_excluding(r1, which) {
-                if (r1-r2).norm2() < self.cell.r_cutoff*self.cell.r_cutoff {
+                if (r1-r2).norm2() < self.cell.well_width*self.cell.well_width {
                     e -= units::EPSILON;
                 }
             }
@@ -291,7 +291,7 @@ pub enum CellDimensionsGivenNumber {
 #[allow(non_snake_case)]
 pub struct SquareWellNParams {
     /// The width of the well, relative to the diameter.
-    pub r_cutoff: Unitless,
+    pub well_width: Unitless,
     /// The sice of the cell.
     pub _dim: CellDimensionsGivenNumber,
     /// The number of atoms.
@@ -301,7 +301,7 @@ pub struct SquareWellNParams {
 impl Default for SquareWellNParams {
     fn default() -> Self {
         SquareWellNParams {
-            r_cutoff: Unitless::new(1.3),
+            well_width: Unitless::new(1.3),
             _dim: CellDimensionsGivenNumber::FillingFraction(Unitless::new(0.3)),
             N: 100,
         }
@@ -321,7 +321,7 @@ impl From<SquareWellNParams> for SquareWell {
         };
         let mut sw = SquareWell::from(SquareWellParams {
             _dim: dim,
-            r_cutoff: params.r_cutoff,
+            well_width: params.well_width,
         });
 
         // Atoms will be initially placed on a face centered cubic (fcc) grid
