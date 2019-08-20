@@ -24,6 +24,8 @@ pub struct WcaParams {
 pub struct Wca {
     /// The energy of the system
     E: Energy,
+    /// How many moves were made since we updated the energy to reduce roundoff errors.
+    moves: usize,
     /// The dimensions of the box.
     pub cell: Cell,
     /// The last change we made (and might want to undo).
@@ -151,6 +153,7 @@ impl From<WcaParams> for Wca {
         Wca {
             E: 0.0*units::EPSILON,
             cell,
+            moves: 0,
             possible_change: Change::None,
         }
     }
@@ -182,6 +185,7 @@ impl System for Wca {
 
 impl ConfirmSystem for Wca {
     fn confirm(&mut self) {
+        self.moves += 1;
         match self.possible_change {
             Change::None => (),
             Change::Move{which, to, e} => {
@@ -199,6 +203,10 @@ impl ConfirmSystem for Wca {
                 self.E = e;
                 self.possible_change = Change::None;
             },
+        }
+        if self.moves > self.num_atoms()*self.num_atoms() {
+            self.E = self.compute_energy();
+            self.moves = 0;
         }
     }
 }
