@@ -81,19 +81,10 @@ impl Wca {
         let wsqr = self.cell.r_cutoff*self.cell.r_cutoff;
         let from = self.cell.positions[which];
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, which) {
-            let dist2 = (r1-r).norm2();
-            if dist2 < units::SIGMA*units::SIGMA {
-                self.possible_change = Change::None;
-                return None;
-            }
-            if dist2 < wsqr {
-                e -= units::EPSILON;
-            }
+            e += potential((r1-r).norm2());
         }
         for r1 in self.cell.maybe_interacting_atoms_excluding(from, which) {
-            if (r1-from).norm2() < wsqr {
-                e += units::EPSILON;
-            }
+            e -= potential((r1-from).norm2());
         }
         self.possible_change = Change::Move{ which, to: r, e };
         Some(e)
@@ -103,9 +94,7 @@ impl Wca {
         let r = self.cell.positions[which];
         let mut e = self.E;
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, which) {
-            if (r1-r).norm2() < self.cell.r_cutoff*self.cell.r_cutoff {
-                e += units::EPSILON;
-            }
+            e -= potential((r1-r).norm2());
         }
         self.possible_change = Change::Remove{ which, e };
         e
@@ -140,10 +129,7 @@ impl Wca {
                                                                self.cell.box_diagonal.y*(j as f64),
                                                                self.cell.box_diagonal.z*(k as f64));
                             let r = r12 + lattice_vector;
-                            let dist2 = r.norm2();
-                            if dist2 < self.cell.r_cutoff*self.cell.r_cutoff && dist2 > 0.0*units::SIGMA*units::SIGMA {
-                                e -= units::EPSILON;
-                            }
+                            e += potential(r.norm2());
                         }
                     }
                 }
@@ -178,9 +164,7 @@ impl System for Wca {
         let mut e: Energy = units::EPSILON*0.0;
         for (which, &r1) in self.cell.positions.iter().enumerate() {
             for r2 in self.cell.maybe_interacting_atoms_excluding(r1, which) {
-                if (r1-r2).norm2() < self.cell.r_cutoff*self.cell.r_cutoff {
-                    e -= units::EPSILON;
-                }
+                e += potential((r1-r2).norm2());
             }
         }
         e*0.5
@@ -192,7 +176,7 @@ impl System for Wca {
         Some(0.0*units::EPSILON)
     }
     fn verify_energy(&self) {
-        assert_eq!(self.E, self.compute_energy());
+        assert_energies_eq(self.E, self.compute_energy());
     }
 }
 
@@ -511,7 +495,7 @@ fn energy_is_right(natoms: usize, ff: f64) {
         sw.plan_move(&mut rng, Length::new(1.0));
         sw.confirm();
         println!("after move {}... {} vs {}", i, sw.energy(), sw.compute_energy());
-        assert_eq!(sw.energy(), sw.compute_energy());
+        assert_energies_eq(sw.energy(), sw.compute_energy());
     }
 }
 
@@ -521,4 +505,11 @@ fn mk_sw(natoms: usize, ff: f64) -> Wca {
     param._dim = CellDimensionsGivenNumber::FillingFraction(Unitless::new(ff));
     param.N = natoms;
     Wca::from(param)
+}
+
+fn assert_energies_eq(e1: Energy, e2: Energy) {
+    use dimensioned::Abs;
+    if *((e1-e2).abs()/(e1+e2).abs()).value() > 1e-15 {
+        assert_eq!(e1, e2);
+    }
 }
