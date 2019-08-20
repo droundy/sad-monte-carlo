@@ -491,11 +491,22 @@ fn energy_is_right(natoms: usize, ff: f64) {
     let mut sw = mk_sw(natoms, ff);
     assert_eq!(sw.energy(), sw.compute_energy());
     let mut rng = MyRng::from_u64(1);
-    for i in 0..1000 {
-        sw.plan_move(&mut rng, Length::new(1.0));
-        sw.confirm();
-        println!("after move {}... {} vs {}", i, sw.energy(), sw.compute_energy());
-        assert_energies_eq(sw.energy(), sw.compute_energy());
+    let mut old_energy = sw.energy();
+    let maxe = (natoms as f64)*16.0*units::EPSILON;
+    let mut i = 0.0;
+    while i < 1000.0 {
+        if let Some(newe) = sw.plan_move(&mut rng, Length::new(1.0)) {
+            if newe < maxe || newe < old_energy {
+                sw.confirm();
+                println!("after move {}... {} vs {}", i, sw.energy(), sw.compute_energy());
+                assert_energies_eq(sw.energy(), sw.compute_energy());
+                old_energy = newe;
+                i += 1.0;
+            } else {
+                println!("rejected move giving {} (vs old_energy {} and maxe {})", newe, old_energy, maxe);
+                i += 1e-6;
+            }
+        }
     }
 }
 
@@ -509,7 +520,8 @@ fn mk_sw(natoms: usize, ff: f64) -> Wca {
 
 fn assert_energies_eq(e1: Energy, e2: Energy) {
     use dimensioned::Abs;
-    if *((e1-e2).abs()/(e1+e2).abs()).value() > 1e-15 {
+    let zero = 0.0*units::EPSILON;
+    if *((e1-e2).abs()/(e1+e2).abs()).value() > 1e-13 && e1 != zero && e2 != zero {
         assert_eq!(e1, e2);
     }
 }
