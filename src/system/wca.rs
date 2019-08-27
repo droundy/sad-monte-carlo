@@ -9,7 +9,7 @@ use rand::distributions::Uniform;
 use std::f64::consts::PI;
 use std::default::Default;
 
-use super::wca_optcell::{Cell, CellDimensions};
+use super::optcell::{Cell, CellDimensions};
 
 
 /// The parameters needed to configure a Weeks-Chandler-Anderson (WCA) system.

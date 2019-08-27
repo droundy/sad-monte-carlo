@@ -6,7 +6,6 @@ use super::rng::MyRng;
 pub mod units;
 pub mod cell;
 pub mod optcell;
-pub mod wca_optcell;
 
 pub mod ising;
 pub mod lattice_gas;
