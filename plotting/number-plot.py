@@ -241,6 +241,14 @@ for fname in fnames:
     plt.plot(Grand_N, Grand_Pexc,':',
                 color=my_color[fname], label=fname)
 
-
+plt.figure('Grand G vs Grand P_exc')
+for fnamme in fnames:
+    Grand_G = np.zeros_like(all_mu)
+    # Grand_G = mu*Grand_N
+    for i in range(len(all_mu)):
+        Grand_G[i] = mu/Grand_N[i]
+    print(len(Grand_G))
+    plt.plot(Grand_Pexc, Grand_G,':',
+                color=my_color[fname], label=fname)
 
 plt.show()
