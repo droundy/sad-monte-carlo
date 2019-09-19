@@ -231,6 +231,7 @@ print(len(Grand_U))
 
 plt.figure('Grand P_exc')
 for fname in fnames:
+    mu = all_mu[i]
     Uexc_N = current_total_energy[fname]/current_histogram[fname]
     Fexc_N = current_free_energy[fname]
     T = my_temperature[fname]
@@ -243,11 +244,11 @@ for fname in fnames:
 
 plt.figure('Grand G vs Grand P_exc')
 for fnamme in fnames:
+    mu = all_mu[i]
     Grand_G = np.zeros_like(all_mu)
     # Grand_G = mu*Grand_N
     for i in range(len(all_mu)):
-        Grand_G[i] = mu/Grand_N[i]
-    print(len(Grand_G))
+        Grand_G[i] = mu*Grand_N[i]
     plt.plot(Grand_Pexc, Grand_G,':',
                 color=my_color[fname], label=fname)
 
