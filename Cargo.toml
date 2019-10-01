@@ -19,6 +19,7 @@ vector3d = "0.1.7"
 rand_core = "0.2.1"
 rand = "0.5.4"
 tempfile = "3.0.3"
+git-version = "0.3.0"
 
 # [patch.crates-io]
 # clapme = { path = "../clapme" }

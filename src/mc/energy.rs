@@ -17,8 +17,6 @@ use ::prettyfloat::PrettyFloat;
 pub enum SadVersion {
     /// Sad
     Sad,
-    /// Sad, aggressive version
-    SadAggressive,
 }
 
 impl SadVersion {
@@ -28,8 +26,6 @@ impl SadVersion {
         } else {
             match *self {
                 SadVersion::Sad =>
-                    (latest_parameter + t/tL)/(latest_parameter + t/num_states*(t/tL)),
-                SadVersion::SadAggressive =>
                     (latest_parameter + t/tF)/(latest_parameter + t/num_states*(t/tF)),
             }
         }
@@ -39,7 +35,6 @@ impl SadVersion {
                                 _previous_parameter: f64) -> f64 {
         match *self {
             SadVersion::Sad => dE_over_T,
-            SadVersion::SadAggressive => dE_over_T,
         }
     }
 }
@@ -53,11 +48,6 @@ pub enum MethodParams {
         /// The minimum temperature we are interested in.
         min_T: Energy,
     },
-    /// Aggressive version of sad
-    SadAggressive {
-        /// The minimum temperature we are interested in.
-        min_T: Energy,
-    },
     /// Samc
     Samc {
         /// The t0 parameter, determining how long to leave gamma=1.
@@ -66,7 +56,7 @@ pub enum MethodParams {
     /// Wang-Landau
     WL,
     /// 1/t Wang-Landau
-    inv_t_wl,
+    Inv_t_WL,
 }
 
 /// Parameters to configure the moves.
@@ -241,18 +231,6 @@ impl Method {
                     version: SadVersion::Sad,
                     latest_parameter: 0.,
                 },
-            MethodParams::SadAggressive { min_T } =>
-                Method::Sad {
-                    min_T,
-                    too_lo: E,
-                    too_hi: E,
-                    tL: 0,
-                    tF: 0,
-                    num_states: 1,
-                    highest_hist: 1,
-                    version: SadVersion::SadAggressive,
-                    latest_parameter: 0.,
-                },
             MethodParams::Samc { t0 } => Method::Samc { t0 },
             MethodParams::WL => Method::WL {
                 gamma: 1.0,
@@ -268,7 +246,7 @@ impl Method {
                 min_energy: E,
                 inv_t: false,
             },
-            MethodParams::inv_t_wl => Method::WL {
+            MethodParams::Inv_t_WL => Method::WL {
                 gamma: 1.0,
                 lowest_hist: if min_allowed_energy.is_some() && max_allowed_energy.is_some() { 0 } else { 1 },
                 highest_hist: 1,
@@ -400,6 +378,7 @@ impl<S: System> EnergyMC<S> {
         let old_lnw = self.bins.lnw[i];
         self.bins.lnw[i] += gamma;
         let mut gamma_changed = false;
+        let mut switch_to_samc: Option<f64> = None;
         match self.method {
             Method::Sad { min_T, ref mut too_lo, ref mut too_hi, ref mut num_states,
                           ref mut tL, ref mut tF, ref mut highest_hist,
@@ -571,8 +550,15 @@ impl<S: System> EnergyMC<S> {
                         *lowest_hist = 0;
                         *highest_hist = 0;
                     }
+                    if inv_t && *gamma < (num_states as f64)/(self.moves as f64) {
+                        println!("    1/t-WL:  Switching to 1/t!");
+                        switch_to_samc = Some(num_states as f64);
+                    }
                 }
             }
+        }
+        if let Some(t0) = switch_to_samc {
+            self.method = Method::Samc { t0 };
         }
         if gamma_changed {
             self.movies.new_gamma(self.moves, gamma);
@@ -622,13 +608,8 @@ impl<S> EnergyMC<S> {
                 let t = self.moves as f64;
                 if t > t0 { t0/t } else { 1.0 }
             }
-            Method::WL { gamma, num_states, inv_t, .. } => {
-                let t = self.moves as f64;
-                if !inv_t || gamma > (num_states as f64)/t {
-                    gamma
-                } else {
-                    (num_states as f64)/t
-                }
+            Method::WL { gamma, .. } => {
+                gamma
             }
         }
     }

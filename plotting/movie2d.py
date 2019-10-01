@@ -21,11 +21,15 @@ with open(f, 'r') as stream:
     yaml_data = yaml.load(stream)
 
 data = yaml_data
+V = data['system']['cell']['box_diagonal']['x']*data['system']['cell']['box_diagonal']['y']*data['system']['cell']['box_diagonal']['z']
+
+os.system("rm -f tmp*.png") # clean up any preexisting png files
 
 plt.figure()
-#~ plt.ion()
+plt.ion()
+i = 0
 for my_histogram in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
-    # my_entropy = my_histogram ... switch h to S
+    # ~ my_entropy = my_histogram ... switch h to S
     plt.clf()
     #print(my_histogram)
     datah = np.loadtxt(my_histogram, ndmin=2)
@@ -37,29 +41,39 @@ for my_histogram in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
 
     N = np.arange(0 , nN+1 , 1)
 
-    #~ plt.pcolor(Eh , N , histogram)
-    #~ plt.title('Energy Number Histogram')
-    #~ plt.xlabel('Energy')
-    #~ plt.ylabel('Number of Atoms')
-    #~ plt.colorbar()
-    #~ # plt.axis([-xL , 0 , 0 , yL])
-    #~ plt.pause(.01)
+    plt.pcolor(Eh , N , histogram)
+    plt.xlim(-252,0)
+    plt.ylim(0,37)
+    plt.title('Energy Number Histogram')
+    plt.xlabel('Energy')
+    plt.ylabel('Number of Atoms')
+    plt.colorbar()
+    # ~ # plt.axis([-xL , 0 , 0 , yL])
+    plt.pause(.01)
+    fname = 'tmp%06d.png'%i # create a file name for this frame
+    plt.savefig(fname)
+    i += 1
+
+os.system("convert  -delay 50 tmp*.png -loop 2 energy-number-histogram.gif") # make the movie
+os.system("rm tmp*.png") # clean up all these png files we created
+plt.savefig('energy-number-histogram.png', transparent=True)
 
 plt.figure()
-#~ plt.ion()
+plt.ion()
 for my_entropy in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
     my_entropy = my_entropy.replace(' ',',')
-    #~ #print(my_entropy)
     plt.clf()
     #print(my_entropy)
     dataS = np.loadtxt(my_entropy, ndmin=2)
     #print(dataS)
     entropy = dataS[1:,:]
     Es = dataS[0,:]
+    print(entropy[0:3,:])
+    print(Es)
     nNs = len(entropy[:,0])
     nEs = len(Es)
-    #print("nEs", nEs)
-    #~ #print("nNs",nNs)
+    # ~ #print("nEs", nEs)
+    # ~ #~ #print("nNs",nNs)
     Ns = np.arange(0 , nNs+1 , 1)
     
     E_edges = np.zeros(len(Es)+1)
@@ -70,13 +84,16 @@ for my_entropy in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
     E_edges[-1] = Es[-1]
     N_edges = Ns + 0.5
     N_edges[0] = 0
-    #~ plt.pcolor(E_edges , N_edges, entropy - entropy[0,-1])
-    #~ plt.title('Energy Number Entropy')
-    #~ plt.xlabel('Energy')
-    #~ plt.ylabel('Number of Atoms')
-    #~ plt.colorbar()
-    #~ plt.pause(.1)
-#~ plt.ioff()  
+    min_entropy = min(entropy[entropy != 0])
+    print('min_entropy', min_entropy)
+    if len(entropy) > 1:
+        plt.pcolor(E_edges , N_edges, entropy - entropy[1,-1], vmin=-800)
+        plt.title('Energy Number Entropy')
+        plt.xlabel('Energy')
+        plt.ylabel('Number of Atoms')
+        plt.colorbar()
+        plt.pause(.1)
+plt.ioff()  
 
 dataS = np.loadtxt(my_entropy, ndmin=2)
 entropy = dataS[1:,:]
@@ -102,11 +119,11 @@ if len(Es) > 1:
     N_edges = Ns + 0.5
     N_edges[0] = 0
 print(temp[temp>0])
-#~ plt.pcolor(E_edges , N_edges , temp , norm = LogNorm(vmin=.01 , vmax = 100))
-#~ plt.title('Temperature')
-#~ plt.xlabel('Energy')
-#~ plt.ylabel('Number of Atoms')
-#~ plt.colorbar()
+plt.pcolor(E_edges , N_edges , temp , norm = LogNorm(vmin=.01 , vmax = 100))
+plt.title('Temperature')
+plt.xlabel('Energy')
+plt.ylabel('Number of Atoms')
+plt.colorbar()
 
 plt.figure()
 almostchempot = np.zeros((nNs,nEs))
@@ -124,12 +141,12 @@ if len(Es) > 1:
     E_edges[-1] = Es[-1]
     N_edges = Ns + 0.5
     N_edges[0] = 0
-#print(temp[temp>0])
-#~ plt.pcolor(E_edges , N_edges , chempot , norm = LogNorm(vmin=.01 , vmax = 100))
-#~ plt.title('Chemical Potential')
-#~ plt.xlabel('Energy')
-#~ plt.ylabel('Number of Atoms')
-#~ plt.colorbar()
+# ~ #print(temp[temp>0])
+plt.pcolor(E_edges , N_edges , chempot , norm = LogNorm(vmin=.01 , vmax = 100))
+plt.title('Chemical Potential')
+plt.xlabel('Energy')
+plt.ylabel('Number of Atoms')
+plt.colorbar()
 
 plt.figure()
 Pexc = np.zeros((nNs,nEs))
@@ -142,12 +159,12 @@ if len(Es) > 1:
     E_edges[-1] = Es[-1]
     N_edges = Ns + 0.5
     N_edges[0] = 0
-#print(temp[temp>0])
-#~ plt.pcolor(E_edges , N_edges , Pexc , norm = LogNorm(vmin=.01 , vmax = 100))
-#~ plt.title('Pressure Excess')
-#~ plt.xlabel('Energy')
-#~ plt.ylabel('Number of Atoms')
-#~ plt.colorbar()
+# ~ #print(temp[temp>0])nNs,nEs
+plt.pcolor(E_edges , N_edges , Pexc , norm = LogNorm(vmin=.01 , vmax = 100))
+plt.title('Pressure Excess')
+plt.xlabel('Energy')
+plt.ylabel('Number of Atoms')
+plt.colorbar()
 
 
 
@@ -180,7 +197,7 @@ print('finished dots')
 
 
 plt.pause(.1)
-#~ plt.show()
+plt.show()
 
 lnw = np.array(yaml_data['bins']['lnw'])
 print(np.shape(lnw))
@@ -203,44 +220,46 @@ print('multi.shape', multi.shape)
 #wrap the multiplicity from the yaml file into something 2d
 for n in range(maxN+1):
     for i in range(0,numE):
-        multi[n,i] = lnw[n + i*(maxN +1)] FIXME is this lng?
+        multi[n,i] = lnw[n + i*(maxN +1)]
 print(multi , "mulitplicity")
+
+print((maxN), 'len of maxN')
+print((numE), 'len of numE')
+print((nNs), 'len of nNs')
+print((nEs), 'len of nEs')
 
 
 T = 0.5
 mu = 1.0
 beta = 1/T
-gibbs_exponent = -beta*(EE - mu*NN)
+Fid = NN*T*np.log(NN/V*T**1.5) - NN*T
+gibbs_exponent = -beta*(Fid + EE - mu*NN)
 
-Zexc = (multi*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()
-print('Zexc', Zexc)
+# N_for_this_mu = 
 
-zexc = 0
-#beta = 1 / Temp
-
-#The range needs to change or the indexing in the loop needs to be converted
-#to the actual Energy
-for n in range(maxN-1):
-    for e in range(numE):
-        if not np.isfinite(np.exp((temp[n,e])**-1 * (-e + chempot[n,e] * n))):
-            zexc = zexc
-        else:
-            zexc += np.exp((temp[n,e])**-1 * (-e + chempot[n,e] * n))
-print(zexc,"Z EXCESS")
-#~ for E in range(len(Energy)):
-    #~ uexc += gexc[E] * E * math.exp(-beta * E / zexc)
+# Zexc = (multi*np.exp(gibbs_exponent - gibbs_exponent.max())).sum()
+# print('Zexc', Zexc)
 
 
+# #beta = 1 / Temp
 
+# #The range needs to change or the indexing in the loop needs to be converted
+# #to the actual Energy
+# # ~ for n in range(maxN-1):
+#     # ~ for e in range(numE):
+#         # ~ if not np.isfinite(np.exp((temp[n,e])**-1 * (-e + chempot[n,e] * n))):
+#             # ~ zexc = zexc
+#         # ~ else:
+#             # ~ zexc += np.exp((temp[n,e])**-1 * (-e + chempot[n,e] * n))
+# # ~ print(zexc,"Z EXCESS")
 
-
-
-
-
-
-
-
-
-
-
+# grandU = np.zeros((nNs,nEs))
+# zexc = 0
+# for i in range(nNs):
+#     for j in range(nEs):
+#         grandU[i,j] += math.log(((multi[i,j] * j * np.exp((1 / temp[i,j]) * (-j + chempot[i,j] * i)))))
+#         zexc += multi[i,j]*(1/(temp[i,j]) * (-j + chempot[i,j] * i))
+        
+# #~ for E in range(len(Energy)):
+#     #~ uexc += gexc[E] * E * math.exp(-beta * E / zexc)
 
