@@ -2,7 +2,7 @@
 
 use super::*;
 
-use dimensioned::{Abs, Sqrt};
+use dimensioned::{Abs};
 use vector3d::Vector3d;
 use rand::prelude::*;
 use rand::distributions::Uniform;
