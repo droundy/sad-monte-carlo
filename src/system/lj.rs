@@ -27,6 +27,8 @@ pub struct Lj {
     possible_change: Change,
     /// The locations of the atoms
     positions: Vec<Vector3d<Length>>,
+    /// The maximum radius permitted
+    max_radius_squared: Area,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -48,8 +50,7 @@ impl Lj {
     /// Move a specified atom.  Returns the change in energy, or
     /// `None` if the atom could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
-        let box_size = 40.0*units::SIGMA;
-        if r.norm2() > box_size*box_size {
+        if r.norm2() > self.max_radius_squared && r.norm2() > self.positions[which].norm2() {
             return None;
         }
         let mut e = self.E;
@@ -61,7 +62,7 @@ impl Lj {
         Some(e)
     }
     fn expected_accuracy(&self, newe: Energy) -> Energy {
-        newe*1e-15*(self.positions.len() as f64)
+        newe.abs()*1e-15*(self.positions.len() as f64)
     }
 
     fn set_energy(&mut self, new_e: Energy) {
@@ -86,7 +87,8 @@ impl From<LjParams> for Lj {
 
         // Atoms will be initially placed randomly with a spacing of
         // about SIGMA between each one.
-        let radius = (n as f64).powf(1.0/3.0)*units::R;
+        let radius = 2.0*(n as f64).powf(1.0/3.0)*units::SIGMA;
+        let max_radius = 5.0*radius;
         let mut positions = Vec::new();
 
         let mut rng = ::rng::MyRng::from_u64(0);
@@ -98,6 +100,7 @@ impl From<LjParams> for Lj {
             error: 0.0*units::EPSILON,
             possible_change: Change::None,
             positions,
+            max_radius_squared: max_radius*max_radius,
         };
         lj.E = lj.compute_energy();
         lj
