@@ -62,16 +62,16 @@ impl Lj {
         Some(e)
     }
     fn expected_accuracy(&self, newe: Energy) -> Energy {
-        newe.abs()*1e-15*(self.positions.len() as f64)
+        newe.abs()*1e-14*(self.positions.len() as f64)*(self.positions.len() as f64)
     }
 
     fn set_energy(&mut self, new_e: Energy) {
         let new_error = if new_e.abs() > self.E.abs() {
-            new_e.abs()*1e-15
+            new_e.abs()*1e-15*(self.positions.len() as f64)
         } else {
-            self.E.abs()*1e-15
+            self.E.abs()*1e-15*(self.positions.len() as f64)
         };
-        self.error = (new_error*new_error + self.error*self.error).sqrt();
+        self.error = new_error + self.error;
         if self.error > self.expected_accuracy(new_e) {
             self.error *= 0.0;
             self.E = self.compute_energy();

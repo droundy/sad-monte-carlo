@@ -49,6 +49,9 @@ for fname in fnames:
         minT = data['method']['Sad']['min_T']
     if Smin is None:
         Ebest = my_energy[fname];
+        print(my_entropy[fname])
+        for x in my_entropy[fname]:
+            print(len(x))
         Sbest = my_entropy[fname][-1,:]
         Smin = Sbest[Sbest!=0].min() - Sbest.max()
 
