@@ -164,7 +164,7 @@ for fname in fnames:
                    color=my_color[fname], label=fname)
 plt.legend(loc='best')
 
-all_mu = np.linspace(-10, 200, 30000)
+all_mu = np.linspace(-10, 2, 30000)
 # nQ = (mkT/2pi hbar^2)^1.5
 nQ = 0.001 # HOKEY
 
@@ -182,7 +182,7 @@ for fname in fnames:
         Fid_N[0] = 0
         # print(len(Fid_N))
 # # you need to figure out the indexing for Z grand. Make sure it sums over all number. Get a 60 vs 61 index error.
-        Grand_U = np.zeros_like(all_mu)
+        Grand_Uexc = np.zeros_like(all_mu)
         Grand_N = np.zeros_like(all_mu)
         for i in range(len(all_mu)):
             mu = all_mu[i]
@@ -192,9 +192,9 @@ for fname in fnames:
             offset = Zgrand_exponents.max()
             Zgrand_exponents -= offset
             Zgrand = np.exp(Zgrand_exponents).sum()
-            Grand_U[i] = (Uexc_N*np.exp(Zgrand_exponents)).sum()/Zgrand
+            Grand_Uexc[i] = (Uexc_N*np.exp(Zgrand_exponents)).sum()/Zgrand
             Grand_N[i] = (N_N*np.exp(Zgrand_exponents)).sum()/Zgrand
-        plt.plot(Grand_N, Grand_U,'-',
+        plt.plot(Grand_N, Grand_Uexc,'-',
                    color=my_color[fname], label=fname)
         plt.plot(current_total_energy[fname]/current_histogram[fname], ':',
                    color=my_color[fname], label='canonical '+fname)
@@ -213,7 +213,7 @@ for fname in fnames:
         beta = 1/T
         Nmax = len(Fexc_N)-1
         N_N = np.arange(0, Nmax+1, 1)
-        Grand_S = np.zeros_like(all_mu)
+        Grand_Sexc = np.zeros_like(all_mu)
         Grand_N = np.zeros_like(all_mu)
         for i in range(len(all_mu)):
             mu = all_mu[i]
@@ -222,12 +222,14 @@ for fname in fnames:
             offset = Zgrand_exponents.max()
             Zgrand_exponents -= offset
             Zgrand = np.exp(Zgrand_exponents).sum()
-            Grand_S[i] = (Sexc_N*np.exp(Zgrand_exponents)).sum()/Zgrand
+            Grand_Sexc[i] = (Sexc_N*np.exp(Zgrand_exponents)).sum()/Zgrand
             Grand_N[i] = (N_N*np.exp(Zgrand_exponents)).sum()/Zgrand
-        plt.plot(Grand_N, Grand_S,':',
+        plt.plot(Grand_N, Grand_Sexc,':',
                     color=my_color[fname], label=fname)
+        plt.ylabel('Sexc')
+        plt.xlabel('N')
 
-print(len(Grand_U))
+print(len(Grand_Uexc))
 
 plt.figure('Grand P_exc')
 for fname in fnames:
@@ -238,18 +240,25 @@ for fname in fnames:
     V = my_volume[fname]
     Grand_Pexc = np.zeros_like(all_mu)
     for i in range(len(all_mu)):
-        Grand_Pexc[i] = (T*Grand_S[i] + mu * Grand_N[i] - Grand_U[i])/V
+        Grand_Pexc[i] = (T*Grand_Sexc[i] + mu * Grand_N[i] - Grand_Uexc[i])/V
     plt.plot(Grand_N, Grand_Pexc,':',
                 color=my_color[fname], label=fname)
+    p_ideal = T*Grand_N/V
+    plt.plot(Grand_N, p_ideal,'-',
+                color=my_color[fname], label='ideal')
 
-plt.figure('Grand G vs Grand P_exc')
+plt.figure('Grand G vs P')
 for fnamme in fnames:
     mu = all_mu[i]
     Grand_G = np.zeros_like(all_mu)
     # Grand_G = mu*Grand_N
     for i in range(len(all_mu)):
         Grand_G[i] = mu*Grand_N[i]
-    plt.plot(Grand_Pexc, Grand_G,':',
+    p_ideal = T*Grand_N/V
+    plt.plot(Grand_Pexc + p_ideal, Grand_G,'.:',
                 color=my_color[fname], label=fname)
+
+plt.xlabel('$p$')
+plt.ylabel('$G$')
 
 plt.show()
