@@ -2,7 +2,7 @@
 
 use super::*;
 
-use dimensioned::{Dimensionless, Abs, Sqrt};
+use dimensioned::{Abs, Sqrt};
 use vector3d::Vector3d;
 use rand::prelude::*;
 use rand::distributions::Uniform;
@@ -34,11 +34,6 @@ pub struct Lj {
 enum Change {
     /// Move an atom already in the system
     Move { which: usize, to: Vector3d<Length>, e: Energy },
-    /// Add an atom to the system
-    /// The added atom is always pushed to the end of the vector!
-    Add { to: Vector3d<Length>, e: Energy },
-    /// Remove an atom from the system
-    Remove { which: usize, e: Energy },
     /// Make no changes to the system
     None,
 }
@@ -50,19 +45,13 @@ fn potential(r_squared: Area) -> Energy {
 }
 
 impl Lj {
-    /// Add an atom at a given location.  Returns the change in
-    /// energy, or `None` if the atom could not be placed there.
-    pub fn add_atom_at(&mut self, r: Vector3d<Length>) -> Option<Energy> {
-        let mut e = self.E;
-        for r1 in self.positions.iter().cloned() {
-            e += potential((r1-r).norm2());
-        }
-        self.possible_change = Change::Add{ to: r, e };
-        Some(e)
-    }
     /// Move a specified atom.  Returns the change in energy, or
     /// `None` if the atom could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
+        let box_size = 40.0*units::SIGMA;
+        if r.norm2() > box_size*box_size {
+            return None;
+        }
         let mut e = self.E;
         let from = self.positions[which];
         for r1 in self.positions.iter().cloned().enumerate().filter(|&(i,_)| i != which).map(|(_,x)| x) {
@@ -71,18 +60,8 @@ impl Lj {
         self.possible_change = Change::Move{ which, to: r, e };
         Some(e)
     }
-    /// Plan to remove the specified atom.  Returns the change in energy.
-    pub fn remove_atom_number(&mut self, which: usize) -> Energy {
-        let r = self.positions[which];
-        let mut e = self.E;
-        for r1 in self.positions.iter().cloned().enumerate().filter(|&(i,_)| i != which).map(|(_,x)| x) {
-            e -= potential((r1-r).norm2());
-        }
-        self.possible_change = Change::Remove{ which, e };
-        e
-    }
     fn expected_accuracy(&self, newe: Energy) -> Energy {
-        newe*1e-15*(self.positions.len() as f64)*(self.positions.len() as f64)
+        newe*1e-15*(self.positions.len() as f64)
     }
 
     fn set_energy(&mut self, new_e: Energy) {
@@ -141,7 +120,8 @@ impl System for Lj {
     fn update_caches(&mut self) {
     }
     fn lowest_possible_energy(&self) -> Option<Energy> {
-        Some(0.0*units::EPSILON)
+        let n = self.positions.len() as f64;
+        Some(-0.5*n*(n-1.0)*units::EPSILON)
     }
     fn verify_energy(&self) {
         let egood = self.compute_energy();
@@ -159,16 +139,6 @@ impl ConfirmSystem for Lj {
             Change::None => (),
             Change::Move{which, to, e} => {
                 self.positions[which] = to;
-                self.possible_change = Change::None;
-                self.set_energy(e);
-            },
-            Change::Add{to, e} => {
-                self.positions.push(to);
-                self.possible_change = Change::None;
-                self.set_energy(e);
-            },
-            Change::Remove{which, e} => {
-                self.positions.swap_remove(which);
                 self.possible_change = Change::None;
                 self.set_energy(e);
             },
