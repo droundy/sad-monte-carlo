@@ -20,21 +20,20 @@ pub enum SadVersion {
 }
 
 impl SadVersion {
-    fn compute_gamma(&self, latest_parameter: f64, t: f64, tL: f64, tF: f64, num_states: f64) -> f64 {
-        if latest_parameter == 0.0 {
+    fn compute_gamma(&self, latest_parameter: f64, t: f64, tF: f64, num_states: f64) -> f64 {
+        if latest_parameter*tF*num_states == 0.0 {
             0.0
         } else {
             match *self {
-                SadVersion::Sad =>
-                    (latest_parameter + t/tF)/(latest_parameter + t/num_states*(t/tF)),
+                SadVersion::Sad => {
+                   let g = (latest_parameter + t/tF)/(latest_parameter + t/num_states*(t/tF));
+                    if g.is_nan() {
+                        println!("problem with {} and {}", tF, num_states);
+                        assert!(!g.is_nan());
+                    }
+                    g
+                }
             }
-        }
-    }
-    fn compute_latest_parameter(&self, dE_over_T: f64, _Ns: f64, _tL: f64,
-                                _old_dE_over_T: f64, _old_Ns: f64, _old_tL: f64,
-                                _previous_parameter: f64) -> f64 {
-        match *self {
-            SadVersion::Sad => dE_over_T,
         }
     }
 }
@@ -339,14 +338,7 @@ impl<S: System> EnergyMC<S> {
                     match &mut self.method {
                         Method::Sad { ref mut num_states, ref mut tL,
                                       ref mut latest_parameter, .. } => {
-                            *latest_parameter = version.compute_latest_parameter(
-                                *((too_hi - too_lo)/min_T).value(),
-                                (*num_states + 1) as f64,
-                                self.moves as f64,
-                                *((too_hi - too_lo)/min_T).value(),
-                                *num_states as f64,
-                                *tL as f64,
-                                *latest_parameter);
+                            *latest_parameter = *((too_hi - too_lo)/min_T).value();
                             *num_states += 1;
                             *tL = self.moves;
                         }
@@ -406,14 +398,7 @@ impl<S: System> EnergyMC<S> {
                                 }
                             }
                         }
-                        *latest_parameter = version.compute_latest_parameter(
-                            *((energy.E - *too_lo)/min_T).value(),
-                            *num_states as f64,
-                            self.moves as f64,
-                            *((*too_hi - *too_lo)/min_T).value(),
-                            old_num_states as f64,
-                            *tL as f64,
-                            *latest_parameter);
+                        *latest_parameter = *((energy.E - *too_lo)/min_T).value();
                         *tL = self.moves;
                         *too_hi = energy.E;
                     } else if energy.E < *too_lo {
@@ -433,14 +418,7 @@ impl<S: System> EnergyMC<S> {
                                 }
                             }
                         }
-                        *latest_parameter = version.compute_latest_parameter(
-                            *((*too_hi - energy.E)/min_T).value(),
-                            *num_states as f64,
-                            self.moves as f64,
-                            *((*too_hi - *too_lo)/min_T).value(),
-                            old_num_states as f64,
-                            *tL as f64,
-                            *latest_parameter);
+                        *latest_parameter = *((*too_hi - energy.E)/min_T).value();
                         *tL = self.moves;
                         *too_lo = energy.E;
                     }
@@ -600,9 +578,9 @@ impl<S: System> EnergyMC<S> {
 impl<S> EnergyMC<S> {
     fn gamma(&self) -> f64 {
         match self.method {
-            Method::Sad { num_states, tL, tF, version, latest_parameter, .. } => {
+            Method::Sad { num_states, tF, version, latest_parameter, .. } => {
                 version.compute_gamma(latest_parameter, self.moves as f64,
-                                      tL as f64, tF as f64, num_states as f64)
+                                      tF as f64, num_states as f64)
             }
             Method::Samc { t0 } => {
                 let t = self.moves as f64;
@@ -671,12 +649,10 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
         if let Some(e2) = self.system.plan_move(&mut self.rng, self.translation_scale) {
             let mut out_of_bounds = false;
             if let Some(maxe) = self.max_allowed_energy {
-                out_of_bounds = e2 > maxe;
+                out_of_bounds = e2 > maxe && e2 > e1.E;
             }
             if let Some(mine) = self.min_allowed_energy {
-                if e2 < mine {
-                    out_of_bounds = true;
-                }
+                out_of_bounds = e2 < mine && e2 < e1.E
             }
             if !out_of_bounds {
                 let e2 = State { E: e2 };
