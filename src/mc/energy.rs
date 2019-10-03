@@ -374,7 +374,7 @@ impl<S: System> EnergyMC<S> {
         match self.method {
             Method::Sad { min_T, ref mut too_lo, ref mut too_hi, ref mut num_states,
                           ref mut tL, ref mut tF, ref mut highest_hist,
-                          version, ref mut latest_parameter, .. } => {
+                          ref mut latest_parameter, .. } => {
                 let histogram = &self.bins.histogram;
                 if *too_lo > *too_hi || energy.E < *too_lo || energy.E > *too_hi {
                     // Ooops, we didn't want to add gamma after all...
