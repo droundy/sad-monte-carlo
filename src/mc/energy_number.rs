@@ -568,7 +568,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
             self.bins.round_trips[i] += 1;
         }
 
-        let plugins = [&self.report as &Plugin<Self>,
+        let plugins = [&self.report as &dyn Plugin<Self>,
                        &self.movies,
                        &self.save,
         ];

@@ -12,6 +12,7 @@ pub mod lattice_gas;
 pub mod square;
 pub mod optsquare;
 pub mod wca;
+pub mod lj;
 
 /// A unitless number.  This is equivalent to a f64, but makes clear
 /// that it is going to be interpreted as a dimensionless quantity.
