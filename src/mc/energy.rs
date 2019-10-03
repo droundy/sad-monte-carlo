@@ -314,7 +314,7 @@ impl<S: System> EnergyMC<S> {
         let i1 = self.state_to_index(e1);
         let i2 = self.state_to_index(e2);
         match self.method {
-            Method::Sad { too_lo, too_hi, min_T, version,  .. } => {
+            Method::Sad { too_lo, too_hi, min_T, .. } => {
                 let lnw = &self.bins.lnw;
                 let lnw1 = if e1.E < too_lo {
                     lnw[self.state_to_index(State { E: too_lo })] + (e1.E - too_lo)/min_T
@@ -383,7 +383,6 @@ impl<S: System> EnergyMC<S> {
 
                 if histogram[i] > *highest_hist {
                     *highest_hist = histogram[i];
-                    let old_num_states = *num_states;
                     if energy.E > *too_hi {
                         let ihi = self.bins.state_to_index(State { E: *too_hi });
                         for j in 0 .. histogram.len() {
