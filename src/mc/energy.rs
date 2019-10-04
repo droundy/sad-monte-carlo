@@ -810,32 +810,20 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                 if new_energy == old_energy {
                     // We can just add a row.
                     let mut S = self.entropy.borrow_mut();
-                    println!("    entropy is size {}", entropy.len());
-                    for x in S.iter() {
-                        println!("        FOO is {}", x.len());
-                    }
                     S.push(entropy);
                     let mut hist_movie = self.histogram.borrow_mut();
                     hist_movie.push(histogram.clone());
                 } else {
                     let energy = self.energy.borrow().clone();
-                    let mut left_zeros = 0;
-                    for e in energy.iter() {
-                        if !old_energy.contains(e) {
-                            left_zeros += 1;
-                        } else {
-                            break;
-                        }
-                    }
-                    let mut right_zeros = 0;
-                    for e in energy.iter().rev() {
-                        if !old_energy.contains(e) {
-                            right_zeros += 1;
-                        } else {
-                            break;
-                        }
-                    }
+                    let mut hist_movie = self.histogram.borrow_mut();
                     let mut S = self.entropy.borrow_mut();
+                    let left_zeros: usize = if energy.len() > 1 {
+                        let de = energy[1]-energy[0];
+                        ((old_energy[0] - energy[0])/de).value().round() as usize
+                    } else {
+                        0
+                    };
+                    let right_zeros = energy.len() - old_energy.len() - left_zeros;
                     for v in S.iter_mut() {
                         for _ in 0..right_zeros {
                             v.push(0.);
@@ -844,7 +832,6 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                             v.insert(0,0.);
                         }
                     }
-                    let mut hist_movie = self.histogram.borrow_mut();
                     for v in hist_movie.iter_mut() {
                         for _ in 0..right_zeros {
                             v.push(0);
@@ -852,10 +839,6 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                         for _ in 0..left_zeros {
                             v.insert(0,0);
                         }
-                    }
-                    println!("entropy is size {}", entropy.len());
-                    for x in S.iter() {
-                        println!("    foo is {}", x.len());
                     }
                     S.push(entropy);
                     hist_movie.push(histogram.clone());
