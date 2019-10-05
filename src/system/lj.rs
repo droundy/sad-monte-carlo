@@ -52,7 +52,9 @@ impl Lj {
     /// Move a specified atom.  Returns the change in energy, or
     /// `None` if the atom could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
-        if r.norm2() > self.max_radius_squared && r.norm2() > self.positions[which].norm2() {
+        let dr = r - self.positions[which];
+        let r_from_cm = r - dr/(self.positions.len() as f64);
+        if r_from_cm.norm2() > self.max_radius_squared && r_from_cm.norm2() > self.positions[which].norm2() {
             return None;
         }
         let mut e = self.E;
@@ -147,6 +149,14 @@ impl ConfirmSystem for Lj {
             Change::None => (),
             Change::Move{which, to, e} => {
                 self.positions[which] = to;
+                let mut cm = self.positions[0];
+                for x in self.positions.iter().skip(1) {
+                    cm = cm + *x;
+                }
+                cm = cm/self.positions.len() as f64;
+                for x in self.positions.iter_mut() {
+                    *x = *x - cm;
+                }
                 self.possible_change = Change::None;
                 self.set_energy(e);
             },
