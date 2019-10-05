@@ -13,6 +13,8 @@ use rand::distributions::Uniform;
 pub struct LjParams {
     /// The number of atoms
     N: usize,
+    /// The radius of the spherical box
+    radius: Length,
 }
 
 #[allow(non_snake_case)]
@@ -83,24 +85,27 @@ impl Lj {
 
 impl From<LjParams> for Lj {
     fn from(params: LjParams) -> Lj {
-        let n = params.N;
-
-        // Atoms will be initially placed randomly with a spacing of
-        // about SIGMA between each one.
-        let radius = 2.0*(n as f64).powf(1.0/3.0)*units::SIGMA;
-        let max_radius = 5.0*radius;
         let mut positions = Vec::new();
 
         let mut rng = ::rng::MyRng::from_u64(0);
         for _ in 0..params.N {
-            positions.push(rng.vector()*radius);
+            let mut r;
+            loop {
+                r = Vector3d::new(rng.sample(Uniform::new(-1.0, 1.0)),
+                                  rng.sample(Uniform::new(-1.0, 1.0)),
+                                  rng.sample(Uniform::new(-1.0, 1.0)),);
+                if r.norm2() < 1.0 {
+                    break;
+                }
+            }
+            positions.push(r*params.radius);
         }
         let mut lj = Lj {
             E: 0.0*units::EPSILON,
             error: 0.0*units::EPSILON,
             possible_change: Change::None,
             positions,
-            max_radius_squared: max_radius*max_radius,
+            max_radius_squared: params.radius*params.radius,
         };
         lj.E = lj.compute_energy();
         lj
@@ -204,5 +209,12 @@ fn energy_is_right(natoms: usize) {
 
 #[cfg(test)]
 fn mk_lj(natoms: usize) -> Lj {
-    Lj::from(LjParams { N: natoms })
+    let radius = 2.0*(natoms as f64).powf(1.0/3.0)*units::SIGMA;
+    let radius = 5.0*radius;
+    Lj::from(LjParams { N: natoms, radius })
+}
+
+#[test]
+fn init_lj() {
+    mk_lj(50);
 }
