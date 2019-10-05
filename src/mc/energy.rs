@@ -597,6 +597,8 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
     type System = S;
     fn from_params(params: EnergyMCParams, system: S, save_as: ::std::path::PathBuf) -> Self {
         let ewidth = params.energy_bin.unwrap_or(system.delta_energy().unwrap_or(Energy::new(1.0)));
+        // center zero energy in a bin!
+        let emin = ((system.energy()/ewidth).value().round() - 0.5)*ewidth;
         EnergyMC {
             method: Method::new(params._method, system.energy(), ewidth,
                                 params.min_allowed_energy, params.max_allowed_energy),
@@ -610,7 +612,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
                 histogram: vec![1],
                 t_found: vec![0],
                 lnw: vec![Unitless::new(0.0)],
-                min: system.energy() - ewidth*0.5, // center initial energy in a bin!
+                min: emin,
                 width: ewidth,
                 have_visited_since_maxentropy: vec![false],
                 round_trips: vec![1],

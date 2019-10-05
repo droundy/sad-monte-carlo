@@ -2,7 +2,7 @@
 
 use super::*;
 
-use dimensioned::{Abs};
+use dimensioned::{Dimensionless, Abs, Sqrt};
 use vector3d::Vector3d;
 use rand::prelude::*;
 use rand::distributions::Uniform;
@@ -15,6 +15,10 @@ pub struct LjParams {
     N: usize,
     /// The radius of the spherical box
     radius: Length,
+    /// The number of bins for the radial distribution
+    n_radial: Option<usize>,
+    /// Energy bin width for radial info
+    width: Energy,
 }
 
 #[allow(non_snake_case)]
@@ -29,8 +33,49 @@ pub struct Lj {
     possible_change: Change,
     /// The locations of the atoms
     positions: Vec<Vector3d<Length>>,
-    /// The maximum radius permitted
+    /// The square of the maximum radius permitted
     max_radius_squared: Area,
+    /// The maximum radius permitted
+    max_radius: Length,
+    /// Histogram of radial distribution
+    bins: Bins,
+}
+
+/// This defines the energy/radial bins.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Bins {
+    /// The lowest allowed energy in any bin.
+    pub min: Energy,
+    /// The energy bin size.
+    pub width: Energy,
+    /// The ln weight for each energy bin.
+    pub radial: Vec<Vec<u64>>,
+    /// Number of points in radial distribution
+    n_radial: usize,
+}
+
+impl Bins {
+    /// Find the index corresponding to a given energy.  This should
+    /// panic if the energy is less than `min`.
+    pub fn energy_to_index(&self, s: Energy) -> usize {
+        *((s - self.min)/self.width).value() as usize
+    }
+    /// Find the energy corresponding to a given index.
+    pub fn index_to_energy(&self, i: usize) -> Energy {
+        self.min + (i as f64 + 0.5)*self.width
+    }
+    /// Make room in our arrays for a new energy value
+    pub fn prepare_for_energy(&mut self, e: Energy) {
+        assert!(self.width > Energy::new(0.0));
+        while e < self.min {
+            // this is a little wasteful, but seems the easiest way to
+            // ensure we end up with enough room.
+            self.radial.insert(0, vec![0u64; self.n_radial]);
+        }
+        while e >= self.min + self.width*(self.radial.len() as f64) {
+            self.radial.push(vec![0u64; self.n_radial]);
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -49,12 +94,19 @@ fn potential(r_squared: Area) -> Energy {
 }
 
 impl Lj {
+    fn increment_radial(&mut self, r: Length) {
+        let i_r = (*(r/self.max_radius).value() * self.bins.n_radial as f64).floor() as usize;
+        let i_e = self.bins.energy_to_index(self.E);
+        self.bins.radial[i_e][i_r] += 1;
+    }
     /// Move a specified atom.  Returns the change in energy, or
     /// `None` if the atom could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
         let dr = r - self.positions[which];
         let r_from_cm = r - dr/(self.positions.len() as f64);
-        if r_from_cm.norm2() > self.max_radius_squared && r_from_cm.norm2() > self.positions[which].norm2() {
+        let previous_rsqr = self.positions[which].norm2();
+        self.increment_radial(previous_rsqr.sqrt());
+        if r_from_cm.norm2() > self.max_radius_squared && r_from_cm.norm2() > previous_rsqr {
             return None;
         }
         let mut e = self.E;
@@ -108,8 +160,16 @@ impl From<LjParams> for Lj {
             possible_change: Change::None,
             positions,
             max_radius_squared: params.radius*params.radius,
+            max_radius: params.radius,
+            bins: Bins {
+                n_radial: params.n_radial.unwrap_or(100),
+                radial: Vec::new(),
+                min: 0.0*units::EPSILON,
+                width: params.width,
+            },
         };
         lj.E = lj.compute_energy();
+        lj.bins.min = ((lj.E/params.width).value().round() - 0.5)*params.width;
         lj
     }
 }
@@ -148,6 +208,7 @@ impl ConfirmSystem for Lj {
         match self.possible_change {
             Change::None => (),
             Change::Move{which, to, e} => {
+                self.bins.prepare_for_energy(e);
                 self.positions[which] = to;
                 let mut cm = self.positions[0];
                 for x in self.positions.iter().skip(1) {
