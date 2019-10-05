@@ -95,6 +95,7 @@ fn potential(r_squared: Area) -> Energy {
 
 impl Lj {
     fn increment_radial(&mut self, r: Length) {
+        self.bins.prepare_for_energy(self.E);
         let i_r = (*(r/self.max_radius).value() * self.bins.n_radial as f64).floor() as usize;
         let i_e = self.bins.energy_to_index(self.E);
         self.bins.radial[i_e][i_r] += 1;
@@ -108,6 +109,14 @@ impl Lj {
         self.increment_radial(previous_rsqr.sqrt());
         if r_from_cm.norm2() > self.max_radius_squared && r_from_cm.norm2() > previous_rsqr {
             return None;
+        }
+        for rold in self.positions.iter() {
+            let newr = *rold - dr/(self.positions.len() as f64);
+            if rold.norm2() < newr.norm2() && newr.norm2() > self.max_radius_squared {
+                // This means that we moved the center of mass enough
+                // to shift another atom out of range.
+                return None;
+            }
         }
         let mut e = self.E;
         let from = self.positions[which];
@@ -139,38 +148,54 @@ impl Lj {
 
 impl From<LjParams> for Lj {
     fn from(params: LjParams) -> Lj {
-        let mut positions = Vec::new();
-
         let mut rng = ::rng::MyRng::from_u64(0);
-        for _ in 0..params.N {
-            let mut r;
-            loop {
-                r = Vector3d::new(rng.sample(Uniform::new(-1.0, 1.0)),
-                                  rng.sample(Uniform::new(-1.0, 1.0)),
-                                  rng.sample(Uniform::new(-1.0, 1.0)),);
-                if r.norm2() < 1.0 {
-                    break;
+        let mut try_number = 0;
+        loop {
+            let mut positions = Vec::new();
+            for _ in 0..params.N {
+                let mut r;
+                loop {
+                    r = Vector3d::new(rng.sample(Uniform::new(-1.0, 1.0)),
+                                      rng.sample(Uniform::new(-1.0, 1.0)),
+                                      rng.sample(Uniform::new(-1.0, 1.0)),);
+                    if r.norm2() < 1.0 {
+                        break;
+                    }
                 }
+                positions.push(r*params.radius);
             }
-            positions.push(r*params.radius);
+            let mut cm = positions[0];
+            for x in positions.iter().skip(1) {
+                cm = cm + *x;
+            }
+            cm = cm/params.N as f64;
+            for x in positions.iter_mut() {
+                *x = *x - cm;
+            }
+            if positions.iter().any(|x| x.norm2() > params.radius*params.radius) {
+                continue;
+            }
+            let mut lj = Lj {
+                E: 0.0*units::EPSILON,
+                error: 0.0*units::EPSILON,
+                possible_change: Change::None,
+                positions,
+                max_radius_squared: params.radius*params.radius,
+                max_radius: params.radius,
+                bins: Bins {
+                    n_radial: params.n_radial.unwrap_or(100),
+                    radial: vec![vec![0; params.n_radial.unwrap_or(100)]],
+                    min: 0.0*units::EPSILON,
+                    width: params.width,
+                },
+            };
+            lj.E = lj.compute_energy();
+            lj.bins.min = ((lj.E/params.width).value().round() - 0.5)*params.width;
+            if lj.E < 0.0*units::EPSILON || try_number > 1000000 {
+                return lj;
+            }
+            try_number += 1;
         }
-        let mut lj = Lj {
-            E: 0.0*units::EPSILON,
-            error: 0.0*units::EPSILON,
-            possible_change: Change::None,
-            positions,
-            max_radius_squared: params.radius*params.radius,
-            max_radius: params.radius,
-            bins: Bins {
-                n_radial: params.n_radial.unwrap_or(100),
-                radial: Vec::new(),
-                min: 0.0*units::EPSILON,
-                width: params.width,
-            },
-        };
-        lj.E = lj.compute_energy();
-        lj.bins.min = ((lj.E/params.width).value().round() - 0.5)*params.width;
-        lj
     }
 }
 
@@ -208,7 +233,6 @@ impl ConfirmSystem for Lj {
         match self.possible_change {
             Change::None => (),
             Change::Move{which, to, e} => {
-                self.bins.prepare_for_energy(e);
                 self.positions[which] = to;
                 let mut cm = self.positions[0];
                 for x in self.positions.iter().skip(1) {
@@ -282,7 +306,7 @@ fn energy_is_right(natoms: usize) {
 fn mk_lj(natoms: usize) -> Lj {
     let radius = 2.0*(natoms as f64).powf(1.0/3.0)*units::SIGMA;
     let radius = 5.0*radius;
-    Lj::from(LjParams { N: natoms, radius })
+    Lj::from(LjParams { N: natoms, radius, n_radial: None, width: 0.1*units::EPSILON })
 }
 
 #[test]
