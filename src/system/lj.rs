@@ -71,6 +71,7 @@ impl Bins {
             // this is a little wasteful, but seems the easiest way to
             // ensure we end up with enough room.
             self.radial.insert(0, vec![0u64; self.n_radial]);
+            self.min -= self.width;
         }
         while e >= self.min + self.width*(self.radial.len() as f64) {
             self.radial.push(vec![0u64; self.n_radial]);
