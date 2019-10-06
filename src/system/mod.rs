@@ -72,9 +72,9 @@ pub trait System : ::serde::Serialize + ::serde::de::DeserializeOwned {
     }
     /// The data type describing what we want to collect in terms of
     /// statistics.
-    type CollectData;
+    type CollectedData: Default + ::serde::Serialize + ::serde::de::DeserializeOwned;
     /// Collect some data for the current state of the system
-    fn collect_data(&self, _data: &mut Self::CollectData, _iter: u64) {
+    fn collect_data(&self, _data: &mut Self::CollectedData, _iter: u64) {
     }
 }
 

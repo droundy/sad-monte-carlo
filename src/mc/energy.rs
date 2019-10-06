@@ -123,7 +123,7 @@ impl State {
     }
 }
 
-/// This defines the energy bins.
+/// Where we store the info about the energy grid
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Bins {
     /// The lowest allowed energy in any bin.
@@ -136,20 +136,11 @@ pub struct Bins {
     pub t_found: Vec<u64>,
     /// The ln weight for each energy bin.
     pub lnw: Vec<Unitless>,
-
-    /// Whether we have seen this since the last visit to maxentropy.
-    have_visited_since_maxentropy: Vec<bool>,
-    /// How many round trips have we seen at this energy.
-    round_trips: Vec<u64>,
-    /// The maximum entropy we have seen.
-    max_S: Unitless,
-    /// The index with the maximum entropy.
-    max_S_index: usize,
 }
 
 /// A square well fluid.
 #[derive(Serialize, Deserialize, Debug)]
-pub struct EnergyMC<S> {
+pub struct EnergyMC<S, C> {
     /// The system we are simulating.
     pub system: S,
     /// The method we use
@@ -164,8 +155,6 @@ pub struct EnergyMC<S> {
     min_allowed_energy: Option<Energy>,
     /// The highest energy to allow.
     max_allowed_energy: Option<Energy>,
-    /// The energy bins.
-    pub bins: Bins,
     /// The move plan
     pub move_plan: MoveParams,
     /// The current translation scale
@@ -180,6 +169,23 @@ pub struct EnergyMC<S> {
     movies: Movies,
     save: plugin::Save,
     manager: plugin::PluginManager,
+
+    // The following were formerly part of Bins.  I joined them all
+    // together in EnergyMC.
+
+    /// The parameters describing the bins
+    pub bins: Bins,
+    /// System-specific data that has been collected
+    pub collected: Vec<C>,
+
+    /// Whether we have seen this since the last visit to maxentropy.
+    have_visited_since_maxentropy: Vec<bool>,
+    /// How many round trips have we seen at this energy.
+    round_trips: Vec<u64>,
+    /// The maximum entropy we have seen.
+    max_S: Unitless,
+    /// The index with the maximum entropy.
+    max_S_index: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -264,40 +270,16 @@ impl Method {
 }
 
 impl Bins {
-    /// Find the index corresponding to a given energy.  This should
-    /// panic if the energy is less than `min`.
-    pub fn state_to_index(&self, s: State) -> usize {
-        *((s.E - self.min)/self.width).value() as usize
-    }
-    /// Find the energy corresponding to a given index.
-    pub fn index_to_state(&self, i: usize) -> State {
+    fn index_to_state(&self, i: usize) -> State {
         State { E: self.min + (i as f64 + 0.5)*self.width }
     }
-    /// Make room in our arrays for a new energy value
-    pub fn prepare_for_state(&mut self, e: State) {
-        let e = e.E;
-        assert!(self.width > Energy::new(0.0));
-        while e < self.min {
-            // this is a little wasteful, but seems the easiest way to
-            // ensure we end up with enough room.
-            self.histogram.insert(0, 0);
-            self.t_found.insert(0, 0);
-            self.lnw.insert(0, Unitless::new(0.0));
-            self.have_visited_since_maxentropy.insert(0, true);
-            self.round_trips.insert(0, 1);
-            self.min -= self.width;
-        }
-        while e >= self.min + self.width*(self.lnw.len() as f64) {
-            self.lnw.push(Unitless::new(0.0));
-            self.histogram.push(0);
-            self.t_found.push(0);
-            self.have_visited_since_maxentropy.push(true);
-            self.round_trips.push(1);
-        }
+    fn state_to_index(&self, s: State) -> usize {
+        *((s.E - self.min)/self.width).value() as usize
     }
 }
 
-impl<S: System> EnergyMC<S> {
+
+impl<S: System> EnergyMC<S, S::CollectedData> {
     /// Find the index corresponding to a given energy.  This should
     /// panic if the energy is less than `min`.
     pub fn state_to_index(&self, s: State) -> usize {
@@ -307,7 +289,31 @@ impl<S: System> EnergyMC<S> {
     pub fn index_to_state(&self, i: usize) -> State {
         self.bins.index_to_state(i)
     }
+    /// Make room in our arrays for a new energy value
+    pub fn prepare_for_state(&mut self, e: State) {
+        let e = e.E;
+        assert!(self.bins.width > Energy::new(0.0));
+        while e < self.bins.min {
+            // this is a little wasteful, but seems the easiest way to
+            // ensure we end up with enough room.
+            self.bins.histogram.insert(0, 0);
+            self.bins.t_found.insert(0, 0);
+            self.bins.lnw.insert(0, Unitless::new(0.0));
+            self.have_visited_since_maxentropy.insert(0, true);
+            self.round_trips.insert(0, 1);
+            self.bins.min -= self.bins.width;
+        }
+        while e >= self.bins.min + self.bins.width*(self.bins.lnw.len() as f64) {
+            self.bins.lnw.push(Unitless::new(0.0));
+            self.bins.histogram.push(0);
+            self.bins.t_found.push(0);
+            self.have_visited_since_maxentropy.push(true);
+            self.round_trips.push(1);
+        }
+    }
+}
 
+impl<S: System> EnergyMC<S,S::CollectedData> {
     /// This decides whether to reject the move based on the actual
     /// method in use.
     fn reject_move(&mut self, e1: State, e2: State) -> bool {
@@ -574,7 +580,7 @@ impl<S: System> EnergyMC<S> {
     }
 }
 
-impl<S> EnergyMC<S> {
+impl<S: System> EnergyMC<S, S::CollectedData> {
     fn gamma(&self) -> f64 {
         match self.method {
             Method::Sad { num_states, tF, version, latest_parameter, .. } => {
@@ -592,7 +598,7 @@ impl<S> EnergyMC<S> {
     }
 }
 
-impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
+impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
     type Params = EnergyMCParams;
     type System = S;
     fn from_params(params: EnergyMCParams, system: S, save_as: ::std::path::PathBuf) -> Self {
@@ -608,17 +614,21 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             acceptance_rate: 0.5, // arbitrary starting guess.
             min_allowed_energy: params.min_allowed_energy,
             max_allowed_energy: params.max_allowed_energy,
+
             bins: Bins {
                 histogram: vec![1],
                 t_found: vec![0],
                 lnw: vec![Unitless::new(0.0)],
                 min: emin,
                 width: ewidth,
-                have_visited_since_maxentropy: vec![false],
-                round_trips: vec![1],
-                max_S: Unitless::new(0.),
-                max_S_index: 0,
             },
+            collected: vec![S::CollectedData::default()],
+
+            have_visited_since_maxentropy: vec![false],
+            round_trips: vec![1],
+            max_S: Unitless::new(0.),
+            max_S_index: 0,
+
             translation_scale: match params._moves {
                 MoveParams::TranslationScale(x) => x,
                 _ => 0.05*units::SIGMA,
@@ -641,6 +651,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
 
     fn move_once(&mut self) {
         self.moves += 1;
+        // self.system.collect_data();
         if self.moves % (self.bins.histogram.len() as u64*self.bins.histogram.len() as u64*1000) == 0 {
             self.system.verify_energy();
         }
@@ -657,7 +668,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             }
             if !out_of_bounds {
                 let e2 = State { E: e2 };
-                self.bins.prepare_for_state(e2);
+                self.prepare_for_state(e2);
 
                 if !self.reject_move(e1,e2) {
                     self.accepted_moves += 1;
@@ -676,21 +687,21 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
         self.bins.histogram[i] += 1;
         self.update_weights(energy);
 
-        if self.bins.lnw[i] > self.bins.max_S {
-            self.bins.max_S = self.bins.lnw[i];
-            self.bins.max_S_index = i;
-            for x in self.bins.have_visited_since_maxentropy.iter_mut() {
+        if self.bins.lnw[i] > self.max_S {
+            self.max_S = self.bins.lnw[i];
+            self.max_S_index = i;
+            for x in self.have_visited_since_maxentropy.iter_mut() {
                 *x = true;
             }
-        } else if i == self.bins.max_S_index {
+        } else if i == self.max_S_index {
             if self.state_to_index(e1) != i {
-                for x in self.bins.have_visited_since_maxentropy.iter_mut() {
+                for x in self.have_visited_since_maxentropy.iter_mut() {
                     *x = false;
                 }
             }
-        } else if !self.bins.have_visited_since_maxentropy[i] {
-            self.bins.have_visited_since_maxentropy[i] = true;
-            self.bins.round_trips[i] += 1;
+        } else if !self.have_visited_since_maxentropy[i] {
+            self.have_visited_since_maxentropy[i] = true;
+            self.round_trips[i] += 1;
         }
 
         let plugins = [&self.report as &dyn Plugin<Self>,
@@ -776,8 +787,8 @@ impl Movies {
         self.gamma_time.borrow_mut().push(t);
     }
 }
-impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
-    fn run(&self, mc: &EnergyMC<S>, _sys: &S) -> plugin::Action {
+impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
+    fn run(&self, mc: &EnergyMC<S,S::CollectedData>, _sys: &S) -> plugin::Action {
         if let Some(movie_time) = self.movie_time {
             let moves = mc.num_moves();
             if plugin::TimeToRun::TotalMoves(moves) == self.period.get() {
@@ -865,12 +876,12 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
     /// This isn't really a movies thing, but there isn't a great
     /// reason to create yet another plugin for an EnergyMC-specific
     /// log message.
-    fn log(&self, mc: &EnergyMC<S>, sys: &S) {
+    fn log(&self, mc: &EnergyMC<S,S::CollectedData>, sys: &S) {
         let mut one_trip: Option<State> = None;
         let mut ten_trips: Option<State> = None;
         let mut hundred_trips: Option<State> = None;
         let mut thousand_trips: Option<State> = None;
-        for (i, &trips) in mc.bins.round_trips.iter().enumerate() {
+        for (i, &trips) in mc.round_trips.iter().enumerate() {
             if one_trip.is_none() && trips >= 1 {
                 one_trip = Some(mc.index_to_state(i));
             }
@@ -910,7 +921,7 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
                      ten_trips, ten_T,
                      hundred_trips, hundred_T,
                      thousand_trips, thousand_T,
-                     mc.index_to_state(mc.bins.max_S_index).E/units::EPSILON,
+                     mc.index_to_state(mc.max_S_index).E/units::EPSILON,
                      sys.energy()/units::EPSILON,
             );
             if let Method::WL { lowest_hist, highest_hist, total_hist, num_states,
@@ -923,7 +934,8 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Movies {
 }
 
 fn report_wl_flatness(lowest_hist: u64, highest_hist: u64, total_hist: u64,
-                      num_states: f64, hist: &[u64], bins: &Bins) {
+                      num_states: f64, hist: &[u64],
+                      bins: &Bins) {
     if total_hist > 0 && hist.len() > 1 {
         let mut lowest = 111111111;
         let mut highest = 111111111;
