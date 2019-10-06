@@ -53,9 +53,14 @@ for fname in fnames:
                    width)
     RR,EE = np.meshgrid(rr,ee)
 
-    radial /= 4*np.pi*RR**2
+    # radial /= 4*np.pi*RR**2
+    for i in range(radial.shape[1]):
+        radial[:,i] /= 4*np.pi/3*(r[i+1]**3 - r[i]**3)
     for i in range(radial.shape[0]):
         radial[i,:] *= 1.0/radial[i,:].max()
+
+    plt.figure()
+    plt.title(fname)
     plt.pcolor(R, E, radial)
     plt.colorbar()
     plt.xlabel('$r$')
