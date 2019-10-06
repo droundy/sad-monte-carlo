@@ -265,6 +265,7 @@ impl From<SquareWellParams> for SquareWell {
 }
 
 impl System for SquareWell {
+    type CollectData = ();
     fn energy(&self) -> Energy {
         self.E
     }

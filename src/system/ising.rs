@@ -47,6 +47,7 @@ impl From<IsingParams> for Ising {
 }
 
 impl System for Ising {
+    type CollectData = ();
     fn energy(&self) -> Energy {
         self.E
     }

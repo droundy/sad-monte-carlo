@@ -70,6 +70,12 @@ pub trait System : ::serde::Serialize + ::serde::de::DeserializeOwned {
     /// Verify as well as we can that the energy is currently correct.
     fn verify_energy(&self) {
     }
+    /// The data type describing what we want to collect in terms of
+    /// statistics.
+    type CollectData;
+    /// Collect some data for the current state of the system
+    fn collect_data(&self, _data: &mut Self::CollectData, _iter: u64) {
+    }
 }
 
 

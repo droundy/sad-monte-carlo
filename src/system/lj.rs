@@ -201,6 +201,7 @@ impl From<LjParams> for Lj {
 }
 
 impl System for Lj {
+    type CollectData = ();
     fn energy(&self) -> Energy {
         self.E
     }

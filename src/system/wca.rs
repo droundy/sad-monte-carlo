@@ -159,6 +159,7 @@ impl From<WcaParams> for Wca {
 }
 
 impl System for Wca {
+    type CollectData = ();
     fn energy(&self) -> Energy {
         self.E
     }

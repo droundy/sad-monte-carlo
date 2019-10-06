@@ -46,6 +46,7 @@ impl From<LatticeGasParams> for LatticeGas {
 }
 
 impl System for LatticeGas {
+    type CollectData = ();
     fn energy(&self) -> Energy {
         self.E
     }
