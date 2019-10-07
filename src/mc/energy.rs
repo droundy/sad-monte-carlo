@@ -302,6 +302,7 @@ impl<S: System> EnergyMC<S, S::CollectedData> {
             self.have_visited_since_maxentropy.insert(0, true);
             self.round_trips.insert(0, 1);
             self.bins.min -= self.bins.width;
+            self.collected.insert(0, S::CollectedData::default());
         }
         while e >= self.bins.min + self.bins.width*(self.bins.lnw.len() as f64) {
             self.bins.lnw.push(Unitless::new(0.0));
@@ -309,6 +310,7 @@ impl<S: System> EnergyMC<S, S::CollectedData> {
             self.bins.t_found.push(0);
             self.have_visited_since_maxentropy.push(true);
             self.round_trips.push(1);
+            self.collected.push(S::CollectedData::default());
         }
     }
 }
@@ -679,6 +681,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
         }
         let energy = State::new(&self.system);
         let i = self.state_to_index(energy);
+        self.system.collect_data(&mut self.collected[i], self.moves);
 
         // track the time we found each energy.
         if self.bins.histogram[i] == 0 {
