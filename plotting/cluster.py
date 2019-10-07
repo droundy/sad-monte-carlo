@@ -65,14 +65,14 @@ for fname in fnames:
         from_cm[i,:] *= 1.0/from_cm[i,:].max()
 
     plt.figure()
-    plt.title(fname)
+    plt.title(fname + ' distribution of atoms')
     plt.pcolor(R, E, from_center)
     plt.colorbar()
     plt.xlabel('$r$')
     plt.ylabel('$E$')
 
     plt.figure()
-    plt.title(fname)
+    plt.title(fname+ ' from center of mass')
     plt.pcolor(R, E, from_cm)
     plt.colorbar()
     plt.xlabel('$r$')
