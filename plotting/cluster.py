@@ -43,8 +43,12 @@ for fname in fnames:
     from_center = []
     from_cm = []
     for x in data['collected']:
-        from_center.append(x['from_center'])
-        from_cm.append(x['from_cm'])
+        if len(x['from_center']) > 0:
+            from_center.append(x['from_center'])
+            from_cm.append(x['from_cm'])
+        else:
+            from_center.append([0]*n_radial)
+            from_cm.append([0]*n_radial)
     from_center = np.array(from_center)*1.0;
     from_cm = np.array(from_cm)*1.0;
 
@@ -57,23 +61,24 @@ for fname in fnames:
     RR,EE = np.meshgrid(rr,outer_energy)
 
     # radial /= 4*np.pi*RR**2
+    skip = int(n_radial/max_radius/np.sqrt(2))
     for i in range(from_cm.shape[1]):
         from_center[:,i] /= 4*np.pi/3*(r[i+1]**3 - r[i]**3)
         from_cm[:,i] /= 4*np.pi/3*(r[i+1]**3 - r[i]**3)
     for i in range(from_cm.shape[0]):
-        from_center[i,:] *= 1.0/from_center[i,:].max()
-        from_cm[i,:] *= 1.0/from_cm[i,:].max()
+        from_center[i,:] *= 1.0/from_center[i,skip:].max()
+        from_cm[i,:] *= 1.0/from_cm[i,skip:].max()
 
     plt.figure()
     plt.title(fname + ' distribution of atoms')
-    plt.pcolor(R, E, from_center)
+    plt.pcolor(R, E, from_center, vmax=1)
     plt.colorbar()
     plt.xlabel('$r$')
     plt.ylabel('$E$')
 
     plt.figure()
     plt.title(fname+ ' from center of mass')
-    plt.pcolor(R, E, from_cm)
+    plt.pcolor(R, E, from_cm, vmax=1)
     plt.colorbar()
     plt.xlabel('$r$')
     plt.ylabel('$E$')
