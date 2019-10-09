@@ -137,11 +137,17 @@ plt.ylabel(r'rms entropy error')
 all_figures = set()
 keep_going = True
 while keep_going:
-    # keep_going = False
+    keep_going = False
     for i in range(max_iter):
         for fig in all_figures:
             fig.clf()
+        all_figures.add(plt.figure('Histogram'))
+        plt.axvline(EminT, linestyle=':', color='#ffaaaa')
+
         all_figures.add(plt.figure('Normed entropy'))
+        for E0 in np.linspace(2*Ebest.min() - Ebest.max(), Ebest.max(), 20):
+            plt.plot(Ebest, Smin + (Ebest - E0)/minT, ':', color='#ffeedd')
+        plt.axvline(EminT, linestyle=':', color='#ffaaaa')
         plt.plot(Ebest, Sbest - Sbest.max(), ':', color='#aaaaaa')
         # all_figures.add(plt.figure('Temperature'))
         # plt.semilogy(Ebest_interesting,
