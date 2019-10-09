@@ -833,7 +833,7 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
                     let energy = self.energy.borrow().clone();
                     let mut hist_movie = self.histogram.borrow_mut();
                     let mut S = self.entropy.borrow_mut();
-                    let left_zeros: usize = if energy.len() > 1 {
+                    let left_zeros: usize = if energy.len() > 1 && old_energy.len() > 0 {
                         let de = energy[1]-energy[0];
                         ((old_energy[0] - energy[0])/de).value().round() as usize
                     } else {
