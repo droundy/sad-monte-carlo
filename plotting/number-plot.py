@@ -193,8 +193,12 @@ for fname in fnames:
             Zgrand_exponents -= offset
             Zgrand = np.exp(Zgrand_exponents).sum()
             Grand_Uexc[i] = (Uexc_N*np.exp(Zgrand_exponents)).sum()/Zgrand
+            Id
             Grand_N[i] = (N_N*np.exp(Zgrand_exponents)).sum()/Zgrand
-        plt.plot(Grand_N, Grand_Uexc,'-',
+        #U_ideal = C_V*T*N*k : where C_V i think is 3
+        C_V = 3
+        Grand_Uideal = C_V*T*Grand_N
+        plt.plot(Grand_N, Grand_Uexc + Grand_Uideal,'-',
                    color=my_color[fname], label=fname)
         plt.plot(current_total_energy[fname]/current_histogram[fname], ':',
                    color=my_color[fname], label='canonical '+fname)
