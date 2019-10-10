@@ -407,7 +407,9 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                         }
                         *latest_parameter = *((energy.E - *too_lo)/min_T).value();
                         *tL = self.moves;
-                        *too_hi = energy.E;
+                        // The following rounds the energy to one of the bins.
+                        let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E;
+                        *too_hi = bin_e;
                     } else if energy.E < *too_lo {
                         let ilo = self.bins.state_to_index(State { E: *too_lo });
                         for j in 0 .. histogram.len() {
@@ -427,7 +429,9 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                         }
                         *latest_parameter = *((*too_hi - energy.E)/min_T).value();
                         *tL = self.moves;
-                        *too_lo = energy.E;
+                        // The following rounds the energy to one of the bins.
+                        let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E;
+                        *too_lo = bin_e;
                     }
                 }
                 if *tL == self.moves {
@@ -436,6 +440,7 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                     // range of energies that we actually care about.
                     let ilo = self.bins.state_to_index(State { E: *too_lo });
                     let ihi = self.bins.state_to_index(State { E: *too_hi });
+                    let old_tF = *tF;
                     *tF = *self.bins.t_found[ilo..ihi+1].iter().max().unwrap();
                     // We just discovered a new important energy.
                     // Let's take this as an opportunity to revise our
@@ -453,14 +458,14 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                                      /self.moves as f64);
                         }
                     }
-                    if !self.report.quiet {
-                        println!("    sad: [{}]  {}:  {} < {} ... {} < {}",
-                                 self.moves, num_states,
-                                 self.bins.min.value_unsafe,
-                                 too_lo.value_unsafe,
-                                 too_hi.value_unsafe,
+                    if !self.report.quiet && old_tF != *tF {
+                        println!("    sad: [{}]  {}:  {:.7} < {:.7} ... {:.7} < {:.7}",
+                                 *tF, num_states,
+                                 self.bins.min.pretty(),
+                                 too_lo.pretty(),
+                                 too_hi.pretty(),
                                  (self.bins.min
-                                  + self.bins.width*(histogram.len()-1) as f64).value_unsafe);
+                                  + self.bins.width*(histogram.len()-1) as f64).pretty());
                     }
                 }
             }
@@ -833,7 +838,7 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
                     let energy = self.energy.borrow().clone();
                     let mut hist_movie = self.histogram.borrow_mut();
                     let mut S = self.entropy.borrow_mut();
-                    let left_zeros: usize = if energy.len() > 1 {
+                    let left_zeros: usize = if energy.len() > 1 && old_energy.len() > 0 {
                         let de = energy[1]-energy[0];
                         ((old_energy[0] - energy[0])/de).value().round() as usize
                     } else {
@@ -910,22 +915,22 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
             .map(|e| format!(" ({:.1})",
                              PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
             .unwrap_or("".to_string());
-        let thousand_trips = thousand_trips.map(|e| format!("{}", e))
+        let thousand_trips = thousand_trips.map(|e| format!("{:.7}", e.E.pretty()))
             .unwrap_or("-".to_string());
-        let ten_trips = ten_trips.map(|e| format!("{}", e))
+        let ten_trips = ten_trips.map(|e| format!("{:.7}", e.E.pretty()))
             .unwrap_or("-".to_string());
-        let one_trip = one_trip.map(|e| format!("{}", e))
+        let one_trip = one_trip.map(|e| format!("{:.7}", e.E.pretty()))
             .unwrap_or("-".to_string());
-        let hundred_trips = hundred_trips.map(|e| format!("{}", e))
+        let hundred_trips = hundred_trips.map(|e| format!("{:.7}", e.E.pretty()))
             .unwrap_or("-".to_string());
         if !mc.report.quiet {
-            println!("   {} * {}{} * {}{} * {}{} | {} currently {}",
+            println!("   {} * {}{} * {}{} * {}{} | {:.7} currently {}",
                      one_trip,
                      ten_trips, ten_T,
                      hundred_trips, hundred_T,
                      thousand_trips, thousand_T,
-                     mc.index_to_state(mc.max_S_index).E/units::EPSILON,
-                     sys.energy()/units::EPSILON,
+                     mc.index_to_state(mc.max_S_index).E.pretty(),
+                     (sys.energy()/units::EPSILON).pretty(),
             );
             if let Method::WL { lowest_hist, highest_hist, total_hist, num_states,
                                 ref hist, .. } = mc.method {

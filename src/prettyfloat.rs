@@ -24,14 +24,42 @@ fn test_n_decimals() {
     assert_eq!(n_decimals(0.002, 1), 4);
 }
 
+fn cut_trailing(mut x: String) -> String {
+    if x.contains(".") {
+        if x.contains("e") {
+            let parts: Vec<_> = x.splitn(2, 'e').collect();
+            let mut x = parts[0].to_string();
+            while x.ends_with('0') {
+                x.pop();
+            }
+            if x.ends_with('.') {
+                x.pop();
+            }
+            x.push('e');
+            x.push_str(parts[1]);
+            x
+        } else {
+            while x.ends_with('0') {
+                x.pop();
+            }
+            if x.ends_with('.') {
+                x.pop();
+            }
+            x
+        }
+    } else {
+        x
+    }
+}
+
 impl Display for PrettyFloat {
     fn fmt(&self, f: &mut Formatter) -> Result {
         if let Some(precision) = f.precision() {
             let ndec = n_decimals(self.0, precision);
-            let options = &[format!("{}", self.0),
-                            format!("{:e}", self.0),
-                            format!("{:.*}", ndec, self.0),
-                            format!("{:.*e}", precision, self.0)];
+            let options = &[cut_trailing(format!("{}", self.0)),
+                            cut_trailing(format!("{:e}", self.0)),
+                            cut_trailing(format!("{:.*}", ndec, self.0)),
+                            cut_trailing(format!("{:.*e}", precision, self.0))];
             let s = options.into_iter().min_by_key(|s| s.len()).unwrap();
             if let Some(width) = f.width() {
                 // If we received a width, we use it
@@ -103,6 +131,28 @@ fn known_numbers() {
     assert_eq!(&format!("{:.3}", PrettyFloat(1.11111111)), "1.111");
     println!("1.11111111 prec 4");
     assert_eq!(&format!("{:.4}", PrettyFloat(1.11111111)), "1.1111");
+
+    println!("1.00000000001");
+    assert_eq!(&format!("{}", PrettyFloat(1.00000000001)), "1.00000000001");
+    println!("1.11111111 prec 1");
+    assert_eq!(&format!("{:.1}", PrettyFloat(1.00000000001)), "1");
+    println!("1.11111111 prec 2");
+    assert_eq!(&format!("{:.2}", PrettyFloat(1.00000000001)), "1");
+    println!("1.11111111 prec 3");
+    assert_eq!(&format!("{:.3}", PrettyFloat(1.00000000001)), "1");
+    println!("1.11111111 prec 4");
+    assert_eq!(&format!("{:.4}", PrettyFloat(1.00000000001)), "1");
+
+    println!("1.00000000001e30");
+    assert_eq!(&format!("{}", PrettyFloat(1.00000000001e30)), "1.00000000001e30");
+    println!("1.11111111 prec 1");
+    assert_eq!(&format!("{:.1}", PrettyFloat(1.00000000001e30)), "1e30");
+    println!("1.11111111 prec 2");
+    assert_eq!(&format!("{:.2}", PrettyFloat(1.00000000001e30)), "1e30");
+    println!("1.11111111 prec 3");
+    assert_eq!(&format!("{:.3}", PrettyFloat(1.00000000001e30)), "1e30");
+    println!("1.11111111 prec 4");
+    assert_eq!(&format!("{:.4}", PrettyFloat(1.00000000001e30)), "1e30");
 
     println!("1.11111111e200");
     assert_eq!(&format!("{}", PrettyFloat(1.11111111e200)), "1.11111111e200");

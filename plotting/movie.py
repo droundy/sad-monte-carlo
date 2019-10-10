@@ -27,7 +27,7 @@ max_iter = 0
 my_gamma = {}
 my_gamma_t = {}
 Smin = None
-minT = 1.0
+minT = 1.1
 fnames = sys.argv[1:]
 for fname in fnames:
     print(fname)
@@ -97,6 +97,16 @@ def convex_hull_T(E, S):
             T[i] = (E[i+1]-E[i-1])/(convexS[i+1]-convexS[i-1])
     return T
 
+def heat_capacity(T, E, S):
+    C = np.zeros_like(T)
+    for i in range(len(T)):
+        boltz_arg = S - E/T[i]
+        P = np.exp(boltz_arg - boltz_arg.max())
+        P = P/P.sum()
+        U = (E*P).sum()
+        C[i] = ((E-U)**2*P).sum()/T[i]**2
+    return C
+
 # Tbest_interesting = convex_hull_T(Ebest_interesting, Sbest_interesting)
 # plt.figure('temperature-comparison')
 # for fname in my_energy.keys():
@@ -137,11 +147,19 @@ plt.ylabel(r'rms entropy error')
 all_figures = set()
 keep_going = True
 while keep_going:
-    # keep_going = False
+    keep_going = False
     for i in range(max_iter):
         for fig in all_figures:
             fig.clf()
+        all_figures.add(plt.figure('Heat capacity'))
+        plt.axvline(minT, linestyle=':', color='#ffaaaa')
+        all_figures.add(plt.figure('Histogram'))
+        plt.axvline(EminT, linestyle=':', color='#ffaaaa')
+
         all_figures.add(plt.figure('Normed entropy'))
+        for E0 in np.linspace(2*Ebest.min() - Ebest.max(), Ebest.max(), 20):
+            plt.plot(Ebest, Smin + (Ebest - E0)/minT, ':', color='#ffeedd')
+        plt.axvline(EminT, linestyle=':', color='#ffaaaa')
         plt.plot(Ebest, Sbest - Sbest.max(), ':', color='#aaaaaa')
         # all_figures.add(plt.figure('Temperature'))
         # plt.semilogy(Ebest_interesting,
@@ -234,7 +252,17 @@ while keep_going:
                 plt.plot(my_energy[fname], my_histogram[fname][j,:], my_color[fname],
                          label=fname)
             plt.legend(loc='best')
-        plt.pause(0.1)
+
+            all_figures.add(plt.figure('Heat capacity'))
+            T = np.linspace(minT,1,1000)
+            plt.title('$t=%s/%s$' % (latex_float(t),
+                                     latex_float(my_time[fname][-1])))
+            plt.ylabel('heat capacity')
+            plt.xlabel('temperature')
+            plt.plot(T, heat_capacity(T, my_energy[fname], my_entropy[fname][j,:]), my_color[fname],
+                     label=fname)
+            plt.legend(loc='best')
+        plt.pause(0.000001)
 
 plt.ioff()
 plt.show()
