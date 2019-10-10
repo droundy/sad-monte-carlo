@@ -440,6 +440,7 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                     // range of energies that we actually care about.
                     let ilo = self.bins.state_to_index(State { E: *too_lo });
                     let ihi = self.bins.state_to_index(State { E: *too_hi });
+                    let old_tF = *tF;
                     *tF = *self.bins.t_found[ilo..ihi+1].iter().max().unwrap();
                     // We just discovered a new important energy.
                     // Let's take this as an opportunity to revise our
@@ -457,9 +458,9 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                                      /self.moves as f64);
                         }
                     }
-                    if !self.report.quiet {
+                    if !self.report.quiet && old_tF != *tF {
                         println!("    sad: [{}]  {}:  {:.7} < {:.7} ... {:.7} < {:.7}",
-                                 self.moves, num_states,
+                                 *tF, num_states,
                                  self.bins.min.pretty(),
                                  too_lo.pretty(),
                                  too_hi.pretty(),
