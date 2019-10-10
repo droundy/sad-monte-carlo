@@ -408,7 +408,7 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                         *latest_parameter = *((energy.E - *too_lo)/min_T).value();
                         *tL = self.moves;
                         // The following rounds the energy to the edge of one of the bins.
-                        let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E + self.bins.delta_energy*0.5;
+                        let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E + self.bins.width*0.5;
                         *too_hi = bin_e;
                     } else if energy.E < *too_lo {
                         let ilo = self.bins.state_to_index(State { E: *too_lo });
@@ -430,7 +430,7 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                         *latest_parameter = *((*too_hi - energy.E)/min_T).value();
                         *tL = self.moves;
                         // The following rounds the energy to the edge of one of the bins.
-                        let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E - self.bins.delta_energy*0.5;
+                        let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E - self.bins.width*0.5;
                         *too_lo = bin_e;
                     }
                 }
