@@ -407,8 +407,8 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                         }
                         *latest_parameter = *((energy.E - *too_lo)/min_T).value();
                         *tL = self.moves;
-                        // The following rounds the energy to the edge of one of the bins.
-                        let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E + self.bins.width*0.5;
+                        // The following rounds the energy to one of the bins.
+                        let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E;
                         *too_hi = bin_e;
                     } else if energy.E < *too_lo {
                         let ilo = self.bins.state_to_index(State { E: *too_lo });
@@ -429,8 +429,8 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                         }
                         *latest_parameter = *((*too_hi - energy.E)/min_T).value();
                         *tL = self.moves;
-                        // The following rounds the energy to the edge of one of the bins.
-                        let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E - self.bins.width*0.5;
+                        // The following rounds the energy to one of the bins.
+                        let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E;
                         *too_lo = bin_e;
                     }
                 }
@@ -440,6 +440,7 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                     // range of energies that we actually care about.
                     let ilo = self.bins.state_to_index(State { E: *too_lo });
                     let ihi = self.bins.state_to_index(State { E: *too_hi });
+                    let old_tF = *tF;
                     *tF = *self.bins.t_found[ilo..ihi+1].iter().max().unwrap();
                     // We just discovered a new important energy.
                     // Let's take this as an opportunity to revise our
@@ -457,7 +458,7 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                                      /self.moves as f64);
                         }
                     }
-                    if !self.report.quiet {
+                    if !self.report.quiet && old_tF != *tF {
                         println!("    sad: [{}]  {}:  {:.7} < {:.7} ... {:.7} < {:.7}",
                                  *tF, num_states,
                                  self.bins.min.pretty(),
