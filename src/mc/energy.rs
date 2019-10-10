@@ -910,13 +910,13 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
             .map(|e| format!(" ({:.1})",
                              PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
             .unwrap_or("".to_string());
-        let thousand_trips = thousand_trips.map(|e| format!("{}", e))
+        let thousand_trips = thousand_trips.map(|e| format!("{:.7}", e))
             .unwrap_or("-".to_string());
-        let ten_trips = ten_trips.map(|e| format!("{}", e))
+        let ten_trips = ten_trips.map(|e| format!("{:.7}", e))
             .unwrap_or("-".to_string());
-        let one_trip = one_trip.map(|e| format!("{}", e))
+        let one_trip = one_trip.map(|e| format!("{:.7}", e))
             .unwrap_or("-".to_string());
-        let hundred_trips = hundred_trips.map(|e| format!("{}", e))
+        let hundred_trips = hundred_trips.map(|e| format!("{:.7}", e))
             .unwrap_or("-".to_string());
         if !mc.report.quiet {
             println!("   {} * {}{} * {}{} * {}{} | {} currently {}",
@@ -924,8 +924,8 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
                      ten_trips, ten_T,
                      hundred_trips, hundred_T,
                      thousand_trips, thousand_T,
-                     mc.index_to_state(mc.max_S_index).E/units::EPSILON,
-                     sys.energy()/units::EPSILON,
+                     (mc.index_to_state(mc.max_S_index).E/units::EPSILON).pretty(),
+                     (sys.energy()/units::EPSILON).pretty(),
             );
             if let Method::WL { lowest_hist, highest_hist, total_hist, num_states,
                                 ref hist, .. } = mc.method {
