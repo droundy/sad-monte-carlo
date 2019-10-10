@@ -407,7 +407,9 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                         }
                         *latest_parameter = *((energy.E - *too_lo)/min_T).value();
                         *tL = self.moves;
-                        *too_hi = energy.E;
+                        // The following rounds the energy to one of the bins.
+                        let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E;
+                        *too_hi = bin_e;
                     } else if energy.E < *too_lo {
                         let ilo = self.bins.state_to_index(State { E: *too_lo });
                         for j in 0 .. histogram.len() {
@@ -427,7 +429,9 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                         }
                         *latest_parameter = *((*too_hi - energy.E)/min_T).value();
                         *tL = self.moves;
-                        *too_lo = energy.E;
+                        // The following rounds the energy to one of the bins.
+                        let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E;
+                        *too_lo = bin_e;
                     }
                 }
                 if *tL == self.moves {
@@ -454,13 +458,13 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                         }
                     }
                     if !self.report.quiet {
-                        println!("    sad: [{}]  {}:  {} < {} ... {} < {}",
+                        println!("    sad: [{}]  {}:  {:.7} < {:.7} ... {:.7} < {:.7}",
                                  self.moves, num_states,
-                                 self.bins.min.value_unsafe,
-                                 too_lo.value_unsafe,
-                                 too_hi.value_unsafe,
+                                 self.bins.min.pretty(),
+                                 too_lo.pretty(),
+                                 too_hi.pretty(),
                                  (self.bins.min
-                                  + self.bins.width*(histogram.len()-1) as f64).value_unsafe);
+                                  + self.bins.width*(histogram.len()-1) as f64).pretty());
                     }
                 }
             }
@@ -910,21 +914,21 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
             .map(|e| format!(" ({:.1})",
                              PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
             .unwrap_or("".to_string());
-        let thousand_trips = thousand_trips.map(|e| format!("{:.7}", e))
+        let thousand_trips = thousand_trips.map(|e| format!("{:.7}", e.E.pretty()))
             .unwrap_or("-".to_string());
-        let ten_trips = ten_trips.map(|e| format!("{:.7}", e))
+        let ten_trips = ten_trips.map(|e| format!("{:.7}", e.E.pretty()))
             .unwrap_or("-".to_string());
-        let one_trip = one_trip.map(|e| format!("{:.7}", e))
+        let one_trip = one_trip.map(|e| format!("{:.7}", e.E.pretty()))
             .unwrap_or("-".to_string());
-        let hundred_trips = hundred_trips.map(|e| format!("{:.7}", e))
+        let hundred_trips = hundred_trips.map(|e| format!("{:.7}", e.E.pretty()))
             .unwrap_or("-".to_string());
         if !mc.report.quiet {
-            println!("   {} * {}{} * {}{} * {}{} | {} currently {}",
+            println!("   {} * {}{} * {}{} * {}{} | {:.7} currently {}",
                      one_trip,
                      ten_trips, ten_T,
                      hundred_trips, hundred_T,
                      thousand_trips, thousand_T,
-                     (mc.index_to_state(mc.max_S_index).E/units::EPSILON).pretty(),
+                     mc.index_to_state(mc.max_S_index).E.pretty(),
                      (sys.energy()/units::EPSILON).pretty(),
             );
             if let Method::WL { lowest_hist, highest_hist, total_hist, num_states,

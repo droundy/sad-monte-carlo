@@ -278,7 +278,7 @@ fn energy_is_right(natoms: usize) {
 fn mk_lj(natoms: usize) -> Lj {
     let radius = 2.0*(natoms as f64).powf(1.0/3.0)*units::SIGMA;
     let radius = 5.0*radius;
-    Lj::from(LjParams { N: natoms, radius, n_radial: None, width: 0.1*units::EPSILON })
+    Lj::from(LjParams { N: natoms, radius, n_radial: None })
 }
 
 #[test]
