@@ -966,7 +966,7 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
             let mut f = AtomicFile::create(&name)
                 .expect(&format!("error creating file {:?}", name));
             for t in self.energy.borrow().iter() {
-                writeln!(f, "{}", t).expect(&err);
+                writeln!(f, "{}", *t/units::EPSILON).expect(&err);
             }
         }
         {

@@ -24,35 +24,26 @@ my_entropy = {}
 my_time = {}
 my_color = {}
 max_iter = 0
-my_gamma = {}
-my_gamma_t = {}
 Smin = None
 minT = 1.1
-fnames = sys.argv[1:]
+
+def fix_fname(fname):
+    if fname[-5:] == '.yaml':
+        return fname[:-5]
+    return fname
+
+fnames = [fix_fname(f) for f in sys.argv[1:]]
 for fname in fnames:
     print(fname)
-    with open(fname) as f:
-        yaml_data = f.read()
-    data = yaml.load(yaml_data)
-    print('Done loading yaml')
-    data['bins']['histogram'] = np.array(data['bins']['histogram'])
-    data['bins']['lnw'] = np.array(data['bins']['lnw'])
+    my_histogram[fname] = np.loadtxt(fname+'.histogram')
+    my_energy[fname] = np.loadtxt(fname+'.energy')
+    my_entropy[fname] = np.loadtxt(fname+'.entropy')
+    my_time[fname] = np.loadtxt(fname+'.time')
     my_color[fname] = allcolors.pop()
-    my_energy[fname] = np.array(data['movies']['energy'])
-    my_time[fname] = np.array(data['movies']['time'])
     if len(my_time[fname]) > max_iter:
         max_iter = len(my_time[fname])
-    my_entropy[fname] = np.array(data['movies']['entropy'])
-    my_histogram[fname] = np.array(data['movies']['histogram'])
-    my_gamma[fname] = np.array(data['movies']['gamma'])
-    my_gamma_t[fname] = np.array(data['movies']['gamma_time'])
-    if 'Sad' in data['method']:
-        minT = data['method']['Sad']['min_T']
     if Smin is None:
         Ebest = my_energy[fname];
-        print(my_entropy[fname])
-        for x in my_entropy[fname]:
-            print(len(x))
         Sbest = my_entropy[fname][-1,:]
         Smin = Sbest[Sbest!=0].min() - Sbest.max()
 
@@ -65,38 +56,6 @@ Sbest_interesting = Sbest[np.argwhere(Ebest == EminT)[0][0]:np.argwhere(Ebest ==
 Ebest_interesting = Ebest[np.argwhere(Ebest == EminT)[0][0]:np.argwhere(Ebest == EmaxS)[0][0]+1]
 
 plt.ion()
-
-plt.figure('gamma')
-for fname in fnames:
-        plt.loglog(my_gamma_t[fname], my_gamma[fname], color=my_color[fname], label=fname)
-plt.legend(loc='best')
-plt.xlabel('$t$')
-plt.ylabel(r'$\gamma$')
-# plt.ylim(1e-12, 1.1)
-
-def convex_hull(S):
-    convexS = np.zeros_like(S)
-    if len(convexS) > 1000:
-        convexS[:] = S
-        return convexS
-    for i in range(len(S)):
-        if S[i] > 0 and S[i] >= convexS[i]:
-            for j in range(i+1,len(S)):
-                if S[j] > 0 and S[j] >= convexS[j]:
-                    for k in range(i, j+1):
-                        convexS[k] = max(convexS[k], (S[i]*(j-k) + S[j]*(k-i))/(j-i))
-    return convexS
-def convex_hull_T(E, S):
-    convexS = convex_hull(S)
-    T = np.zeros_like(S)
-    if convexS[1] > convexS[0]:
-        T[0] = (E[1]-E[0])/(convexS[1]-convexS[0])
-    if convexS[-1] > convexS[-2]:
-        T[-1] = (E[-1]-E[-2])/(convexS[-1]-convexS[-2])
-    for i in range(1,len(T)-1):
-        if convexS[i+1] > convexS[i-1]:
-            T[i] = (E[i+1]-E[i-1])/(convexS[i+1]-convexS[i-1])
-    return T
 
 def heat_capacity(T, E, S):
     C = np.zeros_like(T)
