@@ -25,7 +25,7 @@ my_time = {}
 my_color = {}
 max_iter = 0
 Smin = None
-minT = 1.1
+minT = 0.01
 
 def fix_fname(fname):
     if fname[-5:] == '.yaml':
@@ -222,7 +222,7 @@ while keep_going:
             plt.plot(T, heat_capacity(T, my_energy[fname], my_entropy[fname][j,:]), my_color[fname],
                      label=fname)
             plt.legend(loc='best')
-        plt.pause(0.000001)
+        plt.pause(0.1)
 
 plt.ioff()
 plt.show()
