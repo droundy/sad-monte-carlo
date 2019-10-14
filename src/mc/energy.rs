@@ -442,30 +442,35 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                     let ihi = self.bins.state_to_index(State { E: *too_hi });
                     let old_tF = *tF;
                     *tF = *self.bins.t_found[ilo..ihi+1].iter().max().unwrap();
-                    // We just discovered a new important energy.
-                    // Let's take this as an opportunity to revise our
-                    // translation scale, and also to log the news.
-                    if let MoveParams::AcceptanceRate(r) = self.move_plan {
-                        let s = self.acceptance_rate/r;
-                        let s = if s < 0.8 { 0.8 } else if s > 1.2 { 1.2 } else { s };
-                        self.translation_scale *= s;
-                        if !self.report.quiet {
-                            println!("        new translation scale: {:.3}",
-                                     self.translation_scale);
-                            println!("        acceptance rate {:.1}% [long-term: {:.1}%]",
-                                     100.0*self.acceptance_rate,
-                                     100.0*self.accepted_moves as f64
-                                     /self.moves as f64);
+                    if old_tF == *tF {
+                        // We didn't change gamma after all!
+                        gamma_changed = false;
+                    } else {
+                        // We just discovered a new important energy.
+                        // Let's take this as an opportunity to revise our
+                        // translation scale, and also to log the news.
+                        if let MoveParams::AcceptanceRate(r) = self.move_plan {
+                            let s = self.acceptance_rate/r;
+                            let s = if s < 0.8 { 0.8 } else if s > 1.2 { 1.2 } else { s };
+                            self.translation_scale *= s;
+                            if !self.report.quiet {
+                                println!("        new translation scale: {:.3}",
+                                         self.translation_scale);
+                                println!("        acceptance rate {:.1}% [long-term: {:.1}%]",
+                                         100.0*self.acceptance_rate,
+                                         100.0*self.accepted_moves as f64
+                                         /self.moves as f64);
+                            }
                         }
-                    }
-                    if !self.report.quiet && old_tF != *tF {
-                        println!("    sad: [{}]  {}:  {:.7} < {:.7} ... {:.7} < {:.7}",
-                                 *tF, num_states,
-                                 self.bins.min.pretty(),
-                                 too_lo.pretty(),
-                                 too_hi.pretty(),
-                                 (self.bins.min
-                                  + self.bins.width*(histogram.len()-1) as f64).pretty());
+                        if !self.report.quiet {
+                            println!("    sad: [{}]  {}:  {:.7} < {:.7} ... {:.7} < {:.7}",
+                                     *tF, num_states,
+                                     self.bins.min.pretty(),
+                                     too_lo.pretty(),
+                                     too_hi.pretty(),
+                                     (self.bins.min
+                                      + self.bins.width*(histogram.len()-1) as f64).pretty());
+                        }
                     }
                 }
             }
