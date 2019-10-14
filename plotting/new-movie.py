@@ -85,17 +85,30 @@ def heat_capacity(T, E, S):
 # plt.xlabel('$t$')
 # plt.ylabel(r'rms relative error in $T$')
 
+def indwhere(array, value):
+    best = 0
+    for i in range(len(array)):
+        if abs(array[i]-value) < abs(array[best]-value):
+            best = i
+    return best
+
+def Sbest_function(e):
+    return np.interp(e, Ebest_interesting, Sbest_interesting)
+
 plt.figure('comparison')
 for fname in fnames:
     if my_energy[fname][0] <= EminT:
         errors = np.zeros(len(my_time[fname]))
-        ind_minT = np.argwhere(my_energy[fname] == EminT)[0][0]
-        ind_maxS = np.argwhere(my_energy[fname] == EmaxS)[0][0]
+        ind_minT = indwhere(my_energy[fname], EminT)
+        ind_maxS = indwhere(my_energy[fname], EmaxS)
         for i in range(len(my_time[fname])):
             S_interesting = my_entropy[fname][i,ind_minT:ind_maxS+1]
-            e = S_interesting - Sbest_interesting
-            e -= e[Sbest_interesting!=0.0].mean()
-            errors[i] = np.sqrt((e[Sbest_interesting!=0.0]**2).mean())
+            E_interesting = my_energy[fname][ind_minT:ind_maxS+1]
+            e = np.zeros_like(S_interesting)
+            for j in range(len(e)):
+                e[j] = S_interesting[j] - Sbest_function(E_interesting[j])
+            e -= e.mean() # WARNING, this causes problems if there are impossible states in the interesting energy range.
+            errors[i] = np.sqrt((e**2).mean()) # WARNING, this causes problems if there are impossible states in the interesting energy range.
         plt.loglog(my_time[fname], errors, color=my_color[fname], label=fname)
     else:
         print("We cannot compare with", fname, "because it doesn't have all the energies")
