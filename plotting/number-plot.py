@@ -193,7 +193,6 @@ for fname in fnames:
             Zgrand_exponents -= offset
             Zgrand = np.exp(Zgrand_exponents).sum()
             Grand_Uexc[i] = (Uexc_N*np.exp(Zgrand_exponents)).sum()/Zgrand
-            Id
             Grand_N[i] = (N_N*np.exp(Zgrand_exponents)).sum()/Zgrand
         #U_ideal = C_V*T*N*k : where C_V i think is 3
         C_V = 3
@@ -219,6 +218,7 @@ for fname in fnames:
         N_N = np.arange(0, Nmax+1, 1)
         Grand_Sexc = np.zeros_like(all_mu)
         Grand_N = np.zeros_like(all_mu)
+        Grand_Sideal = np.zeros_like(all_mu)
         for i in range(len(all_mu)):
             mu = all_mu[i]
             # Zgrand = \sum_N e^{-\beta(Fid(N) + Fexc_N - mu N)}
@@ -227,13 +227,17 @@ for fname in fnames:
             Zgrand_exponents -= offset
             Zgrand = np.exp(Zgrand_exponents).sum()
             Grand_Sexc[i] = (Sexc_N*np.exp(Zgrand_exponents)).sum()/Zgrand
+            Grand_Sideal[i] = (Grand_Uideal[i]+mu*Grand_N[i])
             Grand_N[i] = (N_N*np.exp(Zgrand_exponents)).sum()/Zgrand
+        # Grand_Sideal = ????
         plt.plot(Grand_N, Grand_Sexc,':',
                     color=my_color[fname], label=fname)
+        plt.plot(Grand_N, Grand_Sideal,':',
+                    color=my_color[fname], label='ideal')
         plt.ylabel('Sexc')
         plt.xlabel('N')
 
-print(len(Grand_Uexc))
+# print(len(Grand_Uexc))
 
 plt.figure('Grand P_exc')
 for fname in fnames:
