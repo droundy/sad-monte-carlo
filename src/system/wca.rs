@@ -100,44 +100,6 @@ impl Wca {
         self.possible_change = Change::Remove{ which, e };
         e
     }
-    fn compute_energy_slowly(&self) -> Energy {
-        let mut e: Energy = units::EPSILON*0.0;
-        for &r1 in self.cell.positions.iter() {
-            for &r2 in self.cell.positions.iter() {
-                let mut r12 = r1 - r2;
-                while r12.x > self.cell.box_diagonal.x/2.0 {
-                    r12.x -= self.cell.box_diagonal.x;
-                }
-                while r12.y > self.cell.box_diagonal.y/2.0 {
-                    r12.y -= self.cell.box_diagonal.y;
-                }
-                while r12.z > self.cell.box_diagonal.z/2.0 {
-                    r12.z -= self.cell.box_diagonal.z;
-                }
-                while r12.x < -self.cell.box_diagonal.x/2.0 {
-                    r12.x += self.cell.box_diagonal.x;
-                }
-                while r12.y < -self.cell.box_diagonal.y/2.0 {
-                    r12.y += self.cell.box_diagonal.y;
-                }
-                while r12.z < -self.cell.box_diagonal.z/2.0 {
-                    r12.z += self.cell.box_diagonal.z;
-                }
-                for i in -1..2 {
-                    for j in -1..2 {
-                        for k in -1..2 {
-                            let lattice_vector = Vector3d::new(self.cell.box_diagonal.x*(i as f64),
-                                                               self.cell.box_diagonal.y*(j as f64),
-                                                               self.cell.box_diagonal.z*(k as f64));
-                            let r = r12 + lattice_vector;
-                            e += potential(r.norm2());
-                        }
-                    }
-                }
-            }
-        }
-        e*0.5
-    }
 }
 
 impl From<WcaParams> for Wca {

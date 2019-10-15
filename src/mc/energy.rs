@@ -442,30 +442,35 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                     let ihi = self.bins.state_to_index(State { E: *too_hi });
                     let old_tF = *tF;
                     *tF = *self.bins.t_found[ilo..ihi+1].iter().max().unwrap();
-                    // We just discovered a new important energy.
-                    // Let's take this as an opportunity to revise our
-                    // translation scale, and also to log the news.
-                    if let MoveParams::AcceptanceRate(r) = self.move_plan {
-                        let s = self.acceptance_rate/r;
-                        let s = if s < 0.8 { 0.8 } else if s > 1.2 { 1.2 } else { s };
-                        self.translation_scale *= s;
-                        if !self.report.quiet {
-                            println!("        new translation scale: {:.3}",
-                                     self.translation_scale);
-                            println!("        acceptance rate {:.1}% [long-term: {:.1}%]",
-                                     100.0*self.acceptance_rate,
-                                     100.0*self.accepted_moves as f64
-                                     /self.moves as f64);
+                    if old_tF == *tF {
+                        // We didn't change gamma after all!
+                        gamma_changed = false;
+                    } else {
+                        // We just discovered a new important energy.
+                        // Let's take this as an opportunity to revise our
+                        // translation scale, and also to log the news.
+                        if let MoveParams::AcceptanceRate(r) = self.move_plan {
+                            let s = self.acceptance_rate/r;
+                            let s = if s < 0.8 { 0.8 } else if s > 1.2 { 1.2 } else { s };
+                            self.translation_scale *= s;
+                            if !self.report.quiet {
+                                println!("        new translation scale: {:.3}",
+                                         self.translation_scale);
+                                println!("        acceptance rate {:.1}% [long-term: {:.1}%]",
+                                         100.0*self.acceptance_rate,
+                                         100.0*self.accepted_moves as f64
+                                         /self.moves as f64);
+                            }
                         }
-                    }
-                    if !self.report.quiet && old_tF != *tF {
-                        println!("    sad: [{}]  {}:  {:.7} < {:.7} ... {:.7} < {:.7}",
-                                 *tF, num_states,
-                                 self.bins.min.pretty(),
-                                 too_lo.pretty(),
-                                 too_hi.pretty(),
-                                 (self.bins.min
-                                  + self.bins.width*(histogram.len()-1) as f64).pretty());
+                        if !self.report.quiet {
+                            println!("    sad: [{}]  {}:  {:.7} < {:.7} ... {:.7} < {:.7}",
+                                     *tF, num_states,
+                                     self.bins.min.pretty(),
+                                     too_lo.pretty(),
+                                     too_hi.pretty(),
+                                     (self.bins.min
+                                      + self.bins.width*(histogram.len()-1) as f64).pretty());
+                        }
                     }
                 }
             }
@@ -936,6 +941,63 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
                                 ref hist, .. } = mc.method {
                 report_wl_flatness(lowest_hist, highest_hist, total_hist, num_states,
                                    hist, &mc.bins);
+            }
+        }
+    }
+    fn save(&self, mc: &EnergyMC<S,S::CollectedData>, _sys: &S) {
+        use std::io::Write;
+        let name = mc.save_as();
+        {
+            let name = name.with_extension("time");
+            let err = format!("error writing to file {:?}", name);
+            let mut f = AtomicFile::create(&name)
+                .expect(&format!("error creating file {:?}", name));
+            for t in self.time.borrow().iter() {
+                writeln!(f, "{}", t).expect(&err);
+            }
+        }
+        {
+            let name = name.with_extension("gamma");
+            let err = format!("error writing to file {:?}", name);
+            let mut f = AtomicFile::create(&name)
+                .expect(&format!("error creating file {:?}", name));
+            for (t,g) in self.gamma_time.borrow().iter().zip(self.gamma.borrow().iter()) {
+                writeln!(f, "{}\t{}", t,g).expect(&err);
+            }
+        }
+        {
+            let name = name.with_extension("energy");
+            let err = format!("error writing to file {:?}", name);
+            let mut f = AtomicFile::create(&name)
+                .expect(&format!("error creating file {:?}", name));
+            for t in self.energy.borrow().iter() {
+                writeln!(f, "{}", *t/units::EPSILON).expect(&err);
+            }
+        }
+        {
+            let name = name.with_extension("entropy");
+            let err = format!("error writing to file {:?}", name);
+            let mut f = AtomicFile::create(&name)
+                .expect(&format!("error creating file {:?}", name));
+            for frame in self.entropy.borrow().iter() {
+                write!(f, "{}", frame.iter().next().unwrap()).expect(&err);
+                for v in frame.iter().skip(1) {
+                    write!(f, "\t{}", v).expect(&err);
+                }
+                write!(f, "\n").expect(&err);
+            }
+        }
+        {
+            let name = name.with_extension("histogram");
+            let err = format!("error writing to file {:?}", name);
+            let mut f = AtomicFile::create(&name)
+                .expect(&format!("error creating file {:?}", name));
+            for frame in self.histogram.borrow().iter() {
+                write!(f, "{}", frame.iter().next().unwrap()).expect(&err);
+                for v in frame.iter().skip(1) {
+                    write!(f, "\t{}", v).expect(&err);
+                }
+                write!(f, "\n").expect(&err);
             }
         }
     }
