@@ -19,6 +19,7 @@ allcolors = list(reversed(['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'ta
                            'xkcd:lightblue', 'xkcd:puke', 'xkcd:puce', 'xkcd:turquoise']))
 
 my_energy = {}
+my_de = {}
 my_histogram = {}
 my_entropy = {}
 my_time = {}
@@ -37,6 +38,7 @@ for fname in fnames:
     print(fname)
     my_histogram[fname] = np.loadtxt(fname+'.histogram')
     my_energy[fname] = np.loadtxt(fname+'.energy')
+    my_de[fname] = my_energy[fname][1] - my_energy[fname][0]
     my_entropy[fname] = np.loadtxt(fname+'.entropy')
     my_time[fname] = np.loadtxt(fname+'.time')
     my_color[fname] = allcolors.pop()
@@ -215,14 +217,14 @@ while keep_going:
                                      latex_float(my_time[fname][-1])))
             plt.ylabel('histogram')
             if j > 0:
-                plt.plot(my_energy[fname], my_histogram[fname][j-1,:], my_color[fname],
+                plt.plot(my_energy[fname], my_histogram[fname][j-1,:]/my_de[fname], my_color[fname],
                          alpha=0.2)
             if j == -1:
-                plt.plot(my_energy[fname], my_histogram[fname][j,:], my_color[fname],
+                plt.plot(my_energy[fname], my_histogram[fname][j,:]/my_de[fname], my_color[fname],
                          label=fname+' '+latex_float(len(my_entropy[fname])),
                          alpha=0.2)
             else:
-                plt.plot(my_energy[fname], my_histogram[fname][j,:], my_color[fname],
+                plt.plot(my_energy[fname], my_histogram[fname][j,:]/my_de[fname], my_color[fname],
                          label=fname)
             plt.legend(loc='best')
 
