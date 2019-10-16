@@ -26,7 +26,7 @@ my_time = {}
 my_color = {}
 max_iter = 0
 Smin = None
-minT = 0.01
+minT = 0.001
 
 def fix_fname(fname):
     if fname[-5:] == '.yaml':
@@ -36,6 +36,10 @@ def fix_fname(fname):
 fnames = [fix_fname(f) for f in sys.argv[1:]]
 for fname in fnames:
     print(fname)
+    for i in range(len(fname)-5):
+        if fname[i:i+len('minT')] == 'minT':
+            minT = float(fname[i+len('minT'):].split('-')[0])
+            print('minT =', minT)
     my_histogram[fname] = np.loadtxt(fname+'.histogram')
     my_energy[fname] = np.loadtxt(fname+'.energy')
     my_de[fname] = my_energy[fname][1] - my_energy[fname][0]
@@ -133,7 +137,7 @@ while keep_going:
 
         all_figures.add(plt.figure('Normed entropy'))
         for E0 in np.linspace(2*Ebest.min() - Ebest.max(), Ebest.max(), 20):
-            plt.plot(Ebest, Smin + (Ebest - E0)/minT, ':', color='#ffeedd')
+            plt.plot(Ebest, Smin + (Ebest - E0)/minT, ':', color='#ddaa00')
         plt.axvline(EminT, linestyle=':', color='#ffaaaa')
         plt.plot(Ebest, Sbest - Sbest.max(), ':', color='#aaaaaa')
         # all_figures.add(plt.figure('Temperature'))
@@ -229,7 +233,7 @@ while keep_going:
             plt.legend(loc='best')
 
             all_figures.add(plt.figure('Heat capacity'))
-            T = np.linspace(minT,1,1000)
+            T = np.linspace(minT,1,3000)
             plt.title('$t=%s/%s$' % (latex_float(t),
                                      latex_float(my_time[fname][-1])))
             plt.ylabel('heat capacity')
