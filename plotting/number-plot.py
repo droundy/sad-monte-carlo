@@ -193,11 +193,11 @@ for fname in fnames:
             Zgrand_exponents -= offset
             Zgrand = np.exp(Zgrand_exponents).sum()
             Grand_Uexc[i] = (Uexc_N*np.exp(Zgrand_exponents)).sum()/Zgrand
-            Id
             Grand_N[i] = (N_N*np.exp(Zgrand_exponents)).sum()/Zgrand
         #U_ideal = C_V*T*N*k : where C_V i think is 3
-        C_V = 3
+        C_V = 3/2
         Grand_Uideal = C_V*T*Grand_N
+        Grand_U = Grand_Uideal + Grand_Uexc
         plt.plot(Grand_N, Grand_Uexc + Grand_Uideal,'-',
                    color=my_color[fname], label=fname)
         plt.plot(current_total_energy[fname]/current_histogram[fname], ':',
@@ -228,28 +228,35 @@ for fname in fnames:
             Zgrand = np.exp(Zgrand_exponents).sum()
             Grand_Sexc[i] = (Sexc_N*np.exp(Zgrand_exponents)).sum()/Zgrand
             Grand_N[i] = (N_N*np.exp(Zgrand_exponents)).sum()/Zgrand
+        # Grand_Sideal = ????
+        Grand_Sideal = Grand_N*(5/2 + np.log(V/Grand_N*(Grand_Uideal/Grand_N)**1.5))
+        Grand_S = Grand_Sexc + Grand_Sideal
         plt.plot(Grand_N, Grand_Sexc,':',
                     color=my_color[fname], label=fname)
+        plt.plot(Grand_N, Grand_Sideal,':',
+                    color=my_color[fname], label='ideal')
         plt.ylabel('Sexc')
         plt.xlabel('N')
 
-print(len(Grand_Uexc))
+# print(len(Grand_Uexc))
 
-plt.figure('Grand P_exc')
+plt.figure('Grand P')
 for fname in fnames:
     mu = all_mu[i]
     Uexc_N = current_total_energy[fname]/current_histogram[fname]
     Fexc_N = current_free_energy[fname]
     T = my_temperature[fname]
     V = my_volume[fname]
-    Grand_Pexc = np.zeros_like(all_mu)
-    for i in range(len(all_mu)):
-        Grand_Pexc[i] = (T*Grand_Sexc[i] + mu * Grand_N[i] - Grand_Uexc[i])/V
-    plt.plot(Grand_N, Grand_Pexc,':',
+    Grand_P = (T*Grand_S + mu * Grand_N - Grand_U)/V
+    plt.plot(Grand_N, Grand_P,':',
                 color=my_color[fname], label=fname)
     p_ideal = T*Grand_N/V
-    plt.plot(Grand_N, p_ideal,'-',
+    print('pressure', Grand_P)
+    print('entropy', Grand_S)
+    plt.plot(Grand_N, p_ideal,'--',
                 color=my_color[fname], label='ideal')
+    plt.plot(Grand_N, 2*p_ideal,'--', label='twice ideal')
+    plt.legend(loc='best')
 
 plt.figure('Grand G vs P')
 for fnamme in fnames:
@@ -259,7 +266,7 @@ for fnamme in fnames:
     for i in range(len(all_mu)):
         Grand_G[i] = mu*Grand_N[i]
     p_ideal = T*Grand_N/V
-    plt.plot(Grand_Pexc + p_ideal, Grand_G,'.:',
+    plt.plot(Grand_P, Grand_G,'.:',
                 color=my_color[fname], label=fname)
 
 plt.xlabel('$p$')
