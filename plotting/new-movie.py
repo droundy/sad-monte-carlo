@@ -3,6 +3,7 @@
 import yaml, sys
 import numpy as np
 import matplotlib.pyplot as plt
+import re
 
 def latex_float(x):
     exp = int(np.log10(x*1.0))
@@ -33,13 +34,25 @@ def fix_fname(fname):
         return fname[:-5]
     return fname
 
-fnames = [fix_fname(f) for f in sys.argv[1:]]
+# will be None if a float i.e. the user input a min temperature.
+last_fname = re.search('[a-zA-Z]', sys.argv[-1])
+
+if not last_fname:
+    fnames = [fix_fname(f) for f in sys.argv[1:-1]]
+else:
+    fnames = [fix_fname(f) for f in sys.argv[1:]]
+
+
 for fname in fnames:
     print(fname)
-    for i in range(len(fname)-5):
-        if fname[i:i+len('minT')] == 'minT':
-            minT = float(fname[i+len('minT'):].split('-')[0])
-            print('minT =', minT)
+    if len(sys.argv) > 1 and not last_fname: # the user has input a min temp.
+        minT = float(sys.argv[-1])
+        print('minT =', minT)
+    else:
+        for i in range(len(fname)-5):
+            if fname[i:i+len('minT')] == 'minT':
+                minT = float(fname[i+len('minT'):].split('-')[0])
+                print('minT =', minT)
     my_histogram[fname] = np.loadtxt(fname+'.histogram')
     my_energy[fname] = np.loadtxt(fname+'.energy')
     my_de[fname] = my_energy[fname][1] - my_energy[fname][0]
