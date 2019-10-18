@@ -53,24 +53,6 @@ for fname in fnames:
     my_energy[fname] = np.loadtxt(fname+'.energy')
     my_de[fname] = my_energy[fname][1] - my_energy[fname][0]
     my_entropy[fname] = np.loadtxt(fname+'.entropy')
-    if my_too_lo[fname]:
-        okay_i = 0
-        for i in range(len(my_entropy[fname])):
-            if my_energy[fname][i] < my_too_lo[fname]:
-                okay_i = i+1
-            else:
-                break
-        for i in range(okay_i):
-            my_entropy[fname][i] = np.log(my_entropy[fname][i]/my_entropy[fname][okay_i]) - (my_energy[fname][okay_i] - my_energy[fname][i])/my_minT[fname]
-    if my_too_hi[fname]:
-        okay_i = 0
-        for i in reversed(range(len(my_entropy[fname]))):
-            if my_energy[fname][i] > my_too_hi[fname]:
-                okay_i = i-1
-            else:
-                break
-        for i in range(okay_i):
-            my_entropy[fname][-i] = np.log(my_entropy[fname][-i]/my_entropy[fname][okay_i])
     if minT is None and my_minT[fname] is not None:
         minT = my_minT[fname]
     my_time[fname] = np.loadtxt(fname+'.time')
