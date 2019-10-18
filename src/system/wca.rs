@@ -2,7 +2,7 @@
 
 use super::*;
 
-use dimensioned::{Dimensionless, Sqrt};
+use dimensioned::{Dimensionless, Sqrt, Abs};
 use vector3d::Vector3d;
 use rand::prelude::*;
 use rand::distributions::Uniform;
@@ -24,8 +24,8 @@ pub struct WcaParams {
 pub struct Wca {
     /// The energy of the system
     E: Energy,
-    /// How many moves were made since we updated the energy to reduce roundoff errors.
-    moves: usize,
+    /// The estimated accumulated error so far in E
+    error: Energy,
     /// The dimensions of the box.
     pub cell: Cell,
     /// The last change we made (and might want to undo).
@@ -100,6 +100,23 @@ impl Wca {
         self.possible_change = Change::Remove{ which, e };
         e
     }
+    fn set_energy(&mut self, new_e: Energy) {
+        let new_error = if new_e.abs() > self.E.abs() {
+            new_e.abs()*1e-14*(self.num_atoms() as f64)
+        } else {
+            self.E.abs()*1e-14*(self.num_atoms() as f64)
+        };
+        self.error = new_error + self.error;
+        if self.error > self.expected_accuracy(new_e) {
+            self.error *= 0.0;
+            self.E = self.compute_energy();
+        } else {
+            self.E = new_e;
+        }
+    }
+    fn expected_accuracy(&self, newe: Energy) -> Energy {
+        newe.abs()*1e-14*(self.num_atoms() as f64)*(self.num_atoms() as f64)
+    }
 }
 
 impl From<WcaParams> for Wca {
@@ -113,8 +130,8 @@ impl From<WcaParams> for Wca {
         }
         Wca {
             E: 0.0*units::EPSILON,
+            error: 0.0*units::EPSILON,
             cell,
-            moves: 0,
             possible_change: Change::None,
         }
     }
@@ -141,34 +158,34 @@ impl System for Wca {
         Some(0.0*units::EPSILON)
     }
     fn verify_energy(&self) {
-        assert_energies_eq(self.E, self.compute_energy());
+        let egood = self.compute_energy();
+        let expected = self.expected_accuracy(self.E);
+        if (egood - self.E).abs() > expected {
+            println!("Error in E is {} when it should be {} < {}", egood - self.E, self.error, expected);
+            assert_eq!(egood, self.E);
+        }
     }
 }
 
 impl ConfirmSystem for Wca {
     fn confirm(&mut self) {
-        self.moves += 1;
         match self.possible_change {
             Change::None => (),
             Change::Move{which, to, e} => {
                 self.cell.move_atom(which, to);
-                self.E = e;
+                self.set_energy(e);
                 self.possible_change = Change::None;
             },
             Change::Add{to, e} => {
                 self.cell.add_atom_at(to);
-                self.E = e;
+                self.set_energy(e);
                 self.possible_change = Change::None;
             },
             Change::Remove{which, e} => {
                 self.cell.remove_atom(which);
-                self.E = e;
+                self.set_energy(e);
                 self.possible_change = Change::None;
             },
-        }
-        if self.moves > self.num_atoms()*self.num_atoms() {
-            self.E = self.compute_energy();
-            self.moves = 0;
         }
     }
 }
@@ -459,7 +476,7 @@ fn energy_is_right_n200() {
 #[cfg(test)]
 fn energy_is_right(natoms: usize, ff: f64) {
     let mut sw = mk_sw(natoms, ff);
-    assert_eq!(sw.energy(), sw.compute_energy());
+    sw.verify_energy();
     let mut rng = MyRng::from_u64(1);
     let mut old_energy = sw.energy();
     let maxe = (natoms as f64)*16.0*units::EPSILON;
@@ -469,7 +486,7 @@ fn energy_is_right(natoms: usize, ff: f64) {
             if newe < maxe || newe < old_energy {
                 sw.confirm();
                 println!("after move {}... {} vs {}", i, sw.energy(), sw.compute_energy());
-                assert_energies_eq(sw.energy(), sw.compute_energy());
+                sw.verify_energy();
                 old_energy = newe;
                 i += 1.0;
             } else {
@@ -486,12 +503,4 @@ fn mk_sw(natoms: usize, ff: f64) -> Wca {
     param._dim = CellDimensionsGivenNumber::FillingFraction(Unitless::new(ff));
     param.N = natoms;
     Wca::from(param)
-}
-
-fn assert_energies_eq(e1: Energy, e2: Energy) {
-    use dimensioned::Abs;
-    let zero = 0.0*units::EPSILON;
-    if *((e1-e2).abs()/(e1+e2).abs()).value() > 1e-13 && e1 != zero && e2 != zero {
-        assert_eq!(e1, e2);
-    }
 }

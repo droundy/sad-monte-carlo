@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import yaml, sys
+import sys, re
 import numpy as np
 import matplotlib.pyplot as plt
 import re
@@ -27,7 +27,15 @@ my_time = {}
 my_color = {}
 max_iter = 0
 Smin = None
-minT = 0.001
+my_minT = {}
+my_too_lo = {}
+my_too_hi = {}
+minT = None
+
+def lookup_entry(entry, yaml_data):
+    x = re.search('{}: (\S+)'.format(entry), yaml_data)
+    if x:
+        return float(x.group(1))
 
 def fix_fname(fname):
     if fname[-5:] == '.yaml':
@@ -53,10 +61,35 @@ for fname in fnames:
             if fname[i:i+len('minT')] == 'minT':
                 minT = float(fname[i+len('minT'):].split('-')[0])
                 print('minT =', minT)
+    with open(fname+'.yaml') as f:
+        yaml = f.read()
+        my_too_hi[fname] = lookup_entry('too_hi', yaml)
+        my_too_lo[fname] = lookup_entry('too_lo', yaml)
+        my_minT[fname] = lookup_entry('min_T', yaml)
     my_histogram[fname] = np.loadtxt(fname+'.histogram')
     my_energy[fname] = np.loadtxt(fname+'.energy')
     my_de[fname] = my_energy[fname][1] - my_energy[fname][0]
     my_entropy[fname] = np.loadtxt(fname+'.entropy')
+    if my_too_lo[fname]:
+        okay_i = 0
+        for i in range(len(my_entropy[fname])):
+            if my_energy[fname][i] < my_too_lo[fname]:
+                okay_i = i+1
+            else:
+                break
+        for i in range(okay_i):
+            my_entropy[fname][i] = np.log(my_entropy[fname][i]/my_entropy[fname][okay_i]) - (my_energy[fname][okay_i] - my_energy[fname][i])/my_minT[fname]
+    if my_too_hi[fname]:
+        okay_i = 0
+        for i in reversed(range(len(my_entropy[fname]))):
+            if my_energy[fname][i] > my_too_hi[fname]:
+                okay_i = i-1
+            else:
+                break
+        for i in range(okay_i):
+            my_entropy[fname][-i] = np.log(my_entropy[fname][-i]/my_entropy[fname][okay_i])
+    if minT is None and my_minT[fname] is not None:
+        minT = my_minT[fname]
     my_time[fname] = np.loadtxt(fname+'.time')
     my_color[fname] = allcolors.pop()
     if len(my_time[fname]) > max_iter:
@@ -182,6 +215,8 @@ while keep_going:
             # plt.legend(loc='best')
 
             all_figures.add(plt.figure('Normed entropy'))
+            if my_too_lo[fname]:
+                plt.axvline(my_too_lo[fname], linestyle=':', color=my_color[fname])
             if j > 0:
                 plt.plot(my_energy[fname],
                          my_entropy[fname][i-1,:]-my_entropy[fname][j-1,:].max(),
@@ -232,6 +267,10 @@ while keep_going:
             all_figures.add(plt.figure('Histogram'))
             plt.title('$t=%s/%s$' % (latex_float(t),
                                      latex_float(my_time[fname][-1])))
+            if my_too_lo[fname]:
+                plt.axvline(my_too_lo[fname], linestyle=':', color=my_color[fname])
+            if my_too_hi[fname]:
+                plt.axvline(my_too_hi[fname], linestyle=':', color=my_color[fname])
             plt.ylabel('histogram')
             if j > 0:
                 plt.plot(my_energy[fname], my_histogram[fname][j-1,:]/my_de[fname], my_color[fname],
