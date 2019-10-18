@@ -246,7 +246,7 @@ while keep_going:
             plt.legend(loc='best')
 
             all_figures.add(plt.figure('Heat capacity'))
-            T = np.linspace(minT,1,3000)
+            T = np.linspace(minT,0.4,100)
             plt.title('$t=%s/%s$' % (latex_float(t),
                                      latex_float(my_time[fname][-1])))
             plt.ylabel('heat capacity')
