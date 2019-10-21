@@ -267,6 +267,31 @@ impl Method {
             },
         }
     }
+    fn entropy(&self, bins: &Bins) -> Vec<f64> {
+        let mut entropy = bins.lnw.clone();
+        if let Method::Sad {min_T,too_lo,too_hi, num_states, ..} = *self {
+            let mut meanhist = 0.0;
+            let too_lo_entropy = bins.lnw[bins.state_to_index(State { E: too_lo })];
+            let too_hi_entropy = bins.lnw[bins.state_to_index(State { E: too_hi })];
+            for (i, h) in bins.histogram.iter().cloned().enumerate() {
+                if bins.index_to_state(i).E >= too_lo && bins.index_to_state(i).E <= too_hi {
+                    meanhist += h as f64;
+                }
+            }
+            meanhist /= num_states as f64;
+            for (i, s) in entropy.iter_mut().enumerate() {
+                let e = bins.index_to_state(i).E;
+                if bins.histogram[i] == 0 {
+                    *s *= 0.0;
+                } else if e < too_lo {
+                    *s = (bins.histogram[i] as f64/meanhist).ln() + too_lo_entropy + (e - too_lo)/min_T;
+                } else if e > too_hi {
+                    *s = (bins.histogram[i] as f64/meanhist).ln() + too_hi_entropy;
+                }
+            }
+        }
+        entropy.iter().map(|x| *(x.value())).collect()
+    }
 }
 
 impl Bins {
@@ -815,24 +840,7 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
                 let old_energy = self.energy.replace(new_energy.clone());
 
                 let histogram = &mc.bins.histogram;
-                let lnw = &mc.bins.lnw;
-                let entropy: Vec<_> = (0..new_energy.len()).map(|i| {
-                    if let Method::Sad { too_lo, too_hi, highest_hist, .. } = mc.method {
-                        if histogram[i] == 0 {
-                            return 0.0;
-                        }
-                        let e = mc.index_to_state(i).E;
-                        if e < too_lo {
-                            return lnw[mc.state_to_index(State { E: too_lo })].value()
-                                + (histogram[i] as f64/highest_hist as f64).ln();
-                        }
-                        if e > too_hi {
-                            return lnw[mc.state_to_index(State { E: too_hi })].value()
-                                + (histogram[i] as f64/highest_hist as f64).ln();
-                        }
-                    }
-                    *lnw[i].value()
-                }).collect();
+                let entropy = mc.method.entropy(&mc.bins);
                 if new_energy == old_energy {
                     // We can just add a row.
                     let mut S = self.entropy.borrow_mut();
