@@ -2,6 +2,9 @@ import sys, re
 import numpy as np
 import matplotlib.pyplot as plt
 
+# HOW TO RUN:
+# python3 plotting/final_heat_capacity.py lj-sad-31-minT001-de001.yaml lj-sad*yaml lj-samc-1e*yaml 0.01
+
 def latex_float(x):
     exp = int(np.log10(x*1.0))
     if abs(exp) > 2:
@@ -23,12 +26,15 @@ def fix_fname(fname):
     return fname
 
 # Import the data for 
-dirname = 'LJ31_Cv_Reference'
-data = np.loadtxt(dirname + '.csv', delimiter = ',', unpack = True)
-ref_T = data[0]
-ref_heat_capacity = (data[1]-3/2)*31
-print(ref_heat_capacity)
+ref1 = 'LJ31_Cv_Reference'
+data1 = np.loadtxt(ref1 + '.csv', delimiter = ',', unpack = True)
+ref1_T = data1[0]
+ref1_heat_capacity = (data1[1]-3/2)*31
 
+ref2 = 'LJ31_Cv_Reference_alt'
+data2 = np.loadtxt(ref2 + '.csv', delimiter = ',', unpack = True)
+ref2_T = data2[0]
+ref2_heat_capacity = data2[1]
 
 my_energy = {}
 my_de = {}
@@ -87,7 +93,8 @@ for fname in fnames:
 
 plt.ylabel('heat capacity')
 plt.xlabel('temperature')
-plt.plot(ref_T, ref_heat_capacity, '-', color='black', label='Reference Cv',linewidth=1)
+plt.plot(ref1_T, ref1_heat_capacity, '-', color='black', label='Reference Cv 1',linewidth=1)
+plt.plot(ref2_T, ref2_heat_capacity, '-', color='grey', label='Reference Cv 2',linewidth=1)
 plt.legend(loc='best')
 plt.show()
 
