@@ -73,7 +73,9 @@ plt.figure('histograms')
 for fname in fnames:
         plt.plot(current_histogram[fname],
                    color=my_color[fname], label=fname)
-        #print(my_histogram[fname])
+        plt.xlabel('Number of Atoms')
+        plt.ylabel('ln(weights)')
+        plt.title('Figure 2: Example of partially converged histogram')
 plt.legend(loc='best')
 
 # plt.figure('excess free energy')
@@ -88,13 +90,10 @@ plt.legend(loc='best')
 #         plt.plot(current_total_energy[fname]/current_histogram[fname],
 #                    color=my_color[fname], label=fname)
 
-plt.legend(loc='best')
+# plt.legend(loc='best')
 
 # plt.figure('excess entropy')
 # for fname in fnames:
-#         U = current_total_energy[fname]/current_histogram[fname]
-#         F = current_free_energy[fname]
-#         T = my_temperature[fname]
 #         S = (U-F)/T
 #         S = S-S[0]
 #         plt.plot(S,
@@ -102,9 +101,6 @@ plt.legend(loc='best')
 
 plt.figure('excess entropy/N')
 for fname in fnames:
-        # U = current_total_energy[fname]/current_histogram[fname]
-        # F = current_free_energy[fname]
-        # T = my_temperature[fname]
         S = (U-F)/T
         S = S-S[0]
         SN = np.arange(0, len(S), 1)
@@ -118,7 +114,6 @@ plt.legend(loc='best')
 
 plt.figure('excess internal energy/N')
 for fname in fnames:
-        U = current_total_energy[fname]/current_histogram[fname]
         UN = np.arange(0, len(U), 1)
         plt.plot((np.pi/6)*UN/my_volume[fname],U/UN,
                    color=my_color[fname], label=fname)
@@ -135,15 +130,12 @@ for fname in fnames:
                 p_exc[i] = (-F[i]+u*(i+.5))/V
                 p[i] = (-F[i]+u*(i+.5))/V+(i+.5)*T/V
         UN = np.arange(0.5, N-1, 1)
-        #print(len(UN), len(p))
         plt.ylabel('Pressure')
         plt.xlabel(r'$\eta$')
         plt.plot((np.pi/6)*UN/my_volume[fname],p,
                    color=my_color[fname], label=fname)
         plt.plot((np.pi/6)*UN/my_volume[fname],p_exc,'--',
                    color=my_color[fname], label=fname + ' pexc')
-        plt.ylabel('Excess pressure')
-        plt.xlabel(N)
 
 
 plt.figure('Gibbs')
@@ -225,7 +217,7 @@ for fname in fnames:
 plt.figure('Grand P')
 for fname in fnames:
     Grand_P = (T*Grand_S + mu * Grand_N - Grand_U)/V
-    plt.plot(Grand_N, Grand_P,':',
+    plt.plot(Grand_N, Grand_P,':', 'r',
                 color=my_color[fname], label=fname)
     p_ideal = T*Grand_N/V
     print('pressure', Grand_P)
@@ -239,12 +231,7 @@ for fname in fnames:
 
 plt.figure('Grand G vs Grand P')
 for fnamme in fnames:
-    mu = all_mu[i]
-    Grand_G = np.zeros_like(all_mu)
-    # Grand_G = mu*Grand_N
-    for i in range(len(all_mu)):
-        Grand_G[i] = mu*Grand_N[i]
-    p_ideal = T*Grand_N/V
+    Grand_G = mu*Grand_N
     plt.plot(Grand_P, Grand_G,'.:',
                 color=my_color[fname], label=fname)
 
