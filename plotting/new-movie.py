@@ -3,6 +3,7 @@
 import sys, re
 import numpy as np
 import matplotlib.pyplot as plt
+import re
 
 def latex_float(x):
     exp = int(np.log10(x*1.0))
@@ -41,9 +42,25 @@ def fix_fname(fname):
         return fname[:-5]
     return fname
 
-fnames = [fix_fname(f) for f in sys.argv[1:]]
+# will be None if a float i.e. the user input a min temperature.
+last_fname = re.search('[a-zA-Z]', sys.argv[-1])
+
+if not last_fname:
+    fnames = [fix_fname(f) for f in sys.argv[1:-1]]
+else:
+    fnames = [fix_fname(f) for f in sys.argv[1:]]
+
+
 for fname in fnames:
     print(fname)
+    if len(sys.argv) > 1 and not last_fname: # the user has input a min temp.
+        minT = float(sys.argv[-1])
+        print('minT =', minT)
+    else:
+        for i in range(len(fname)-5):
+            if fname[i:i+len('minT')] == 'minT':
+                minT = float(fname[i+len('minT'):].split('-')[0])
+                print('minT =', minT)
     with open(fname+'.yaml') as f:
         yaml = f.read()
         my_too_hi[fname] = lookup_entry('too_hi', yaml)
@@ -250,7 +267,7 @@ while keep_going:
             plt.legend(loc='best')
 
             all_figures.add(plt.figure('Heat capacity'))
-            T = np.linspace(minT,1,3000)
+            T = np.linspace(minT,0.4,100)
             plt.title('$t=%s/%s$' % (latex_float(t),
                                      latex_float(my_time[fname][-1])))
             plt.ylabel('heat capacity')
