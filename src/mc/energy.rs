@@ -278,6 +278,8 @@ impl Method {
                     meanhist += h as f64;
                 }
             }
+            // Round too_lo to the center of the energy bin.
+            let too_lo = bins.index_to_state(bins.state_to_index(State { E: too_lo })).E;
             meanhist /= num_states as f64;
             for (i, s) in entropy.iter_mut().enumerate() {
                 let e = bins.index_to_state(i).E;
@@ -701,7 +703,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
                 out_of_bounds = e2 > maxe && e2 > e1.E;
             }
             if let Some(mine) = self.min_allowed_energy {
-                out_of_bounds = e2 < mine && e2 < e1.E
+                out_of_bounds = out_of_bounds || (e2 < mine && e2 < e1.E)
             }
             if !out_of_bounds {
                 let e2 = State { E: e2 };
