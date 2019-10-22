@@ -5,7 +5,7 @@ import sys, os
 N = 31
 maxrad = 3
 
-dE = 0.04
+dE = 0.01
 minT = 0.005
 
 n_radial = maxrad*50+1

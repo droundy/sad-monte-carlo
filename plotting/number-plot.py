@@ -74,7 +74,7 @@ for fname in fnames:
         plt.plot(current_histogram[fname],
                    color=my_color[fname], label=fname)
         plt.xlabel('Number of Atoms')
-        plt.ylabel('ln(weights)')
+        plt.ylabel('histogram (number of moves)')
         plt.title('Figure 2: Example of partially converged histogram')
 plt.legend(loc='best')
 
@@ -108,6 +108,7 @@ for fname in fnames:
                    color=my_color[fname], label=fname)
         plt.ylabel('S_Excess')
         plt.xlabel(r'$\eta$')
+plt.tight_layout()
 
 
 plt.legend(loc='best')
@@ -136,6 +137,7 @@ for fname in fnames:
                    color=my_color[fname], label=fname)
         plt.plot((np.pi/6)*UN/my_volume[fname],p_exc,'--',
                    color=my_color[fname], label=fname + ' pexc')
+plt.tight_layout()
 
 
 plt.figure('Gibbs')
@@ -162,7 +164,7 @@ plt.legend(loc='best')
 
 
 
-all_mu = np.linspace(-10, 2, 30000)
+all_mu = np.linspace(-10, 2, 30)
 # nQ = (mkT/2pi hbar^2)^1.5
 nQ = 0.001 # HOKEY
 
@@ -217,17 +219,31 @@ for fname in fnames:
 plt.figure('Grand P')
 for fname in fnames:
     Grand_P = (T*Grand_S + mu * Grand_N - Grand_U)/V
-    plt.plot(Grand_N, Grand_P,':', 'r',
-                color=my_color[fname], label=fname)
+    plt.plot(Grand_N, Grand_P,':.',
+             color=my_color[fname], label=fname)
     p_ideal = T*Grand_N/V
     print('pressure', Grand_P)
     print('entropy', Grand_S)
     plt.plot(Grand_N, p_ideal,'--',
                 color=my_color[fname], label='ideal')
     plt.plot(Grand_N, 2*p_ideal,'--', label='twice ideal')
+
+    # p_canonical = np.zeros(N-1)
+    # N_canonical = np.zeros(N-1)
+    # for i in range(0,N-1):
+    #     u = F[i+1]-F[i] # dN = 1
+    #     p_canonical[i] = (-F[i]+u*(i+.5))/V+(i+.5)*T/V
+    #     N_canonical[i] = i+0.5
+
+    # plt.plot(N_canonical,p_canonical,
+    #          color=my_color[fname], label='canonical'+fname)
+
     plt.legend(loc='best')
     plt.xlabel('Grand N')
     plt.ylabel('Grand Pressure')
+
+# plt.xlim(0, 5)
+# plt.ylim(0, 1)
 
 plt.figure('Grand G vs Grand P')
 for fnamme in fnames:
