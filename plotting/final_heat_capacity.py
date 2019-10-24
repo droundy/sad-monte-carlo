@@ -133,7 +133,7 @@ axins.plot(ref2_T, ref2_heat_capacity, '-', color='grey', label='RESTMC REFERENC
 axins.plot(ref3_T, ref3_heat_capacity, '--', color='blue', label='MCET REFERENCE',linewidth=1)
 axins.plot(ref4_T, ref4_heat_capacity, '--', color='black', label='ECM REFERENCE',linewidth=2)
 
-ax.legend(loc='best')
+ax.legend(loc='lower right')
 plt.xlim(0.01,0.4)
 plt.ylim(40,140)
 
