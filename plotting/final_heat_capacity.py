@@ -1,6 +1,7 @@
 import sys, re
 import numpy as np
 import matplotlib.pyplot as plt
+import martiniani
 
 # HOW TO RUN:
 # python3 plotting/final_heat_capacity.py lj-sad-31-minT001-de001.yaml lj-sad*yaml lj-samc-1e*yaml 0.01
@@ -123,15 +124,19 @@ plt.xlabel('temperature')
 # EMC (Exchange Monte Carlo) REFERENCE comes from https://aip.scitation.org/doi/pdf/10.1063/1.2202312?class=pdf&
 # The referee directed us to this paper!
 
+print(martiniani.T)
+
+plt.plot(martiniani.T, martiniani.CV, '-', color='r', label='PRX PT',linewidth=1)
 plt.plot(ref1_T, ref1_heat_capacity, '-', color='black', label='REM REFERENCE',linewidth=1)
 plt.plot(ref2_T, ref2_heat_capacity, '-', color='grey', label='RESTMC REFERENCE',linewidth=1)
 plt.plot(ref3_T, ref3_heat_capacity, '--', color='blue', label='MCET REFERENCE',linewidth=1)
-plt.plot(ref4_T, ref4_heat_capacity, '--', color='black', label='ECM REFERENCE',linewidth=2)
+plt.plot(ref4_T, ref4_heat_capacity, '--', color='black', label='EMC REFERENCE',linewidth=2)
 
+axins.plot(martiniani.T, martiniani.CV, '-', color='r', label='PRX PT',linewidth=1)
 axins.plot(ref1_T, ref1_heat_capacity, '-', color='black', label='REM REFERENCE',linewidth=1)
 axins.plot(ref2_T, ref2_heat_capacity, '-', color='grey', label='RESTMC REFERENCE',linewidth=1)
 axins.plot(ref3_T, ref3_heat_capacity, '--', color='blue', label='MCET REFERENCE',linewidth=1)
-axins.plot(ref4_T, ref4_heat_capacity, '--', color='black', label='ECM REFERENCE',linewidth=2)
+axins.plot(ref4_T, ref4_heat_capacity, '--', color='black', label='EMC REFERENCE',linewidth=2)
 
 ax.legend(loc='lower right')
 plt.xlim(0.01,0.4)
