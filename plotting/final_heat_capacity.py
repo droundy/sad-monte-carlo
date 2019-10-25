@@ -124,7 +124,6 @@ plt.xlabel('temperature')
 # EMC (Exchange Monte Carlo) REFERENCE comes from https://aip.scitation.org/doi/pdf/10.1063/1.2202312?class=pdf&
 # The referee directed us to this paper!
 
-print(martiniani.T)
 
 plt.plot(martiniani.T, martiniani.CV, '-', color='r', label='PRX PT',linewidth=1)
 plt.plot(ref1_T, ref1_heat_capacity, '-', color='black', label='REM REFERENCE',linewidth=1)
