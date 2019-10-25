@@ -4,6 +4,7 @@ import sys, re
 import numpy as np
 import matplotlib.pyplot as plt
 import re
+import martiniani
 
 def latex_float(x):
     exp = int(np.log10(x*1.0))
@@ -19,6 +20,13 @@ allcolors = list(reversed(['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'ta
                            'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan',
                            'xkcd:lightblue', 'xkcd:puke', 'xkcd:puce', 'xkcd:turquoise']))
 
+T = martiniani.T
+CV = martiniani.CV
+j_lower_peak = 0
+for j in range(len(T)):
+    if T[j] < 0.2:
+        j_lower_peak = j
+
 my_energy = {}
 my_de = {}
 my_histogram = {}
@@ -31,6 +39,9 @@ my_minT = {}
 my_too_lo = {}
 my_too_hi = {}
 minT = None
+
+my_cv_error = {}
+cv_iters = []
 
 def lookup_entry(entry, yaml_data):
     x = re.search('{}: (\S+)'.format(entry), yaml_data)
@@ -70,6 +81,7 @@ for fname in fnames:
     my_energy[fname] = np.loadtxt(fname+'.energy')
     my_de[fname] = my_energy[fname][1] - my_energy[fname][0]
     my_entropy[fname] = np.loadtxt(fname+'.entropy')
+    my_cv_error[fname] = []
     if minT is None and my_minT[fname] is not None:
         minT = my_minT[fname]
     my_time[fname] = np.loadtxt(fname+'.time')
@@ -267,14 +279,36 @@ while keep_going:
             plt.legend(loc='best')
 
             all_figures.add(plt.figure('Heat capacity'))
-            T = np.linspace(minT,0.4,100)
             plt.title('$t=%s/%s$' % (latex_float(t),
                                      latex_float(my_time[fname][-1])))
             plt.ylabel('heat capacity')
             plt.xlabel('temperature')
-            plt.plot(T, heat_capacity(T, my_energy[fname], my_entropy[fname][j,:]), my_color[fname],
-                     label=fname)
+            mycv = heat_capacity(T, my_energy[fname], my_entropy[fname][j,:])
+            plt.plot(T, mycv, my_color[fname], label=fname)
             plt.legend(loc='best')
+
+            err = 0
+            norm = 0
+            for j in range(1,j_lower_peak):
+                err += (T[j+1]-T[j-1])*abs(CV[j]-mycv[j])
+                norm += (T[j+1]-T[j-1])
+            my_cv_error[fname].append(err/norm)
+
+            all_figures.add(plt.figure('CV errors'))
+            if len(my_time[fname]) >= len(my_cv_error[fname]):
+                plt.loglog(my_time[fname][:len(my_cv_error[fname])], my_cv_error[fname],
+                           my_color[fname], label=fname)
+            else:
+                plt.loglog(my_time[fname], my_cv_error[fname][:len(my_time[fname])],
+                           my_color[fname], label=fname)
+            plt.legend(loc='best')
+
+        all_figures.add(plt.figure('Heat capacity'))
+        plt.plot(T, CV, 'k:', label='Martiniani et al.')
+        plt.xlabel('number of moves')
+        plt.ylabel('mean error in $C_V$')
+        plt.legend(loc='best')
+
         plt.pause(0.1)
 
 plt.ioff()
