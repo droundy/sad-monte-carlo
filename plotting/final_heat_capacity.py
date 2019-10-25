@@ -103,7 +103,7 @@ for fname in fnames:
     my_entropy[fname] = np.loadtxt(fname+'.entropy')
     my_color[fname] = allcolors.pop()
 
-    T = np.linspace(minT,0.4,500)
+    T = np.linspace(minT,0.4,5000)
     ax.plot(T, heat_capacity(T, my_energy[fname], my_entropy[fname][-1:]), my_color[fname],
         label=fname, linewidth=2)
     axins.plot(T, heat_capacity(T, my_energy[fname], my_entropy[fname][-1:]), my_color[fname],
