@@ -307,6 +307,7 @@ while keep_going:
         plt.plot(T, CV, 'k:', label='Martiniani et al.')
         plt.xlabel('number of moves')
         plt.ylabel('mean error in $C_V$')
+        plt.ylim(0,140)
         plt.legend(loc='best')
 
         plt.pause(0.1)
