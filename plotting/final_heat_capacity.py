@@ -103,7 +103,7 @@ for fname in fnames:
     my_entropy[fname] = np.loadtxt(fname+'.entropy')
     my_color[fname] = allcolors.pop()
 
-    T = np.linspace(minT,0.4,500)
+    T = np.linspace(minT,0.4,5000)
     ax.plot(T, heat_capacity(T, my_energy[fname], my_entropy[fname][-1:]), my_color[fname],
         label=fname, linewidth=2)
     axins.plot(T, heat_capacity(T, my_energy[fname], my_entropy[fname][-1:]), my_color[fname],
@@ -122,9 +122,8 @@ plt.xlabel('temperature')
 # They use a radius of Rc = ? and an energy bin size ?
 
 # EMC (Exchange Monte Carlo) REFERENCE comes from https://aip.scitation.org/doi/pdf/10.1063/1.2202312?class=pdf&
-# The referee directed us to this paper!
-
-print(martiniani.T)
+# The referee directed us to this paper! Vladimir Mandelshtam gave us the exact data which I input!
+# They use a radius of Rc = 2.5/sigma and an energy bin size ? and N_MC = 1.5 X 10^9
 
 plt.plot(martiniani.T, martiniani.CV, '-', color='r', label='PRX PT',linewidth=1)
 plt.plot(ref1_T, ref1_heat_capacity, '-', color='black', label='REM REFERENCE',linewidth=1)

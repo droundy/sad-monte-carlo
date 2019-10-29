@@ -1037,10 +1037,18 @@ fn report_wl_flatness(lowest_hist: u64, highest_hist: u64, total_hist: u64,
         } else {
             bins.index_to_state(highest).E
         };
-        println!("        WL:  flatness {:.1} with min {:.2} at {} and max {:.2} at {} (with total {})!",
-                 PrettyFloat(lowest_hist as f64*num_states as f64
-                             / total_hist as f64),
-                 PrettyFloat(lowest_hist as f64), lowest_energy,
-                 PrettyFloat(highest_hist as f64), highest_energy, total_hist);
+        if lowest_hist == 0 {
+            let zeros = hist.iter().cloned().filter(|&x| x == 0).count();
+            println!("        WL:  {:.3}/{:.3} bins have been unexplored",
+                     PrettyFloat(zeros as f64),
+                     PrettyFloat(num_states as f64));
+        } else {
+            println!("        WL:  flatness {:.1} with min {:.2} at {:.7} and max {:.2} at {:.7} (with total {:.2})!",
+                     PrettyFloat(lowest_hist as f64*num_states as f64
+                                 / total_hist as f64),
+                     PrettyFloat(lowest_hist as f64), lowest_energy.pretty(),
+                     PrettyFloat(highest_hist as f64), highest_energy.pretty(),
+                     PrettyFloat(total_hist as f64));
+        }
     }
 }
