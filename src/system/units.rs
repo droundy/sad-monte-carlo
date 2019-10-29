@@ -30,6 +30,19 @@ make_units! {
 
 impl_serde!(UNITS);
 
+impl Unitless<f64> {
+    /// Format the number in a nice way
+    pub fn pretty(&self) -> crate::prettyfloat::PrettyFloat {
+        crate::prettyfloat::PrettyFloat(*self.value())
+    }
+}
+impl Energy<f64> {
+    /// Format the number in a nice way
+    pub fn pretty(&self) -> crate::prettyfloat::PrettyFloat {
+        crate::prettyfloat::PrettyFloat(*(*self/EPSILON).value())
+    }
+}
+
 impl<V: ClapMe,U> ClapMe for UNITS<V,U> {
     fn with_clap<T>(info: ::clapme::ArgInfo, app: ::clapme::clap::App,
                     f: impl FnOnce(::clapme::clap::App) -> T) -> T {

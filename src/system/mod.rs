@@ -11,6 +11,8 @@ pub mod ising;
 pub mod lattice_gas;
 pub mod square;
 pub mod optsquare;
+pub mod wca;
+pub mod lj;
 
 /// A unitless number.  This is equivalent to a f64, but makes clear
 /// that it is going to be interpreted as a dimensionless quantity.
@@ -67,6 +69,12 @@ pub trait System : ::serde::Serialize + ::serde::de::DeserializeOwned {
     }
     /// Verify as well as we can that the energy is currently correct.
     fn verify_energy(&self) {
+    }
+    /// The data type describing what we want to collect in terms of
+    /// statistics.
+    type CollectedData: Default + ::serde::Serialize + ::serde::de::DeserializeOwned;
+    /// Collect some data for the current state of the system
+    fn collect_data(&self, _data: &mut Self::CollectedData, _iter: u64) {
     }
 }
 

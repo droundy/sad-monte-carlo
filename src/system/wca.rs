@@ -2,7 +2,7 @@
 
 use super::*;
 
-use dimensioned::{Dimensionless, Sqrt};
+use dimensioned::{Dimensionless, Sqrt, Abs};
 use vector3d::Vector3d;
 use rand::prelude::*;
 use rand::distributions::Uniform;
@@ -11,19 +11,21 @@ use std::default::Default;
 
 use super::optcell::{Cell, CellDimensions};
 
-/// The parameters needed to configure a square well system.
+
+/// The parameters needed to configure a Weeks-Chandler-Anderson (WCA) system.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
-pub struct SquareWellParams {
-    well_width: Unitless,
-    _dim: CellDimensions,
+pub struct WcaParams {
+   _dim: CellDimensions,
 }
 
 #[allow(non_snake_case)]
-/// A square well fluid.
+/// A WCA fluid.
 #[derive(Serialize, Deserialize, Debug)]
-pub struct SquareWell {
+pub struct Wca {
     /// The energy of the system
     E: Energy,
+    /// The estimated accumulated error so far in E
+    error: Energy,
     /// The dimensions of the box.
     pub cell: Cell,
     /// The last change we made (and might want to undo).
@@ -31,29 +33,44 @@ pub struct SquareWell {
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+/// Define the types of changes that can be made to the system
 enum Change {
+    /// Move an atom already in the system
     Move { which: usize, to: Vector3d<Length>, e: Energy },
+    /// Add an atom to the system
     /// The added atom is always pushed to the end of the vector!
     Add { to: Vector3d<Length>, e: Energy },
+    /// Remove an atom from the system
     Remove { which: usize, e: Energy },
+    /// Make no changes to the system
     None,
 }
 
-impl SquareWell {
-    fn max_interaction(&self) -> u64 {
-        max_balls_within(self.cell.r_cutoff)
+fn r_cutoff() -> Length {
+    2.0_f64.powf(1.0/6.0)*units::SIGMA
+}
+
+/// Define the WCA interaction potential and criteria
+fn potential(r_squared: Area) -> Energy {
+    let r_cutoff: Length = r_cutoff();
+    let r_cutoff_squared: Area = r_cutoff*r_cutoff;
+    let sig_sqr = units::SIGMA*units::SIGMA;
+    if r_squared < r_cutoff_squared {
+        4.0*units::EPSILON*((sig_sqr/r_squared).powi(6) - (sig_sqr/r_squared).powi(3)) + units::EPSILON
+    } else {
+        0.0*units::EPSILON
     }
+}
+
+impl Wca {
     /// Add an atom at a given location.  Returns the change in
     /// energy, or `None` if the atom could not be placed there.
     pub fn add_atom_at(&mut self, r: Vector3d<Length>) -> Option<Energy> {
         let mut e = self.E;
         for r1 in self.cell.maybe_interacting_atoms(r) {
             let dist2 = (r1-r).norm2();
-            if dist2 < units::SIGMA*units::SIGMA {
-                self.possible_change = Change::None;
-                return None;
-            } else if dist2 < self.cell.r_cutoff*self.cell.r_cutoff {
-                e -= units::EPSILON;
+            if dist2 < self.cell.r_cutoff*self.cell.r_cutoff {
+                e += potential(dist2);
             }
         }
         self.possible_change = Change::Add{ to: r, e };
@@ -63,22 +80,12 @@ impl SquareWell {
     /// `None` if the atom could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
         let mut e = self.E;
-        let wsqr = self.cell.r_cutoff*self.cell.r_cutoff;
         let from = self.cell.positions[which];
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, which) {
-            let dist2 = (r1-r).norm2();
-            if dist2 < units::SIGMA*units::SIGMA {
-                self.possible_change = Change::None;
-                return None;
-            }
-            if dist2 < wsqr {
-                e -= units::EPSILON;
-            }
+            e += potential((r1-r).norm2());
         }
         for r1 in self.cell.maybe_interacting_atoms_excluding(from, which) {
-            if (r1-from).norm2() < wsqr {
-                e += units::EPSILON;
-            }
+            e -= potential((r1-from).norm2());
         }
         self.possible_change = Change::Move{ which, to: r, e };
         Some(e)
@@ -88,74 +95,49 @@ impl SquareWell {
         let r = self.cell.positions[which];
         let mut e = self.E;
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, which) {
-            if (r1-r).norm2() < self.cell.r_cutoff*self.cell.r_cutoff {
-                e += units::EPSILON;
-            }
+            e -= potential((r1-r).norm2());
         }
         self.possible_change = Change::Remove{ which, e };
         e
     }
-    fn compute_energy_slowly(&self) -> Energy {
-        let mut e: Energy = units::EPSILON*0.0;
-        for &r1 in self.cell.positions.iter() {
-            for &r2 in self.cell.positions.iter() {
-                let mut r12 = r1 - r2;
-                while r12.x > self.cell.box_diagonal.x/2.0 {
-                    r12.x -= self.cell.box_diagonal.x;
-                }
-                while r12.y > self.cell.box_diagonal.y/2.0 {
-                    r12.y -= self.cell.box_diagonal.y;
-                }
-                while r12.z > self.cell.box_diagonal.z/2.0 {
-                    r12.z -= self.cell.box_diagonal.z;
-                }
-                while r12.x < -self.cell.box_diagonal.x/2.0 {
-                    r12.x += self.cell.box_diagonal.x;
-                }
-                while r12.y < -self.cell.box_diagonal.y/2.0 {
-                    r12.y += self.cell.box_diagonal.y;
-                }
-                while r12.z < -self.cell.box_diagonal.z/2.0 {
-                    r12.z += self.cell.box_diagonal.z;
-                }
-                for i in -1..2 {
-                    for j in -1..2 {
-                        for k in -1..2 {
-                            let lattice_vector = Vector3d::new(self.cell.box_diagonal.x*(i as f64),
-                                                               self.cell.box_diagonal.y*(j as f64),
-                                                               self.cell.box_diagonal.z*(k as f64));
-                            let r = r12 + lattice_vector;
-                            let dist2 = r.norm2();
-                            if dist2 < self.cell.r_cutoff*self.cell.r_cutoff && dist2 > 0.0*units::SIGMA*units::SIGMA {
-                                e -= units::EPSILON;
-                            }
-                        }
-                    }
-                }
-            }
+    fn set_energy(&mut self, new_e: Energy) {
+        let new_error = if new_e.abs() > self.E.abs() {
+            new_e.abs()*1e-14*(self.num_atoms() as f64)
+        } else {
+            self.E.abs()*1e-14*(self.num_atoms() as f64)
+        };
+        self.error = new_error + self.error;
+        if self.error > self.expected_accuracy(new_e) {
+            self.error *= 0.0;
+            self.E = self.compute_energy();
+        } else {
+            self.E = new_e;
         }
-        e*0.5
+    }
+    fn expected_accuracy(&self, newe: Energy) -> Energy {
+        newe.abs()*1e-14*(self.num_atoms() as f64)*(self.num_atoms() as f64)
     }
 }
 
-impl From<SquareWellParams> for SquareWell {
-    fn from(params: SquareWellParams) -> SquareWell {
-        let cell = Cell::new(&params._dim, params.well_width*units::SIGMA);
+impl From<WcaParams> for Wca {
+    fn from(params: WcaParams) -> Wca {
+        let cell = Cell::new(&params._dim, r_cutoff());
         if cell.r_cutoff > cell.box_diagonal.x ||
            cell.r_cutoff > cell.box_diagonal.y ||
            cell.r_cutoff > cell.box_diagonal.z
         {
             panic!("The cell is not large enough for the well width, sorry!");
         }
-        SquareWell {
+        Wca {
             E: 0.0*units::EPSILON,
+            error: 0.0*units::EPSILON,
             cell,
             possible_change: Change::None,
         }
     }
 }
 
-impl System for SquareWell {
+impl System for Wca {
     type CollectedData = ();
     fn energy(&self) -> Energy {
         self.E
@@ -164,9 +146,7 @@ impl System for SquareWell {
         let mut e: Energy = units::EPSILON*0.0;
         for (which, &r1) in self.cell.positions.iter().enumerate() {
             for r2 in self.cell.maybe_interacting_atoms_excluding(r1, which) {
-                if (r1-r2).norm2() < self.cell.r_cutoff*self.cell.r_cutoff {
-                    e -= units::EPSILON;
-                }
+                e += potential((r1-r2).norm2());
             }
         }
         e*0.5
@@ -174,44 +154,43 @@ impl System for SquareWell {
     fn update_caches(&mut self) {
         self.cell.update_caches();
     }
-    fn delta_energy(&self) -> Option<Energy> {
-        Some(units::EPSILON)
-    }
-    fn greatest_possible_energy(&self) -> Option<Energy> {
+    fn lowest_possible_energy(&self) -> Option<Energy> {
         Some(0.0*units::EPSILON)
     }
-    fn lowest_possible_energy(&self) -> Option<Energy> {
-        Some(-(self.cell.positions.len() as f64)*(self.max_interaction() as f64)*units::EPSILON)
-    }
     fn verify_energy(&self) {
-        assert_eq!(self.E, self.compute_energy_slowly());
+        let egood = self.compute_energy();
+        let expected = self.expected_accuracy(self.E);
+        if (egood - self.E).abs() > expected {
+            println!("Error in E is {} when it should be {} < {}", egood - self.E, self.error, expected);
+            assert_eq!(egood, self.E);
+        }
     }
 }
 
-impl ConfirmSystem for SquareWell {
+impl ConfirmSystem for Wca {
     fn confirm(&mut self) {
         match self.possible_change {
             Change::None => (),
             Change::Move{which, to, e} => {
                 self.cell.move_atom(which, to);
-                self.E = e;
+                self.set_energy(e);
                 self.possible_change = Change::None;
             },
             Change::Add{to, e} => {
                 self.cell.add_atom_at(to);
-                self.E = e;
+                self.set_energy(e);
                 self.possible_change = Change::None;
             },
             Change::Remove{which, e} => {
                 self.cell.remove_atom(which);
-                self.E = e;
+                self.set_energy(e);
                 self.possible_change = Change::None;
             },
         }
     }
 }
 
-impl GrandSystem for SquareWell {
+impl GrandSystem for Wca {
     fn plan_add(&mut self, rng: &mut MyRng) -> Option<Energy> {
         let r = self.cell.put_in_cell(
             Vector3d::new(Length::new(rng.sample(Uniform::new(0.0, self.cell.box_diagonal.x.value_unsafe))),
@@ -228,7 +207,7 @@ impl GrandSystem for SquareWell {
     }
 }
 
-impl MovableSystem for SquareWell {
+impl MovableSystem for Wca {
     fn plan_move(&mut self, rng: &mut MyRng, mean_distance: Length) -> Option<Energy> {
         if self.cell.positions.len() > 0 {
             let which = rng.sample(Uniform::new(0, self.cell.positions.len()));
@@ -241,37 +220,6 @@ impl MovableSystem for SquareWell {
     fn max_size(&self) -> Length {
         self.cell.box_diagonal.norm2().sqrt()
     }
-}
-
-fn max_balls_within(mut distance: Length) -> u64 {
-    distance += 1e-10*units::SIGMA; // add a tiny, but necessary margin of error
-    let a = 2.0_f64.sqrt()*units::SIGMA; // fcc lattice constant
-    let c = (*(distance/a).value()).ceil() as i64 + 1; // number of cubic fcc cells to go out from center
-    let mut num: i64 = -1; // number of balls within a given radius; don't count the center ball
-    let d2 = distance*distance;
-
-    for n in -c .. c+1 {
-        for m in -c .. c+1 {
-            for l in -c .. c+1 {
-                let x0 = ((m+l) as f64)*a;
-                let y0 = ((n+l) as f64)*a;
-                let z0 = ((m+n) as f64)*a;
-                if x0*x0 + y0*y0 + z0*z0 <= d2 {
-                    num += 1;
-                }
-                if (x0 + 0.5*a)*(x0 + 0.5*a) + (y0 + 0.5*a)*(y0 + 0.5*a) + z0*z0 <= d2 {
-                    num += 1;
-                }
-                if (x0 + 0.5*a)*(x0 + 0.5*a) + y0*y0 + (z0 + 0.5*a)*(z0 + 0.5*a) <= d2 {
-                    num += 1;
-                }
-                if x0*x0 + (y0 + 0.5*a)*(y0 + 0.5*a) + (z0 + 0.5*a)*(z0 + 0.5*a) <= d2 {
-                    num += 1;
-                }
-            }
-        }
-    }
-    num as u64
 }
 
 
@@ -287,30 +235,27 @@ pub enum CellDimensionsGivenNumber {
     FillingFraction(Unitless),
 }
 
-/// Parameters needed to configure a finite-N square-well system.
+/// Parameters needed to configure a finite-N WCAl system.
 #[derive(Serialize, Deserialize, Debug, ClapMe)]
 #[allow(non_snake_case)]
-pub struct SquareWellNParams {
-    /// The width of the well, relative to the diameter.
-    pub well_width: Unitless,
+pub struct WcaNParams {
     /// The sice of the cell.
     pub _dim: CellDimensionsGivenNumber,
     /// The number of atoms.
     pub N: usize,
 }
 
-impl Default for SquareWellNParams {
+impl Default for WcaNParams {
     fn default() -> Self {
-        SquareWellNParams {
-            well_width: Unitless::new(1.3),
+        WcaNParams {
             _dim: CellDimensionsGivenNumber::FillingFraction(Unitless::new(0.3)),
             N: 100,
         }
     }
 }
 
-impl From<SquareWellNParams> for SquareWell {
-    fn from(params: SquareWellNParams) -> SquareWell {
+impl From<WcaNParams> for Wca {
+    fn from(params: WcaNParams) -> Wca {
         let n = params.N;
         let dim: CellDimensions = match params._dim {
             CellDimensionsGivenNumber::CellWidth(v)
@@ -320,9 +265,8 @@ impl From<SquareWellNParams> for SquareWell {
             CellDimensionsGivenNumber::FillingFraction(f)
                 => CellDimensions::CellVolume((n as f64)*(PI*units::SIGMA*units::SIGMA*units::SIGMA/6.0)/f),
         };
-        let mut sw = SquareWell::from(SquareWellParams {
+        let mut sw = Wca::from(WcaParams {
             _dim: dim,
-            well_width: params.well_width,
         });
 
         // Atoms will be initially placed on a face centered cubic (fcc) grid
@@ -532,20 +476,31 @@ fn energy_is_right_n200() {
 #[cfg(test)]
 fn energy_is_right(natoms: usize, ff: f64) {
     let mut sw = mk_sw(natoms, ff);
-    assert_eq!(sw.energy(), sw.compute_energy());
+    sw.verify_energy();
     let mut rng = MyRng::from_u64(1);
-    for i in 0..1000 {
-        sw.plan_move(&mut rng, Length::new(1.0));
-        sw.confirm();
-        println!("after move {}... {} vs {}", i, sw.energy(), sw.compute_energy());
-        assert_eq!(sw.energy(), sw.compute_energy());
+    let mut old_energy = sw.energy();
+    let maxe = (natoms as f64)*16.0*units::EPSILON;
+    let mut i = 0.0;
+    while i < 1000.0 {
+        if let Some(newe) = sw.plan_move(&mut rng, Length::new(1.0)) {
+            if newe < maxe || newe < old_energy {
+                sw.confirm();
+                println!("after move {}... {} vs {}", i, sw.energy(), sw.compute_energy());
+                sw.verify_energy();
+                old_energy = newe;
+                i += 1.0;
+            } else {
+                println!("rejected move giving {} (vs old_energy {} and maxe {})", newe, old_energy, maxe);
+                i += 1e-6;
+            }
+        }
     }
 }
 
 #[cfg(test)]
-fn mk_sw(natoms: usize, ff: f64) -> SquareWell {
-    let mut param = SquareWellNParams::default();
+fn mk_sw(natoms: usize, ff: f64) -> Wca {
+    let mut param = WcaNParams::default();
     param._dim = CellDimensionsGivenNumber::FillingFraction(Unitless::new(ff));
     param.N = natoms;
-    SquareWell::from(param)
+    Wca::from(param)
 }

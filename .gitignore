@@ -5,3 +5,10 @@
 *.out
 *.yaml
 .tmp*
+*.energy
+*.entropy
+*.gamma
+*.histogram
+*.time
+*#
+.#*

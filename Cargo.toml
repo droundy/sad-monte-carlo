@@ -15,7 +15,7 @@ serde_derive = "1.0"
 serde_yaml = "0.7"
 clapme = "0.1.13"
 
-vector3d = "0.1.7"
+vector3d = "0.1.8"
 rand_core = "0.2.1"
 rand = "0.5.4"
 tempfile = "3.0.3"

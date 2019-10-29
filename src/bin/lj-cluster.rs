@@ -1,13 +1,13 @@
 extern crate sadmc;
 
-use sadmc::system::optsquare::*;
+use sadmc::system::lj::*;
 use sadmc::system::System;
 
 use sadmc::mc::MonteCarlo;
 use sadmc::mc::energy::EnergyMC;
 
 fn main() {
-    let mut mc = EnergyMC::<SquareWell, <SquareWell as System>::CollectedData>::from_args::<SquareWellNParams>();
+    let mut mc = EnergyMC::<Lj, <Lj as System>::CollectedData>::from_args::<LjParams>();
     loop {
         mc.move_once();
     }

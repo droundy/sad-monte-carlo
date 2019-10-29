@@ -84,7 +84,7 @@ impl PluginManager {
     /// with the same set of plugins.  If you want different sets of
     /// plugins, use different managers.
     pub fn run<MC: MonteCarlo>(&self, mc: &MC, sys: &MC::System,
-                               plugins: &[&Plugin<MC>]) {
+                               plugins: &[&dyn Plugin<MC>]) {
         let moves = self.moves.get() + 1;
         self.moves.set(moves);
         if moves >= self.period.get() {
