@@ -20,8 +20,13 @@ allcolors = list(reversed(['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'ta
                            'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan',
                            'xkcd:lightblue', 'xkcd:puke', 'xkcd:puce', 'xkcd:turquoise']))
 
-T = martiniani.T
-CV = martiniani.CV
+
+data4 = np.loadtxt('LJ31_Cv_Reference_4.csv', delimiter = ',', unpack = True)
+T = data4[0]
+CV = (data4[1]-3/2)*31
+
+other_T = martiniani.T
+other_CV = martiniani.CV
 j_lower_peak = 0
 for j in range(len(T)):
     if T[j] < 0.2:
@@ -41,6 +46,8 @@ my_too_hi = {}
 minT = None
 
 my_cv_error = {}
+my_cv_peak_T = {}
+my_cv_peak = {}
 cv_iters = []
 
 def lookup_entry(entry, yaml_data):
@@ -61,7 +68,6 @@ if not last_fname:
 else:
     fnames = [fix_fname(f) for f in sys.argv[1:]]
 
-
 for fname in fnames:
     print(fname)
     if len(sys.argv) > 1 and not last_fname: # the user has input a min temp.
@@ -77,14 +83,21 @@ for fname in fnames:
         my_too_hi[fname] = lookup_entry('too_hi', yaml)
         my_too_lo[fname] = lookup_entry('too_lo', yaml)
         my_minT[fname] = lookup_entry('min_T', yaml)
-    my_histogram[fname] = np.loadtxt(fname+'.histogram')
+    my_time[fname] = np.loadtxt(fname+'.time')
+    first_frame = 0
+    for i in range(len(my_time[fname])):
+        if my_time[fname][i] <= 1e8:
+            first_frame = i
+    my_time[fname] = my_time[fname][first_frame:]
+    my_histogram[fname] = np.loadtxt(fname+'.histogram')[first_frame:]
     my_energy[fname] = np.loadtxt(fname+'.energy')
     my_de[fname] = my_energy[fname][1] - my_energy[fname][0]
-    my_entropy[fname] = np.loadtxt(fname+'.entropy')
+    my_entropy[fname] = np.loadtxt(fname+'.entropy')[first_frame:]
     my_cv_error[fname] = []
+    my_cv_peak[fname] = []
+    my_cv_peak_T[fname] = []
     if minT is None and my_minT[fname] is not None:
         minT = my_minT[fname]
-    my_time[fname] = np.loadtxt(fname+'.time')
     my_color[fname] = allcolors.pop()
     if len(my_time[fname]) > max_iter:
         max_iter = len(my_time[fname])
@@ -289,24 +302,52 @@ while keep_going:
 
             err = 0
             norm = 0
+            peak = 0
+            peak_T = 0
             for j in range(1,j_lower_peak):
                 err += (T[j+1]-T[j-1])*abs(CV[j]-mycv[j])
                 norm += (T[j+1]-T[j-1])
-            my_cv_error[fname].append(err/norm)
+                if mycv[j] > peak:
+                    peak = mycv[j]
+                    peak_T = T[j]
+            if len(my_cv_error[fname]) < len(my_time[fname]):
+                my_cv_error[fname].append(err/norm)
+                my_cv_peak[fname].append(peak)
+                my_cv_peak_T[fname].append(peak_T)
 
             all_figures.add(plt.figure('CV errors'))
-            if len(my_time[fname]) >= len(my_cv_error[fname]):
-                plt.loglog(my_time[fname][:len(my_cv_error[fname])], my_cv_error[fname],
+            plt.loglog(my_time[fname][:len(my_cv_error[fname])], my_cv_error[fname],
                            my_color[fname], label=fname)
-            else:
-                plt.loglog(my_time[fname], my_cv_error[fname][:len(my_time[fname])],
-                           my_color[fname], label=fname)
+            plt.xlabel('number of moves')
+            plt.ylabel('mean error in $C_V$')
+            plt.legend(loc='best')
+
+            true_cv_peak = 75.645
+            true_cv_peak_T = 0.02745
+
+            all_figures.add(plt.figure('CV peak temperature'))
+            plt.semilogx(my_time[fname][:len(my_cv_peak_T[fname])],
+                         np.array(my_cv_peak_T[fname]),
+                         my_color[fname], label=fname)
+            plt.xlabel('number of moves')
+            plt.ylabel('error in peak temp')
+            plt.axhline(true_cv_peak_T, color='k', linewidth=0.01)
+            plt.ylim(0,4*true_cv_peak_T)
+            plt.legend(loc='best')
+
+            all_figures.add(plt.figure('CV peak value'))
+            plt.semilogx(my_time[fname][:len(my_cv_peak[fname])],
+                         np.array(my_cv_peak[fname]),
+                         my_color[fname], label=fname)
+            plt.xlabel('number of moves')
+            plt.ylabel('error in peak value')
+            plt.axhline(true_cv_peak, color='k', linewidth=0.01)
+            plt.ylim(0,10*true_cv_peak)
             plt.legend(loc='best')
 
         all_figures.add(plt.figure('Heat capacity'))
-        plt.plot(T, CV, 'k:', label='Martiniani et al.')
-        plt.xlabel('number of moves')
-        plt.ylabel('mean error in $C_V$')
+        plt.plot(T, CV, 'k:', label='ref 4?')
+        plt.plot(other_T, other_CV, 'k-', label='Martiniani et al.')
         plt.ylim(0,140)
         plt.legend(loc='best')
 
