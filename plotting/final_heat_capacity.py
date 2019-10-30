@@ -47,6 +47,11 @@ data4 = np.loadtxt(ref4 + '.csv', delimiter = ',', unpack = True)
 ref4_T = data4[0]
 ref4_heat_capacity = (data4[1]-3/2)*31
 
+ref5 = 'tRem_Ref'
+data5 = np.loadtxt(ref5 + '.csv', delimiter = ',', unpack = True)
+ref5_T = data5[0]
+ref5_heat_capacity = data5[1]
+
 my_energy = {}
 my_de = {}
 my_histogram = {}
@@ -118,6 +123,8 @@ plt.xlabel('temperature')
 # RESTMC REFERENCE comes from Replica exchange statistical temperature Monte Carlo by Kim, Keyes, and Straub
 # They use a radius of Rc = 2.5/sigma and an energy bin size 0.2 at minimum
 
+# The t-REM Data comes from Replica exchange statistical temperature Monte Carlo by Kim, Keyes, and Straub
+
 # MCET (Monte Carlo Entropic Tempering) REFERENCE comes from https://journals.aps.org/pre/pdf/10.1103/PhysRevE.63.010902
 # They use a radius of Rc = ? and an energy bin size ?
 
@@ -130,12 +137,14 @@ plt.plot(ref1_T, ref1_heat_capacity, '-', color='black', label='REM REFERENCE',l
 plt.plot(ref2_T, ref2_heat_capacity, '-', color='grey', label='RESTMC REFERENCE',linewidth=1)
 plt.plot(ref3_T, ref3_heat_capacity, '--', color='blue', label='MCET REFERENCE',linewidth=1)
 plt.plot(ref4_T, ref4_heat_capacity, '--', color='black', label='EMC REFERENCE',linewidth=2)
+plt.plot(ref5_T, ref5_heat_capacity, 'o', color='orange', label='t-REM REFERENCE',markersize=8)
 
 axins.plot(martiniani.T, martiniani.CV, '-', color='r', label='PRX PT',linewidth=1)
 axins.plot(ref1_T, ref1_heat_capacity, '-', color='black', label='REM REFERENCE',linewidth=1)
 axins.plot(ref2_T, ref2_heat_capacity, '-', color='grey', label='RESTMC REFERENCE',linewidth=1)
 axins.plot(ref3_T, ref3_heat_capacity, '--', color='blue', label='MCET REFERENCE',linewidth=1)
 axins.plot(ref4_T, ref4_heat_capacity, '--', color='black', label='EMC REFERENCE',linewidth=2)
+axins.plot(ref5_T, ref5_heat_capacity, 'o', color='orange', label='t-REM REFERENCE',markersize=8)
 
 ax.legend(loc='lower right')
 plt.xlim(0.01,0.4)
