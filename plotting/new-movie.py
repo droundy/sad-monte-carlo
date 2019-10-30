@@ -235,7 +235,7 @@ while keep_going:
                          my_color[fname],
                          label=fname+' '+latex_float(len(my_entropy[fname])),
                          alpha=0.2)
-            else:
+            elif my_entropy[fname].shape[0] > j and my_entropy[fname].shape[1] > j:
                 plt.plot(my_energy[fname],
                          my_entropy[fname][j,:]-my_entropy[fname][j,:].max(),
                          my_color[fname],
