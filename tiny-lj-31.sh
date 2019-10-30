@@ -16,7 +16,7 @@ else
     ## ------ RUN ON A CONSTRAINED ENERGY RANGE ------ ## # The groundstate is -133.586422
     rq run -R -J 'tiny-lj-sad-0.01-minT-0.01' target/release/lj-cluster --N 31 --max-allowed-energy=0 --translation-scale 0.05 --movie-time '10^(1/8)' --save-time 2 --radius 2.5 --energy-bin 0.01 --save-as tiny-lj-sad-0.01-minT-0.01.yaml --sad-min-T 0.01
 
-    rq run -R -J 'tiny-lj-sad-0.01-minT-0.01-bigmax' target/release/lj-cluster --N 31 --max-allowed-energy=200 --translation-scale 0.05 --movie-time '10^(1/8)' --save-time 2 --radius 2.5 --energy-bin 0.01 --save-as tiny-lj-sad-0.01-minT-0.01-bigmax.yaml --sad-min-T 0.01
+    rq run --max-output 30 -R -J 'tiny-lj-sad-0.01-minT-0.01-bigmax' target/release/lj-cluster --N 31 --max-allowed-energy=200 --translation-scale 0.05 --movie-time '10^(1/8)' --save-time 2 --radius 2.5 --energy-bin 0.01 --save-as tiny-lj-sad-0.01-minT-0.01-bigmax.yaml --sad-min-T 0.01
 
     rq run -R -J 'tiny-lj-sad-0.01-minT-0.02' target/release/lj-cluster --N 31 --max-allowed-energy=0 --translation-scale 0.05 --movie-time '10^(1/8)' --save-time 2 --radius 2.5 --energy-bin 0.01 --save-as tiny-lj-sad-0.01-minT-0.02.yaml --sad-min-T 0.02
 
