@@ -160,6 +160,10 @@ for fname in fnames:
                    color=my_color[fname], label=fname)
 plt.legend(loc='best')
 
+
+
+
+
 all_mu = np.linspace(-10, 10, 300)
 # nQ = (mkT/2pi hbar^2)^1.5
 nQ = 0.001 # HOKEY
@@ -168,33 +172,9 @@ plt.figure('Grand Uexc')
 for fname in fnames:
         Uexc_N = current_total_energy[fname]/current_histogram[fname]
         Fexc_N = current_free_energy[fname]
-        V = my_volume[fname]
-        T = my_temperature[fname]
         beta = 1/T
-        Nmax = len(Fexc_N)-1
-        N_N = np.arange(0, Nmax, 1)
-
-        Fid_N = N_N*T*np.log(N_N/V/nQ) - N_N*T
-
-        for i in range(len(all_mu)):
-            mu = all_mu[i]
-            # Zgrand = \sum_N e^{-\beta(Fid(N) + Fexc_N - mu N)}
-            Zgrand_exponents = -beta*(Fid_N+Fexc_N-mu*N_N)
-            offset = Zgrand_exponents.max()
-            Zgrand_exponents -= offset
-            Zgrand = Zgrand_exponents.sum()
-
-all_mu = np.linspace(-10, 200, 30000)
-# nQ = (mkT/2pi hbar^2)^1.5
-nQ = 0.001 # HOKEY
-
-plt.figure('Grand Uexc')
-for fname in fnames:
-        Uexc_N = current_total_energy[fname]/current_histogram[fname]
-        Fexc_N = current_free_energy[fname]
-        beta = 1/T
-        Nmax = len(Fexc_N)-1
-        N_N = np.arange(0, Nmax+1, 1)
+        # Nmax = len(Fexc_N)
+        N_N = np.arange(0, len(Fexc_N), 1)
         Fid_N = N_N*T*np.log(N_N/V/nQ) - N_N*T
         Fid_N[0] = 0
         Grand_Uexc = np.zeros_like(all_mu)
@@ -203,6 +183,7 @@ for fname in fnames:
             mu = all_mu[i]
             # Zgrand = \sum_N e^{-\beta(Fid(N) + Fexc_N - mu N)}
             Zgrand_exponents = -beta*(Fid_N+Fexc_N-mu*N_N)
+            # look at crossover from + to - in all_mu
             offset = Zgrand_exponents.max()
             Zgrand_exponents -= offset
             Zgrand = np.exp(Zgrand_exponents).sum()
