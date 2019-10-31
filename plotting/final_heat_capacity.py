@@ -161,5 +161,52 @@ axins.set_yticklabels(np.around(np.arange(y1,y2+dy,dy),3).tolist())
 #axins.set_major_formatter(mtick.FormatStrFormatter('%.3'))
 ax.indicate_inset_zoom(axins)
 
+# --- Comparison of the Error in the Heat Capacity --- #
 
+fig2, ax2 = plt.subplots(figsize=[5, 4])
+
+for fname in fnames:
+    print(fname)
+    if len(sys.argv) > 1 and not last_fname: # the user has input a min temp.
+        minT = float(sys.argv[-1])
+        print('minT =', minT)
+    else:
+        for i in range(len(fname)-5):
+            if fname[i:i+len('minT')] == 'minT':
+                minT = float(fname[i+len('minT'):].split('-')[0])
+                print('minT =', minT)
+
+    my_energy[fname] = np.loadtxt(fname+'.energy')
+    my_entropy[fname] = np.loadtxt(fname+'.entropy')
+    my_time[fname] = np.loadtxt(fname+'.time')
+
+    my_color[fname] = allcolors.pop()
+
+    T_ref = ref5_T # using the t-REM reference
+    Cv_ref = ref5_heat_capacity
+
+    min_Err = []
+    max_Err = []
+    avg_Err = []
+
+    for i in range(len(my_entropy[fname])):
+        Cv = heat_capacity(T_ref, my_energy[fname], my_entropy[fname][i])
+        Err = (Cv - Cv_ref) / Cv_ref
+        #print(Err)
+        min_Err.append(np.amin(np.abs(Err)))
+        max_Err.append(np.amax(np.abs(Err)))
+        avg_Err.append(np.mean(np.abs(Err)))
+        #print(min_Err, max_Err, avg_Err)
+
+    ax2.loglog(my_time[fname], np.array(min_Err), my_color[fname],
+        label=fname, linewidth=2,color='blue')
+    ax2.loglog(my_time[fname], np.array(max_Err), my_color[fname],
+        label=fname, linewidth=2,color='red')
+    ax2.loglog(my_time[fname], np.array(avg_Err), my_color[fname],
+        label=fname, linewidth=2,color='black')
+
+    plt.xlim(1e5,1e12)
+    plt.ylim(1e-4,1e3)
+    plt.ylabel('Error in Heat Capacity')
+    plt.xlabel('moves')
 plt.show()
