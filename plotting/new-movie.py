@@ -104,9 +104,10 @@ for fname in fnames:
         norm_entropy = lambda s: s[match_index]
     if Smin is None:
         Ebest = my_energy[fname];
-        Sbest = my_entropy[fname][-1,:]
-        Smin = Sbest[Sbest!=0].min() - norm_entropy(Sbest)
-    Smax = max(Smax, norm_entropy(my_entropy[fname][-1,:]))
+        Sbest = my_entropy[fname][-1,:] - norm_entropy(my_entropy[fname][-1,:])
+        Smin = Sbest[Sbest!=0].min()
+    Smax = max(Smax, (my_entropy[fname][-1,:] - norm_entropy(my_entropy[fname][-1,:])).max())
+    print('Smax is now', Smax)
 
 EmaxS = Ebest[np.argmax(Sbest)]
 EminT = Ebest[np.argmax(Sbest*minT - Ebest)]
@@ -191,8 +192,6 @@ while keep_going:
         plt.axvline(EminT, linestyle=':', color='#ffaaaa')
 
         all_figures.add(plt.figure('Normed entropy'))
-        for E0 in np.linspace(2*Ebest.min() - Ebest.max(), Ebest.max(), 20):
-            plt.plot(Ebest, Smin + (Ebest - E0)/minT, ':', color='#ddaa00')
         plt.axvline(EminT, linestyle=':', color='#ffaaaa')
         plt.plot(Ebest, Sbest - Sbest.max(), ':', color='#aaaaaa')
         # all_figures.add(plt.figure('Temperature'))
@@ -226,7 +225,6 @@ while keep_going:
             norm_entropy = lambda s: s.max()
             if args.match_energy is not None:
                 match_index = (np.abs(my_energy[fname] - args.match_energy)).argmin()
-                print('match_index is', match_index, 'from', args.match_energy)
                 norm_entropy = lambda s: s[match_index]
             all_figures.add(plt.figure('Normed entropy'))
             if my_too_lo[fname]:
@@ -243,8 +241,6 @@ while keep_going:
                          label=fname+' '+latex_float(len(my_entropy[fname])),
                          alpha=0.2)
             elif my_entropy[fname].shape[0] > j and my_entropy[fname].shape[1] > j:
-                print('\n\nmy_entropy shape is', my_entropy[fname].shape)
-                print('my_energy shape is', my_energy[fname].shape)
                 plt.plot(my_energy[fname],
                          my_entropy[fname][j,:]- norm_entropy(my_entropy[fname][j,:]),
                          my_color[fname],
