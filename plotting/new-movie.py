@@ -33,8 +33,11 @@ data4 = np.loadtxt('LJ31_Cv_Reference_4.csv', delimiter = ',', unpack = True)
 T = data4[0]
 CV = (data4[1]-3/2)*31
 
+T = np.linspace(args.minT, 0.4, 1000)
+
 other_T = martiniani.T
 other_CV = martiniani.CV
+other_name = 'Martiniani et al.'
 j_lower_peak = 0
 for j in range(len(T)):
     if T[j] < 0.2:
@@ -72,6 +75,16 @@ def fix_fname(fname):
 print(args)
 fnames = [fix_fname(f) for f in args.yaml]
 
+def heat_capacity(T, E, S):
+    C = np.zeros_like(T)
+    for i in range(len(T)):
+        boltz_arg = S - E/T[i]
+        P = np.exp(boltz_arg - boltz_arg.max())
+        P = P/P.sum()
+        U = (E*P).sum()
+        C[i] = ((E-U)**2*P).sum()/T[i]**2
+    return C
+
 for fname in fnames:
     print(fname)
     with open(fname+'.yaml') as f:
@@ -105,6 +118,7 @@ for fname in fnames:
     if Smin is None:
         Ebest = my_energy[fname];
         Sbest = my_entropy[fname][-1,:] - norm_entropy(my_entropy[fname][-1,:])
+        CV = heat_capacity(T, Ebest, Sbest)
         Smin = Sbest[Sbest!=0].min()
     Smax = max(Smax, (my_entropy[fname][-1,:] - norm_entropy(my_entropy[fname][-1,:])).max())
     print('Smax is now', Smax)
@@ -118,16 +132,6 @@ Sbest_interesting = Sbest[np.argwhere(Ebest == EminT)[0][0]:np.argwhere(Ebest ==
 Ebest_interesting = Ebest[np.argwhere(Ebest == EminT)[0][0]:np.argwhere(Ebest == EmaxS)[0][0]+1]
 
 plt.ion()
-
-def heat_capacity(T, E, S):
-    C = np.zeros_like(T)
-    for i in range(len(T)):
-        boltz_arg = S - E/T[i]
-        P = np.exp(boltz_arg - boltz_arg.max())
-        P = P/P.sum()
-        U = (E*P).sum()
-        C[i] = ((E-U)**2*P).sum()/T[i]**2
-    return C
 
 # Tbest_interesting = convex_hull_T(Ebest_interesting, Sbest_interesting)
 # plt.figure('temperature-comparison')
@@ -302,6 +306,8 @@ while keep_going:
             plt.ylabel('heat capacity')
             plt.xlabel('temperature')
             mycv = heat_capacity(T, my_energy[fname], my_entropy[fname][j,:])
+            if fname == fnames[0]:
+                np.savetxt("best_cv.txt", np.array([T, mycv]).transpose())
             plt.plot(T, mycv, my_color[fname], label=fname)
             plt.legend(loc='best')
 
@@ -352,7 +358,7 @@ while keep_going:
 
         all_figures.add(plt.figure('Heat capacity'))
         plt.plot(T, CV, 'k:', label='ref 4?')
-        plt.plot(other_T, other_CV, 'k-', label='Martiniani et al.')
+        plt.plot(other_T, other_CV, 'k-', label=other_name)
         plt.ylim(0,140)
         plt.legend(loc='best')
 
