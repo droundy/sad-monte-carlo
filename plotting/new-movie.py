@@ -119,6 +119,7 @@ for fname in fnames:
         Ebest = my_energy[fname];
         Sbest = my_entropy[fname][-1,:] - norm_entropy(my_entropy[fname][-1,:])
         CV = heat_capacity(T, Ebest, Sbest)
+        np.savetxt("best_cv.txt", np.array([T, mycv]).transpose())
         Smin = Sbest[Sbest!=0].min()
     Smax = max(Smax, (my_entropy[fname][-1,:] - norm_entropy(my_entropy[fname][-1,:])).max())
     print('Smax is now', Smax)
@@ -306,8 +307,6 @@ while keep_going:
             plt.ylabel('heat capacity')
             plt.xlabel('temperature')
             mycv = heat_capacity(T, my_energy[fname], my_entropy[fname][j,:])
-            if fname == fnames[0]:
-                np.savetxt("best_cv.txt", np.array([T, mycv]).transpose())
             plt.plot(T, mycv, my_color[fname], label=fname)
             plt.legend(loc='best')
 
