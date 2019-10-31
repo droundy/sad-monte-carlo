@@ -335,25 +335,25 @@ while keep_going:
             true_cv_peak = 75.645
             true_cv_peak_T = 0.02745
 
-            all_figures.add(plt.figure('CV peak temperature'))
-            plt.semilogx(my_time[fname][:len(my_cv_peak_T[fname])],
-                         np.array(my_cv_peak_T[fname]),
-                         my_color[fname], label=fname)
-            plt.xlabel('number of moves')
-            plt.ylabel('error in peak temp')
-            plt.axhline(true_cv_peak_T, color='k', linewidth=0.01)
-            plt.ylim(0,4*true_cv_peak_T)
-            plt.legend(loc='best')
+            # all_figures.add(plt.figure('CV peak temperature'))
+            # plt.semilogx(my_time[fname][:len(my_cv_peak_T[fname])],
+            #              np.array(my_cv_peak_T[fname]),
+            #              my_color[fname], label=fname)
+            # plt.xlabel('number of moves')
+            # plt.ylabel('error in peak temp')
+            # plt.axhline(true_cv_peak_T, color='k', linewidth=0.01)
+            # plt.ylim(0,4*true_cv_peak_T)
+            # plt.legend(loc='best')
 
-            all_figures.add(plt.figure('CV peak value'))
-            plt.semilogx(my_time[fname][:len(my_cv_peak[fname])],
-                         np.array(my_cv_peak[fname]),
-                         my_color[fname], label=fname)
-            plt.xlabel('number of moves')
-            plt.ylabel('error in peak value')
-            plt.axhline(true_cv_peak, color='k', linewidth=0.01)
-            plt.ylim(0,10*true_cv_peak)
-            plt.legend(loc='best')
+            # all_figures.add(plt.figure('CV peak value'))
+            # plt.semilogx(my_time[fname][:len(my_cv_peak[fname])],
+            #              np.array(my_cv_peak[fname]),
+            #              my_color[fname], label=fname)
+            # plt.xlabel('number of moves')
+            # plt.ylabel('error in peak value')
+            # plt.axhline(true_cv_peak, color='k', linewidth=0.01)
+            # plt.ylim(0,10*true_cv_peak)
+            # plt.legend(loc='best')
 
         all_figures.add(plt.figure('Heat capacity'))
         plt.plot(T, CV, 'k:', label='ref 4?')
