@@ -1,10 +1,18 @@
 #!/usr/bin/python3
 
-import sys, re
 import numpy as np
 import matplotlib.pyplot as plt
-import re
+import re, argparse
 import martiniani
+
+parser = argparse.ArgumentParser(description="create movie and graphs for lj-cluster data")
+parser.add_argument('--minT', action='store', type=float, default=0.005,
+                    help = "the minimum temperature of interest")
+parser.add_argument('--match-energy', action='store', type=float,
+                    help = "the energy at which we want to normalize the entropy")
+parser.add_argument('yaml', nargs='*',
+                    help = 'the names of some yaml files')
+args = parser.parse_args()
 
 def latex_float(x):
     exp = int(np.log10(x*1.0))
@@ -40,10 +48,11 @@ my_time = {}
 my_color = {}
 max_iter = 0
 Smin = None
+Smax = 0
 my_minT = {}
 my_too_lo = {}
 my_too_hi = {}
-minT = None
+minT = args.minT
 
 my_cv_error = {}
 my_cv_peak_T = {}
@@ -60,24 +69,11 @@ def fix_fname(fname):
         return fname[:-5]
     return fname
 
-# will be None if a float i.e. the user input a min temperature.
-last_fname = re.search('[a-zA-Z]', sys.argv[-1])
-
-if not last_fname:
-    fnames = [fix_fname(f) for f in sys.argv[1:-1]]
-else:
-    fnames = [fix_fname(f) for f in sys.argv[1:]]
+print(args)
+fnames = [fix_fname(f) for f in args.yaml]
 
 for fname in fnames:
     print(fname)
-    if len(sys.argv) > 1 and not last_fname: # the user has input a min temp.
-        minT = float(sys.argv[-1])
-        print('minT =', minT)
-    else:
-        for i in range(len(fname)-5):
-            if fname[i:i+len('minT')] == 'minT':
-                minT = float(fname[i+len('minT'):].split('-')[0])
-                print('minT =', minT)
     with open(fname+'.yaml') as f:
         yaml = f.read()
         my_too_hi[fname] = lookup_entry('too_hi', yaml)
@@ -101,10 +97,16 @@ for fname in fnames:
     my_color[fname] = allcolors.pop()
     if len(my_time[fname]) > max_iter:
         max_iter = len(my_time[fname])
+    norm_entropy = lambda s: s.max()
+    if args.match_energy is not None:
+        match_index = (np.abs(my_energy[fname] - args.match_energy)).argmin()
+        print('match_index is', match_index, 'from', args.match_energy)
+        norm_entropy = lambda s: s[match_index]
     if Smin is None:
         Ebest = my_energy[fname];
         Sbest = my_entropy[fname][-1,:]
-        Smin = Sbest[Sbest!=0].min() - Sbest.max()
+        Smin = Sbest[Sbest!=0].min() - norm_entropy(Sbest)
+    Smax = max(Smax, norm_entropy(my_entropy[fname][-1,:]))
 
 EmaxS = Ebest[np.argmax(Sbest)]
 EminT = Ebest[np.argmax(Sbest*minT - Ebest)]
@@ -221,23 +223,30 @@ while keep_going:
             # plt.ylabel('$S$')
             # plt.legend(loc='best')
 
+            norm_entropy = lambda s: s.max()
+            if args.match_energy is not None:
+                match_index = (np.abs(my_energy[fname] - args.match_energy)).argmin()
+                print('match_index is', match_index, 'from', args.match_energy)
+                norm_entropy = lambda s: s[match_index]
             all_figures.add(plt.figure('Normed entropy'))
             if my_too_lo[fname]:
                 plt.axvline(my_too_lo[fname], linestyle=':', color=my_color[fname])
             if j > 0:
                 plt.plot(my_energy[fname],
-                         my_entropy[fname][i-1,:]-my_entropy[fname][j-1,:].max(),
+                         my_entropy[fname][i-1,:]-norm_entropy(my_entropy[fname][j-1,:]),
                          my_color[fname],
                          alpha=0.2)
             if j == -1:
                 plt.plot(my_energy[fname],
-                         my_entropy[fname][j,:]-my_entropy[fname][j,:].max(),
+                         my_entropy[fname][j,:]-norm_entropy(my_entropy[fname][j,:]),
                          my_color[fname],
                          label=fname+' '+latex_float(len(my_entropy[fname])),
                          alpha=0.2)
             elif my_entropy[fname].shape[0] > j and my_entropy[fname].shape[1] > j:
+                print('\n\nmy_entropy shape is', my_entropy[fname].shape)
+                print('my_energy shape is', my_energy[fname].shape)
                 plt.plot(my_energy[fname],
-                         my_entropy[fname][j,:]-my_entropy[fname][j,:].max(),
+                         my_entropy[fname][j,:]- norm_entropy(my_entropy[fname][j,:]),
                          my_color[fname],
                          label=fname)
                 # plt.plot(my_energy[fname],
@@ -249,7 +258,7 @@ while keep_going:
                                      latex_float(my_time[fname][-1])))
             plt.ylabel('$S$')
             plt.legend(loc='best')
-            plt.ylim(Smin, 0)
+            plt.ylim(Smin, Smax)
 
             # all_figures.add(plt.figure('Temperature'))
             # T = convex_hull_T(my_energy[fname], my_entropy[fname][j,:])
