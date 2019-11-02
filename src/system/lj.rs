@@ -109,10 +109,10 @@ impl Lj {
 impl From<LjParams> for Lj {
     fn from(params: LjParams) -> Lj {
         let mut rng = ::rng::MyRng::from_u64(0);
-        let mut try_number = 0;
         let mut best_energy = 1e80*units::EPSILON;
         let mut best_positions = Vec::new();
-        loop {
+        println!("I am creating a LJ system with {} atoms!", params.N);
+        for _ in 0..10000000 {
             let mut positions = Vec::new();
             for _ in 0..params.N {
                 let mut r;
@@ -151,24 +151,25 @@ impl From<LjParams> for Lj {
                 best_energy = lj.E;
                 best_positions = lj.positions.clone();
             }
-            if lj.E < 0.0*units::EPSILON || try_number > 1000000 {
-                if lj.E > best_energy {
-                    println!("stopped after {:e} tries with energy {}", (try_number - 1) as f64, lj.E);
-                    lj.positions = best_positions;
-                    lj.E = best_energy;
-                    for _ in 0..100000 {
-                        if let Some(newe) = lj.plan_move(&mut rng, 0.01*units::SIGMA) {
-                            if newe < lj.E {
-                                lj.confirm();
-                            }
-                        }
-                    }
-                    println!("after some relaxing energy {}", lj.E);
-                }
-                return lj;
-            }
-            try_number += 1;
         }
+        let mut lj = Lj {
+            E: best_energy,
+            error: 0.0*units::EPSILON,
+            possible_change: Change::None,
+            positions: best_positions,
+            max_radius_squared: params.radius*params.radius,
+            max_radius: params.radius,
+            n_radial: params.n_radial,
+        };
+        for _ in 0..100000000 {
+            if let Some(newe) = lj.plan_move(&mut rng, 0.03*units::SIGMA) {
+                if newe < lj.E {
+                    lj.confirm();
+                }
+            }
+        }
+        println!("after some relaxing energy {}", lj.E);
+        lj
     }
 }
 
