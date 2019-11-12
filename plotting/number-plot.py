@@ -92,12 +92,15 @@ T = my_temperature[fname]
 
 # # plt.legend(loc='best')
 
-# # plt.figure('excess entropy')
-# # for fname in fnames:
-# #         S = (U-F)/T
-# #         S = S-S[0]
-# #         plt.plot(S,
-# #                    color=my_color[fname], label=fname)
+# plt.figure('excess entropy')
+# for fname in fnames:
+#         S = (U-F)/T
+#         S = S-S[0]
+#         plt.plot(S,
+#                    color=my_color[fname], label=fname)
+#         plt.xlabel('$N$')
+#         plt.ylabel('$S_{exc}$')
+#         plt.tight_layout()
 
 # plt.figure('excess entropy/N')
 # for fname in fnames:
@@ -198,6 +201,10 @@ for fname in fnames:
         Grand_U = Grand_Uideal + Grand_Uexc
         plt.plot(Grand_N, Grand_U,'-',
                    color=my_color[fname], label=fname)
+        plt.plot(Grand_N, Grand_Uexc,'--',
+                   color=my_color[fname], label=fname+' excess')
+        plt.plot(Grand_N, Grand_Uideal,'--',
+                   color=my_color[fname], label='ideal')
         # plt.plot(current_total_energy[fname]/current_histogram[fname], ':',
         #            color=my_color[fname], label='canonical '+fname)
         plt.ylabel('Grand U')
@@ -205,14 +212,32 @@ for fname in fnames:
         plt.xlabel('Grand N')
         plt.legend(loc='best')
 
+plt.figure('Grand N')
+plt.plot(Grand_N, all_mu, label=fname)
+plt.plot((V/nQ)*np.exp(all_mu/T), all_mu, label='ideal') # FIXME
+plt.legend(loc='best')
+plt.ylabel(r'$\mu$')
+plt.xlabel(r'$N$')
+
 plt.figure('Grand S')
 for fname in fnames:
         Sexc_N = (U-F)/T
         Sexc_N = Sexc_N-Sexc_N[0]
         Grand_Sexc = np.zeros_like(all_mu)
         for i in range(len(all_mu)):
+            mu = all_mu[i]
+            # Zgrand = \sum_N e^{-\beta(Fid(N) + Fexc_N - mu N)}
+            Zgrand_exponents = -beta*(Fid_N+Fexc_N-mu*N_N)
+            # look at crossover from + to - in all_mu
+            offset = Zgrand_exponents.max()
+            Zgrand_exponents -= offset
+            Zgrand = np.exp(Zgrand_exponents).sum()
             Grand_Sexc[i] = (Sexc_N*np.exp(Zgrand_exponents)).sum()/Zgrand
+        #FIXME we need to recompute Grand_N if we want to plot multiple fnames!!!
+        n = Grand_N/V
+        nQ = 1
         Grand_Sideal = Grand_N*(5/2 + np.log(V/Grand_N*(Grand_Uideal/Grand_N)**1.5))
+        Grand_Sideal = Grand_N*(5/2 + np.log(nQ/n))
         Grand_S = Grand_Sexc + Grand_Sideal
         plt.plot(Grand_N, Grand_S,'-',
                     color=my_color[fname], label=fname)
@@ -221,7 +246,7 @@ for fname in fnames:
                     color=my_color[fname], label='ideal')
         plt.ylabel('Grand S')
         plt.legend(loc='best')
-        plt.xlabel('Grand N')
+        plt.tight_layout()
 
 plt.figure('Grand P')
 for fname in fnames:
@@ -234,7 +259,6 @@ for fname in fnames:
     # print('entropy', Grand_S)
     plt.plot(Grand_N, p_ideal,'--',
                 color=my_color[fname], label='ideal')
-    plt.plot(Grand_N, 2*p_ideal,'--', label='twice ideal')
 
     # p_canonical = np.zeros(N-1)
     # N_canonical = np.zeros(N-1)
