@@ -72,10 +72,11 @@ T = my_temperature[fname]
 plt.figure('histograms')
 for fname in fnames:
         plt.plot(current_histogram[fname],
-                   color=my_color[fname], label=fname)
+                   color=my_color[fname], label='Sample histogram')
         plt.xlabel('Number of Atoms')
         plt.ylabel('histogram (number of moves)')
-        plt.title('Figure 2: Example of partially converged histogram')
+        plt.title('Figure 2')
+plt.tight_layout()
 plt.legend(loc='best')
 
 # plt.figure('excess free energy')
