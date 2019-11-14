@@ -107,7 +107,8 @@ impl PluginManager {
                 }
                 let saving_time = time.elapsed().as_secs();
                 if saving_time > 5 {
-                    println!("    saving took {}", format_duration(saving_time));
+                    println!("        checkpointing took {}",
+                             format_duration(saving_time));
                 }
             }
             if todo >= plugin::Action::Exit {
