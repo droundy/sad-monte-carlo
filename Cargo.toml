@@ -13,6 +13,7 @@ dimensioned = { git = "https://github.com/paholg/dimensioned", features=["serde"
 serde = "1.0"
 serde_derive = "1.0"
 serde_yaml = "0.7"
+serde_cbor = "0.10"
 clapme = "0.1.13"
 
 vector3d = "0.1.8"
