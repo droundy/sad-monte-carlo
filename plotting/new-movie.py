@@ -68,9 +68,7 @@ def lookup_entry(entry, yaml_data):
         return float(x.group(1))
 
 def fix_fname(fname):
-    if fname[-5:] == '.yaml':
-        return fname[:-5]
-    if fname[-5:] == '.cbor':
+    if fname[-5:] in ['.yaml', '.cbor', '.json']:
         return fname[:-5]
     return fname
 
@@ -102,7 +100,7 @@ for fname in fnames:
     my_time[fname] = np.loadtxt(fname+'.time')
     first_frame = 0
     for i in range(len(my_time[fname])):
-        if my_time[fname][i] <= 1e8:
+        if my_time[fname][i] <= 1e2:
             first_frame = i
     my_time[fname] = my_time[fname][first_frame:]
     my_histogram[fname] = np.loadtxt(fname+'.histogram')[first_frame:]

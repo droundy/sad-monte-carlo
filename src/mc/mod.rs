@@ -51,6 +51,10 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
                                 serde_yaml::from_reader::<_,Self>(&f)
                                     .expect("error parsing save-as file")
                             }
+                            Some("json") => {
+                                serde_json::from_reader::<_,Self>(&f)
+                                    .expect("error parsing save-as file")
+                            }
                             Some("cbor") => {
                                 serde_cbor::from_reader::<Self,_>(&f)
                                     .expect("error parsing save-as file")
@@ -74,6 +78,8 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
                 match p.extension().and_then(|x| x.to_str()) {
                     Some("yaml") =>
                         serde_yaml::from_reader(&f).expect("error reading checkpoint?!"),
+                    Some("json") =>
+                        serde_json::from_reader(&f).expect("error reading checkpoint?!"),
                     Some("cbor") =>
                         serde_cbor::from_reader(&f).expect("error reading checkpoint?!"),
                     _ => panic!("I don't know how to read file {:?}", f),
@@ -89,6 +95,8 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
         match self.save_as().extension().and_then(|x| x.to_str()) {
             Some("yaml") =>
                 serde_yaml::to_writer(&f, self).expect("error writing checkpoint?!"),
+            Some("json") =>
+                serde_json::to_writer(&f, self).expect("error writing checkpoint?!"),
             Some("cbor") =>
                 serde_cbor::to_writer(&f, self).expect("error writing checkpoint?!"),
             _ => panic!("I don't know how to create file {:?}", self.save_as()),
