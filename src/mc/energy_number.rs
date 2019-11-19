@@ -19,10 +19,10 @@ use std::io::Write;
 pub enum MethodParams {
     /// Samc
     Samc {
-        /// The t0 parameter, determining how long to leave gamma=1.
+        /// Use the SAMC algorithm, with the specified t0 parameter
         t0: f64,
     },
-    /// Wang-Landau
+    /// Use the Wang-Landau algorithm
     WL,
 }
 
