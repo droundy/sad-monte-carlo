@@ -9,7 +9,6 @@ pub mod energy_number_no_translation;
 use ::system::*;
 use clapme::ClapMe;
 
-use serde_yaml;
 use serde;
 
 use atomicfile::AtomicFile;
@@ -47,12 +46,27 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
             Params::_Params { _sys, _mc, save_as } => {
                 if let Some(ref save_as) = save_as {
                     if let Ok(f) = ::std::fs::File::open(save_as) {
-                        if let Ok(mut s) = serde_yaml::from_reader::<_,Self>(&f) {
-                            println!("Resuming from file {:?}", save_as);
-                            s.update_from_params(_mc);
-                            s.system_mut().update_caches();
-                            return s;
-                        }
+                        let mut s = match save_as.extension().and_then(|x| x.to_str()) {
+                            Some("yaml") => {
+                                serde_yaml::from_reader::<_,Self>(&f)
+                                    .expect("error parsing save-as file")
+                            }
+                            Some("json") => {
+                                serde_json::from_reader::<_,Self>(&f)
+                                    .expect("error parsing save-as file")
+                            }
+                            Some("cbor") => {
+                                serde_cbor::from_reader::<Self,_>(&f)
+                                    .expect("error parsing save-as file")
+                            }
+                            _ => panic!("I don't know how to read file {:?}", f),
+                        };
+                        println!("Resuming from file {:?}", save_as);
+                        s.update_from_params(_mc);
+                        s.system_mut().update_caches();
+                        return s;
+                    } else {
+                        return Self::from_params(_mc, _sys.into(), save_as.clone());
                     }
                 }
                 let save_as = save_as.unwrap_or(::std::path::PathBuf::from("resume.yaml"));
@@ -61,7 +75,15 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
             Params::ResumeFrom(p) => {
                 let f = ::std::fs::File::open(&p)
                     .expect(&format!("error reading file {:?}", &p));
-                serde_yaml::from_reader(&f).expect("error reading checkpoint?!")
+                match p.extension().and_then(|x| x.to_str()) {
+                    Some("yaml") =>
+                        serde_yaml::from_reader(&f).expect("error reading checkpoint?!"),
+                    Some("json") =>
+                        serde_json::from_reader(&f).expect("error reading checkpoint?!"),
+                    Some("cbor") =>
+                        serde_cbor::from_reader(&f).expect("error reading checkpoint?!"),
+                    _ => panic!("I don't know how to read file {:?}", f),
+                }
             },
         }
     }
@@ -70,7 +92,15 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
     fn checkpoint(&self) {
         let f = AtomicFile::create(self.save_as())
             .expect(&format!("error creating file {:?}", self.save_as()));
-        serde_yaml::to_writer(&f, self).expect("error writing checkpoint?!")
+        match self.save_as().extension().and_then(|x| x.to_str()) {
+            Some("yaml") =>
+                serde_yaml::to_writer(&f, self).expect("error writing checkpoint?!"),
+            Some("json") =>
+                serde_json::to_writer(&f, self).expect("error writing checkpoint?!"),
+            Some("cbor") =>
+                serde_cbor::to_writer(&f, self).expect("error writing checkpoint?!"),
+            _ => panic!("I don't know how to create file {:?}", self.save_as()),
+        }
     }
 
 

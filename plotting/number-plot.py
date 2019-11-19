@@ -181,15 +181,16 @@ all_mu = np.arange(-10, 30, 0.1)
 # nQ = (mkT/2pi hbar^2)^1.5
 nQ = 0.001 # HOKEY
 
+Uexc_N = current_total_energy[fname]/current_histogram[fname]
+Fexc_N = current_free_energy[fname]
+beta = 1/T
+# Nmax = len(Fexc_N)
+N_N = np.arange(0, len(Fexc_N), 1)
+Fid_N = N_N*T*np.log(N_N/V/nQ) - N_N*T
+Fid_N[0] = 0
+
 plt.figure('Grand U')
 for fname in fnames:
-        Uexc_N = current_total_energy[fname]/current_histogram[fname]
-        Fexc_N = current_free_energy[fname]
-        beta = 1/T
-        # Nmax = len(Fexc_N)
-        N_N = np.arange(0, len(Fexc_N), 1)
-        Fid_N = N_N*T*np.log(N_N/V/nQ) - N_N*T
-        Fid_N[0] = 0
         Grand_Uexc = np.zeros_like(all_mu)
         Grand_N = np.zeros_like(all_mu)
         for i in range(len(all_mu)):
@@ -205,7 +206,6 @@ for fname in fnames:
                 assert(False)
             Grand_N[i] = (N_N*np.exp(Zgrand_exponents)).sum()/Zgrand
         C_V = 3/2
-        print('Zgrand', Zgrand)
         Grand_Uideal = C_V*T*Grand_N
         Grand_U = Grand_Uideal + Grand_Uexc
         plt.plot(Grand_N, Grand_U,'-',
@@ -241,11 +241,12 @@ for fname in fnames:
             offset = Zgrand_exponents.max()
             Zgrand_exponents -= offset
             Zgrand = np.exp(Zgrand_exponents).sum()
+            Grand_N[i] = (N_N*np.exp(Zgrand_exponents)).sum()/Zgrand
             Grand_Sexc[i] = (Sexc_N*np.exp(Zgrand_exponents)).sum()/Zgrand
         #FIXME we need to recompute Grand_N if we want to plot multiple fnames!!!
         n = Grand_N/V
         nQ = 1
-        Grand_Sideal = Grand_N*(5/2 + np.log(V/Grand_N*(Grand_Uideal/Grand_N)**1.5))
+        #Grand_Sideal = Grand_N*(5/2 + np.log(V/Grand_N*(Grand_Uideal/Grand_N)**1.5))
         Grand_Sideal = Grand_N*(5/2 + np.log(nQ/n))
         Grand_S = Grand_Sexc + Grand_Sideal
         plt.plot(Grand_N, Grand_S,'-',
@@ -264,8 +265,7 @@ for fname in fnames:
     plt.plot(Grand_N, Grand_P,':.',
              color=my_color[fname], label=fname)
     p_ideal = T*Grand_N/V
-    # print('pressure', Grand_P)
-    # print('entropy', Grand_S)
+
     plt.plot(Grand_N, p_ideal,'--',
                 color=my_color[fname], label='ideal')
 

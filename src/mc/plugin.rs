@@ -100,9 +100,15 @@ impl PluginManager {
                 }
             }
             if todo >= plugin::Action::Save {
+                let time = time::Instant::now();
                 mc.checkpoint();
                 for p in plugins.iter() {
                     p.save(mc, sys);
+                }
+                let saving_time = time.elapsed().as_secs();
+                if saving_time > 5 {
+                    println!("        checkpointing took {}",
+                             format_duration(saving_time));
                 }
             }
             if todo >= plugin::Action::Exit {

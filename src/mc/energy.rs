@@ -896,6 +896,64 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
                 }
                 self.which_frame.set(which_frame);
                 self.period.set(plugin::TimeToRun::TotalMoves(next_time));
+
+                // Now let us actually save the movie in more convenient data files.
+                use std::io::Write;
+                let name = mc.save_as();
+                {
+                    let name = name.with_extension("time");
+                    let err = format!("error writing to file {:?}", name);
+                    let mut f = AtomicFile::create(&name)
+                        .expect(&format!("error creating file {:?}", name));
+                    for t in self.time.borrow().iter() {
+                        writeln!(f, "{}", t).expect(&err);
+                    }
+                }
+                {
+                    let name = name.with_extension("gamma");
+                    let err = format!("error writing to file {:?}", name);
+                    let mut f = AtomicFile::create(&name)
+                        .expect(&format!("error creating file {:?}", name));
+                    for (t,g) in self.gamma_time.borrow().iter().zip(self.gamma.borrow().iter()) {
+                        writeln!(f, "{}\t{}", t,g).expect(&err);
+                    }
+                }
+                {
+                    let name = name.with_extension("energy");
+                    let err = format!("error writing to file {:?}", name);
+                    let mut f = AtomicFile::create(&name)
+                        .expect(&format!("error creating file {:?}", name));
+                    for t in self.energy.borrow().iter() {
+                        writeln!(f, "{}", *t/units::EPSILON).expect(&err);
+                    }
+                }
+                {
+                    let name = name.with_extension("entropy");
+                    let err = format!("error writing to file {:?}", name);
+                    let mut f = AtomicFile::create(&name)
+                        .expect(&format!("error creating file {:?}", name));
+                    for frame in self.entropy.borrow().iter() {
+                        write!(f, "{}", frame.iter().next().unwrap()).expect(&err);
+                        for v in frame.iter().skip(1) {
+                            write!(f, "\t{}", v).expect(&err);
+                        }
+                        write!(f, "\n").expect(&err);
+                    }
+                }
+                {
+                    let name = name.with_extension("histogram");
+                    let err = format!("error writing to file {:?}", name);
+                    let mut f = AtomicFile::create(&name)
+                        .expect(&format!("error creating file {:?}", name));
+                    for frame in self.histogram.borrow().iter() {
+                        write!(f, "{}", frame.iter().next().unwrap()).expect(&err);
+                        for v in frame.iter().skip(1) {
+                            write!(f, "\t{}", v).expect(&err);
+                        }
+                        write!(f, "\n").expect(&err);
+                    }
+                }
+
                 return plugin::Action::Save;
             }
         }
@@ -958,63 +1016,6 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
                                 ref hist, .. } = mc.method {
                 report_wl_flatness(lowest_hist, highest_hist, total_hist, num_states,
                                    hist, &mc.bins);
-            }
-        }
-    }
-    fn save(&self, mc: &EnergyMC<S,S::CollectedData>, _sys: &S) {
-        use std::io::Write;
-        let name = mc.save_as();
-        {
-            let name = name.with_extension("time");
-            let err = format!("error writing to file {:?}", name);
-            let mut f = AtomicFile::create(&name)
-                .expect(&format!("error creating file {:?}", name));
-            for t in self.time.borrow().iter() {
-                writeln!(f, "{}", t).expect(&err);
-            }
-        }
-        {
-            let name = name.with_extension("gamma");
-            let err = format!("error writing to file {:?}", name);
-            let mut f = AtomicFile::create(&name)
-                .expect(&format!("error creating file {:?}", name));
-            for (t,g) in self.gamma_time.borrow().iter().zip(self.gamma.borrow().iter()) {
-                writeln!(f, "{}\t{}", t,g).expect(&err);
-            }
-        }
-        {
-            let name = name.with_extension("energy");
-            let err = format!("error writing to file {:?}", name);
-            let mut f = AtomicFile::create(&name)
-                .expect(&format!("error creating file {:?}", name));
-            for t in self.energy.borrow().iter() {
-                writeln!(f, "{}", *t/units::EPSILON).expect(&err);
-            }
-        }
-        {
-            let name = name.with_extension("entropy");
-            let err = format!("error writing to file {:?}", name);
-            let mut f = AtomicFile::create(&name)
-                .expect(&format!("error creating file {:?}", name));
-            for frame in self.entropy.borrow().iter() {
-                write!(f, "{}", frame.iter().next().unwrap()).expect(&err);
-                for v in frame.iter().skip(1) {
-                    write!(f, "\t{}", v).expect(&err);
-                }
-                write!(f, "\n").expect(&err);
-            }
-        }
-        {
-            let name = name.with_extension("histogram");
-            let err = format!("error writing to file {:?}", name);
-            let mut f = AtomicFile::create(&name)
-                .expect(&format!("error creating file {:?}", name));
-            for frame in self.histogram.borrow().iter() {
-                write!(f, "{}", frame.iter().next().unwrap()).expect(&err);
-                for v in frame.iter().skip(1) {
-                    write!(f, "\t{}", v).expect(&err);
-                }
-                write!(f, "\n").expect(&err);
             }
         }
     }

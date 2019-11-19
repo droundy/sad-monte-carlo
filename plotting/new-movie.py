@@ -2,7 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import re, argparse
+import re, argparse, os
 import martiniani
 
 parser = argparse.ArgumentParser(description="create movie and graphs for lj-cluster data")
@@ -68,7 +68,7 @@ def lookup_entry(entry, yaml_data):
         return float(x.group(1))
 
 def fix_fname(fname):
-    if fname[-5:] == '.yaml':
+    if fname[-5:] in ['.yaml', '.cbor', '.json']:
         return fname[:-5]
     return fname
 
@@ -87,15 +87,20 @@ def heat_capacity(T, E, S):
 
 for fname in fnames:
     print(fname)
-    with open(fname+'.yaml') as f:
-        yaml = f.read()
-        my_too_hi[fname] = lookup_entry('too_hi', yaml)
-        my_too_lo[fname] = lookup_entry('too_lo', yaml)
-        my_minT[fname] = lookup_entry('min_T', yaml)
+    if os.path.exists(fname+'.yaml'):
+        with open(fname+'.yaml') as f:
+            yaml = f.read()
+            my_too_hi[fname] = lookup_entry('too_hi', yaml)
+            my_too_lo[fname] = lookup_entry('too_lo', yaml)
+            my_minT[fname] = lookup_entry('min_T', yaml)
+    else:
+        my_too_lo[fname] = None
+        my_too_hi[fname] = None
+        my_minT[fname] = None
     my_time[fname] = np.loadtxt(fname+'.time')
     first_frame = 0
     for i in range(len(my_time[fname])):
-        if my_time[fname][i] <= 1e8:
+        if my_time[fname][i] <= 1e2:
             first_frame = i
     my_time[fname] = my_time[fname][first_frame:]
     my_histogram[fname] = np.loadtxt(fname+'.histogram')[first_frame:]
