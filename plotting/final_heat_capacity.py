@@ -47,6 +47,11 @@ data4 = np.loadtxt(ref4 + '.csv', delimiter = ',', unpack = True)
 ref4_T = data4[0]
 ref4_heat_capacity = (data4[1]-3/2)*31
 
+ref5 = 'tRem_Ref'
+data5 = np.loadtxt(ref5 + '.csv', delimiter = ',', unpack = True)
+ref5_T = data5[0]
+ref5_heat_capacity = data5[1]
+
 my_energy = {}
 my_de = {}
 my_histogram = {}
@@ -118,6 +123,8 @@ plt.xlabel('temperature')
 # RESTMC REFERENCE comes from Replica exchange statistical temperature Monte Carlo by Kim, Keyes, and Straub
 # They use a radius of Rc = 2.5/sigma and an energy bin size 0.2 at minimum
 
+# The t-REM Data comes from Replica exchange statistical temperature Monte Carlo by Kim, Keyes, and Straub
+
 # MCET (Monte Carlo Entropic Tempering) REFERENCE comes from https://journals.aps.org/pre/pdf/10.1103/PhysRevE.63.010902
 # They use a radius of Rc = ? and an energy bin size ?
 
@@ -130,12 +137,14 @@ plt.plot(ref1_T, ref1_heat_capacity, '-', color='black', label='REM REFERENCE',l
 plt.plot(ref2_T, ref2_heat_capacity, '-', color='grey', label='RESTMC REFERENCE',linewidth=1)
 plt.plot(ref3_T, ref3_heat_capacity, '--', color='blue', label='MCET REFERENCE',linewidth=1)
 plt.plot(ref4_T, ref4_heat_capacity, '--', color='black', label='EMC REFERENCE',linewidth=2)
+plt.plot(ref5_T, ref5_heat_capacity, 'o', color='orange', label='t-REM REFERENCE',markersize=8)
 
 axins.plot(martiniani.T, martiniani.CV, '-', color='r', label='PRX PT',linewidth=1)
 axins.plot(ref1_T, ref1_heat_capacity, '-', color='black', label='REM REFERENCE',linewidth=1)
 axins.plot(ref2_T, ref2_heat_capacity, '-', color='grey', label='RESTMC REFERENCE',linewidth=1)
 axins.plot(ref3_T, ref3_heat_capacity, '--', color='blue', label='MCET REFERENCE',linewidth=1)
 axins.plot(ref4_T, ref4_heat_capacity, '--', color='black', label='EMC REFERENCE',linewidth=2)
+axins.plot(ref5_T, ref5_heat_capacity, 'o', color='orange', label='t-REM REFERENCE',markersize=8)
 
 ax.legend(loc='lower right')
 plt.xlim(0.01,0.4)
@@ -152,5 +161,52 @@ axins.set_yticklabels(np.around(np.arange(y1,y2+dy,dy),3).tolist())
 #axins.set_major_formatter(mtick.FormatStrFormatter('%.3'))
 ax.indicate_inset_zoom(axins)
 
+# --- Comparison of the Error in the Heat Capacity --- #
 
+fig2, ax2 = plt.subplots(figsize=[5, 4])
+
+for fname in fnames:
+    print(fname)
+    if len(sys.argv) > 1 and not last_fname: # the user has input a min temp.
+        minT = float(sys.argv[-1])
+        print('minT =', minT)
+    else:
+        for i in range(len(fname)-5):
+            if fname[i:i+len('minT')] == 'minT':
+                minT = float(fname[i+len('minT'):].split('-')[0])
+                print('minT =', minT)
+
+    my_energy[fname] = np.loadtxt(fname+'.energy')
+    my_entropy[fname] = np.loadtxt(fname+'.entropy')
+    my_time[fname] = np.loadtxt(fname+'.time')
+
+    my_color[fname] = allcolors.pop()
+
+    T_ref = ref5_T # using the t-REM reference
+    Cv_ref = ref5_heat_capacity
+
+    min_Err = []
+    max_Err = []
+    avg_Err = []
+
+    for i in range(len(my_entropy[fname])):
+        Cv = heat_capacity(T_ref, my_energy[fname], my_entropy[fname][i])
+        Err = (Cv - Cv_ref) / Cv_ref
+        #print(Err)
+        min_Err.append(np.amin(np.abs(Err)))
+        max_Err.append(np.amax(np.abs(Err)))
+        avg_Err.append(np.mean(np.abs(Err)))
+        #print(min_Err, max_Err, avg_Err)
+
+    ax2.loglog(my_time[fname], np.array(min_Err), my_color[fname],
+        label=fname, linewidth=2,color='blue')
+    ax2.loglog(my_time[fname], np.array(max_Err), my_color[fname],
+        label=fname, linewidth=2,color='red')
+    ax2.loglog(my_time[fname], np.array(avg_Err), my_color[fname],
+        label=fname, linewidth=2,color='black')
+
+    plt.xlim(1e5,1e12)
+    plt.ylim(1e-4,1e3)
+    plt.ylabel('Error in Heat Capacity')
+    plt.xlabel('moves')
 plt.show()
