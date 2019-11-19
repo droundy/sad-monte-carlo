@@ -224,7 +224,7 @@ for fname in fnames:
 plt.figure('Grand N')
 plt.plot(Grand_N, all_mu, label=fname)
 
-plt.plot((V/nQ)*np.exp(all_mu/T), all_mu, label='ideal') # FIXME
+plt.plot((V*nQ)*np.exp(all_mu/T), all_mu, label='ideal') # FIXME
 plt.legend(loc='best')
 plt.ylabel(r'$\mu$')
 plt.xlabel(r'$N$')
@@ -245,7 +245,7 @@ for fname in fnames:
             Grand_Sexc[i] = (Sexc_N*np.exp(Zgrand_exponents)).sum()/Zgrand
         #FIXME we need to recompute Grand_N if we want to plot multiple fnames!!!
         n = Grand_N/V
-        nQ = 1
+        #nQ = 1
         #Grand_Sideal = Grand_N*(5/2 + np.log(V/Grand_N*(Grand_Uideal/Grand_N)**1.5))
         Grand_Sideal = Grand_N*(5/2 + np.log(nQ/n))
         Grand_S = Grand_Sexc + Grand_Sideal
