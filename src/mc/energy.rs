@@ -44,17 +44,17 @@ impl SadVersion {
 pub enum MethodParams {
     /// Sad
     Sad {
-        /// The minimum temperature we are interested in.
+        /// Use the SAD algorithm, with the specified minimum temperature of interest.
         min_T: Energy,
     },
     /// Samc
     Samc {
-        /// The t0 parameter, determining how long to leave gamma=1.
+        /// Use the SAMC algorithm, with the specified t0 parameter
         t0: f64,
     },
-    /// Wang-Landau
+    /// Use the Wang-Landau algorithm
     WL,
-    /// 1/t Wang-Landau
+    /// Use the 1/t-Wang-Landau algorithm
     Inv_t_WL,
 }
 
