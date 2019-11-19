@@ -56,8 +56,8 @@ for fname in fnames:
         Sbest = my_entropy[fname][-1,:]
         Smin = Sbest[Sbest!=0].min() - Sbest.max()
 
-U = current_total_energy[fname]/current_histogram[fname]
-F = current_free_energy[fname]
+# U = current_total_energy[fname]/current_histogram[fname]
+# F = current_free_energy[fname]
 V = my_volume[fname]
 T = my_temperature[fname]
 
@@ -177,7 +177,7 @@ plt.legend(loc='best')
 
 
 
-all_mu = np.arange(-10, 30, 0.1)
+all_mu = np.arange(2, 30, 0.01)
 # nQ = (mkT/2pi hbar^2)^1.5
 nQ = 0.001 # HOKEY
 
@@ -225,13 +225,14 @@ plt.figure('Grand N')
 plt.plot(Grand_N, all_mu, label=fname)
 
 plt.plot((V*nQ)*np.exp(all_mu/T), all_mu, label='ideal') # FIXME
+plt.xlim(0, 35)
 plt.legend(loc='best')
 plt.ylabel(r'$\mu$')
 plt.xlabel(r'$N$')
 
 plt.figure('Grand S')
 for fname in fnames:
-        Sexc_N = (U-F)/T
+        Sexc_N = (Uexc_N-Fexc_N)/T
         Sexc_N = Sexc_N-Sexc_N[0]
         Grand_Sexc = np.zeros_like(all_mu)
         for i in range(len(all_mu)):
@@ -284,15 +285,13 @@ for fname in fnames:
     plt.xlabel('Grand N')
     plt.ylabel('Grand Pressure')
 
-plt.show()
-exit(1)
-
 # plt.xlim(0, 5)
 # plt.ylim(0, 1)
 
 plt.figure('Grand G vs Grand P')
 for fnamme in fnames:
-    Grand_G = mu*Grand_N
+    Grand_G = all_mu*Grand_N
+    # Grand_G = (Grand_U - T*Grand_S + Grand_P*V)
     plt.plot(Grand_P, Grand_G,'.:',
                 color=my_color[fname], label=fname)
 
