@@ -640,10 +640,27 @@ impl<S: System> EnergyMC<S, S::CollectedData> {
 impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
     type Params = EnergyMCParams;
     type System = S;
-    fn from_params(params: EnergyMCParams, system: S, save_as: ::std::path::PathBuf) -> Self {
+    fn from_params(params: EnergyMCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
         let ewidth = params.energy_bin.unwrap_or(system.delta_energy().unwrap_or(Energy::new(1.0)));
         // center zero energy in a bin!
         let emin = ((system.energy()/ewidth).value().round() - 0.5)*ewidth;
+        let mut rng = crate::rng::MyRng::from_u64(params.seed.unwrap_or(0));
+        // Let's spend a little effort getting an energy that is
+        // within our range of interest.  We are only aiming downward,
+        // because it is unusual that we have trouble getting an
+        // energy that is high enough.
+        if let Some(maxe) = params.max_allowed_energy {
+            for _ in 0..1e8 as u64 {
+                if let Some(newe) = system.plan_move(&mut rng, 0.05*units::SIGMA) {
+                    if newe < system.energy() {
+                        system.confirm();
+                    }
+                    if system.energy() < maxe {
+                        break;
+                    }
+                }
+            }
+        }
         EnergyMC {
             method: Method::new(params._method, system.energy(), ewidth,
                                 params.min_allowed_energy, params.max_allowed_energy),
@@ -675,7 +692,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
             move_plan: params._moves,
             system: system,
 
-            rng: ::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
+            rng,
             save_as: save_as,
             report: plugin::Report::from(params._report),
             movies: Movies::from(params._movies),

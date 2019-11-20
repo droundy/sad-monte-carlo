@@ -151,6 +151,9 @@ impl From<LjParams> for Lj {
                 best_energy = lj.E;
                 best_positions = lj.positions.clone();
             }
+            if lj.E < 0.0*units::EPSILON {
+                return lj;
+            }
         }
         let mut lj = Lj {
             E: best_energy,
@@ -165,6 +168,9 @@ impl From<LjParams> for Lj {
             if let Some(newe) = lj.plan_move(&mut rng, 0.03*units::SIGMA) {
                 if newe < lj.E {
                     lj.confirm();
+                }
+                if lj.E < units::EPSILON {
+                    return lj;
                 }
             }
         }
