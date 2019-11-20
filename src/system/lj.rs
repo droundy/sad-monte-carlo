@@ -112,7 +112,7 @@ impl From<LjParams> for Lj {
         let mut best_energy = 1e80*units::EPSILON;
         let mut best_positions = Vec::new();
         println!("I am creating a LJ system with {} atoms!", params.N);
-        for _ in 0..10000000 {
+        for attempt in 0..10000000 {
             let mut positions = Vec::new();
             for _ in 0..params.N {
                 let mut r;
@@ -150,6 +150,7 @@ impl From<LjParams> for Lj {
             if lj.E < best_energy {
                 best_energy = lj.E;
                 best_positions = lj.positions.clone();
+                println!("found a new best energy{:?} after {} attempts", lj.E, attempt);
             }
             if lj.E < 0.0*units::EPSILON {
                 return lj;
@@ -164,12 +165,13 @@ impl From<LjParams> for Lj {
             max_radius: params.radius,
             n_radial: params.n_radial,
         };
-        for _ in 0..100000000 {
+        for attempt in 0..100000000 {
             if let Some(newe) = lj.plan_move(&mut rng, 0.03*units::SIGMA) {
                 if newe < lj.E {
+                    println!("reduced energy to {:?} after {} attempts", newe, attempt);
                     lj.confirm();
                 }
-                if lj.E < units::EPSILON {
+                if lj.E < 0.0*units::EPSILON {
                     return lj;
                 }
             }
