@@ -75,7 +75,7 @@ for fname in fnames:
                    color=my_color[fname], label='Sample histogram')
         plt.xlabel('Number of Atoms')
         plt.ylabel('histogram (number of moves)')
-        plt.title('Figure 2')
+        plt.title('Histogram of Uncovereged System')
 plt.tight_layout()
 plt.legend(loc='best')
 
@@ -217,7 +217,8 @@ for fname in fnames:
         # plt.plot(current_total_energy[fname]/current_histogram[fname], ':',
         #            color=my_color[fname], label='canonical '+fname)
         plt.ylabel('Grand U')
-        plt.title('mu {} {}'.format(all_mu[0], all_mu[-1]))
+        plt.title('Grand Internal Energy')
+        #plt.title('mu {} {}'.format(all_mu[0], all_mu[-1]))
         plt.xlabel('Grand N')
         plt.legend(loc='best')
 
@@ -252,7 +253,8 @@ for fname in fnames:
         Grand_S = Grand_Sexc + Grand_Sideal
         plt.plot(Grand_N, Grand_S,'-',
                     color=my_color[fname], label=fname)
-        plt.title('mu {} {}'.format(all_mu[0], all_mu[-1]))
+        plt.title('Grand Entropy')
+        #plt.title('mu {} {}'.format(all_mu[0], all_mu[-1]))
         plt.plot(Grand_N, Grand_Sideal,':',
                     color=my_color[fname], label='ideal')
         plt.ylabel('Grand S')
@@ -266,7 +268,7 @@ for fname in fnames:
     plt.plot(Grand_N, Grand_P,':.',
              color=my_color[fname], label=fname)
     p_ideal = T*Grand_N/V
-
+    plt.title('Grand Pressure')
     plt.plot(Grand_N, p_ideal,'--',
                 color=my_color[fname], label='ideal')
 
@@ -280,8 +282,9 @@ for fname in fnames:
     # plt.plot(N_canonical,p_canonical,
     #          color=my_color[fname], label='canonical'+fname)
 
-    plt.title('mu {} {}'.format(all_mu[0], all_mu[-1]))
+    #plt.title('mu {} {}'.format(all_mu[0], all_mu[-1]))
     plt.legend(loc='best')
+    plt.title('Grand Pressure')
     plt.xlabel('Grand N')
     plt.ylabel('Grand Pressure')
 
@@ -297,5 +300,16 @@ for fnamme in fnames:
 
 plt.xlabel('Grand $p$')
 plt.ylabel('Grand $G$')
+
+plt.figure('F Grand vs N')
+for fname in fnames:
+    Grand_F = Grand_U-T*Grand_S
+    plt.plot(Grand_N, Grand_F,
+                    color=my_color[fname], label=fname)
+    plt.xlabel('N')
+    plt.ylabel('Grand F')
+    plt.title('Grand F')
+    plt.legend(loc='best')
+    plt.tight_layout()
 
 plt.show()
