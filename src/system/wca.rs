@@ -62,6 +62,20 @@ fn potential(r_squared: Area) -> Energy {
     }
 }
 
+/// Define the WCA interaction pressure
+fn potential_pressure(r_squared: Area) -> Energy {
+    let r_cutoff: Length = r_cutoff();
+    let r_cutoff_squared: Area = r_cutoff*r_cutoff;
+    let sig_sqr = units::SIGMA*units::SIGMA;
+    if r_squared < r_cutoff_squared {
+        // This is dE/dr*r/2. the extra factor of two comes from
+        // avoiding double counting.
+        4.0*3.0*units::EPSILON*(-2.0*(sig_sqr/r_squared).powi(6) + (sig_sqr/r_squared).powi(3))
+    } else {
+        0.0*units::EPSILON
+    }
+}
+
 impl Wca {
     /// Add an atom at a given location.  Returns the change in
     /// energy, or `None` if the atom could not be placed there.
@@ -137,8 +151,32 @@ impl From<WcaParams> for Wca {
     }
 }
 
+/// This defines the pressure.
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct Collected {
+    /// The sum of dE/dϵ where ϵ is the strain (or fractional
+    /// expansion) over all elements in the ensemble.
+    pub pexc_tot: f64,
+    /// The number times we have summed up the excess_pressure_total
+    /// above.  Divide by this (and by the volume) to get the excess
+    /// pressure.
+    pub count: u64,
+}
+
 impl System for Wca {
-    type CollectedData = ();
+    type CollectedData = Collected;
+    fn collect_data(&self, data: &mut Collected, iter: u64) {
+        if iter % ((self.num_atoms()*self.num_atoms()) as u64) == 0 {
+            data.count += 1;
+            let mut p: Energy = units::EPSILON*0.0;
+            for (which, &r1) in self.cell.positions.iter().enumerate() {
+                for r2 in self.cell.maybe_interacting_atoms_excluding(r1, which) {
+                    p += potential_pressure((r1-r2).norm2());
+                }
+            }
+            data.pexc_tot += *(p/units::EPSILON).value();
+        }
+    }
     fn energy(&self) -> Energy {
         self.E
     }
