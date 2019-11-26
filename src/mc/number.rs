@@ -53,6 +53,8 @@ pub struct NumberMCParams {
     pub seed: Option<u64>,
     /// The temperature.
     T: Energy,
+    /// The maximum allowed number of atoms
+    max_N: Option<usize>,
     _moves: MoveParams,
     _report: plugin::ReportParams,
     movie: MoviesParams,
@@ -65,6 +67,7 @@ impl Default for NumberMCParams {
             _method: MethodParams::WL,
             T: Energy::new(1.0),
             seed: None,
+            max_N: None,
             _moves: MoveParams::_Explicit{
                 translation_scale: 0.05*units::SIGMA,
                 addremove_probability: 0.05,
@@ -154,6 +157,8 @@ pub struct NumberMC<S> {
     pub accepted_moves: u64,
     /// The energy bins.
     pub bins: Bins,
+    /// The maximum allowed number of atoms
+    pub max_N: Option<usize>,
     /// The move plan
     pub move_plan: MoveParams,
     /// The current add/remove probability
@@ -445,6 +450,7 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
             moves: 0,
             T: params.T,
             accepted_moves: 0,
+            max_N: params.max_N,
             bins: Bins {
                 histogram: vec![1],
                 lnw: vec![Unitless::new(0.0)],
@@ -516,7 +522,15 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
             self.bins.num_addremove_attempts += 1;
             let option_e2 = if self.rng.gen::<u64>() & 1 == 0 {
                 // add
-                self.system.plan_add(&mut self.rng).map(|e2| State { E: e2, N: e1.N+1 })
+                if let Some(max_N) = self.max_N {
+                    if e1.N == max_N {
+                        None
+                    } else {
+                        self.system.plan_add(&mut self.rng).map(|e2| State { E: e2, N: e1.N+1 })
+                    }
+                } else {
+                    self.system.plan_add(&mut self.rng).map(|e2| State { E: e2, N: e1.N+1 })
+                }
             } else {
                 // remove
                 if e1.N > 0 {
