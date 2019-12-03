@@ -544,17 +544,14 @@ impl<S: GrandSystem> Plugin<EnergyNumberMC<S>> for Movies {
                 self.time.borrow_mut().push(moves);
                 let new_energy: Vec<_> =
                     (0 .. mc.bins.lnw.len()).map(|i| mc.index_to_state(i).E).collect();
-                let new_number: Vec<_> =
-                    (0 .. mc.bins.lnw.len()).map(|i| mc.index_to_state(i).N).collect();
                 let old_energy = self.energy.replace(new_energy.clone());
-                let old_number = self.number.replace(new_number.clone());
 
                 let histogram = &mc.bins.histogram;
                 let lnw = &mc.bins.lnw;
                 let entropy: Vec<_> = (0..new_energy.len()).map(|i| {
                     *lnw[i].value()
                 }).collect();
-                if new_energy == old_energy && new_number == old_number {
+                if new_energy == old_energy {
                     // We can just add a row.
                     let mut S = self.entropy.borrow_mut();
                     S.push(entropy);
