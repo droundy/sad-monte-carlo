@@ -20,7 +20,9 @@ hist = data_loaded['bins']['histogram']
 time_frame = data_loaded['movies']['time']
 entropy_data = data_loaded['movies']['entropy']
 energy_data = data_loaded['movies']['energy']
+
 number_data = first_data_loaded['movies']['number']
+
 #L = [1,2,3,4]
 energy_resize = np.array(energy_data)
 nlist = len(energy_data)
@@ -30,7 +32,7 @@ fig, (ax0) = plt.subplots(1)
 c = ax0.pcolor(energy_resize)
 ax0.set_title('Lattice Gas Energy Pcolor')
 fig.tight_layout()
-plt.show()
+plt.figure()
 
 #entropy_resize = np.array(entropy_data)
 """
@@ -59,7 +61,6 @@ fig, (ax0) = plt.subplots(1)
 c = ax0.pcolor(entropy_re)
 ax0.set_title('Lattice Gas Entropy Pcolor')
 fig.tight_layout()
-plt.show()
 
 
 #graphing
