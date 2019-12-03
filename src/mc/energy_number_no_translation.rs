@@ -499,7 +499,7 @@ pub struct Movies {
     histogram: RefCell<Vec<Vec<u64>>>,
     time: RefCell<Vec<u64>>,
     energy: RefCell<Vec<Energy>>,
-    number: RefCell<Vec<Energy>>,
+    number: RefCell<Vec<usize>>,
     #[serde(default)]
     gamma: RefCell<Vec<f64>>,
     #[serde(default)]
@@ -542,9 +542,13 @@ impl<S: GrandSystem> Plugin<EnergyNumberMC<S>> for Movies {
                 // First, let's create the arrays for the time and
                 // energy indices.
                 self.time.borrow_mut().push(moves);
+                let new_number: Vec<_> =
+                    (0 .. mc.bins.lnw.len()).map(|i| mc.index_to_state(i).N).collect();
                 let new_energy: Vec<_> =
                     (0 .. mc.bins.lnw.len()).map(|i| mc.index_to_state(i).E).collect();
                 let old_energy = self.energy.replace(new_energy.clone());
+                let _old_number = self.number.replace(new_number.clone());
+
 
                 let histogram = &mc.bins.histogram;
                 let lnw = &mc.bins.lnw;
