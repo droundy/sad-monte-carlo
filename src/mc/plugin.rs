@@ -6,7 +6,7 @@ use super::*;
 use std::cell::Cell;
 use std::default::Default;
 use std::time;
-use prettyfloat::PrettyFloat;
+use crate::prettyfloat::PrettyFloat;
 
 /// A `Plugin` is an object that can be used to configure a MonteCarlo
 /// simulation.  The plugin will be called regularly, and will have a

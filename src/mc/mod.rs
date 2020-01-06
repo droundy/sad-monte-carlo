@@ -6,12 +6,12 @@ pub mod number;
 pub mod energy_number;
 pub mod energy_number_no_translation;
 
-use ::system::*;
+use crate::system::*;
 use clapme::ClapMe;
 
 use serde;
 
-use atomicfile::AtomicFile;
+use crate::atomicfile::AtomicFile;
 
 #[derive(ClapMe)]
 enum Params<MP, SP> {

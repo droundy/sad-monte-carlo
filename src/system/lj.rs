@@ -108,7 +108,7 @@ impl Lj {
 
 impl From<LjParams> for Lj {
     fn from(params: LjParams) -> Lj {
-        let mut rng = ::rng::MyRng::from_u64(0);
+        let mut rng = crate::rng::MyRng::from_u64(0);
         let mut best_energy = 1e80*units::EPSILON;
         let mut best_positions = Vec::new();
         println!("I am creating a LJ system with {} atoms!", params.N);

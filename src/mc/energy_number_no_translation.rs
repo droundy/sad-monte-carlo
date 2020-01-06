@@ -2,7 +2,7 @@
 
 #![allow(non_snake_case)]
 
-use ::system::*;
+use crate::system::*;
 use super::*;
 
 use super::plugin::Plugin;
@@ -10,7 +10,7 @@ use dimensioned::Dimensionless;
 use rand::Rng;
 use std::default::Default;
 use std::cell::{RefCell,Cell};
-use ::prettyfloat::PrettyFloat;
+use crate::prettyfloat::PrettyFloat;
 
 /// Parameters to configure a particular MC.
 #[derive(Debug, ClapMe)]
@@ -116,7 +116,7 @@ pub struct EnergyNumberMC<S> {
     /// The energy bins.
     pub bins: Bins,
     /// The random number generator.
-    pub rng: ::rng::MyRng,
+    pub rng: crate::rng::MyRng,
     /// Where to save the resume file.
     pub save_as: ::std::path::PathBuf,
     report: plugin::Report,
@@ -385,7 +385,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
             },
             system: system,
 
-            rng: ::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
+            rng: crate::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
             save_as: save_as,
             report: plugin::Report::from(params._report),
             movies: Movies::from(params._movies),

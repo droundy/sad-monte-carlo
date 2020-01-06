@@ -2,7 +2,7 @@
 
 #![allow(non_snake_case)]
 
-use ::system::*;
+use crate::system::*;
 use super::*;
 
 use super::plugin::Plugin;
@@ -10,7 +10,7 @@ use dimensioned::Dimensionless;
 use rand::Rng;
 use std::default::Default;
 use std::cell::{RefCell,Cell};
-use ::prettyfloat::PrettyFloat;
+use crate::prettyfloat::PrettyFloat;
 
 /// Which experimental version of SAD are we doing?
 #[derive(Serialize, Deserialize, Debug, ClapMe, Clone, Copy, PartialEq, Eq, Hash)]
@@ -162,7 +162,7 @@ pub struct EnergyMC<S, C> {
     /// The "recent" acceptance rate.
     pub acceptance_rate: f64,
     /// The random number generator.
-    pub rng: ::rng::MyRng,
+    pub rng: crate::rng::MyRng,
     /// Where to save the resume file.
     pub save_as: ::std::path::PathBuf,
     report: plugin::Report,

@@ -92,7 +92,7 @@ pub trait MovableSystem : ConfirmSystem {
     /// infinite energy), `None` is returned, and no change is made to
     /// the system.  The atom is not actually moved until the change
     /// is confirmed.
-    fn plan_move(&mut self, &mut MyRng, mean_distance: Length) -> Option<Energy>;
+    fn plan_move(&mut self, _: &mut MyRng, mean_distance: Length) -> Option<Energy>;
     /// A maximum reasonable value for mean_distance.
     fn max_size(&self) -> Length {
         Length::new(1.0)
@@ -106,11 +106,11 @@ pub trait GrandSystem : MovableSystem {
     /// energy), `None` is returned, and no change is made to the
     /// system.  The atom is not actually added until the change is
     /// confirmed.
-    fn plan_add(&mut self, &mut MyRng) -> Option<Energy>;
+    fn plan_add(&mut self, _: &mut MyRng) -> Option<Energy>;
     /// Considers removing an atom, and returns the change in energy
     /// of the system.  The atom is not actually removed until the
     /// change is confirmed.
-    fn plan_remove(&mut self, &mut MyRng) -> Energy;
+    fn plan_remove(&mut self, _: &mut MyRng) -> Energy;
     /// The number of atoms
     fn num_atoms(&self) -> usize;
 }

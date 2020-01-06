@@ -42,7 +42,7 @@ impl From<IsingParams> for Ising {
         // function doesn't have access to the seed used by the MC
         // simulation, and it seems excessive to have two distinct
         // seeds.
-        let mut rng = ::rng::MyRng::from_u64(10137);
+        let mut rng = crate::rng::MyRng::from_u64(10137);
         for s in ising.S.iter_mut() {
             // The following picks a random number +1 or -1
             *s = (rng.next_u64() as i8 & 1)*2 - 1;
@@ -115,7 +115,7 @@ fn energy_works_with_N(N: usize) {
     println!("starting energy...");
     assert_eq!(ising.energy(), ising.compute_energy());
 
-    let mut rng = ::rng::MyRng::from_u64(10137);
+    let mut rng = crate::rng::MyRng::from_u64(10137);
     for _ in 0..10000 {
         ising.plan_move(&mut rng, Length::new(0.0));
         ising.confirm();

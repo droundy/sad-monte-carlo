@@ -147,7 +147,7 @@ fn energy_works_with_L(L: usize) {
     println!("starting energy...");
     assert_eq!(ising.energy(), ising.compute_energy());
 
-    let mut rng = ::rng::MyRng::from_u64(10137);
+    let mut rng = crate::rng::MyRng::from_u64(10137);
     for _ in 0..10000 {
         if rng.gen::<f64>() < 0.5 {
             ising.plan_add(&mut rng);

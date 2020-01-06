@@ -337,7 +337,7 @@ impl From<WcaNParams> for Wca {
         }
         assert!(total_spots >= params.N);
         let mut spots_reserved = vec![vec![vec![[false; 4]; cells[2]]; cells[1]]; cells[0]];
-        let mut rng = ::rng::MyRng::from_u64(0);
+        let mut rng = crate::rng::MyRng::from_u64(0);
         for _ in 0..params.N {
             loop {
                 // This is an inefficient but relatively
