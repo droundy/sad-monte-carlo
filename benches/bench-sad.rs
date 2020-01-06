@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate criterion;
+
 use rand::Rng;
 use rand::distributions::Uniform;
 use criterion::Criterion;
@@ -157,5 +160,5 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_functions("OPTSW_put_in_cell", funs, 50);
 }
 
-criterion::criterion_group!(benches, criterion_benchmark);
-criterion::criterion_main!(benches);
+criterion_group!(benches, criterion_benchmark);
+criterion_main!(benches);
