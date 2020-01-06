@@ -1,5 +1,3 @@
-extern crate sadmc;
-
 use sadmc::system::optsquare::*;
 
 use sadmc::mc::MonteCarlo;

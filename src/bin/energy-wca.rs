@@ -1,5 +1,3 @@
-extern crate sadmc;
-
 use sadmc::system::wca::*;
 use sadmc::system::System;
 

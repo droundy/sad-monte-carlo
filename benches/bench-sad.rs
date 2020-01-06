@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate criterion;
-extern crate sadmc;
-extern crate rand;
 
 use rand::Rng;
 use rand::distributions::Uniform;

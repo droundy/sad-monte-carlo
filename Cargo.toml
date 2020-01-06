@@ -2,6 +2,7 @@
 name = "sad-monte-carlo"
 version = "0.1.0"
 authors = ["David Roundy <roundyd@oregonstate.edu>"]
+edition = "2018"
 
 [lib]
 name = "sadmc"

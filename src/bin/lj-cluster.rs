@@ -1,5 +1,3 @@
-extern crate sadmc;
-
 use sadmc::system::lj::*;
 use sadmc::system::System;
 

@@ -1,5 +1,3 @@
-extern crate sadmc;
-
 use sadmc::system::lattice_gas::*;
 
 use sadmc::mc::MonteCarlo;

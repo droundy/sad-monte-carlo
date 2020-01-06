@@ -1,5 +1,3 @@
-extern crate sadmc;
-
 use sadmc::system::ising::{Ising, IsingParams};
 use sadmc::system::System;
 
