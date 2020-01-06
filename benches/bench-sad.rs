@@ -40,11 +40,11 @@ fn gen_optsw(n_atoms: usize) -> optsquare::SquareWell {
     sw
 }
 
-fn gen_energy_sad(n_atoms: usize) -> EnergyMC<optsquare::SquareWell> {
+fn gen_energy_sad(n_atoms: usize) -> EnergyMC<optsquare::SquareWell, <optsquare::SquareWell as sadmc::system::System>::CollectedData> {
     let params = EnergyMCParams::default();
     let fname = ::std::path::PathBuf::from("bench.yaml");
     ::std::fs::remove_file(&fname).ok();
-    let mut mc = EnergyMC::<optsquare::SquareWell>::from_params(params, gen_optsw(n_atoms),
+    let mut mc = EnergyMC::<optsquare::SquareWell, <optsquare::SquareWell as sadmc::system::System>::CollectedData>::from_params(params, gen_optsw(n_atoms),
                                                                 fname);
     // Randomize things a bit before beginning.
     for _ in 0..n_atoms*1000 {

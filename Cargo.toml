@@ -9,7 +9,7 @@ path = "src/lib.rs"
 
 [dependencies]
 
-dimensioned = { git = "https://github.com/paholg/dimensioned", features=["serde"] }
+dimensioned = { version = "0.7.0", features=["serde"] }
 serde = "1.0"
 serde_derive = "1.0"
 serde_yaml = "0.8.11"
