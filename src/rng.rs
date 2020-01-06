@@ -14,7 +14,6 @@
 use std::num::Wrapping;
 use std::{fmt};
 use rand_core::{RngCore, SeedableRng, Error, impls, le};
-use rand;
 use rand::Rng as RandRng;
 
 /// The [xoshiro128plus
@@ -97,14 +96,14 @@ impl Xoroshiro128plusRng {
     /// Generates a random number with a Gaussian distribution, with
     /// mean 0 and variance 1.
     pub fn normal(&mut self) -> f64 {
-        self.sample(rand::distributions::StandardNormal)
+        self.sample(rand_distr::StandardNormal)
     }
     /// Generates a random vector with a Gaussian distribution, with
     /// mean 0 and variance 1 in each direction.
     pub fn vector(&mut self) -> ::vector3d::Vector3d<f64> {
-        ::vector3d::Vector3d::new(self.sample(rand::distributions::StandardNormal),
-                                  self.sample(rand::distributions::StandardNormal),
-                                  self.sample(rand::distributions::StandardNormal))
+        ::vector3d::Vector3d::new(self.sample(rand_distr::StandardNormal),
+                                  self.sample(rand_distr::StandardNormal),
+                                  self.sample(rand_distr::StandardNormal))
     }
 }
 

@@ -37,9 +37,15 @@ impl From<IsingParams> for Ising {
             possible_change: None,
         };
         assert!(ising.N > 1); // otherwise, we are our own neighbor!
+        // This is a bit hokey.  We have a fixed random number seed
+        // for initializing the spins randomly.  This is because this
+        // function doesn't have access to the seed used by the MC
+        // simulation, and it seems excessive to have two distinct
+        // seeds.
         let mut rng = ::rng::MyRng::from_u64(10137);
         for s in ising.S.iter_mut() {
-            *s = *rng.choose(&[-1,1]).unwrap();
+            // The following picks a random number +1 or -1
+            *s = (rng.next_u64() as i8 & 1)*2 - 1;
         }
         ising.E = ising.compute_energy();
         ising
