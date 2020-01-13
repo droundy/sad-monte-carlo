@@ -72,21 +72,21 @@ T = my_temperature[fname]
 plt.figure('histograms')
 for fname in fnames:
         plt.plot(current_histogram[fname],
-                   color=my_color[fname], label='Sample histogram')
+                   color=my_color[fname], label=fname)
         plt.xlabel('Number of Atoms')
         plt.ylabel('histogram (number of moves)')
         plt.title('Histogram of Uncovereged System')
 plt.tight_layout()
 plt.legend(loc='best')
 
-plt.figure('excess free energy')
-for fname in fnames:
-        plt.plot(current_histogram[fname],
-                   color=my_color[fname], label=fname)
-        plt.xlabel('Number of Atoms')
-        plt.ylabel('histogram (number of moves)')
-        plt.title('Figure 2: Example of partially converged histogram')
-plt.legend(loc='best')
+# plt.figure('excess free energy')
+# for fname in fnames:
+#         plt.plot(current_histogram[fname],
+#                    color=my_color[fname], label=fname)
+#         plt.xlabel('Number of Atoms')
+#         plt.ylabel('histogram (number of moves)')
+#         plt.title('Figure 2: Example of partially converged histogram')
+# plt.legend(loc='best')
 
 # plt.figure('excess free energy')
 # for fname in fnames:
@@ -102,71 +102,71 @@ plt.legend(loc='best')
 
 # plt.legend(loc='best')
 
-plt.figure('excess entropy')
-for fname in fnames:
-        S = (Uexc_N-Fexc_N)/T
-        S = S-S[0]
-        plt.plot(S,
-                   color=my_color[fname], label=fname)
-        plt.xlabel('$N$')
-        plt.ylabel('$S_{exc}$')
-        plt.tight_layout()
-
-plt.figure('excess entropy/N')
-for fname in fnames:
-        S = (Uexc_N-Fexc_N)/T
-        S = S-S[0]
-        SN = np.arange(0, len(S), 1)
-        plt.plot((np.pi/6)*SN/my_volume[fname],S/SN,
-                   color=my_color[fname], label=fname)
-        plt.ylabel('S_Excess')
-        plt.xlabel(r'$\eta$')
-plt.tight_layout()
-
-
-plt.legend(loc='best')
-
-plt.figure('excess internal energy/N')
-for fname in fnames:
-        UN = np.arange(0, len(Uexc_N), 1)
-        plt.plot((np.pi/6)*UN/my_volume[fname],Uexc_N/UN,
-                   color=my_color[fname], label=fname)
-        plt.ylabel('Excess internal engery')
-        plt.xlabel(r'$\eta$')
-
-for fname in fnames:
-        plt.figure('Pressure')
-        N = len(Fexc_N)
-        p = np.zeros(N-1)
-        p_exc = np.zeros(N-1)
-        for i in range(0,N-1):
-                u = Fexc_N[i+1]-Fexc_N[i] # dN = 1
-                p_exc[i] = (-Fexc_N[i]+u*(i+.5))/V
-                p[i] = p_exc[i] + (i+.5)*T/V # excess + ideal = total pressure
-        UN = np.arange(0.5, N-1, 1)
-        plt.ylabel('Pressure')
-        plt.xlabel(r'$\eta$')
-        plt.plot((np.pi/6)*UN/my_volume[fname],p,
-                   color=my_color[fname], label=fname)
-        plt.plot((np.pi/6)*UN/my_volume[fname],p_exc,'--',
-                   color=my_color[fname], label=fname + ' pexc')
-        plt.legend(loc='best')
-        plt.tight_layout()
-
-
-        plt.figure('Gibbs')
-        Gexc_N = np.zeros(N-2)
-        p_integer = np.zeros(N-2)
-        for j in range(1,N-2):
-                p_integer[j] = (p[j]+p[j+1])/2
-                Gexc_N[j] = Fexc_N[j] + V*p_integer[j]
-        plt.ylabel('Gibbs')
-        plt.xlabel('Pressure')
-        plt.plot(p_integer,Gexc_N,
-                   color=my_color[fname], label=fname)
-        plt.legend(loc='best')
-
-plt.show()
+# plt.figure('excess entropy')
+# for fname in fnames:
+#         S = (Uexc_N-Fexc_N)/T
+#         S = S-S[0]
+#         plt.plot(S,
+#                    color=my_color[fname], label=fname)
+#         plt.xlabel('$N$')
+#         plt.ylabel('$S_{exc}$')
+#         plt.tight_layout()
+#
+# plt.figure('excess entropy/N')
+# for fname in fnames:
+#         S = (Uexc_N-Fexc_N)/T
+#         S = S-S[0]
+#         SN = np.arange(0, len(S), 1)
+#         plt.plot((np.pi/6)*SN/my_volume[fname],S/SN,
+#                    color=my_color[fname], label=fname)
+#         plt.ylabel('S_Excess')
+#         plt.xlabel(r'$\eta$')
+# plt.tight_layout()
+#
+#
+# plt.legend(loc='best')
+#
+# plt.figure('excess internal energy/N')
+# for fname in fnames:
+#         UN = np.arange(0, len(Uexc_N), 1)
+#         plt.plot((np.pi/6)*UN/my_volume[fname],Uexc_N/UN,
+#                    color=my_color[fname], label=fname)
+#         plt.ylabel('Excess internal engery')
+#         plt.xlabel(r'$\eta$')
+#
+# for fname in fnames:
+#         plt.figure('Pressure')
+#         N = len(Fexc_N)
+#         p = np.zeros(N-1)
+#         p_exc = np.zeros(N-1)
+#         for i in range(0,N-1):
+#                 u = Fexc_N[i+1]-Fexc_N[i] # dN = 1
+#                 p_exc[i] = (-Fexc_N[i]+u*(i+.5))/V
+#                 p[i] = p_exc[i] + (i+.5)*T/V # excess + ideal = total pressure
+#         UN = np.arange(0.5, N-1, 1)
+#         plt.ylabel('Pressure')
+#         plt.xlabel(r'$\eta$')
+#         plt.plot((np.pi/6)*UN/my_volume[fname],p,
+#                    color=my_color[fname], label=fname)
+#         plt.plot((np.pi/6)*UN/my_volume[fname],p_exc,'--',
+#                    color=my_color[fname], label=fname + ' pexc')
+#         plt.legend(loc='best')
+#         plt.tight_layout()
+#
+#
+#         plt.figure('Gibbs')
+#         Gexc_N = np.zeros(N-2)
+#         p_integer = np.zeros(N-2)
+#         for j in range(1,N-2):
+#                 p_integer[j] = (p[j]+p[j+1])/2
+#                 Gexc_N[j] = Fexc_N[j] + V*p_integer[j]
+#         plt.ylabel('Gibbs')
+#         plt.xlabel('Pressure')
+#         plt.plot(p_integer,Gexc_N,
+#                    color=my_color[fname], label=fname)
+#         plt.legend(loc='best')
+#
+# plt.show()
 
 
 
@@ -202,9 +202,9 @@ for fname in fnames:
         plt.plot(Grand_N, Grand_U,'-',
                    color=my_color[fname], label=fname)
         plt.plot(Grand_N, Grand_Uexc,'--',
-                   color=my_color[fname], label=fname+' excess')
+                   color=my_color[fname], label=fname+' Excess')
         plt.plot(Grand_N, Grand_Uideal,'--',
-                   color=my_color[fname], label='ideal')
+                   color='red', label='Ideal')
         # plt.plot(current_total_energy[fname]/current_histogram[fname], ':',
         #            color=my_color[fname], label='canonical '+fname)
         plt.ylabel('Grand U')
@@ -217,7 +217,7 @@ plt.figure('Grand N')
 plt.plot(Grand_N, all_mu, label=fname)
 
 plt.plot((V*nQ)*np.exp(all_mu/T), all_mu, label='ideal') # FIXME
-plt.xlim(0, 35)
+plt.xlim(0, 37)
 plt.legend(loc='best')
 plt.ylabel(r'$\mu$')
 plt.xlabel(r'$N$')
