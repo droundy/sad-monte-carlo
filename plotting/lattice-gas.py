@@ -15,6 +15,7 @@ time_frame = data_loaded['movies']['time']
 print('entropy_data', data_loaded['movies']['entropy'])
 print('entropy_data lens', [len(x) for x in data_loaded['movies']['entropy']])
 entropy_data = data_loaded['movies']['entropy'][7:]
+hist_data = data_loaded['movies']['histogram'][7:]
 moves = data_loaded['movies']['time'][7:]
 
 energy_data = data_loaded['movies']['energy']
@@ -44,13 +45,40 @@ for sublist in entropy_data:
         flat_list.append(item)
 """    
 
+E = np.zeros((9,6))
+E[:-1,:-1] = energy_resize
+N = np.zeros((9,6))
+N[:-1,:-1] = number_data
+
+dE = E[0,0] - E[1,0]
+E -= dE/2
+print('dE', dE)
+
+E[-1,:] = E[-2,:] - dE
+N[-1,:] = N[-2,:]
+
+E[:,-1] = E[:,-2]
+N[:,-1] = N[:,-2] + 1
+
+N -= 0.5
 plt.figure()
 for t in range(len(entropy_data)):
     print('time', moves[t])
     S = np.array(entropy_data[t])
     S.resize(8,5)
+    hist = np.array(hist_data[t])
+    hist.resize(8,5)
+    plt.figure('entropy')
+    plt.clf()
     plt.title(f'{moves[t]} moves')
-    plt.pcolor(number_data, energy_resize, S)
+    plt.pcolor(N,E,S)
+    plt.colorbar()
+
+    plt.figure('histogram')
+    plt.clf()
+    plt.title(f'{moves[t]} moves')
+    plt.pcolor(N,E,hist)
+    plt.colorbar()
     plt.pause(1)
 
 entropy_resize = []
