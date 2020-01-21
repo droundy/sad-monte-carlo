@@ -48,12 +48,17 @@ for t in range(len(entropy_data)):
     print('time', moves[t])
     S = np.array(entropy_data[t])
     S.resize(9, 5)
+    S0 = S[-1,0] # this is the E=0, N=0 entropy
+    S = S - S0
     hist = np.array(hist_data[t])
     hist.resize(9, 5)
+    S[hist==0] = np.nan
     plt.figure('entropy')
     plt.clf() #Clear the current figure.
     plt.title(f'{moves[t]} moves')
     plt.pcolor(N,E,S) #pcolor([X, Y,] C, **kwargs) https://matplotlib.org/api/_as_gen/matplotlib.pyplot.pcolor.html
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
     plt.colorbar() #https://matplotlib.org/api/_as_gen/matplotlib.pyplot.colorbar.html
     plt.figure('histogram')
     plt.clf()
