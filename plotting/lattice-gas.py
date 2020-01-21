@@ -22,19 +22,21 @@ energy_resize = np.array(energy_data)
 #print('energy_resize size', energy_resize.shape)
 
 nlist = len(energy_data)
-energy_resize.resize(8, 5)
-number_data.resize(8, 5)
+print('energy_data.shape', energy_resize.shape)
+energy_resize.resize(9, 5)
+number_data.resize(9, 5)
+print(energy_resize)
 
-E = np.zeros((9,6))
+E = np.zeros((10, 6))
 E[:-1,:-1] = energy_resize
-N = np.zeros((9,6))
+N = np.zeros((10, 6))
 N[:-1,:-1] = number_data
 
-dE = E[0,0] - E[1,0] #change in energy
+dE = abs(E[0,0] - E[1,0]) #change in energy
 E -= dE/2
 print('dE', dE)
 
-E[-1,:] = E[-2,:] - dE
+E[-1,:] = E[-2,:] + dE
 N[-1,:] = N[-2,:]
 
 E[:,-1] = E[:,-2]
@@ -45,9 +47,9 @@ N -= 0.5
 for t in range(len(entropy_data)):
     print('time', moves[t])
     S = np.array(entropy_data[t])
-    S.resize(8,5)
+    S.resize(9, 5)
     hist = np.array(hist_data[t])
-    hist.resize(8,5)
+    hist.resize(9, 5)
     plt.figure('entropy')
     plt.clf() #Clear the current figure.
     plt.title(f'{moves[t]} moves')
