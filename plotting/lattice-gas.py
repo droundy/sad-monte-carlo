@@ -10,8 +10,8 @@ with open('test.yaml','r') as stream:
         print(exc)
 
 time_frame = data_loaded['movies']['time']
-entropy_data = data_loaded['movies']['entropy'][7:] #slices from 7 and on
-hist_data = data_loaded['movies']['histogram'][7:]
+entropy_data = data_loaded['movies']['entropy']
+hist_data = data_loaded['movies']['histogram']
 hist = data_loaded['bins']['histogram']
 moves = data_loaded['movies']['time'][7:]
 energy_data = data_loaded['movies']['energy']

@@ -170,6 +170,12 @@ impl Method {
 }
 
 fn old_state_to_index(old_n: &[usize], old_e: &[Energy], s: State) -> Option<usize> {
+    if old_e.len() < 2 {
+        // This is a little hokey, but I don't think the data before
+        // we have discovered two states is very important to retain
+        // in the movies.
+        return None;
+    }
     let width = old_e[1]-old_e[0];
     let min_e = old_e[0] - width*0.5;
     let num_n = old_n.len();
