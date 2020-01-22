@@ -19,6 +19,16 @@ pub struct LjParams {
     n_radial: Option<usize>,
 }
 
+/// The parameters needed to configure a Weeks-Chandler-Anderson (WCA) system for a grand computation.
+#[allow(non_snake_case)]
+#[derive(Serialize, Deserialize, Debug, ClapMe)]
+pub struct GrandLjParams {
+    /// The radius of the spherical box
+    radius: Length,
+    /// The number of bins for the radial distribution
+    n_radial: Option<usize>,
+}
+
 #[allow(non_snake_case)]
 /// A WCA fluid.
 #[derive(Serialize, Deserialize, Debug)]
@@ -53,6 +63,8 @@ pub struct Collected {
 enum Change {
     /// Move an atom already in the system
     Move { which: usize, to: Vector3d<Length>, e: Energy },
+    Add { to: Vector3d<Length>, e: Energy },
+    Remove { which: usize, e: Energy },
     /// Make no changes to the system
     None,
 }
@@ -180,6 +192,32 @@ impl From<LjParams> for Lj {
         lj
     }
 }
+impl From<GrandLjParams> for Lj {
+    fn from(params: GrandLjParams) -> Lj {
+        Lj {
+            E: 0.0*units::EPSILON,
+            error: 0.0*units::EPSILON,
+            possible_change: Change::None,
+            positions: Vec::new(),
+            max_radius_squared: params.radius*params.radius,
+            max_radius: params.radius,
+            n_radial: params.n_radial,
+        }
+    }
+}
+
+impl Lj {
+    fn compute_one_atom_energy(&self, i: usize) -> Energy {
+        let r2 = self.positions[i];
+        let mut e: Energy = units::EPSILON*0.0;
+        for (j, &r1) in self.positions.iter().enumerate() {
+            if i != j {
+                e += potential((r1-r2).norm2());
+            }
+        }
+        e
+    }
+}
 
 impl System for Lj {
     type CollectedData = Collected;
@@ -238,6 +276,34 @@ impl System for Lj {
     }
 }
 
+impl GrandSystem for Lj {
+    fn plan_add(&mut self, rng: &mut MyRng) -> Option<Energy> {
+        let mut r;
+        loop {
+            r = Vector3d::new(rng.sample(Uniform::new(-1.0, 1.0)),
+                              rng.sample(Uniform::new(-1.0, 1.0)),
+                              rng.sample(Uniform::new(-1.0, 1.0)),);
+            if r.norm2() < 1.0 {
+                break;
+            }
+        }
+        self.positions.push(r*self.max_radius);
+        let e = self.E + self.compute_one_atom_energy(self.positions.len()-1);
+        let to = self.positions.pop().unwrap();
+        self.possible_change = Change::Add { to, e, };
+        Some(e)
+    }
+    fn plan_remove(&mut self, rng: &mut MyRng) -> Energy {
+        let which = rng.sample(Uniform::new(0, self.positions.len()));
+        let e = self.E - self.compute_one_atom_energy(which);
+        self.possible_change = Change::Remove { which, e, };
+        e
+    }
+    fn num_atoms(&self) -> usize {
+        self.positions.len()
+    }
+}
+
 impl ConfirmSystem for Lj {
     fn confirm(&mut self) {
         match self.possible_change {
@@ -247,6 +313,16 @@ impl ConfirmSystem for Lj {
                 self.possible_change = Change::None;
                 self.set_energy(e);
             },
+            Change::Add { to, e } => {
+                self.positions.push(to);
+                self.possible_change = Change::None;
+                self.set_energy(e);
+            }
+            Change::Remove { which, e } => {
+                self.positions.swap_remove(which);
+                self.possible_change = Change::None;
+                self.set_energy(e);
+            }
         }
     }
 }

@@ -49,6 +49,8 @@ pub struct EnergyNumberMCParams {
     pub seed: Option<u64>,
     /// The energy binsize.
     energy_bin: Option<Energy>,
+    /// The maximum allowed number of atoms.
+    max_N: Option<usize>,
     _moves: MoveParams,
     _report: plugin::ReportParams,
     movie: Option<MoviesParams>,
@@ -65,6 +67,7 @@ impl Default for EnergyNumberMCParams {
                 translation_scale: 0.05*units::SIGMA,
                 addremove_probability: 0.05,
             },
+            max_N: None,
             _report: plugin::ReportParams::default(),
             movie: None,
             _save: plugin::SaveParams::default(),
@@ -154,6 +157,8 @@ pub struct EnergyNumberMC<S> {
     pub rng: crate::rng::MyRng,
     /// Where to save the resume file.
     pub save_as: ::std::path::PathBuf,
+    /// The maximum number of allowed atoms
+    pub max_N: Option<usize>,
     report: plugin::Report,
     movies: Movies,
     save: plugin::Save,
@@ -446,6 +451,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
                 t_last: 1,
             },
             move_plan: params._moves,
+            max_N: params.max_N,
             addremove_probability: {
                 if let MoveParams::_Explicit { addremove_probability, .. } = params._moves {
                     addremove_probability
@@ -495,7 +501,11 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
             self.bins.num_addremove_attempts += 1;
             let option_e2 = if self.rng.gen::<u64>() & 1 == 0 {
                 // add
-                self.system.plan_add(&mut self.rng).map(|e2| State { E: e2, N: e1.N+1 })
+                if Some(self.system.num_atoms()) == self.max_N {
+                    None // Do not allow to add more atoms when we are already at the max.
+                } else {
+                    self.system.plan_add(&mut self.rng).map(|e2| State { E: e2, N: e1.N+1 })
+                }
             } else {
                 // remove
                 if e1.N > 0 {
