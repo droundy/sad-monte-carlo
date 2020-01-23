@@ -21,7 +21,7 @@ with open(f, 'r') as stream:
     yaml_data = yaml.load(stream)
 
 data = yaml_data
-V = data['system']['cell']['box_diagonal']['x']*data['system']['cell']['box_diagonal']['y']*data['system']['cell']['box_diagonal']['z']
+# V = data['system']['cell']['box_diagonal']['x']*data['system']['cell']['box_diagonal']['y']*data['system']['cell']['box_diagonal']['z']
 
 os.system("rm -f tmp*.png") # clean up any preexisting png files
 
@@ -60,6 +60,7 @@ plt.savefig('energy-number-histogram.png', transparent=True)
 
 plt.figure()
 plt.ion()
+which = 0
 for my_entropy in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
     my_entropy = my_entropy.replace(' ',',')
     plt.clf()
@@ -88,7 +89,8 @@ for my_entropy in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
     print('min_entropy', min_entropy)
     if len(entropy) > 1:
         plt.pcolor(E_edges , N_edges, entropy - entropy[1,-1], vmin=-800)
-        plt.title('Energy Number Entropy')
+        plt.title('Energy Number Entropy {}'.format(which))
+        which += 1
         plt.xlabel('Energy')
         plt.ylabel('Number of Atoms')
         plt.colorbar()
