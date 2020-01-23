@@ -31,18 +31,14 @@ i = 0
 for my_histogram, my_entropy in zip(sorted(glob.iglob("%s.movie/h*.dat" % filename)), sorted(glob.iglob("%s.movie/S*.dat" % filename))):
     datah = np.loadtxt(my_histogram, ndmin=2)
     histogram = datah[1:,:]
-    Eh = datah[0,:]
-    nE = len(Eh)
-    nN = len(histogram[:,0])
-
-    N = np.arange(0 , nN+1 , 1)
 
     dataS = np.loadtxt(my_entropy, ndmin=2)
     entropy = dataS[1:,:]
     Es = dataS[0,:]
-    nNs = len(entropy[:,0])
-    nEs = len(Es)
-    Ns = np.arange(0 , nNs+1 , 1)
+    Ns = np.arange(0 , len(entropy[:,0]) , 1)
+    histogram[histogram==0] = np.nan # comment this out to have a more stable color scale
+
+    assert(entropy.shape == histogram.shape)
 
     E_edges = np.zeros(len(Es)+1)
     dE = 1
