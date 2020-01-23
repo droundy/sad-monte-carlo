@@ -51,6 +51,10 @@ pub struct EnergyNumberMCParams {
     energy_bin: Option<Energy>,
     /// The maximum allowed number of atoms.
     max_N: Option<usize>,
+    /// The lowest energy to allow.
+    min_allowed_energy: Option<Energy>,
+    /// The highest energy to allow.
+    max_allowed_energy: Option<Energy>,
     _moves: MoveParams,
     _report: plugin::ReportParams,
     movie: Option<MoviesParams>,
@@ -67,6 +71,8 @@ impl Default for EnergyNumberMCParams {
                 translation_scale: 0.05*units::SIGMA,
                 addremove_probability: 0.05,
             },
+            max_allowed_energy: None,
+            min_allowed_energy: None,
             max_N: None,
             _report: plugin::ReportParams::default(),
             movie: None,
@@ -159,6 +165,10 @@ pub struct EnergyNumberMC<S> {
     pub save_as: ::std::path::PathBuf,
     /// The maximum number of allowed atoms
     pub max_N: Option<usize>,
+    /// The lowest energy to allow.
+    pub min_allowed_energy: Option<Energy>,
+    /// The highest energy to allow.
+    pub max_allowed_energy: Option<Energy>,
     report: plugin::Report,
     movies: Movies,
     save: plugin::Save,
@@ -452,6 +462,8 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
             },
             move_plan: params._moves,
             max_N: params.max_N,
+            max_allowed_energy: params.max_allowed_energy,
+            min_allowed_energy: params.min_allowed_energy,
             addremove_probability: {
                 if let MoveParams::_Explicit { addremove_probability, .. } = params._moves {
                     addremove_probability
@@ -489,12 +501,21 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
             self.bins.num_translation_attempts[e1.N] += 1;
             if let Some(e2) = self.system.plan_move(&mut self.rng,
                                                     self.bins.translation_scale[e1.N]) {
+                let mut out_of_bounds = false;
+                if let Some(maxe) = self.max_allowed_energy {
+                    out_of_bounds = e2 > maxe && e2 > e1.E;
+                }
+                if let Some(mine) = self.min_allowed_energy {
+                    out_of_bounds = out_of_bounds || (e2 < mine && e2 < e1.E)
+                }
                 let e2 = State { E: e2, N: e1.N };
-                self.bins.prepare_for_state(e2);
-                if !self.reject_move(e1,e2) {
-                    self.accepted_moves += 1;
-                    self.bins.num_translation_accepted[e1.N] += 1;
-                    self.system.confirm();
+                if !out_of_bounds {
+                    self.bins.prepare_for_state(e2);
+                    if !self.reject_move(e1,e2) {
+                        self.accepted_moves += 1;
+                        self.bins.num_translation_accepted[e1.N] += 1;
+                        self.system.confirm();
+                    }
                 }
             }
         } else {
@@ -515,12 +536,22 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
                 }
             };
             if let Some(e2) = option_e2 {
-                self.bins.prepare_for_state(e2);
-                if !self.reject_move(e1,e2) {
-                    self.accepted_moves += 1;
-                    self.bins.num_addremove_accepted += 1;
-                    self.system.confirm();
+                let mut out_of_bounds = false;
+                if let Some(maxe) = self.max_allowed_energy {
+                    out_of_bounds = e2.E > maxe && e2.E > e1.E;
                 }
+                if let Some(mine) = self.min_allowed_energy {
+                    out_of_bounds = out_of_bounds || (e2.E < mine && e2.E < e1.E)
+                }
+                if !out_of_bounds {
+                    self.bins.prepare_for_state(e2);
+                    if !self.reject_move(e1,e2) {
+                        self.accepted_moves += 1;
+                        self.bins.num_addremove_accepted += 1;
+                        self.system.confirm();
+                    }
+                }
+
             }
         }
         let energy = State::new(&self.system);
