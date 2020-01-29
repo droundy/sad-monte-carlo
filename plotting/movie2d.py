@@ -79,7 +79,8 @@ for my_histogram, my_entropy in zip(sorted(glob.iglob("%s.movie/h*.dat" % filena
 
 os.system("convert  -delay 50 tmp*.png -loop 2 energy-number-histogram.gif") # make the movie
 os.system("rm tmp*.png") # clean up all these png files we created
-plt.savefig('energy-number-histogram.png', transparent=True)
+plt.figure('histogram')
+plt.savefig('%s-histogram.svg' % filename, transparent=True)
 
 plt.show()
 exit(0) # Just stop after animating and creating the movie.
@@ -185,7 +186,6 @@ plt.plot(np.reshape(temp, total_size), np.reshape(p_total, total_size), 'w.')
 print('finished dots')
 
 
-plt.pause(.1)
 plt.show()
 
 lnw = np.array(yaml_data['bins']['lnw'])
