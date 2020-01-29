@@ -58,7 +58,13 @@ rq run -R --max-output 20 -J 'lj-inv-t-wl-38-bin0001' target/release/lj-cluster 
 # Rc TESTS with 1/t-WL and SAD {2, 3, 4, 5}
 # rq run -R --max-output 20 -J 'lj-sad-38-bin001-r2' target/release/lj-cluster --N 38 --max-allowed-energy=0 --sad-min-T 0.05 --translation-scale 0.05 --energy-bin 0.01 --save-as lj-sad-38-bin001-r2.yaml --movie-time '10^(1/8)' --save-time 0.5 --radius 2
 # rq run -R --max-output 20 -J 'lj-sad-38-bin001-r4' target/release/lj-cluster --N 38 --max-allowed-energy=0 --sad-min-T 0.05 --translation-scale 0.05 --energy-bin 0.01 --save-as lj-sad-38-bin001-r4.yaml --movie-time '10^(1/8)' --save-time 0.5 --radius 4
-# rq run -R --max-output 20 -J 'lj-sad-38-bin001-r5' target/release/lj-cluster --N 38 --max-allowed-energy=0 --sad-min-T 0.05 --translation-scale 0.05 --energy-bin 0.01 --save-as lj-sad-38-bin001-r5.yaml --movie-time '10^(1/8)' --save-time 0.5 --radius 5
+rq run -R --max-output 20 -J 'lj-sad-38-bin001-r5' target/release/lj-cluster --N 38 --max-allowed-energy=0 --sad-min-T 0.05 --translation-scale 0.05 --energy-bin 0.01 --save-as lj-sad-38-bin001-r5.yaml --movie-time '10^(1/8)' --save-time 0.5 --radius 5
+rq run -R --max-output 20 -J 'lj-sad-38-bin001-r6' target/release/lj-cluster --N 38 --max-allowed-energy=0 --sad-min-T 0.05 --translation-scale 0.05 --energy-bin 0.01 --save-as lj-sad-38-bin001-r6.yaml --movie-time '10^(1/8)' --save-time 0.5 --radius 6
+rq run -R --max-output 20 -J 'lj-sad-38-bin001-r7' target/release/lj-cluster --N 38 --max-allowed-energy=0 --sad-min-T 0.05 --translation-scale 0.05 --energy-bin 0.01 --save-as lj-sad-38-bin001-r7.yaml --movie-time '10^(1/8)' --save-time 0.5 --radius 7
+
+rq run -R --max-output 20 -J 'lj-sad-38-bin001-r10' target/release/lj-cluster --N 38 --max-allowed-energy=0 --sad-min-T 0.05 --translation-scale 0.05 --energy-bin 0.01 --save-as lj-sad-38-bin001-r10.yaml --movie-time '10^(1/8)' --save-time 0.5 --radius 10
+rq run -R --max-output 20 -J 'lj-sad-38-bin001-r20' target/release/lj-cluster --N 38 --max-allowed-energy=0 --sad-min-T 0.05 --translation-scale 0.05 --energy-bin 0.01 --save-as lj-sad-38-bin001-r20.yaml --movie-time '10^(1/8)' --save-time 0.5 --radius 20
+rq run -R --max-output 20 -J 'lj-sad-38-bin001-r30' target/release/lj-cluster --N 38 --max-allowed-energy=0 --sad-min-T 0.05 --translation-scale 0.05 --energy-bin 0.01 --save-as lj-sad-38-bin001-r30.yaml --movie-time '10^(1/8)' --save-time 0.5 --radius 30
 #
 # rq run -R --max-output 20 -J 'lj-inv-t-wl-38-bin001-r2' target/release/lj-cluster --N 38 --max-allowed-energy=0 --min-allowed-energy=-173 --Inv-t-WL --translation-scale 0.05 --energy-bin 0.01 --save-as lj-inv-t-wl-38-bin001-r2.yaml --movie-time '10^(1/8)' --save-time 0.5 --radius 2
 # rq run -R --max-output 20 -J 'lj-inv-t-wl-38-bin001-r4' target/release/lj-cluster --N 38 --max-allowed-energy=0 --min-allowed-energy=-173 --Inv-t-WL --translation-scale 0.05 --energy-bin 0.01 --save-as lj-inv-t-wl-38-bin001-r4.yaml --movie-time '10^(1/8)' --save-time 0.5 --radius 4
@@ -80,4 +86,6 @@ rq run -R --max-output 20 -J 'lj-sad-135' target/release/lj-cluster --N 135 --ma
 rq run -R --max-output 20 -J 'lj-sad-147' target/release/lj-cluster --N 147 --max-allowed-energy=0 --sad-min-T 0.01 --translation-scale 0.05 --energy-bin 0.01 --save-as lj-sad-147.yaml --movie-time '10^(1/8)' --save-time 0.5 --radius 3
 
 # LJ GRAND
-rq run -R --max-output 20 -J 'lj-grand-samc-1e5-13' target/release/lj-grand --max-N 13 --addremove-probability 0.5 --translation-scale 0.05 --energy-bin 0.01 --samc-t0 1e5 --save-as lj-grand-samc-1e5-13.yaml --movie-name lj-grand --movie-time '10^(1/8)' --save-time 0.5 --radius 3
+ rq run -R --max-output 20 -J 'lj-grand' target/release/lj-cluster  --translation-scale 0.05 --radius 10 --max-N 13 --movie-time '10^(1/4)' --save-time 1 --save-as lj-grand.yaml --energy-bin 0.01 --samc-t0 1e7 --max-allowed-energy 0 --movie-name lj-grand.movie
+
+rq run -R --max-output 20 -J 'lj-grand' --release --bin lj-grand -- --addremove-probability 0.1 --translation-scale 0.05 --radius 10 --max-N 13 --movie-time '10^(1/4)' --save-time 1 --save-as lj-grand.yaml --energy-bin 0.01 --samc-t0 1e7 --max-allowed-energy 0 --movie-name lj-grand.movie
