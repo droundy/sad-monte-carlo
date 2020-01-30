@@ -23,60 +23,23 @@ with open(f, 'r') as stream:
 data = yaml_data
 # V = data['system']['cell']['box_diagonal']['x']*data['system']['cell']['box_diagonal']['y']*data['system']['cell']['box_diagonal']['z']
 
+time = np.array(data['movies']['time'])
+
 os.system("rm -f tmp*.png") # clean up any preexisting png files
 
-plt.figure()
-plt.ion()
 i = 0
-for my_histogram in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
-    # ~ my_entropy = my_histogram ... switch h to S
-    plt.clf()
-    #print(my_histogram)
+for my_histogram, my_entropy in zip(sorted(glob.iglob("%s.movie/h*.dat" % filename)), sorted(glob.iglob("%s.movie/S*.dat" % filename))):
     datah = np.loadtxt(my_histogram, ndmin=2)
-    #print(datah)
     histogram = datah[1:,:]
-    Eh = datah[0,:]
-    nE = len(Eh)
-    nN = len(histogram[:,0])
 
-    N = np.arange(0 , nN+1 , 1)
-
-    plt.pcolor(Eh , N , histogram)
-    plt.xlim(-252,0)
-    plt.ylim(0,37)
-    plt.title('Energy Number Histogram')
-    plt.xlabel('Energy')
-    plt.ylabel('Number of Atoms')
-    plt.colorbar()
-    # ~ # plt.axis([-xL , 0 , 0 , yL])
-    plt.pause(.01)
-    fname = 'tmp%06d.png'%i # create a file name for this frame
-    plt.savefig(fname)
-    i += 1
-
-os.system("convert  -delay 50 tmp*.png -loop 2 energy-number-histogram.gif") # make the movie
-os.system("rm tmp*.png") # clean up all these png files we created
-plt.savefig('energy-number-histogram.png', transparent=True)
-
-plt.figure()
-plt.ion()
-which = 0
-for my_entropy in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
-    my_entropy = my_entropy.replace(' ',',')
-    plt.clf()
-    #print(my_entropy)
     dataS = np.loadtxt(my_entropy, ndmin=2)
-    #print(dataS)
     entropy = dataS[1:,:]
     Es = dataS[0,:]
-    print(entropy[0:3,:])
-    print(Es)
-    nNs = len(entropy[:,0])
-    nEs = len(Es)
-    # ~ #print("nEs", nEs)
-    # ~ #~ #print("nNs",nNs)
-    Ns = np.arange(0 , nNs+1 , 1)
-    
+    Ns = np.arange(0 , len(entropy[:,0]) , 1)
+    histogram[histogram==0] = np.nan # comment this out to have a more stable color scale
+
+    assert(entropy.shape == histogram.shape)
+
     E_edges = np.zeros(len(Es)+1)
     dE = 1
     if len(Es) > 1:
@@ -86,16 +49,41 @@ for my_entropy in sorted(glob.iglob("%s.movie/S*.dat" % filename)):
     N_edges = Ns + 0.5
     N_edges[0] = 0
     min_entropy = min(entropy[entropy != 0])
+    entropy[entropy==0] = np.nan
+
+    plt.figure('histogram')
+    plt.clf()
+    plt.pcolor(E_edges , N_edges , histogram)
+    # plt.xlim(-252,0)
+    # plt.ylim(0,37)
+    plt.title('Histogram t=%.3g' % time[i])
+    plt.xlabel('Energy')
+    plt.ylabel('Number of Atoms')
+    plt.colorbar()
+    # ~ # plt.axis([-xL , 0 , 0 , yL])
+    fname = 'tmp%06d.png'%i # create a file name for this frame
+    plt.savefig(fname)
+
+    plt.figure('entropy')
+    plt.clf()
     print('min_entropy', min_entropy)
     if len(entropy) > 1:
-        plt.pcolor(E_edges , N_edges, entropy - entropy[1,-1], vmin=-800)
-        plt.title('Energy Number Entropy {}'.format(which))
-        which += 1
+        plt.pcolor(E_edges , N_edges, entropy - entropy[1,-1], vmin=min_entropy - entropy[1,-1])
+        plt.title('Excess entropy t=%.3g' % time[i])
         plt.xlabel('Energy')
         plt.ylabel('Number of Atoms')
         plt.colorbar()
-        plt.pause(.1)
-plt.ioff()  
+
+    plt.pause(1.1)
+    i += 1
+
+os.system("convert  -delay 50 tmp*.png -loop 2 energy-number-histogram.gif") # make the movie
+os.system("rm tmp*.png") # clean up all these png files we created
+plt.figure('histogram')
+plt.savefig('%s-histogram.svg' % filename, transparent=True)
+
+plt.show()
+exit(0) # Just stop after animating and creating the movie.
 
 dataS = np.loadtxt(my_entropy, ndmin=2)
 entropy = dataS[1:,:]
@@ -198,7 +186,6 @@ plt.plot(np.reshape(temp, total_size), np.reshape(p_total, total_size), 'w.')
 print('finished dots')
 
 
-plt.pause(.1)
 plt.show()
 
 lnw = np.array(yaml_data['bins']['lnw'])
