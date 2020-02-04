@@ -1,19 +1,22 @@
-import yaml
+import yaml, cbor
 import argparse
 import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
 parser = argparse.ArgumentParser()
-file = sys.argv[1]
 parser.add_argument('file')
 args = parser.parse_args()
+file = args.file
 
 
 #yaml.warnings({'YAMLLoadWarning': False})
-with open('two.yaml','r') as stream:
+with open(file,'rb') as stream:
     try:
-        data_loaded = yaml.full_load(stream)
+        if 'cbor' in file:
+            data_loaded = cbor.load(stream)
+        else:
+            data_loaded = yaml.full_load(stream)
     except IOError:
         print('An error occurred trying to read the file.')
 
@@ -72,6 +75,8 @@ for t in range(len(entropy_data)):
     S0 = S[-1,0]
     S = S - S0
     hist = np.array(hist_data[t])
+    if hist.max() == 0:
+        continue
     hist.resize(energy_col, energy_row)
     S[hist==0] = np.nan
     plt.figure('entropy')
