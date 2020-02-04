@@ -121,7 +121,7 @@ for fname in fnames:
         print('match_index is', match_index, 'from', args.match_energy)
         norm_entropy = lambda s: s[match_index]
     if Smin is None:
-        Ebest = my_energy[fname];
+        Ebest = my_energy[fname]
         Sbest = my_entropy[fname][-1,:] - norm_entropy(my_entropy[fname][-1,:])
         CV = heat_capacity(T, Ebest, Sbest)
         np.savetxt("best_cv.txt", np.array([T, CV]).transpose())
@@ -193,7 +193,7 @@ all_figures = set()
 keep_going = True
 while keep_going:
     keep_going = False
-    for i in range(max_iter):
+    for i in range(60,max_iter):
         for fig in all_figures:
             fig.clf()
         all_figures.add(plt.figure('Heat capacity'))
