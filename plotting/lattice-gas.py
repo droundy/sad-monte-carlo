@@ -1,4 +1,3 @@
-import yaml, cbor
 import argparse
 import sys
 import matplotlib.pyplot as plt
@@ -14,8 +13,10 @@ file = args.file
 with open(file,'rb') as stream:
     try:
         if 'cbor' in file:
+            import cbor
             data_loaded = cbor.load(stream)
         else:
+            import yaml
             data_loaded = yaml.full_load(stream)
     except IOError:
         print('An error occurred trying to read the file.')
