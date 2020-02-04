@@ -75,11 +75,12 @@ for t in range(len(entropy_data)):
     S.resize(energy_col, energy_row)
     S0 = S[-1,0]
     S = S - S0
-    hist = np.array(hist_data[t])
+    hist = np.array(hist_data[t])*1.0 # the multiplication converts it to floating point values
     if hist.max() == 0:
         continue
     hist.resize(energy_col, energy_row)
     S[hist==0] = np.nan
+    hist[hist==0] = np.nan
     plt.figure('entropy')
     plt.clf()
     plt.title(f'{moves[t]} moves')
