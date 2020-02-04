@@ -18,6 +18,7 @@ make_units! {
         PRESSURE: Pressure = (Energy / Distance / Distance / Distance);
         FORCE: Force = (Energy / Distance);
         ENERGY_SQUARED: EnergySquared = (Energy*Energy);
+        PER_ENERGY: PerEnergy = (Unitless / Energy);
     }
 
     constants {

@@ -5,6 +5,7 @@ pub mod energy;
 pub mod number;
 pub mod energy_number;
 pub mod energy_number_no_translation;
+pub mod binning;
 
 use crate::system::*;
 use clapme::ClapMe;

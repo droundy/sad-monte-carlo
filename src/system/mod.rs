@@ -21,6 +21,9 @@ pub type Unitless = units::Unitless<f64>;
 /// An energy
 pub type Energy = units::Energy<f64>;
 
+/// Per energy
+pub type PerEnergy = units::PerEnergy<f64>;
+
 /// An energy squared
 pub type EnergySquared = units::EnergySquared<f64>;
 
