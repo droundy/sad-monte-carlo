@@ -74,72 +74,72 @@ Fideal = FN*T*(np.log(FN)- 1) #ignoring V for the moment?!
 
 print('TODO: 1. Try Nmax=300 for the smaller cell 2. Try V=1000 cell (with Nmax=300?) 3. Try much smaller t0 4. Reimplement/test canoncial analysis (in new copy of code)')
 
-plt.figure('histograms')
-for fname in fnames:
-        plt.plot(current_histogram[fname],
-                   color=my_color[fname], label=fname)
-        plt.xlabel('Number of Atoms')
-        plt.ylabel('histogram (number of moves)')
-        plt.title('Histogram of Uncovereged System')
-plt.tight_layout()
-plt.legend(loc='best')
-
-plt.figure('histogram')
-for fname in fnames:
-        plt.plot(current_histogram[fname],
-                   color=my_color[fname], label=fname)
-        plt.xlabel('Number of Atoms')
-        plt.ylabel('histogram (number of moves')
-        plt.title('Figure 2: Example of partially converged histogram')
-plt.legend(loc='best')
-
-plt.figure('excess free energy')
-for fname in fnames:
-        plt.plot(current_free_energy[fname],
-                   color=my_color[fname], label=fname)
-        plt.plot(current_free_energy[fname] + Fideal, '--',
-                   color=my_color[fname], label=fname+' F')
-
-plt.legend(loc='best')
-
-plt.figure('excess internal energy')
-for fname in fnames:
-        plt.plot(current_total_energy[fname]/current_histogram[fname],
-                   color=my_color[fname], label=fname)
-
-plt.legend(loc='best')
-
-plt.figure('excess entropy')
-for fname in fnames:
-        S = (Uexc_N-Fexc_N)/T
-        S = S-S[0]
-        plt.plot(S,
-                   color=my_color[fname], label=fname)
-        plt.xlabel('$N$')
-        plt.ylabel('$S_{exc}$')
-        plt.tight_layout()
-
-plt.figure('excess entropy/N')
-for fname in fnames:
-        S = (Uexc_N-Fexc_N)/T
-        S = S-S[0]
-        SN = np.arange(0, len(S), 1)
-        plt.plot((np.pi/6)*SN/my_volume[fname],S/SN,
-                   color=my_color[fname], label=fname)
-        plt.ylabel('S_Excess')
-        plt.xlabel(r'$\eta$')
-plt.tight_layout()
-
-
-plt.legend(loc='best')
-
-plt.figure('excess internal energy/N')
-for fname in fnames:
-        UN = np.arange(0, len(Uexc_N), 1)
-        plt.plot((np.pi/6)*UN/my_volume[fname],Uexc_N/UN,
-                   color=my_color[fname], label=fname)
-        plt.ylabel('Excess internal engery')
-        plt.xlabel(r'$\eta$')
+# plt.figure('histograms')
+# for fname in fnames:
+#         plt.plot(current_histogram[fname],
+#                    color=my_color[fname], label=fname)
+#         plt.xlabel('Number of Atoms')
+#         plt.ylabel('histogram (number of moves)')
+#         plt.title('Histogram of Uncovereged System')
+# plt.tight_layout()
+# plt.legend(loc='best')
+#
+# plt.figure('histogram')
+# for fname in fnames:
+#         plt.plot(current_histogram[fname],
+#                    color=my_color[fname], label=fname)
+#         plt.xlabel('Number of Atoms')
+#         plt.ylabel('histogram (number of moves')
+#         plt.title('Figure 2: Example of partially converged histogram')
+# plt.legend(loc='best')
+#
+# plt.figure('excess free energy')
+# for fname in fnames:
+#         plt.plot(current_free_energy[fname],
+#                    color=my_color[fname], label=fname)
+#         plt.plot(current_free_energy[fname] + Fideal, '--',
+#                    color=my_color[fname], label=fname+' F')
+#
+# plt.legend(loc='best')
+#
+# plt.figure('excess internal energy')
+# for fname in fnames:
+#         plt.plot(current_total_energy[fname]/current_histogram[fname],
+#                    color=my_color[fname], label=fname)
+#
+# plt.legend(loc='best')
+#
+# plt.figure('excess entropy')
+# for fname in fnames:
+#         S = (Uexc_N-Fexc_N)/T
+#         S = S-S[0]
+#         plt.plot(S,
+#                    color=my_color[fname], label=fname)
+#         plt.xlabel('$N$')
+#         plt.ylabel('$S_{exc}$')
+#         plt.tight_layout()
+#
+# plt.figure('excess entropy/N')
+# for fname in fnames:
+#         S = (Uexc_N-Fexc_N)/T
+#         S = S-S[0]
+#         SN = np.arange(0, len(S), 1)
+#         plt.plot((np.pi/6)*SN/my_volume[fname],S/SN,
+#                    color=my_color[fname], label=fname)
+#         plt.ylabel('S_Excess')
+#         plt.xlabel(r'$\eta$')
+# plt.tight_layout()
+#
+#
+# plt.legend(loc='best')
+#
+# plt.figure('excess internal energy/N')
+# for fname in fnames:
+#         UN = np.arange(0, len(Uexc_N), 1)
+#         plt.plot((np.pi/6)*UN/my_volume[fname],Uexc_N/UN,
+#                    color=my_color[fname], label=fname)
+# #         plt.ylabel('Excess internal engery')
+#         plt.xlabel(r'$\eta$')
 
 for fname in fnames:
         plt.figure('Pressure')
@@ -164,7 +164,9 @@ for fname in fnames:
                    color=my_color[fname], label=fname + ' pexc')
         plt.plot((np.pi/6)*UN/my_volume[fname],p_redundant,'r--',
                    label=fname + ' p redundant')
-        plt.legend(loc='best')
+        plt.legend(loc=
+        'best')
+        plt.hlines(.0545, 0, .4)
         plt.tight_layout()
 
 
@@ -179,11 +181,19 @@ for fname in fnames:
         GN = np.arange(1.0, N-1, 1)
         plt.ylabel('Gibbs')
         plt.xlabel('Pressure')
-        plt.plot(p_integer,Gexc_N/GN,
-                   color=my_color[fname], label=fname)
+        # plt.plot(p_integer,Gexc_N/GN,
+        #            color=my_color[fname], label=fname)
         plt.plot(p_integer,G/GN, '--',
                    color=my_color[fname], label=fname+' G')
         plt.legend(loc='best')
+
+
+plt.figure('Phase Transistion')
+Temp = np.array([1.1, 1.1, 1, 1, .9, .9])
+Pack = np.array([.075, .041, .086, .02, 0, .085])
+plt.plot(Pack, Temp, 'o')
+
+
 
 plt.show()
 
