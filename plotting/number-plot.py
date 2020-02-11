@@ -63,6 +63,9 @@ T = my_temperature[fname]
 FN = np.arange(0, len(Fexc_N), 1)
 Fideal = FN*T*(np.log(FN/V*1e2)- 1) #ignoring nQ for the moment
 Fideal = FN*T*(np.log(FN)- 1) #ignoring V for the moment?!
+#solving for u with derivative
+
+
 
 # plt.figure('gamma')
 # for fname in fnames:
@@ -72,17 +75,16 @@ Fideal = FN*T*(np.log(FN)- 1) #ignoring V for the moment?!
 # plt.ylabel(r'$\gamma$')
 # plt.ylim(1e-12, 1.1)
 
-print('TODO: 1. Try Nmax=300 for the smaller cell 2. Try V=1000 cell (with Nmax=300?) 3. Try much smaller t0 4. Reimplement/test canoncial analysis (in new copy of code)')
 
-# plt.figure('histograms')
-# for fname in fnames:
-#         plt.plot(current_histogram[fname],
-#                    color=my_color[fname], label=fname)
-#         plt.xlabel('Number of Atoms')
-#         plt.ylabel('histogram (number of moves)')
-#         plt.title('Histogram of Uncovereged System')
-# plt.tight_layout()
-# plt.legend(loc='best')
+plt.figure('histograms')
+for fname in fnames:
+        plt.plot(current_histogram[fname],
+                   color=my_color[fname], label=fname)
+        plt.xlabel('Number of Atoms')
+        plt.ylabel('histogram (number of moves)')
+        plt.title('Histogram of Uncovereged System')
+plt.tight_layout()
+plt.legend(loc='best')
 #
 # plt.figure('histogram')
 # for fname in fnames:
@@ -154,7 +156,7 @@ for fname in fnames:
                 p[i] = p_exc[i] + (i+.5)*T/V # excess + ideal = total pressure
                 u = F[i+1]-F[i] # dN = 1
                 p_redundant[i] = (-0.5*(F[i]+F[i+1])+u*(i+.5))/V
-                print 'checking: ', i, p_redundant[i], p[i]
+                # print 'checking: ', i, p_redundant[i], p[i]
         UN = np.arange(0.5, N-1, 1)
         plt.ylabel('Pressure')
         plt.xlabel(r'$\eta$')
@@ -187,6 +189,17 @@ for fname in fnames:
                    color=my_color[fname], label=fname+' G')
         plt.legend(loc='best')
 
+        plt.figure('Mu vs Pressure')
+        mu_excess = np.zeros_like(Fexc_N-1)
+        for i in np.arange(0, len(Fexc_N)-1, 1):
+            mu_excess[i] = Fexc_N[i+1]-Fexc_N[i] #dN=1
+        FN = len(Fexc_N-1)
+        mu_ideal = T*(np.log(FN/V)-1)+FN*T/(FN-V)
+        mu = mu_excess + mu_ideal
+        plt.plot(p, mu, '--', color=my_color[fname], label=fname)
+
+
+
 
 plt.figure('Phase Transistion')
 Temp = np.array([1.1, 1.1, 1, 1, .9, .9])
@@ -195,10 +208,10 @@ plt.plot(Pack, Temp, 'o')
 
 
 
-plt.show()
-
-
-
+# plt.show()
+#
+#
+#
 # all_mu = np.arange(2, 30, 0.01)
 # # nQ = (mkT/2pi hbar^2)^1.5
 # nQ = 0.001 # HOKEY
@@ -229,19 +242,19 @@ plt.show()
 #         Grand_Uideal = C_V*T*Grand_N
 #         Grand_U = Grand_Uideal + Grand_Uexc
 #         plt.plot(Grand_N, Grand_U,'-',
-#                    color=my_color[fname], label=fname)
+#                    color=my_color[fname], label='Total Grand Internal Energy')
 #         plt.plot(Grand_N, Grand_Uexc,'--',
-#                    color=my_color[fname], label=fname+' Excess')
+#                    color=my_color[fname], label=' Excess Grand Internal Energy')
 #         plt.plot(Grand_N, Grand_Uideal,'--',
-#                    color='red', label='Ideal')
+#                    color='red', label='Ideal Grand Internal Energy')
 #         # plt.plot(current_total_energy[fname]/current_histogram[fname], ':',
 #         #            color=my_color[fname], label='canonical '+fname)
-#         plt.ylabel('Grand U')
-#         plt.title('Grand Internal Energy')
+#         plt.ylabel('Grand Internal Energy')
+#         # plt.title('Grand Internal Energy')
 #         #plt.title('mu {} {}'.format(all_mu[0], all_mu[-1]))
-#         plt.xlabel('Grand N')
+#         plt.xlabel('Grand Number of Atoms')
 #         plt.legend(loc='best')
-#
+
 # plt.figure('Grand N')
 # plt.plot(Grand_N, all_mu, label=fname)
 #
@@ -332,4 +345,4 @@ plt.show()
 #     plt.legend(loc='best')
 #     plt.tight_layout()
 #
-# plt.show()
+plt.show()
