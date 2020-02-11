@@ -193,8 +193,7 @@ for fname in fnames:
         mu_excess = np.zeros_like(p)
         for i in range(0,N-1):
             mu_excess[i] = Fexc_N[i+1]-Fexc_N[i] #dN=1
-        FN = len(Fexc_N-1)
-        mu_ideal = T*(np.log(FN/V)-1)+FN*T/(FN-V)
+        mu_ideal = T*np.log(UN)
         mu = mu_excess + mu_ideal
         plt.plot(p, mu, '--', color=my_color[fname], label=fname)
 
