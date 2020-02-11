@@ -190,8 +190,8 @@ for fname in fnames:
         plt.legend(loc='best')
 
         plt.figure('Mu vs Pressure')
-        mu_excess = np.zeros_like(Fexc_N-1)
-        for i in np.arange(0, len(Fexc_N)-1, 1):
+        mu_excess = np.zeros_like(p)
+        for i in range(0,N-1):
             mu_excess[i] = Fexc_N[i+1]-Fexc_N[i] #dN=1
         FN = len(Fexc_N-1)
         mu_ideal = T*(np.log(FN/V)-1)+FN*T/(FN-V)
