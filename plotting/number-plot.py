@@ -185,7 +185,7 @@ for fname in fnames:
         plt.xlabel('Pressure')
         # plt.plot(p_integer,Gexc_N/GN,
         #            color=my_color[fname], label=fname)
-        plt.plot(p_integer,G/GN, '--',
+        plt.plot(p_integer,G/GN, '.--',
                    color=my_color[fname], label=fname+' G')
         plt.legend(loc='best')
 
@@ -195,7 +195,7 @@ for fname in fnames:
             mu_excess[i] = Fexc_N[i+1]-Fexc_N[i] #dN=1
         mu_ideal = T*np.log(UN)
         mu = mu_excess + mu_ideal
-        plt.plot(p, mu, '--', color=my_color[fname], label=fname)
+        plt.plot(p, mu, '.--', color=my_color[fname], label=fname)
 
 
 
