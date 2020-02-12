@@ -1,4 +1,4 @@
-//! A square well fluid.
+//! A Weeks-Chandler-Anderson fluid.
 
 use super::*;
 
