@@ -1,85 +1,98 @@
-import yaml
-import pandas as pd
+import argparse
+import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
-with open('test.yaml','r') as stream:
-    try:
-        first_data_loaded = yaml.safe_load(stream)
-    except yaml.yamlerror as exc:
-        print(exc)
+parser = argparse.ArgumentParser()
+parser.add_argument('file')
+args = parser.parse_args()
+file = args.file
 
-with open('partial_test.yaml','r') as stream:
+
+#yaml.warnings({'YAMLLoadWarning': False})
+with open(file,'rb') as stream:
     try:
-        data_loaded = yaml.safe_load(stream)
-    except yaml.yamlerror as exc:
-        print(exc)
-        
-hist = data_loaded['bins']['histogram']
+        if 'cbor' in file:
+            import cbor
+            data_loaded = cbor.load(stream)
+        else:
+            import yaml
+            data_loaded = yaml.full_load(stream)
+    except IOError:
+        print('An error occurred trying to read the file.')
+
 
 time_frame = data_loaded['movies']['time']
 entropy_data = data_loaded['movies']['entropy']
-energy_data = data_loaded['movies']['energy']
+hist_data = data_loaded['movies']['histogram']
+hist = data_loaded['bins']['histogram']
+moves = data_loaded['movies']['time']
+#energy_data = data_loaded['movies']['energy']
 
-number_data = first_data_loaded['movies']['number']
+number_data = np.array(data_loaded['movies']['number'])
+energy_data = np.array(data_loaded['movies']['energy'])
 
-#L = [1,2,3,4]
-energy_resize = np.array(energy_data)
+print(len(energy_data))
+
+energy_row = 0
+for i in range(len(energy_data)-1):
+    if energy_data[i+1] != energy_data[i]:
+        energy_row = int(i + 1)
+        break
+
+energy_col = int(len(energy_data)/energy_row)
+
 nlist = len(energy_data)
-energy_resize.resize(8, 5)
 
-fig, (ax0) = plt.subplots(1)
-c = ax0.pcolor(energy_resize)
-ax0.set_title('Lattice Gas Energy Pcolor')
-fig.tight_layout()
-plt.figure()
+energy_data.resize(energy_col, energy_row)
+number_data.resize(energy_col, energy_row)
 
-#entropy_resize = np.array(entropy_data)
-"""
-flat_list = []
-for sublist in entropy_data:
-    print(sublist)
-    for item in sublist:
-        flat_list.append(item)
-"""    
-    
-entropy_resize = []
-for sublist in entropy_data[6:47]:
-    #print(sublist)
-    for item in sublist:
-        #print(item)
-        entropy_resize.append(item)
-        
-entropy_re = np.array(entropy_resize)
-#print(entropy_re)
-entropy_re.resize(47-6, 45)
+E = np.zeros((energy_col + 1, energy_row + 1))
+print(E)
+E[:-1,:-1] = energy_data
+print(E)
+N = np.zeros((energy_col + 1, energy_row + 1))
+print(N)
+N[:-1,:-1] = number_data
+print(N)
 
-#entropy_resize.resize(,)
-#print(entropy_resize)
+dE = abs(E[0,0] - E[1,0])
+E -= dE/2
+print('dE', dE)
 
-fig, (ax0) = plt.subplots(1)
-c = ax0.pcolor(entropy_re)
-ax0.set_title('Lattice Gas Entropy Pcolor')
-fig.tight_layout()
+E[-1,:] = E[-2,:] + dE
+N[-1,:] = N[-2,:]
+
+E[:,-1] = E[:,-2]
+N[:,-1] = N[:,-2] + 1
+
+N -= 0.5
 
 
-#graphing
-"""
-plt.plot(hist)
-plt.ylabel('Histogram of Entropy')
+for t in range(len(entropy_data)):
+    #print('time', moves[t])
+    S = np.array(entropy_data[t])
+    S.resize(energy_col, energy_row)
+    S0 = S[-1,0]
+    S = S - S0
+    hist = np.array(hist_data[t])*1.0 # the multiplication converts it to floating point values
+    if hist.max() == 0:
+        continue
+    hist.resize(energy_col, energy_row)
+    S[hist==0] = np.nan
+    hist[hist==0] = np.nan
+    plt.figure('entropy')
+    plt.clf()
+    plt.title(f'{moves[t]} moves')
+    plt.pcolor(N,E,S) 
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    plt.colorbar() 
+    plt.figure('histogram')
+    plt.clf()
+    plt.title(f'{moves[t]} moves')
+    plt.pcolor(N,E,hist)
+    plt.colorbar()
+    plt.pause(1)
 
-#plt.plot(time_frame, energy_data)
-#plt.label('Histogram of Entropy')
-
-plt.plot(time_frame[0:45], energy_data[0:45])
-plt.title('Energy vs Time of Lattice Gas')
-plt.ylabel('energy')
-plt.xlabel('time')
-#plt.legend(loc = 'best')
-#plt.plot(time_frame, entropy_data[0:44])
-"""
 plt.show()
-
-#statistics
-
-

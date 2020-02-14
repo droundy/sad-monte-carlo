@@ -1,4 +1,4 @@
-//! A square well fluid.
+//! A Weeks-Chandler-Anderson fluid.
 
 use super::*;
 
@@ -6,7 +6,6 @@ use dimensioned::{Dimensionless, Sqrt, Abs};
 use vector3d::Vector3d;
 use rand::prelude::*;
 use rand::distributions::Uniform;
-use std::f64::consts::PI;
 use std::default::Default;
 
 use super::optcell::{Cell, CellDimensions};
@@ -270,8 +269,8 @@ pub enum CellDimensionsGivenNumber {
     CellWidth(Vector3d<Length>),
     /// The volume of the cell
     CellVolume(Volume),
-    /// The filling fraction, from which we compute volume
-    FillingFraction(Unitless),
+    /// The reduced density, from which we can compute volume
+    ReducedDensity(units::Density<f64>),
 }
 
 /// Parameters needed to configure a finite-N WCAl system.
@@ -287,7 +286,7 @@ pub struct WcaNParams {
 impl Default for WcaNParams {
     fn default() -> Self {
         WcaNParams {
-            _dim: CellDimensionsGivenNumber::FillingFraction(Unitless::new(0.3)),
+            _dim: CellDimensionsGivenNumber::ReducedDensity(units::Density::new(1.0)),
             N: 100,
         }
     }
@@ -301,8 +300,8 @@ impl From<WcaNParams> for Wca {
                 => CellDimensions::CellWidth(v),
             CellDimensionsGivenNumber::CellVolume(v)
                 => CellDimensions::CellVolume(v),
-            CellDimensionsGivenNumber::FillingFraction(f)
-                => CellDimensions::CellVolume((n as f64)*(PI*units::SIGMA*units::SIGMA*units::SIGMA/6.0)/f),
+            CellDimensionsGivenNumber::ReducedDensity(d)
+                => CellDimensions::CellVolume((n as f64)/d),
         };
         let mut sw = Wca::from(WcaParams {
             _dim: dim,
@@ -367,7 +366,7 @@ impl From<WcaNParams> for Wca {
 
 #[cfg(test)]
 fn closest_distance_matches(natoms: usize) {
-    let mut sw = mk_sw(natoms, 0.3);
+    let mut sw = mk_wca(natoms, 0.3);
     for &r1 in sw.cell.positions.iter() {
         for &r2 in sw.cell.positions.iter() {
             assert_eq!(sw.cell.closest_distance2(r1,r2),
@@ -406,7 +405,7 @@ fn closest_distance_matches_n200() {
 
 #[cfg(test)]
 fn maybe_interacting_needs_no_shifting(natoms: usize) {
-    let mut sw = mk_sw(natoms, 0.3);
+    let mut sw = mk_wca(natoms, 0.3);
     let mut rng = MyRng::seed_from_u64(1);
     for _ in 0..100000 {
         sw.plan_move(&mut rng, Length::new(1.0));
@@ -451,7 +450,7 @@ fn maybe_interacting_needs_no_shifting_n200() {
 
 #[test]
 fn maybe_interacting_includes_everything() {
-    let mut sw = mk_sw(100, 0.3);
+    let mut sw = mk_wca(100, 0.3);
     let mut rng = MyRng::seed_from_u64(1);
     for _ in 0..100000 {
         sw.plan_move(&mut rng, Length::new(1.0));
@@ -464,7 +463,7 @@ fn maybe_interacting_includes_everything() {
 
 #[cfg(test)]
 fn maybe_interacting_excluding_includes_everything(natoms: usize) {
-    let mut sw = mk_sw(natoms, 0.3);
+    let mut sw = mk_wca(natoms, 0.3);
     let mut rng = MyRng::seed_from_u64(1);
     for (which, &r1) in sw.cell.positions.iter().enumerate() {
         sw.cell.verify_maybe_interacting_excluding_includes_everything(r1, which);
@@ -514,7 +513,7 @@ fn energy_is_right_n200() {
 
 #[cfg(test)]
 fn energy_is_right(natoms: usize, ff: f64) {
-    let mut sw = mk_sw(natoms, ff);
+    let mut sw = mk_wca(natoms, ff);
     sw.verify_energy();
     let mut rng = MyRng::seed_from_u64(1);
     let mut old_energy = sw.energy();
@@ -537,9 +536,9 @@ fn energy_is_right(natoms: usize, ff: f64) {
 }
 
 #[cfg(test)]
-fn mk_sw(natoms: usize, ff: f64) -> Wca {
+fn mk_wca(natoms: usize, n: f64) -> Wca {
     let mut param = WcaNParams::default();
-    param._dim = CellDimensionsGivenNumber::FillingFraction(Unitless::new(ff));
+    param._dim = CellDimensionsGivenNumber::ReducedDensity(units::Density::new(n));
     param.N = natoms;
     Wca::from(param)
 }

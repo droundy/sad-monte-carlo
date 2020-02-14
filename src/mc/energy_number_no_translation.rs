@@ -169,6 +169,27 @@ impl Method {
     }
 }
 
+fn old_state_to_index(old_n: &[usize], old_e: &[Energy], s: State) -> Option<usize> {
+    if old_e.len() < 2 {
+        // This is a little hokey, but I don't think the data before
+        // we have discovered two states is very important to retain
+        // in the movies.
+        return None;
+    }
+    let width = old_e[1]-old_e[0];
+    let min_e = old_e[0] - width*0.5;
+    let num_n = old_n.len();
+    if s.E < min_e {
+        return None;
+    }
+    let i = (*((s.E - min_e)/width).value() as usize)*num_n + s.N;
+    if i < old_n.len() {
+        Some(i)
+    } else {
+        None
+    }
+}
+
 impl Bins {
     /// Find the index corresponding to a given energy.  This should
     /// panic if the energy is less than `min`.
@@ -547,7 +568,7 @@ impl<S: GrandSystem> Plugin<EnergyNumberMC<S>> for Movies {
                 let new_energy: Vec<_> =
                     (0 .. mc.bins.lnw.len()).map(|i| mc.index_to_state(i).E).collect();
                 let old_energy = self.energy.replace(new_energy.clone());
-                let _old_number = self.number.replace(new_number.clone());
+                let old_number = self.number.replace(new_number.clone());
 
 
                 let histogram = &mc.bins.histogram;
@@ -555,51 +576,34 @@ impl<S: GrandSystem> Plugin<EnergyNumberMC<S>> for Movies {
                 let entropy: Vec<_> = (0..new_energy.len()).map(|i| {
                     *lnw[i].value()
                 }).collect();
-                if new_energy == old_energy {
-                    // We can just add a row.
-                    let mut S = self.entropy.borrow_mut();
-                    S.push(entropy);
-                    let mut hist_movie = self.histogram.borrow_mut();
-                    hist_movie.push(histogram.clone());
+                let mut S = self.entropy.borrow_mut();
+                let mut hist_movie = self.histogram.borrow_mut();
+                if new_energy == old_energy && new_number == old_number {
+                    // We can just add a row, which means no work is needed.
                 } else {
-                    let energy = self.energy.borrow().clone();
-                    let mut left_zeros = 0;
-                    for e in energy.iter() {
-                        if !old_energy.contains(e) {
-                            left_zeros += 1;
-                        } else {
-                            break;
-                        }
-                    }
-                    let mut right_zeros = 0;
-                    for e in energy.iter().rev() {
-                        if !old_energy.contains(e) {
-                            right_zeros += 1;
-                        } else {
-                            break;
-                        }
-                    }
-                    let mut S = self.entropy.borrow_mut();
                     for v in S.iter_mut() {
-                        for _ in 0..right_zeros {
-                            v.push(0.);
+                        let mut newv = vec![0.0; entropy.len()];
+                        for i in 0..entropy.len() {
+                            let state = mc.index_to_state(i);
+                            if let Some(old_i) = old_state_to_index(&old_number, &old_energy, state) {
+                                newv[i] = v[old_i];
+                            }
                         }
-                        for _ in 0..left_zeros {
-                            v.insert(0,0.);
-                        }
+                        *v = newv;
                     }
-                    let mut hist_movie = self.histogram.borrow_mut();
                     for v in hist_movie.iter_mut() {
-                        for _ in 0..right_zeros {
-                            v.push(0);
+                        let mut newv = vec![0; entropy.len()];
+                        for i in 0..entropy.len() {
+                            let state = mc.index_to_state(i);
+                            if let Some(old_i) = old_state_to_index(&old_number, &old_energy, state) {
+                                newv[i] = v[old_i];
+                            }
                         }
-                        for _ in 0..left_zeros {
-                            v.insert(0,0);
-                        }
+                        *v = newv;
                     }
-                    S.push(entropy);
-                    hist_movie.push(histogram.clone());
                 }
+                S.push(entropy);
+                hist_movie.push(histogram.clone());
 
                 // Now decide when we need the next frame to be.
                 let mut which_frame = self.which_frame.get() + 1;
