@@ -7,7 +7,7 @@ use dimensioned::{Cbrt,Abs};
 use vector3d::Vector3d;
 
 /// A description of the cell dimensions
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, ClapMe, Clone, Copy)]
 #[allow(non_snake_case)]
 pub enum CellDimensions {
     /// The three widths of the cell

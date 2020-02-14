@@ -6,6 +6,7 @@ use dimensioned::{Dimensionless, Abs, Sqrt};
 use vector3d::Vector3d;
 use rand::prelude::*;
 use rand::distributions::Uniform;
+use crate::prettyfloat::PrettyFloat;
 
 /// The parameters needed to configure a Weeks-Chandler-Anderson (WCA) system.
 #[allow(non_snake_case)]
@@ -270,7 +271,10 @@ impl System for Lj {
         let egood = self.compute_energy();
         let expected = self.expected_accuracy(self.E);
         if (egood - self.E).abs() > expected {
-            println!("Error in E is {} when it should be {} < {}", egood - self.E, self.error, expected);
+            println!("Error in E is {} when it should be {} < {}",
+                     PrettyFloat(*((egood - self.E)/units::EPSILON).value()),
+                     PrettyFloat(*(self.error/units::EPSILON).value()),
+                     PrettyFloat(*(expected/units::EPSILON).value()));
             assert_eq!(egood, self.E);
         }
     }

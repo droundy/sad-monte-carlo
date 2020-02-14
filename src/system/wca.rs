@@ -7,6 +7,7 @@ use vector3d::Vector3d;
 use rand::prelude::*;
 use rand::distributions::Uniform;
 use std::default::Default;
+use crate::prettyfloat::PrettyFloat;
 
 use super::optcell::{Cell, CellDimensions};
 
@@ -35,12 +36,12 @@ pub struct Wca {
 /// Define the types of changes that can be made to the system
 enum Change {
     /// Move an atom already in the system
-    Move { which: usize, to: Vector3d<Length>, e: Energy },
+    Move { which: usize, to: Vector3d<Length>, e: Energy, dabse: Energy },
     /// Add an atom to the system
     /// The added atom is always pushed to the end of the vector!
-    Add { to: Vector3d<Length>, e: Energy },
+    Add { to: Vector3d<Length>, e: Energy, dabse: Energy },
     /// Remove an atom from the system
-    Remove { which: usize, e: Energy },
+    Remove { which: usize, e: Energy, dabse: Energy },
     /// Make no changes to the system
     None,
 }
@@ -79,47 +80,52 @@ impl Wca {
     /// Add an atom at a given location.  Returns the change in
     /// energy, or `None` if the atom could not be placed there.
     pub fn add_atom_at(&mut self, r: Vector3d<Length>) -> Option<Energy> {
-        let mut e = self.E;
+        let mut dabse = Energy::new(0.0);
         for r1 in self.cell.maybe_interacting_atoms(r) {
             let dist2 = (r1-r).norm2();
             if dist2 < self.cell.r_cutoff*self.cell.r_cutoff {
-                e += potential(dist2);
+                dabse += potential(dist2);
             }
         }
-        self.possible_change = Change::Add{ to: r, e };
-        Some(e)
+        self.possible_change = Change::Add{ to: r, e: self.E + dabse, dabse };
+        Some(self.E + dabse)
     }
     /// Move a specified atom.  Returns the change in energy, or
     /// `None` if the atom could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
         let mut e = self.E;
+        let mut dabse = Energy::new(0.0);
         let from = self.cell.positions[which];
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, which) {
-            e += potential((r1-r).norm2());
+            let de = potential((r1-r).norm2());
+            e += de;
+            dabse += de;
         }
         for r1 in self.cell.maybe_interacting_atoms_excluding(from, which) {
-            e -= potential((r1-from).norm2());
+            let de = potential((r1-from).norm2());
+            e -= de;
+            dabse += de;
         }
-        self.possible_change = Change::Move{ which, to: r, e };
+        self.possible_change = Change::Move{ which, to: r, e, dabse };
         Some(e)
     }
     /// Plan to remove the specified atom.  Returns the change in energy.
     pub fn remove_atom_number(&mut self, which: usize) -> Energy {
         let r = self.cell.positions[which];
-        let mut e = self.E;
+        let mut dabse = Energy::new(0.0);
         for r1 in self.cell.maybe_interacting_atoms_excluding(r, which) {
-            e -= potential((r1-r).norm2());
+            dabse += potential((r1-r).norm2());
         }
-        self.possible_change = Change::Remove{ which, e };
-        e
+        self.possible_change = Change::Remove{ which, e: self.E - dabse, dabse };
+        self.E - dabse
     }
-    fn set_energy(&mut self, new_e: Energy) {
-        let new_error = if new_e.abs() > self.E.abs() {
-            new_e.abs()*1e-14*(self.num_atoms() as f64)
+    fn set_energy(&mut self, new_e: Energy, dabse: Energy) {
+        let single_error = if dabse > new_e.abs() {
+            1e-15*dabse
         } else {
-            self.E.abs()*1e-14*(self.num_atoms() as f64)
+            1e-15*new_e.abs()
         };
-        self.error = new_error + self.error;
+        self.error += single_error*self.num_atoms() as f64;
         if self.error > self.expected_accuracy(new_e) {
             self.error *= 0.0;
             self.E = self.compute_energy();
@@ -198,7 +204,10 @@ impl System for Wca {
         let egood = self.compute_energy();
         let expected = self.expected_accuracy(self.E);
         if (egood - self.E).abs() > expected {
-            println!("Error in E is {} when it should be {} < {}", egood - self.E, self.error, expected);
+            println!("Error in E is {} when it should be {} < {}",
+                     PrettyFloat(*((egood - self.E)/units::EPSILON).value()),
+                     PrettyFloat(*(self.error/units::EPSILON).value()),
+                     PrettyFloat(*(expected/units::EPSILON).value()));
             assert_eq!(egood, self.E);
         }
     }
@@ -208,19 +217,19 @@ impl ConfirmSystem for Wca {
     fn confirm(&mut self) {
         match self.possible_change {
             Change::None => (),
-            Change::Move{which, to, e} => {
+            Change::Move{which, to, e, dabse} => {
                 self.cell.move_atom(which, to);
-                self.set_energy(e);
+                self.set_energy(e, dabse);
                 self.possible_change = Change::None;
             },
-            Change::Add{to, e} => {
+            Change::Add{to, e, dabse} => {
                 self.cell.add_atom_at(to);
-                self.set_energy(e);
+                self.set_energy(e, dabse);
                 self.possible_change = Change::None;
             },
-            Change::Remove{which, e} => {
+            Change::Remove{which, e, dabse} => {
                 self.cell.remove_atom(which);
-                self.set_energy(e);
+                self.set_energy(e, dabse);
                 self.possible_change = Change::None;
             },
         }
@@ -280,6 +289,8 @@ pub struct WcaNParams {
     pub _dim: CellDimensionsGivenNumber,
     /// The number of atoms.
     pub N: usize,
+    /// Start with minimum-energy FCC configuration
+    pub fcc: bool,
 }
 
 impl Default for WcaNParams {
@@ -287,6 +298,7 @@ impl Default for WcaNParams {
         WcaNParams {
             _dim: CellDimensionsGivenNumber::ReducedDensity(units::Density::new(1.0)),
             N: 100,
+            fcc: false,
         }
     }
 }
@@ -302,64 +314,88 @@ impl From<WcaNParams> for Wca {
             CellDimensionsGivenNumber::ReducedDensity(d)
                 => CellDimensions::CellVolume((n as f64)/d),
         };
-        let mut sw = Wca::from(WcaParams {
-            _dim: dim,
-        });
-
-        // Atoms will be initially placed on a face centered cubic (fcc) grid
-        // Note that the unit cells need not be actually "cubic", but the fcc grid will
-        //   be stretched to cell dimensions
-        let min_cell_width = 2.0*2.0f64.sqrt()*units::R; // minimum cell width
-        let spots_per_cell = 4; // spots in each fcc periodic unit cell
-
-        // cells holds the max number of cells that will fit in the x,
-        // y, and z dimensions
-        let cells = [*(sw.cell.box_diagonal.x/min_cell_width).value() as usize,
-                     *(sw.cell.box_diagonal.y/min_cell_width).value() as usize,
-                     *(sw.cell.box_diagonal.z/min_cell_width).value() as usize];
-        // It is usefull to know our cell dimensions
-        let cell_width = [sw.cell.box_diagonal.x/cells[0] as f64,
-                          sw.cell.box_diagonal.y/cells[1] as f64,
-                          sw.cell.box_diagonal.z/cells[2] as f64];
-        for i in 0..3 {
-            assert!(cell_width[i] >= min_cell_width);
-        }
-        // Define ball positions relative to cell position
-        let offset = [Vector3d::new(Length::new(0.0), Length::new(0.0), Length::new(0.0)),
-                      Vector3d::new(Length::new(0.0), cell_width[1], cell_width[2])/2.0,
-                      Vector3d::new(cell_width[0], Length::new(0.0), cell_width[2])/2.0,
-                      Vector3d::new(cell_width[0], cell_width[1], Length::new(0.0))/2.0];
-        // Reserve total_spots at random to be occupied
-        let total_spots = spots_per_cell*cells[0]*cells[1]*cells[1];
-        if total_spots < params.N {
-            println!("problem:  {} < {}", total_spots, params.N);
-        }
-        assert!(total_spots >= params.N);
-        let mut spots_reserved = vec![vec![vec![[false; 4]; cells[2]]; cells[1]]; cells[0]];
         let mut rng = crate::rng::MyRng::from_u64(0);
-        for _ in 0..params.N {
-            loop {
-                // This is an inefficient but relatively
-                // hard-to-get-wrong way to randomly sample spots.
-                // Speed shouldn't matter here.
-                let i = rng.sample(Uniform::new(0, cells[0]));
-                let j = rng.sample(Uniform::new(0, cells[1]));
-                let k = rng.sample(Uniform::new(0, cells[2]));
-                let l = rng.sample(Uniform::new(0, 4));
-                if !spots_reserved[i][j][k][l] {
-                    spots_reserved[i][j][k][l] = true;
-                    sw.add_atom_at(Vector3d::new(i as f64*cell_width[0],
-                                                 j as f64*cell_width[1],
-                                                 k as f64*cell_width[2])
-                                   + offset[l]);
-                    sw.confirm();
-                    sw.verify_energy();
-                    // assert_eq!(sw.energy(), sw.compute_energy());
-                    break;
+        println!("I am creating a WCA system with {} atoms!", n);
+        if params.fcc {
+            let mut wca = Wca::from(WcaParams {
+                _dim: dim,
+            });
+
+            // Atoms will be initially placed on a face centered cubic (fcc) grid
+            // Note that the unit cells need not be actually "cubic", but the fcc grid will
+            //   be stretched to cell dimensions
+            let cells_wide = (n as f64/4.0).powf(1.0/3.0).ceil() as usize;
+            let num_cells = 4*cells_wide*cells_wide*cells_wide;
+            assert!(num_cells >= n);
+
+            // It is usefull to know our cell dimensions
+            let zero = Length::new(0.0);
+            let a = [Vector3d::new(wca.cell.box_diagonal.x/cells_wide as f64, zero, zero),
+                     Vector3d::new(zero, wca.cell.box_diagonal.y/cells_wide as f64, zero),
+                     Vector3d::new(zero, zero, wca.cell.box_diagonal.z/cells_wide as f64)];
+            // Define ball positions relative to cell position
+            let offset = [Vector3d::new(zero, zero, zero),
+                          (a[1] + a[2])*0.5,
+                          (a[0] + a[2])*0.5,
+                          (a[1] + a[0])*0.5];
+            let mut vectors = Vec::with_capacity(num_cells);
+            for i in 0..num_cells {
+                for j in 0..num_cells {
+                    for k in 0..num_cells {
+                        for off in offset.iter().cloned() {
+                            vectors.push(off + a[0]*i as f64 + a[1]*j as f64 + a[2]*k as f64);
+                        }
+                    }
                 }
             }
+            for v in vectors.choose_multiple(&mut rng, n).cloned() {
+                wca.add_atom_at(v);
+                wca.confirm();
+                wca.verify_energy();
+            }
+            wca
+        } else {
+            let wca = Wca::from(WcaParams {
+                _dim: dim,
+            });
+
+            let mut best_energy = 1e80*units::EPSILON;
+            let mut best_positions = Vec::new();
+            // We attempt n**2 times to see what the lowest energy we see
+            // is.  The result should be something moderately close to the
+            // energy of maximum entropy.
+            for attempt in 0..n*n {
+                let mut positions = Vec::with_capacity(n);
+                for _ in 0..params.N {
+                    positions.push(
+                        Vector3d::new(Length::new(rng.sample(Uniform::new(0.0, wca.cell.box_diagonal.x.value_unsafe))),
+                                      Length::new(rng.sample(Uniform::new(0.0, wca.cell.box_diagonal.y.value_unsafe))),
+                                      Length::new(rng.sample(Uniform::new(0.0, wca.cell.box_diagonal.z.value_unsafe)))));
+                }
+                let mut wca = Wca::from(WcaParams {
+                    _dim: dim,
+                });
+                for r in positions.iter().cloned() {
+                    wca.add_atom_at(r);
+                    wca.confirm();
+                    wca.verify_energy();
+                }
+                if wca.E < best_energy {
+                    best_energy = wca.E;
+                    best_positions = positions;
+                    println!("found a new best energy{:?} after {} attempts", wca.E, attempt);
+                }
+            }
+            let mut wca = Wca::from(WcaParams {
+                _dim: dim,
+            });
+            for r in best_positions.iter().cloned() {
+                wca.add_atom_at(r);
+                wca.confirm();
+                wca.verify_energy();
+            }
+            wca
         }
-        sw
     }
 }
 
@@ -494,8 +530,8 @@ fn maybe_interacting_excluding_includes_everything_n200() {
 }
 
 #[test]
-fn energy_is_right_n3() {
-    energy_is_right(3, 0.1);
+fn energy_is_right_dense_n50() {
+    energy_is_right(50, 1.0);
 }
 #[test]
 fn energy_is_right_n50() {
