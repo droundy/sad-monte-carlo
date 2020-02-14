@@ -7,7 +7,7 @@ use super::*;
 
 use super::plugin::Plugin;
 use dimensioned::Dimensionless;
-use rand::Rng;
+use rand::{Rng, SeedableRng};
 use std::default::Default;
 use std::cell::{RefCell,Cell};
 use crate::prettyfloat::PrettyFloat;
@@ -406,7 +406,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
             },
             system: system,
 
-            rng: crate::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
+            rng: crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0)),
             save_as: save_as,
             report: plugin::Report::from(params._report),
             movies: Movies::from(params._movies),

@@ -16,16 +16,17 @@ use std::{fmt};
 use rand_core::{RngCore, SeedableRng, Error, impls, le};
 use rand::Rng as RandRng;
 
+
 /// The [xoshiro128plus
 /// RNG](http://xoshiro.di.unimi.it/xoroshiro128plus.c).
-
 #[derive(Clone,Serialize,Deserialize)]
 pub struct Xoroshiro128plusRng {
     s: [Wrapping<u64>; 2],
 }
 
 /// Our random number generator.
-pub type MyRng = Xoroshiro128plusRng;
+pub type MyRng = rand_xoshiro::Xoroshiro128Plus;
+// pub type MyRng = Xoroshiro128plusRng;
 
 // Custom Debug implementation that does not expose the internal state
 impl fmt::Debug for Xoroshiro128plusRng {
@@ -107,8 +108,19 @@ impl Xoroshiro128plusRng {
     }
 }
 
+/// Generage
+pub fn vector<R: rand::Rng>(rng: &mut R) -> ::vector3d::Vector3d<f64> {
+    vector3d::Vector3d::new(rng.sample(rand_distr::StandardNormal),
+                            rng.sample(rand_distr::StandardNormal),
+                            rng.sample(rand_distr::StandardNormal))
+}
+
 impl SeedableRng for Xoroshiro128plusRng {
     type Seed = [u8; 16];
+
+    fn seed_from_u64(seed: u64) -> Self {
+        Self::from_u64(seed)
+    }
 
     fn from_seed(seed: Self::Seed) -> Self {
         let mut seed_u64 = [0u64; 2];
@@ -117,7 +129,7 @@ impl SeedableRng for Xoroshiro128plusRng {
         // As recommended, we use splitmix64 to seed the generator if
         // we only have 64 bits of seed.
         if seed_u64.iter().any(|&x| x == 0) {
-            return Xoroshiro128plusRng::from_u64(seed_u64[0] | seed_u64[1]);
+            return Xoroshiro128plusRng::seed_from_u64(seed_u64[0] | seed_u64[1]);
         }
 
         Xoroshiro128plusRng {

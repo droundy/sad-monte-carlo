@@ -4,7 +4,7 @@ use super::*;
 
 use dimensioned::{Dimensionless, Abs, Sqrt};
 use vector3d::Vector3d;
-use rand::prelude::*;
+use rand::{Rng, SeedableRng};
 use rand::distributions::Uniform;
 use crate::prettyfloat::PrettyFloat;
 
@@ -121,7 +121,7 @@ impl Lj {
 
 impl From<LjParams> for Lj {
     fn from(params: LjParams) -> Lj {
-        let mut rng = crate::rng::MyRng::from_u64(0);
+        let mut rng = crate::rng::MyRng::seed_from_u64(0);
         let mut best_energy = 1e80*units::EPSILON;
         let mut best_positions = Vec::new();
         println!("I am creating a LJ system with {} atoms!", params.N);
@@ -333,9 +333,10 @@ impl ConfirmSystem for Lj {
 
 impl MovableSystem for Lj {
     fn plan_move(&mut self, rng: &mut MyRng, mean_distance: Length) -> Option<Energy> {
+        use crate::rng::vector;
         if self.positions.len() > 0 {
             let which = rng.sample(Uniform::new(0, self.positions.len()));
-            let to = unsafe { *self.positions.get_unchecked(which) } + rng.vector()*mean_distance;
+            let to = unsafe { *self.positions.get_unchecked(which) } + vector(rng)*mean_distance;
             self.move_atom(which, to)
         } else {
             None
@@ -364,7 +365,7 @@ fn energy_is_right_n200() {
 fn energy_is_right(natoms: usize) {
     let mut lj = mk_lj(natoms);
     assert_eq!(lj.energy(), lj.compute_energy());
-    let mut rng = MyRng::from_u64(1);
+    let mut rng = MyRng::seed_from_u64(1);
     let mut old_energy = lj.energy();
     let maxe = (natoms as f64)*16.0*units::EPSILON;
     let mut i = 0.0;
