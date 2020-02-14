@@ -65,9 +65,9 @@ impl Default for Bins {
 }
 
 impl Bins {
-    fn index_to_energy(&self, i: usize) -> Energy {
-        self.min + (i as f64 + 0.5)*self.width
-    }
+    // fn index_to_energy(&self, i: usize) -> Energy {
+    //     self.min + (i as f64 + 0.5)*self.width
+    // }
     fn energy_to_index(&self, e: Energy) -> usize {
         *((e - self.min)/self.width).value() as usize
     }
