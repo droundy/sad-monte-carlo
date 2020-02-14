@@ -247,9 +247,10 @@ impl GrandSystem for Wca {
 
 impl MovableSystem for Wca {
     fn plan_move(&mut self, rng: &mut MyRng, mean_distance: Length) -> Option<Energy> {
+        use crate::rng::vector;
         if self.cell.positions.len() > 0 {
             let which = rng.sample(Uniform::new(0, self.cell.positions.len()));
-            let to = self.cell.put_in_cell(unsafe { *self.cell.positions.get_unchecked(which) } + rng.vector()*mean_distance);
+            let to = self.cell.put_in_cell(unsafe { *self.cell.positions.get_unchecked(which) } + vector(rng)*mean_distance);
             self.move_atom(which, to)
         } else {
             None
@@ -337,7 +338,7 @@ impl From<WcaNParams> for Wca {
         }
         assert!(total_spots >= params.N);
         let mut spots_reserved = vec![vec![vec![[false; 4]; cells[2]]; cells[1]]; cells[0]];
-        let mut rng = crate::rng::MyRng::from_u64(0);
+        let mut rng = crate::rng::MyRng::seed_from_u64(0);
         for _ in 0..params.N {
             loop {
                 // This is an inefficient but relatively
@@ -375,7 +376,7 @@ fn closest_distance_matches(natoms: usize) {
                        sw.cell.sloppy_closest_distance2(r1,r2));
         }
     }
-    let mut rng = MyRng::from_u64(1);
+    let mut rng = MyRng::seed_from_u64(1);
     for _ in 0..100000 {
         sw.plan_move(&mut rng, Length::new(1.0));
         sw.confirm();
@@ -406,7 +407,7 @@ fn closest_distance_matches_n200() {
 #[cfg(test)]
 fn maybe_interacting_needs_no_shifting(natoms: usize) {
     let mut sw = mk_sw(natoms, 0.3);
-    let mut rng = MyRng::from_u64(1);
+    let mut rng = MyRng::seed_from_u64(1);
     for _ in 0..100000 {
         sw.plan_move(&mut rng, Length::new(1.0));
         sw.confirm();
@@ -451,7 +452,7 @@ fn maybe_interacting_needs_no_shifting_n200() {
 #[test]
 fn maybe_interacting_includes_everything() {
     let mut sw = mk_sw(100, 0.3);
-    let mut rng = MyRng::from_u64(1);
+    let mut rng = MyRng::seed_from_u64(1);
     for _ in 0..100000 {
         sw.plan_move(&mut rng, Length::new(1.0));
         sw.confirm()
@@ -464,7 +465,7 @@ fn maybe_interacting_includes_everything() {
 #[cfg(test)]
 fn maybe_interacting_excluding_includes_everything(natoms: usize) {
     let mut sw = mk_sw(natoms, 0.3);
-    let mut rng = MyRng::from_u64(1);
+    let mut rng = MyRng::seed_from_u64(1);
     for (which, &r1) in sw.cell.positions.iter().enumerate() {
         sw.cell.verify_maybe_interacting_excluding_includes_everything(r1, which);
     }
@@ -515,7 +516,7 @@ fn energy_is_right_n200() {
 fn energy_is_right(natoms: usize, ff: f64) {
     let mut sw = mk_sw(natoms, ff);
     sw.verify_energy();
-    let mut rng = MyRng::from_u64(1);
+    let mut rng = MyRng::seed_from_u64(1);
     let mut old_energy = sw.energy();
     let maxe = (natoms as f64)*16.0*units::EPSILON;
     let mut i = 0.0;

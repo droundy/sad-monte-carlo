@@ -7,7 +7,7 @@ use super::*;
 
 use super::plugin::Plugin;
 use dimensioned::Dimensionless;
-use rand::Rng;
+use rand::{Rng, SeedableRng};
 use std::default::Default;
 use std::cell::{RefCell,Cell};
 use crate::prettyfloat::PrettyFloat;
@@ -644,7 +644,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
         let ewidth = params.energy_bin.unwrap_or(system.delta_energy().unwrap_or(Energy::new(1.0)));
         // center zero energy in a bin!
         let emin = ((system.energy()/ewidth).value().round() - 0.5)*ewidth;
-        let mut rng = crate::rng::MyRng::from_u64(params.seed.unwrap_or(0));
+        let mut rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
         // Let's spend a little effort getting an energy that is
         // within our range of interest.  We are only aiming downward,
         // because it is unusual that we have trouble getting an

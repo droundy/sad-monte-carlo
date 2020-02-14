@@ -22,6 +22,8 @@ vector3d = "0.1.8"
 rand_core = "0.5.1"
 rand = "0.7.2"
 rand_distr = "0.2.2"
+rand_xoshiro = { version = "0.4", features=["serde1"] }
+
 tempfile = "3.0.3"
 git-version = "0.3.0"
 
