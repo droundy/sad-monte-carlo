@@ -149,7 +149,7 @@ pub struct Report {
 
 /// The parameters to define the report information as well as stop
 /// time (which is part of the report).
-#[derive(ClapMe, Debug)]
+#[derive(ClapMe, AutoArgs, Debug)]
 pub struct ReportParams {
     /// The maximum number of iterations to run.
     pub max_iter: Option<u64>,
@@ -252,7 +252,7 @@ pub struct Save {
 }
 
 /// The parameter to define the save schedule
-#[derive(ClapMe, Debug)]
+#[derive(ClapMe, AutoArgs, Debug)]
 pub struct SaveParams {
     /// Maximum time between saves in hours
     pub save_time: Option<f64>,

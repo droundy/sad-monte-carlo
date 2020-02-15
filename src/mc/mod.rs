@@ -9,12 +9,13 @@ pub mod binning;
 
 use crate::system::*;
 use clapme::ClapMe;
+use auto_args::AutoArgs;
 
 use serde;
 
 use crate::atomicfile::AtomicFile;
 
-#[derive(ClapMe)]
+#[derive(ClapMe, AutoArgs)]
 enum Params<MP, SP> {
     ResumeFrom(::std::path::PathBuf),
     _Params {
@@ -29,7 +30,7 @@ const VERSION : &str = git_version::git_describe!("--always", "--dirty");
 /// A Monte Carlo algorithm.
 pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
     /// A type defining a new Monte Carlo.
-    type Params: ClapMe;
+    type Params: ClapMe+AutoArgs;
     /// A type defining the corresponding system
     type System: System;
     /// Create this MonteCarlo from its parameters

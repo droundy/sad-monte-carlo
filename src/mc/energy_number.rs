@@ -15,7 +15,7 @@ use std::fs::File;
 use std::io::Write;
 
 /// Parameters to configure a particular MC.
-#[derive(Debug, ClapMe)]
+#[derive(Debug, ClapMe, AutoArgs)]
 pub enum MethodParams {
     /// Samc
     Samc {
@@ -27,7 +27,7 @@ pub enum MethodParams {
 }
 
 /// Parameters to configure the moves.
-#[derive(Serialize, Deserialize, Debug, ClapMe, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, ClapMe, AutoArgs, Clone, Copy)]
 pub enum MoveParams {
     /// This means you chose to be explicit about translation scale etc.
     _Explicit {
@@ -41,7 +41,7 @@ pub enum MoveParams {
 }
 
 /// The parameters needed to configure a simulation.
-#[derive(Debug, ClapMe)]
+#[derive(Debug, ClapMe, AutoArgs)]
 pub struct EnergyNumberMCParams {
     /// The actual method.
     pub _method: MethodParams,
@@ -634,7 +634,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
 
 
 /// How should the movie be?
-#[derive(ClapMe, Debug, Clone)]
+#[derive(ClapMe, AutoArgs, Debug, Clone)]
 pub struct MoviesParams {
     // How often (logarithmically) do we want a movie frame? If this
     // is 2.0, it means we want a frame every time the number of

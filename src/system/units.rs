@@ -30,6 +30,7 @@ make_units! {
 }
 
 impl_serde!(UNITS);
+impl_auto_args!(UNITS);
 
 impl Unitless<f64> {
     /// Format the number in a nice way

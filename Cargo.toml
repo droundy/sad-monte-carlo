@@ -10,15 +10,17 @@ path = "src/lib.rs"
 
 [dependencies]
 
-dimensioned = { version = "0.7.0", features=["serde"] }
+# dimensioned = { version = "0.7.0", features=["serde"] }
+dimensioned = { git = "https://github.com/droundy/dimensioned", features=["serde", "auto-args"] }
 serde = "1.0"
 serde_derive = "1.0"
 serde_yaml = "0.8.11"
 serde_cbor = "0.10"
 serde_json = "1.0"
 clapme = "0.1.13"
+auto-args = "0.2.4"
 
-vector3d = "0.1.8"
+vector3d = { version = "0.1.9", features=["serde1", "auto-args", "clapme"] }
 rand_core = "0.5.1"
 rand = "0.7.2"
 rand_distr = "0.2.2"
