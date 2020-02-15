@@ -8,14 +8,13 @@ pub mod energy_number_no_translation;
 pub mod binning;
 
 use crate::system::*;
-use clapme::ClapMe;
 use auto_args::AutoArgs;
 
 use serde;
 
 use crate::atomicfile::AtomicFile;
 
-#[derive(ClapMe, AutoArgs)]
+#[derive(AutoArgs)]
 enum Params<MP, SP> {
     ResumeFrom(::std::path::PathBuf),
     _Params {
@@ -30,7 +29,7 @@ const VERSION : &str = git_version::git_describe!("--always", "--dirty");
 /// A Monte Carlo algorithm.
 pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
     /// A type defining a new Monte Carlo.
-    type Params: ClapMe+AutoArgs;
+    type Params: AutoArgs;
     /// A type defining the corresponding system
     type System: System;
     /// Create this MonteCarlo from its parameters
@@ -42,7 +41,7 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
     fn update_from_params(&mut self, _params: Self::Params) {}
 
     /// Create a new simulation from command-line flags.
-    fn from_args<S: ClapMe + Into<Self::System>>() -> Self {
+    fn from_args<S: AutoArgs + Into<Self::System>>() -> Self {
         println!("git version: {}", VERSION);
         match <Params<Self::Params, S>>::from_args() {
             Params::_Params { _sys, _mc, save_as } => {

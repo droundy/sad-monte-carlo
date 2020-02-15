@@ -10,7 +10,7 @@ use crate::prettyfloat::PrettyFloat;
 
 /// The parameters needed to configure a Weeks-Chandler-Anderson (WCA) system.
 #[allow(non_snake_case)]
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 pub struct LjParams {
     /// The number of atoms
     N: usize,
@@ -22,7 +22,7 @@ pub struct LjParams {
 
 /// The parameters needed to configure a Weeks-Chandler-Anderson (WCA) system for a grand computation.
 #[allow(non_snake_case)]
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 pub struct GrandLjParams {
     /// The radius of the spherical box
     radius: Length,

@@ -13,7 +13,7 @@ use super::optcell::{Cell, CellDimensions};
 
 
 /// The parameters needed to configure a Weeks-Chandler-Anderson (WCA) system.
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 pub struct WcaParams {
    _dim: CellDimensions,
 }
@@ -272,7 +272,7 @@ impl MovableSystem for Wca {
 
 
 /// A description of the cell dimensions and number.
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 pub enum CellDimensionsGivenNumber {
     /// The three widths of the cell
     CellWidth(Vector3d<Length>),
@@ -283,7 +283,7 @@ pub enum CellDimensionsGivenNumber {
 }
 
 /// Parameters needed to configure a finite-N WCAl system.
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 #[allow(non_snake_case)]
 pub struct WcaNParams {
     /// The sice of the cell.

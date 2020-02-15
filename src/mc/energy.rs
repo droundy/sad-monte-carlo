@@ -13,7 +13,7 @@ use std::cell::{RefCell,Cell};
 use crate::prettyfloat::PrettyFloat;
 
 /// Which experimental version of SAD are we doing?
-#[derive(Serialize, Deserialize, Debug, ClapMe, AutoArgs, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SadVersion {
     /// Sad
     Sad,
@@ -39,7 +39,7 @@ impl SadVersion {
 }
 
 /// Parameters to configure a particular MC.
-#[derive(Debug, ClapMe, AutoArgs)]
+#[derive(Debug, AutoArgs)]
 #[allow(non_camel_case_types)]
 pub enum MethodParams {
     /// Sad
@@ -59,7 +59,7 @@ pub enum MethodParams {
 }
 
 /// Parameters to configure the moves.
-#[derive(Serialize, Deserialize, Debug, ClapMe, AutoArgs)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 pub enum MoveParams {
     /// The rms distance of moves
     TranslationScale(Length),
@@ -68,7 +68,7 @@ pub enum MoveParams {
 }
 
 /// The parameters needed to configure a simulation.
-#[derive(Debug, ClapMe, AutoArgs)]
+#[derive(Debug, AutoArgs)]
 pub struct EnergyMCParams {
     /// The actual method.
     pub _method: MethodParams,
@@ -786,7 +786,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
 
 
 /// Do we want movies? Where?
-#[derive(ClapMe, AutoArgs, Debug)]
+#[derive(AutoArgs, Debug)]
 pub struct MoviesParams {
     // How often (logarithmically) do we want a movie frame? If this
     // is 2.0, it means we want a frame every time the number of

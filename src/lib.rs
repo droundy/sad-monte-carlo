@@ -5,7 +5,6 @@
 
 #[macro_use] extern crate dimensioned;
 #[macro_use] extern crate serde_derive;
-#[macro_use] extern crate clapme;
 
 pub mod system;
 pub mod mc;

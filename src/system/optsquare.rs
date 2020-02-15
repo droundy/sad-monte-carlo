@@ -12,7 +12,7 @@ use std::default::Default;
 use super::optcell::{Cell, CellDimensions};
 
 /// The parameters needed to configure a square well system.
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 pub struct SquareWellParams {
     well_width: Unitless,
     _dim: CellDimensions,
@@ -278,7 +278,7 @@ fn max_balls_within(mut distance: Length) -> u64 {
 
 
 /// A description of the cell dimensions and number.
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 pub enum CellDimensionsGivenNumber {
     /// The three widths of the cell
     CellWidth(Vector3d<Length>),
@@ -289,7 +289,7 @@ pub enum CellDimensionsGivenNumber {
 }
 
 /// Parameters needed to configure a finite-N square-well system.
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 #[allow(non_snake_case)]
 pub struct SquareWellNParams {
     /// The width of the well, relative to the diameter.

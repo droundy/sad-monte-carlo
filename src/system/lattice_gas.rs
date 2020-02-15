@@ -7,7 +7,7 @@ use rand::prelude::*;
 /// The parameters needed to configure a lattice gas
 ///
 /// These parameters are normally set via command-line arguments.
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 #[allow(non_snake_case)]
 pub struct LatticeGasParams {
     /// Width of the square grid
