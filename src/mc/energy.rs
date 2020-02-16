@@ -53,7 +53,10 @@ pub enum MethodParams {
         t0: f64,
     },
     /// Use the Wang-Landau algorithm
-    WL,
+    WL {
+        /// After gamma drops to this value, begin a "production" run
+        min_gamma: Option<f64>,
+    },
     /// Use the 1/t-Wang-Landau algorithm
     Inv_t_WL,
 }
@@ -216,6 +219,7 @@ enum Method {
         hist: Vec<u64>,
         min_energy: Energy,
         inv_t: bool,
+        min_gamma: Option<f64>,
     }
 }
 
@@ -237,7 +241,7 @@ impl Method {
                     latest_parameter: 0.,
                 },
             MethodParams::Samc { t0 } => Method::Samc { t0 },
-            MethodParams::WL => Method::WL {
+            MethodParams::WL { min_gamma } => Method::WL {
                 gamma: 1.0,
                 lowest_hist: if min_allowed_energy.is_some() && max_allowed_energy.is_some() { 0 } else { 1 },
                 highest_hist: 1,
@@ -250,6 +254,7 @@ impl Method {
                 hist: Vec::new(),
                 min_energy: E,
                 inv_t: false,
+                min_gamma,
             },
             MethodParams::Inv_t_WL => Method::WL {
                 gamma: 1.0,
@@ -264,6 +269,7 @@ impl Method {
                 hist: Vec::new(),
                 min_energy: E,
                 inv_t: true,
+                min_gamma: None,
             },
         }
     }
@@ -504,7 +510,14 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
             Method::Samc { .. } => {}
             Method::WL { ref mut gamma,
                          ref mut lowest_hist, ref mut highest_hist, ref mut total_hist,
-                         ref mut hist, ref mut min_energy, num_states, inv_t } => {
+                         ref mut hist, ref mut min_energy, num_states, inv_t,
+                         min_gamma } => {
+                if let Some(min_gamma) = min_gamma {
+                    if *gamma < min_gamma {
+                        // We are in a production run.
+                        return;
+                    }
+                }
                 if hist.len() != self.bins.lnw.len() {
                     // Oops, we found a new energy, so let's regroup.
                     if hist.len() == 0 || (*gamma != 1.0 && *lowest_hist > 0) {
@@ -571,6 +584,12 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                         *total_hist = 0;
                         *lowest_hist = 0;
                         *highest_hist = 0;
+                        if let Some(min_gamma) = min_gamma {
+                            if *gamma < min_gamma {
+                                // Switch to a "production" run.
+                                *gamma = 0.0;
+                            }
+                        }
                     }
                     if inv_t && *gamma < (num_states as f64)/(self.moves as f64) {
                         println!("    1/t-WL:  Switching to 1/t!");
