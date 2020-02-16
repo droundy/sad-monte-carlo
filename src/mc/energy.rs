@@ -297,6 +297,19 @@ impl Method {
                     *s = (bins.histogram[i] as f64/meanhist).ln() + too_hi_entropy;
                 }
             }
+        } else if let Method::WL { gamma, hist, .. } = self {
+            if *gamma == 0.0 {
+                // We are in a production run, so we should modify the
+                // lnw based on the histogram.
+                if !hist.iter().cloned().any(|h| h == 0) {
+                    // We have explored everything at least once, so
+                    // we can at least take a log of everything...
+                    return entropy.iter().map(|x| *x.value())
+                        .zip(hist.iter().cloned())
+                        .map(|(lnw, h)| lnw + (h as f64).ln())
+                        .collect();
+                }
+            }
         }
         entropy.iter().map(|x| *(x.value())).collect()
     }
