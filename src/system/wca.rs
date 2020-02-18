@@ -82,10 +82,7 @@ impl Wca {
     pub fn add_atom_at(&mut self, r: Vector3d<Length>) -> Option<Energy> {
         let mut dabse = Energy::new(0.0);
         for r1 in self.cell.maybe_interacting_atoms(r) {
-            let dist2 = (r1-r).norm2();
-            if dist2 < self.cell.r_cutoff*self.cell.r_cutoff {
-                dabse += potential(dist2);
-            }
+            dabse += potential((r1-r).norm2());
         }
         self.possible_change = Change::Add{ to: r, e: self.E + dabse, dabse };
         Some(self.E + dabse)
@@ -121,20 +118,20 @@ impl Wca {
     }
     fn set_energy(&mut self, new_e: Energy, dabse: Energy) {
         let single_error = if dabse > new_e.abs() {
-            1e-15*dabse
+            1e-14*dabse*self.num_atoms() as f64
         } else {
-            1e-15*new_e.abs()
+            1e-14*new_e.abs()*self.num_atoms() as f64
         };
         self.error += single_error*self.num_atoms() as f64;
         if self.error > self.expected_accuracy(new_e) {
-            self.error *= 0.0;
             self.E = self.compute_energy();
+            self.error = 1e-15*self.E*self.num_atoms() as f64; // there is some error in compute_energy already...
         } else {
             self.E = new_e;
         }
     }
     fn expected_accuracy(&self, newe: Energy) -> Energy {
-        newe.abs()*1e-14*(self.num_atoms() as f64)*(self.num_atoms() as f64)
+        newe.abs()*1e-13*(self.num_atoms() as f64)*(self.num_atoms() as f64)
     }
 }
 
@@ -204,7 +201,8 @@ impl System for Wca {
         let egood = self.compute_energy();
         let expected = self.expected_accuracy(self.E);
         if (egood - self.E).abs() > expected {
-            println!("Error in E is {} when it should be {} < {}",
+            println!("Error in E {} is {} when it should be estimated {} < {}",
+                     PrettyFloat(*(self.E/units::EPSILON).value()),
                      PrettyFloat(*((egood - self.E)/units::EPSILON).value()),
                      PrettyFloat(*(self.error/units::EPSILON).value()),
                      PrettyFloat(*(expected/units::EPSILON).value()));
@@ -352,8 +350,9 @@ impl From<WcaNParams> for Wca {
             for v in vectors.choose_multiple(&mut rng, n).cloned() {
                 wca.add_atom_at(v);
                 wca.confirm();
-                wca.verify_energy();
+                // wca.verify_energy();
             }
+            wca.E = wca.compute_energy(); // probably not needed, but may as well.
             wca
         } else {
             let wca = Wca::from(WcaParams {
@@ -379,22 +378,28 @@ impl From<WcaNParams> for Wca {
                 for r in positions.iter().cloned() {
                     wca.add_atom_at(r);
                     wca.confirm();
-                    wca.verify_energy();
+                    println!("adding another atom gives {} with estimated error {}",
+                             PrettyFloat(*(wca.E/units::EPSILON).value()),
+                             PrettyFloat(*(wca.error/units::EPSILON).value()),
+                             );
+                    // wca.verify_energy();
                 }
                 if wca.E < best_energy {
                     best_energy = wca.E;
                     best_positions = positions;
-                    println!("found a new best energy{:?} after {} attempts", wca.E, attempt);
+                    println!("found a new best energy {:?} after {} attempts", wca.E, attempt);
                 }
             }
+            println!("Finished finding a new state.");
             let mut wca = Wca::from(WcaParams {
                 _dim: dim,
             });
             for r in best_positions.iter().cloned() {
                 wca.add_atom_at(r);
                 wca.confirm();
-                wca.verify_energy();
+                // wca.verify_energy();
             }
+            wca.E = wca.compute_energy(); // probably not needed, but may as well.
             wca
         }
     }
