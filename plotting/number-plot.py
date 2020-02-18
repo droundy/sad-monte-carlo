@@ -181,6 +181,28 @@ for fname in fnames:
                 Gexc_N[j] = Fexc_N[j] + V*p_integer[j]
                 G[j] = Fideal[j] + Fexc_N[j] + V*p_integer[j]
         GN = np.arange(1.0, N-1, 1)
+        found_one = False
+        for i in range(len(G)-1):
+            if found_one:
+                break
+            p1 = p_integer[i]
+            g1 = G[i]/GN[i]
+            p2 = p_integer[i+1]
+            g2 = G[i+1]/GN[i+1]
+            def line(p):
+                return g1*(p-p2)/(p1-p2) + g2*(p-p1)/(p2-p1)
+            for j in range(i+1, len(G)-1):
+                p3 = p_integer[j]
+                g3 = G[j]/GN[j]
+                p4 = p_integer[j+1]
+                g4 = G[j+1]/GN[j+1]
+                pX = (p1+p2)/2 # fixme incorrect
+                gX = line(pX)
+                if p1 < pX and p2 > pX and p3 < pX and p4 > pX and g3 < gX and g4 > gX:
+                    plt.plot([p1,p2,p3,p4], [g1,g2,g3,g4], 'r+', markersize=25)
+                    plt.plot([pX], [line(pX)], 'x', markersize=25)
+                    found_one = True
+                    break
         plt.ylabel('Gibbs')
         plt.xlabel('Pressure')
         # plt.plot(p_integer,Gexc_N/GN,
