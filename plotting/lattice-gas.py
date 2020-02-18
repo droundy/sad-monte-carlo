@@ -1,7 +1,7 @@
-import argparse
-import sys
+import argparse, sys, yaml
 import matplotlib.pyplot as plt
 import numpy as np
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('file')
@@ -20,14 +20,20 @@ with open(file,'rb') as stream:
             data_loaded = yaml.full_load(stream)
     except IOError:
         print('An error occurred trying to read the file.')
-
-
+        
+"""
+with open('two.yaml','r') as stream:
+    try:
+        data_loaded = yaml.full_load(stream)
+    except yaml.yamlerror as exc:
+        print(exc)
+"""
 time_frame = data_loaded['movies']['time']
 entropy_data = data_loaded['movies']['entropy']
 hist_data = data_loaded['movies']['histogram']
 hist = data_loaded['bins']['histogram']
 moves = data_loaded['movies']['time']
-#energy_data = data_loaded['movies']['energy']
+N_atoms = len(data_loaded['system']['N'])
 
 number_data = np.array(data_loaded['movies']['number'])
 energy_data = np.array(data_loaded['movies']['energy'])
@@ -43,6 +49,14 @@ for i in range(len(energy_data)-1):
 energy_col = int(len(energy_data)/energy_row)
 
 nlist = len(energy_data)
+
+k = 1.38064852e-23
+S_ideal = k*np.log(N_atoms/np.math.factorial(N_atoms))
+
+S_exc = []
+for i in range(len(entropy_data)):
+    S_exc.append(entropy_data[i] - S_ideal)
+
 
 energy_data.resize(energy_col, energy_row)
 number_data.resize(energy_col, energy_row)
@@ -68,6 +82,8 @@ N[:,-1] = N[:,-2] + 1
 
 N -= 0.5
 
+#T_inv = (S(E + dE)-S(E))/dE
+
 
 for t in range(len(entropy_data)):
     #print('time', moves[t])
@@ -75,12 +91,15 @@ for t in range(len(entropy_data)):
     S.resize(energy_col, energy_row)
     S0 = S[-1,0]
     S = S - S0
+    S_excess = entropy_data[t] - S_ideal
+    S_excess.resize(energy_col, energy_row)
     hist = np.array(hist_data[t])*1.0 # the multiplication converts it to floating point values
     if hist.max() == 0:
         continue
     hist.resize(energy_col, energy_row)
     S[hist==0] = np.nan
     hist[hist==0] = np.nan
+    
     plt.figure('entropy')
     plt.clf()
     plt.title(f'{moves[t]} moves')
@@ -88,11 +107,21 @@ for t in range(len(entropy_data)):
     plt.xlabel('$N$')
     plt.ylabel('$E$')
     plt.colorbar() 
+    
+    plt.figure('excess entropy')
+    plt.clf()
+    plt.title(f'{moves[t]} moves')
+    plt.pcolor(N,E,S_excess) 
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    plt.colorbar() 
+    
     plt.figure('histogram')
     plt.clf()
     plt.title(f'{moves[t]} moves')
     plt.pcolor(N,E,hist)
     plt.colorbar()
+
     plt.pause(1)
 
 plt.show()
