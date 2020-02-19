@@ -378,10 +378,10 @@ impl From<WcaNParams> for Wca {
                 for r in positions.iter().cloned() {
                     wca.add_atom_at(r);
                     wca.confirm();
-                    println!("adding another atom gives {} with estimated error {}",
-                             PrettyFloat(*(wca.E/units::EPSILON).value()),
-                             PrettyFloat(*(wca.error/units::EPSILON).value()),
-                             );
+                    // println!("adding another atom gives {} with estimated error {}",
+                    //          PrettyFloat(*(wca.E/units::EPSILON).value()),
+                    //          PrettyFloat(*(wca.error/units::EPSILON).value()),
+                    //          );
                     // wca.verify_energy();
                 }
                 if wca.E < best_energy {

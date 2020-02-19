@@ -675,7 +675,6 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
     fn from_params(params: EnergyMCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
         let ewidth = params.energy_bin.unwrap_or(system.delta_energy().unwrap_or(Energy::new(1.0)));
         // center zero energy in a bin!
-        let emin = ((system.energy()/ewidth).value().round() - 0.5)*ewidth;
         let mut rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
         // Let's spend a little effort getting an energy that is
         // within our range of interest.  We are only aiming downward,
@@ -693,6 +692,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
                 }
             }
         }
+        let emin = ((system.energy()/ewidth).value().round() - 0.5)*ewidth;
         EnergyMC {
             method: Method::new(params._method, system.energy(), ewidth,
                                 params.min_allowed_energy, params.max_allowed_energy),
