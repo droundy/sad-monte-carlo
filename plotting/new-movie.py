@@ -7,6 +7,8 @@ import re, argparse, os
 parser = argparse.ArgumentParser(description="create movie and graphs for lj-cluster data")
 parser.add_argument('--minT', action='store', type=float, default=0.005,
                     help = "the minimum temperature of interest")
+parser.add_argument('--maxT', action='store', type=float, default=2.0,
+                    help = "the maximum temperature of interest")
 parser.add_argument('--match-energy', action='store', type=float,
                     help = "the energy at which we want to normalize the entropy")
 parser.add_argument('yaml', nargs='*',
@@ -27,7 +29,7 @@ allcolors = list(reversed(['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'ta
                            'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan',
                            'xkcd:lightblue', 'xkcd:puke', 'xkcd:puce', 'xkcd:turquoise']))
 
-T = np.linspace(args.minT, 0.4, 1000)
+T = np.linspace(args.minT/2, args.maxT, 1000)
 
 j_lower_peak = 2
 for j in range(len(T)):
