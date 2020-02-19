@@ -3,7 +3,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import re, argparse, os
-import martiniani
 
 parser = argparse.ArgumentParser(description="create movie and graphs for lj-cluster data")
 parser.add_argument('--minT', action='store', type=float, default=0.005,
@@ -28,17 +27,9 @@ allcolors = list(reversed(['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'ta
                            'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan',
                            'xkcd:lightblue', 'xkcd:puke', 'xkcd:puce', 'xkcd:turquoise']))
 
-
-data4 = np.loadtxt('LJ31_Cv_Reference_4.csv', delimiter = ',', unpack = True)
-T = data4[0]
-CV = (data4[1]-3/2)*31
-
 T = np.linspace(args.minT, 0.4, 1000)
 
-other_T = martiniani.T
-other_CV = martiniani.CV
-other_name = 'Martiniani et al.'
-j_lower_peak = 0
+j_lower_peak = 2
 for j in range(len(T)):
     if T[j] < 0.2:
         j_lower_peak = j
@@ -193,7 +184,7 @@ all_figures = set()
 keep_going = True
 while keep_going:
     keep_going = False
-    for i in range(60,max_iter):
+    for i in range(0,max_iter):
         for fig in all_figures:
             fig.clf()
         all_figures.add(plt.figure('Heat capacity'))
@@ -361,9 +352,6 @@ while keep_going:
             # plt.legend(loc='best')
 
         all_figures.add(plt.figure('Heat capacity'))
-        plt.plot(T, CV, 'k:', label='ref 4?')
-        plt.plot(other_T, other_CV, 'k-', label=other_name)
-        plt.ylim(0,140)
         plt.legend(loc='best')
 
         plt.pause(0.1)
