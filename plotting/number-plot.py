@@ -196,20 +196,31 @@ for fname in fnames:
                 g3 = G[j]/GN[j]
                 p4 = p_integer[j+1]
                 g4 = G[j+1]/GN[j+1]
-                pX = (p1+p2)/2 # fixme incorrect
+                top_pX = (g1*p2/(p1-p2))+(g2*p1/(p2-p1))-(g3*p4/(p3-p4))-(g4*p3/(p4-p3))
+                bot_pX = (g1/(p1-p2))+(g2/(p2-p1))-(g3/(p3-p4))-(g4/(p4-p3))
+                pX = top_pX/bot_pX # fixme incorrect
                 gX = line(pX)
                 if p1 < pX and p2 > pX and p3 < pX and p4 > pX and g3 < gX and g4 > gX:
                     plt.plot([p1,p2,p3,p4], [g1,g2,g3,g4], 'r+', markersize=25)
                     plt.plot([pX], [line(pX)], 'x', markersize=25)
+                    print(pX, 'THIS IS IT!!')
                     found_one = True
                     break
-        plt.ylabel('Gibbs')
+        plt.ylabel('Gibbs/N')
         plt.xlabel('Pressure')
         # plt.plot(p_integer,Gexc_N/GN,
         #            color=my_color[fname], label=fname)
         plt.plot(p_integer,G/GN, '.--',
                    color=my_color[fname], label=fname+' G')
         plt.legend(loc='best')
+
+        #Find Packing Fraction for Pressure of Phase Transistion#
+        p_abs = np.zeros_like(p)
+        for i in range(len(UN-1)):
+            p_abs[i] = np.abs(p[i]-pX)
+        print(min(p_abs), 'Number')
+
+
 
         plt.figure('Mu vs Pressure')
         mu_excess = np.zeros_like(p)
