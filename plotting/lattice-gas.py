@@ -77,7 +77,7 @@ N[:,-1] = N[:,-2] + 1
 
 N -= 0.5
 
-#T_inv = (S(E + dE)-S(E))/dE
+#chemical potential
 
 S_ideal = number_data*k*(1 + np.log(N_sites/number_data))
 S_ideal[number_data==0] = 0
@@ -96,7 +96,7 @@ for t in range(len(entropy_data)):
     S[hist==0] = np.nan
     S_excess[hist==0] = np.nan
     hist[hist==0] = np.nan
-    
+    """
     plt.figure('entropy')
     plt.clf()
     plt.title(f'{moves[t]} moves')
@@ -119,6 +119,22 @@ for t in range(len(entropy_data)):
     plt.pcolor(N,E,hist)
     plt.colorbar()
 
+    plt.pause(1)
+"""
+
+T = []
+for i in range(energy_col):
+    S_excess = np.array(entropy_data[i])
+    S_excess.resize(energy_col, energy_row)
+    S = S_excess + S_ideal
+    T.append((S_excess[i] - S[i])/dE)
+    plt.figure('entropy')
+    plt.clf()
+    plt.title(f'{moves[t]} moves')
+    plt.pcolor(N,E,T) 
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    plt.colorbar()
     plt.pause(1)
 
 plt.show()
