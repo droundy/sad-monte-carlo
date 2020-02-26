@@ -82,6 +82,7 @@ for fname in fnames:
                    color=my_color[fname], label=fname)
         plt.xlabel('Number of Atoms')
         plt.ylabel('histogram (number of moves)')
+        plt.tick_params(axis='y', which='both', left='true', right='true')
         plt.title('Histogram of Uncovereged System')
 plt.tight_layout()
 plt.legend(loc='best')
