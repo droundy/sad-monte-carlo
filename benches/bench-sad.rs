@@ -17,7 +17,7 @@ fn gen_sw(n_atoms: usize) -> SquareWell {
     sw_params.N = n_atoms;
     let mut sw = SquareWell::from(sw_params);
     // Randomize things a bit before beginning.
-    let mut rng = sadmc::rng::MyRng::from_u64(1);
+    let mut rng = sadmc::rng::MyRng::seed_from_u64(1);
     for _ in 0..n_atoms*1000 {
         sw.plan_move(&mut rng, Length::new(1.0));
         sw.confirm()
@@ -30,7 +30,7 @@ fn gen_optsw(n_atoms: usize) -> optsquare::SquareWell {
     sw_params.N = n_atoms;
     let mut sw = optsquare::SquareWell::from(sw_params);
     // Randomize things a bit before beginning.
-    let mut rng = sadmc::rng::MyRng::from_u64(1);
+    let mut rng = sadmc::rng::MyRng::seed_from_u64(1);
     for _ in 0..n_atoms*1000 {
         sw.plan_move(&mut rng, Length::new(1.0));
         sw.confirm()
@@ -52,9 +52,9 @@ fn gen_energy_sad(n_atoms: usize) -> EnergyMC<optsquare::SquareWell, <optsquare:
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let mut rng = sadmc::rng::MyRng::from_u64(0);
+    let mut rng = sadmc::rng::MyRng::seed_from_u64(0);
     c.bench_function("MyRng.gen<u64>", move |b| b.iter(|| rng.gen::<u64>()));
-    let mut rng = sadmc::rng::MyRng::from_u64(0);
+    let mut rng = sadmc::rng::MyRng::seed_from_u64(0);
     c.bench_function("MyRng.gen<f64>", move |b| b.iter(|| rng.gen::<f64>()));
 
     c.bench_function_over_inputs("sad_optsw_move_once",
@@ -69,7 +69,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function_over_inputs("SW_move_once_sw",
                                  move |b, &&n_atoms| {
                                      let mut sw = gen_sw(n_atoms);
-                                     let mut rng = sadmc::rng::MyRng::from_u64(2);
+                                     let mut rng = sadmc::rng::MyRng::seed_from_u64(2);
                                      b.iter(|| {
                                          sw.plan_move(&mut rng, Length::new(0.1));
                                          sw.confirm();
@@ -81,7 +81,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function_over_inputs("SW_move_once_optsw",
                                  move |b, &&n_atoms| {
                                      let mut sw = gen_optsw(n_atoms);
-                                     let mut rng = sadmc::rng::MyRng::from_u64(2);
+                                     let mut rng = sadmc::rng::MyRng::seed_from_u64(2);
                                      b.iter(|| {
                                          sw.plan_move(&mut rng, Length::new(0.1));
                                          sw.confirm();
@@ -93,7 +93,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     let closest = criterion::Fun::new("standard", |b,&n_atoms| {
         let sw = gen_sw(n_atoms);
-        let mut rng = sadmc::rng::MyRng::from_u64(2);
+        let mut rng = sadmc::rng::MyRng::seed_from_u64(2);
         b.iter_with_setup(|| {
             let r1 = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
             let r2 = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
@@ -102,7 +102,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
     let unsafe_closest = criterion::Fun::new("unsafe", |b,&n_atoms| {
         let sw = gen_sw(n_atoms);
-        let mut rng = sadmc::rng::MyRng::from_u64(2);
+        let mut rng = sadmc::rng::MyRng::seed_from_u64(2);
         b.iter_with_setup(|| {
             let r1 = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
             let r2 = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
@@ -111,7 +111,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
     let sloppy_closest = criterion::Fun::new("sloppy", |b,&n_atoms| {
         let sw = gen_sw(n_atoms);
-        let mut rng = sadmc::rng::MyRng::from_u64(2);
+        let mut rng = sadmc::rng::MyRng::seed_from_u64(2);
         b.iter_with_setup(|| {
             let r1 = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
             let r2 = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
@@ -123,7 +123,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     let put = criterion::Fun::new("standard", |b,&n_atoms| {
         let sw = gen_sw(n_atoms);
-        let mut rng = sadmc::rng::MyRng::from_u64(2);
+        let mut rng = sadmc::rng::MyRng::seed_from_u64(2);
         b.iter_with_setup(|| {
             let r = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
             r + rng.vector()*0.1*units::SIGMA
@@ -131,7 +131,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
     let sloppy_put = criterion::Fun::new("sloppy", |b,&n_atoms| {
         let sw = gen_sw(n_atoms);
-        let mut rng = sadmc::rng::MyRng::from_u64(2);
+        let mut rng = sadmc::rng::MyRng::seed_from_u64(2);
         b.iter_with_setup(|| {
             let r = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
             r + rng.vector()*0.1*units::SIGMA
@@ -142,7 +142,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     let put = criterion::Fun::new("standard", |b,&n_atoms| {
         let sw = gen_optsw(n_atoms);
-        let mut rng = sadmc::rng::MyRng::from_u64(2);
+        let mut rng = sadmc::rng::MyRng::seed_from_u64(2);
         b.iter_with_setup(|| {
             let r = sw.cell.positions[rng.sample(Uniform::new(0, sw.cell.positions.len()))];
             r + rng.vector()*0.1*units::SIGMA
@@ -150,7 +150,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
     let sloppy_put = criterion::Fun::new("sloppy", |b,&n_atoms| {
         let sw = gen_optsw(n_atoms);
-        let mut rng = sadmc::rng::MyRng::from_u64(2);
+        let mut rng = sadmc::rng::MyRng::seed_from_u64(2);
         b.iter_with_setup(|| {
             let r = sw.cell.positions[rng.sample(Uniform::new(0, sw.cell.positions.len()))];
             r + rng.vector()*0.1*units::SIGMA

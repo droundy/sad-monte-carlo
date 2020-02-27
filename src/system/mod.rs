@@ -2,6 +2,7 @@
 //! different configurations.
 
 use super::rng::MyRng;
+use auto_args::AutoArgs;
 
 pub mod units;
 pub mod cell;

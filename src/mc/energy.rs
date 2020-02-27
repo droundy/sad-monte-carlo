@@ -7,13 +7,13 @@ use super::*;
 
 use super::plugin::Plugin;
 use dimensioned::Dimensionless;
-use rand::Rng;
+use rand::{Rng, SeedableRng};
 use std::default::Default;
 use std::cell::{RefCell,Cell};
 use crate::prettyfloat::PrettyFloat;
 
 /// Which experimental version of SAD are we doing?
-#[derive(Serialize, Deserialize, Debug, ClapMe, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SadVersion {
     /// Sad
     Sad,
@@ -39,7 +39,7 @@ impl SadVersion {
 }
 
 /// Parameters to configure a particular MC.
-#[derive(Debug, ClapMe)]
+#[derive(Debug, AutoArgs)]
 #[allow(non_camel_case_types)]
 pub enum MethodParams {
     /// Sad
@@ -53,13 +53,16 @@ pub enum MethodParams {
         t0: f64,
     },
     /// Use the Wang-Landau algorithm
-    WL,
+    WL {
+        /// After gamma drops to this value, begin a "production" run
+        min_gamma: Option<f64>,
+    },
     /// Use the 1/t-Wang-Landau algorithm
     Inv_t_WL,
 }
 
 /// Parameters to configure the moves.
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 pub enum MoveParams {
     /// The rms distance of moves
     TranslationScale(Length),
@@ -68,7 +71,7 @@ pub enum MoveParams {
 }
 
 /// The parameters needed to configure a simulation.
-#[derive(Debug, ClapMe)]
+#[derive(Debug, AutoArgs)]
 pub struct EnergyMCParams {
     /// The actual method.
     pub _method: MethodParams,
@@ -216,6 +219,7 @@ enum Method {
         hist: Vec<u64>,
         min_energy: Energy,
         inv_t: bool,
+        min_gamma: Option<f64>,
     }
 }
 
@@ -237,7 +241,7 @@ impl Method {
                     latest_parameter: 0.,
                 },
             MethodParams::Samc { t0 } => Method::Samc { t0 },
-            MethodParams::WL => Method::WL {
+            MethodParams::WL { min_gamma } => Method::WL {
                 gamma: 1.0,
                 lowest_hist: if min_allowed_energy.is_some() && max_allowed_energy.is_some() { 0 } else { 1 },
                 highest_hist: 1,
@@ -250,6 +254,7 @@ impl Method {
                 hist: Vec::new(),
                 min_energy: E,
                 inv_t: false,
+                min_gamma,
             },
             MethodParams::Inv_t_WL => Method::WL {
                 gamma: 1.0,
@@ -264,6 +269,7 @@ impl Method {
                 hist: Vec::new(),
                 min_energy: E,
                 inv_t: true,
+                min_gamma: None,
             },
         }
     }
@@ -289,6 +295,19 @@ impl Method {
                     *s = (bins.histogram[i] as f64/meanhist).ln() + too_lo_entropy + (e - too_lo)/min_T;
                 } else if e > too_hi {
                     *s = (bins.histogram[i] as f64/meanhist).ln() + too_hi_entropy;
+                }
+            }
+        } else if let Method::WL { gamma, hist, .. } = self {
+            if *gamma == 0.0 {
+                // We are in a production run, so we should modify the
+                // lnw based on the histogram.
+                if !hist.iter().cloned().any(|h| h == 0) {
+                    // We have explored everything at least once, so
+                    // we can at least take a log of everything...
+                    return entropy.iter().map(|x| *x.value())
+                        .zip(hist.iter().cloned())
+                        .map(|(lnw, h)| lnw + (h as f64).ln())
+                        .collect();
                 }
             }
         }
@@ -504,7 +523,14 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
             Method::Samc { .. } => {}
             Method::WL { ref mut gamma,
                          ref mut lowest_hist, ref mut highest_hist, ref mut total_hist,
-                         ref mut hist, ref mut min_energy, num_states, inv_t } => {
+                         ref mut hist, ref mut min_energy, num_states, inv_t,
+                         min_gamma } => {
+                if let Some(min_gamma) = min_gamma {
+                    if *gamma < min_gamma {
+                        // We are in a production run.
+                        return;
+                    }
+                }
                 if hist.len() != self.bins.lnw.len() {
                     // Oops, we found a new energy, so let's regroup.
                     if hist.len() == 0 || (*gamma != 1.0 && *lowest_hist > 0) {
@@ -571,6 +597,12 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                         *total_hist = 0;
                         *lowest_hist = 0;
                         *highest_hist = 0;
+                        if let Some(min_gamma) = min_gamma {
+                            if *gamma < min_gamma {
+                                // Switch to a "production" run.
+                                *gamma = 0.0;
+                            }
+                        }
                     }
                     if inv_t && *gamma < (num_states as f64)/(self.moves as f64) {
                         println!("    1/t-WL:  Switching to 1/t!");
@@ -643,8 +675,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
     fn from_params(params: EnergyMCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
         let ewidth = params.energy_bin.unwrap_or(system.delta_energy().unwrap_or(Energy::new(1.0)));
         // center zero energy in a bin!
-        let emin = ((system.energy()/ewidth).value().round() - 0.5)*ewidth;
-        let mut rng = crate::rng::MyRng::from_u64(params.seed.unwrap_or(0));
+        let mut rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
         // Let's spend a little effort getting an energy that is
         // within our range of interest.  We are only aiming downward,
         // because it is unusual that we have trouble getting an
@@ -661,6 +692,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
                 }
             }
         }
+        let emin = ((system.energy()/ewidth).value().round() - 0.5)*ewidth;
         EnergyMC {
             method: Method::new(params._method, system.energy(), ewidth,
                                 params.min_allowed_energy, params.max_allowed_energy),
@@ -786,7 +818,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
 
 
 /// Do we want movies? Where?
-#[derive(ClapMe, Debug)]
+#[derive(AutoArgs, Debug)]
 pub struct MoviesParams {
     // How often (logarithmically) do we want a movie frame? If this
     // is 2.0, it means we want a frame every time the number of

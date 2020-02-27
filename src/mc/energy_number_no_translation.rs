@@ -7,13 +7,13 @@ use super::*;
 
 use super::plugin::Plugin;
 use dimensioned::Dimensionless;
-use rand::Rng;
+use rand::{Rng, SeedableRng};
 use std::default::Default;
 use std::cell::{RefCell,Cell};
 use crate::prettyfloat::PrettyFloat;
 
 /// Parameters to configure a particular MC.
-#[derive(Debug, ClapMe)]
+#[derive(Debug, AutoArgs)]
 pub enum MethodParams {
     /// Samc
     Samc {
@@ -25,7 +25,7 @@ pub enum MethodParams {
 }
 
 /// The parameters needed to configure a simulation.
-#[derive(Debug, ClapMe)]
+#[derive(Debug, AutoArgs)]
 pub struct EnergyNumberMCParams {
     /// The actual method.
     pub _method: MethodParams,
@@ -406,7 +406,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
             },
             system: system,
 
-            rng: crate::rng::MyRng::from_u64(params.seed.unwrap_or(0)),
+            rng: crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0)),
             save_as: save_as,
             report: plugin::Report::from(params._report),
             movies: Movies::from(params._movies),
@@ -493,7 +493,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
 
 
 /// Do we want movies? Where?
-#[derive(ClapMe, Debug)]
+#[derive(AutoArgs, Debug)]
 pub struct MoviesParams {
     // How often (logarithmically) do we want a movie frame? If this
     // is 2.0, it means we want a frame every time the number of

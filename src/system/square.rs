@@ -11,7 +11,7 @@ use std::f64::consts::PI;
 use std::default::Default;
 
 /// A description of the cell dimensions
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 #[allow(non_snake_case)]
 pub enum CellDimensions {
     /// The three widths of the cell
@@ -21,7 +21,7 @@ pub enum CellDimensions {
 }
 
 /// The parameters needed to configure a square well system.
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 pub struct SquareWellParams {
     well_width: Unitless,
     _dim: CellDimensions,
@@ -332,9 +332,10 @@ impl GrandSystem for SquareWell {
 
 impl MovableSystem for SquareWell {
     fn plan_move(&mut self, rng: &mut MyRng, mean_distance: Length) -> Option<Energy> {
+        use crate::rng::vector;
         if self.positions.len() > 0 {
             let which = rng.sample(Uniform::new(0, self.positions.len()));
-            let to = self.put_in_cell(self.positions[which] + rng.vector()*mean_distance);
+            let to = self.put_in_cell(self.positions[which] + vector(rng)*mean_distance);
             self.move_atom(which, to)
         } else {
             None
@@ -376,7 +377,7 @@ fn max_balls_within(mut distance: Length) -> u64 {
 
 
 /// A description of the cell dimensions and number.
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 pub enum CellDimensionsGivenNumber {
     /// The three widths of the cell
     CellWidth(Vector3d<Length>),
@@ -387,7 +388,7 @@ pub enum CellDimensionsGivenNumber {
 }
 
 /// Parameters needed to configure a finite-N square-well system.
-#[derive(Serialize, Deserialize, Debug, ClapMe)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 #[allow(non_snake_case)]
 pub struct SquareWellNParams {
     /// The width of the well, relative to the diameter.
@@ -454,7 +455,7 @@ impl From<SquareWellNParams> for SquareWell {
         }
         assert!(total_spots >= params.N);
         let mut spots_reserved = vec![vec![vec![[false; 4]; cells[2]]; cells[1]]; cells[0]];
-        let mut rng = crate::rng::MyRng::from_u64(0);
+        let mut rng = crate::rng::MyRng::seed_from_u64(0);
         for _ in 0..params.N {
             loop {
                 // This is an inefficient but relatively
@@ -489,7 +490,7 @@ fn closest_distance_matches() {
             assert_eq!(sw.closest_distance2(r1,r2), sw.sloppy_closest_distance2(r1,r2));
         }
     }
-    let mut rng = MyRng::from_u64(1);
+    let mut rng = MyRng::seed_from_u64(1);
     for _ in 0..100000 {
         sw.plan_move(&mut rng, Length::new(1.0));
         sw.confirm();
@@ -507,7 +508,7 @@ fn energy_is_right() {
     use std::default::Default;
     let mut sw = SquareWell::from(SquareWellNParams::default());
     assert_eq!(sw.energy(), sw.compute_energy());
-    let mut rng = MyRng::from_u64(1);
+    let mut rng = MyRng::seed_from_u64(1);
     for _ in 0..100 {
         println!("making a move...");
         sw.plan_move(&mut rng, Length::new(1.0));

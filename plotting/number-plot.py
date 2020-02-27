@@ -63,6 +63,9 @@ T = my_temperature[fname]
 FN = np.arange(0, len(Fexc_N), 1)
 Fideal = FN*T*(np.log(FN/V*1e2)- 1) #ignoring nQ for the moment
 Fideal = FN*T*(np.log(FN)- 1) #ignoring V for the moment?!
+#solving for u with derivative
+
+
 
 # plt.figure('gamma')
 # for fname in fnames:
@@ -72,17 +75,17 @@ Fideal = FN*T*(np.log(FN)- 1) #ignoring V for the moment?!
 # plt.ylabel(r'$\gamma$')
 # plt.ylim(1e-12, 1.1)
 
-print('TODO: 1. Try Nmax=300 for the smaller cell 2. Try V=1000 cell (with Nmax=300?) 3. Try much smaller t0 4. Reimplement/test canoncial analysis (in new copy of code)')
 
-# plt.figure('histograms')
-# for fname in fnames:
-#         plt.plot(current_histogram[fname],
-#                    color=my_color[fname], label=fname)
-#         plt.xlabel('Number of Atoms')
-#         plt.ylabel('histogram (number of moves)')
-#         plt.title('Histogram of Uncovereged System')
-# plt.tight_layout()
-# plt.legend(loc='best')
+plt.figure('histograms')
+for fname in fnames:
+        plt.plot(current_histogram[fname],
+                   color=my_color[fname], label=fname)
+        plt.xlabel('Number of Atoms')
+        plt.ylabel('histogram (number of moves)')
+        plt.tick_params(axis='y', which='both', left='true', right='true')
+        plt.title('Histogram of Uncovereged System')
+plt.tight_layout()
+plt.legend(loc='best')
 #
 # plt.figure('histogram')
 # for fname in fnames:
@@ -154,7 +157,7 @@ for fname in fnames:
                 p[i] = p_exc[i] + (i+.5)*T/V # excess + ideal = total pressure
                 u = F[i+1]-F[i] # dN = 1
                 p_redundant[i] = (-0.5*(F[i]+F[i+1])+u*(i+.5))/V
-                print 'checking: ', i, p_redundant[i], p[i]
+                # print 'checking: ', i, p_redundant[i], p[i]
         UN = np.arange(0.5, N-1, 1)
         plt.ylabel('Pressure')
         plt.xlabel(r'$\eta$')
@@ -173,19 +176,76 @@ for fname in fnames:
         plt.figure('Gibbs')
         Gexc_N = np.zeros(N-2)
         G = np.zeros(N-2)
+        mu = np.zeros(N-2)
         p_integer = np.zeros(N-2)
         for j in range(1,N-2):
                 p_integer[j] = (p[j]+p[j+1])/2
                 Gexc_N[j] = Fexc_N[j] + V*p_integer[j]
                 G[j] = Fideal[j] + Fexc_N[j] + V*p_integer[j]
+                mu[j] = ((Fideal[j+1]+Fexc_N[j+1]) - (Fideal[j-1]+Fexc_N[j-1]))/2 # mu = dF/dN
         GN = np.arange(1.0, N-1, 1)
-        plt.ylabel('Gibbs')
+        found_one = False
+        for i in range(len(G)-1):
+            if found_one:
+                break
+            p1 = p_integer[i]
+            g1 = G[i]/GN[i]
+            p2 = p_integer[i+1]
+            g2 = G[i+1]/GN[i+1]
+            N1 = GN[i]
+            N2 = GN[i+1]
+            def line(p):
+                return g1*(p-p2)/(p1-p2) + g2*(p-p1)/(p2-p1)
+            for j in range(i+1, len(G)-1):
+                p3 = p_integer[j]
+                g3 = G[j]/GN[j]
+                p4 = p_integer[j+1]
+                g4 = G[j+1]/GN[j+1]
+                N3 = GN[j]
+                N4 = GN[j+1]
+                top_pX = (g1*p2/(p1-p2))+(g2*p1/(p2-p1))-(g3*p4/(p3-p4))-(g4*p3/(p4-p3))
+                bot_pX = (g1/(p1-p2))+(g2/(p2-p1))-(g3/(p3-p4))-(g4/(p4-p3))
+                pX = top_pX/bot_pX
+                gX = line(pX)
+                if p1 < pX and p2 > pX and p3 < pX and p4 > pX and g3 < gX and g4 > gX:
+                    plt.plot([p1,p2,p3,p4], [g1,g2,g3,g4], 'r+', markersize=25)
+                    plt.plot([pX], [line(pX)], 'x', markersize=25)
+                    print(pX, 'THIS IS IT!!')
+                    print(line(pX), 'chemical potential')
+                    Ngas = (N1*(p2-pX) + N2*(pX-p1))/(p2-p1)
+                    Nliq = (N3*(p4-pX) + N4*(pX-p3))/(p4-p3)
+                    print('Ngas', Ngas)
+                    print('Nliq', Nliq)
+                    found_one = True
+                    break
+        plt.ylabel('Gibbs/N')
         plt.xlabel('Pressure')
         # plt.plot(p_integer,Gexc_N/GN,
         #            color=my_color[fname], label=fname)
-        plt.plot(p_integer,G/GN, '--',
+        plt.plot(p_integer,G/GN, '.--',
                    color=my_color[fname], label=fname+' G')
+        # FIXME, can you check if computing mu as dF/dN gives the same results?
+        # plt.plot(p_integer,mu, 'x:',
+        #            color=my_color[fname], label=fname+' mu')
         plt.legend(loc='best')
+
+        #Find Packing Fraction for Pressure of Phase Transistion#
+        p_abs = np.zeros_like(p)
+        for i in range(len(UN-1)):
+            p_abs[i] = np.abs(p[i]-pX)
+        print(min(p_abs), 'Number')
+
+
+
+        plt.figure('Mu vs Pressure')
+        mu_excess = np.zeros_like(p)
+        for i in range(0,N-1):
+            mu_excess[i] = Fexc_N[i+1]-Fexc_N[i] #dN=1
+        mu_ideal = T*np.log(UN)
+        mu = mu_excess + mu_ideal
+        plt.plot(p, mu, '.--', color=my_color[fname], label=fname)
+
+
 
 
 plt.figure('Phase Transistion')
@@ -195,10 +255,10 @@ plt.plot(Pack, Temp, 'o')
 
 
 
-plt.show()
-
-
-
+# plt.show()
+#
+#
+#
 # all_mu = np.arange(2, 30, 0.01)
 # # nQ = (mkT/2pi hbar^2)^1.5
 # nQ = 0.001 # HOKEY
@@ -229,19 +289,19 @@ plt.show()
 #         Grand_Uideal = C_V*T*Grand_N
 #         Grand_U = Grand_Uideal + Grand_Uexc
 #         plt.plot(Grand_N, Grand_U,'-',
-#                    color=my_color[fname], label=fname)
+#                    color=my_color[fname], label='Total Grand Internal Energy')
 #         plt.plot(Grand_N, Grand_Uexc,'--',
-#                    color=my_color[fname], label=fname+' Excess')
+#                    color=my_color[fname], label=' Excess Grand Internal Energy')
 #         plt.plot(Grand_N, Grand_Uideal,'--',
-#                    color='red', label='Ideal')
+#                    color='red', label='Ideal Grand Internal Energy')
 #         # plt.plot(current_total_energy[fname]/current_histogram[fname], ':',
 #         #            color=my_color[fname], label='canonical '+fname)
-#         plt.ylabel('Grand U')
-#         plt.title('Grand Internal Energy')
+#         plt.ylabel('Grand Internal Energy')
+#         # plt.title('Grand Internal Energy')
 #         #plt.title('mu {} {}'.format(all_mu[0], all_mu[-1]))
-#         plt.xlabel('Grand N')
+#         plt.xlabel('Grand Number of Atoms')
 #         plt.legend(loc='best')
-#
+
 # plt.figure('Grand N')
 # plt.plot(Grand_N, all_mu, label=fname)
 #
@@ -332,4 +392,4 @@ plt.show()
 #     plt.legend(loc='best')
 #     plt.tight_layout()
 #
-# plt.show()
+plt.show()
