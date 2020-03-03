@@ -160,7 +160,7 @@ for fname in fnames:
         UN = np.arange(0.5, N-1, 1)
         plt.ylabel('Pressure')
         plt.xlabel(r'$\eta$')
-        # plt.plot(UN,p, label=fname)
+
         plt.plot((np.pi/6)*UN/my_volume[fname],p,
                    color=my_color[fname], label=fname)
         plt.plot((np.pi/6)*UN/my_volume[fname],p_exc,'--',
@@ -216,8 +216,8 @@ for fname in fnames:
                     Nliq = (N3*(p4-pX) + N4*(pX-p3))/(p4-p3)
                     print('Ngas', Ngas)
                     print('Nliq', Nliq)
-                    print('Low', p[int(Ngas)])
-                    print('High', p[int(Nliq)])
+                    print('Low p', p[int(Ngas)])
+                    print('High p', p[int(Nliq)])
                     found_one = True
                     break
         plt.ylabel('Chemical Potential')
