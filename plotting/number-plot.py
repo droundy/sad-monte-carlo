@@ -208,16 +208,14 @@ for fname in fnames:
                 pX = top_pX/bot_pX
                 gX = line(pX)
                 if p1 < pX and p2 > pX and p3 < pX and p4 > pX and g3 < gX and g4 > gX:
-                    #plt.plot([p1,p2,p3,p4], [g1,g2,g3,g4], 'r+', markersize=25)
-                    #plt.plot([pX], [line(pX)], 'x', markersize=25)
-                    print(pX, 'THIS IS IT!!')
+                    # plt.plot([p1,p2,p3,p4], [g1,g2,g3,g4], 'r+', markersize=25)
+                    # plt.plot([pX], [line(pX)], 'x', markersize=25)
+                    print('phase transition pressure', pX)
                     print(line(pX), 'chemical potential')
                     Ngas = (N1*(p2-pX) + N2*(pX-p1))/(p2-p1)
                     Nliq = (N3*(p4-pX) + N4*(pX-p3))/(p4-p3)
                     print('Ngas', Ngas)
                     print('Nliq', Nliq)
-                    print('Low p', p[int(Ngas)])
-                    print('High p', p[int(Nliq)])
                     found_one = True
                     break
         plt.ylabel('Chemical Potential')
