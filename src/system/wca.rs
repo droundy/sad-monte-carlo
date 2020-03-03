@@ -68,9 +68,9 @@ fn potential_pressure(r_squared: Area) -> Energy {
     let r_cutoff_squared: Area = r_cutoff*r_cutoff;
     let sig_sqr = units::SIGMA*units::SIGMA;
     if r_squared < r_cutoff_squared {
-        // This is dE/dr*r/2. the extra factor of two comes from
+        // This is -dE/dr*r/2. the extra factor of two comes from
         // avoiding double counting.
-        4.0*3.0*units::EPSILON*(-2.0*(sig_sqr/r_squared).powi(6) + (sig_sqr/r_squared).powi(3))
+        4.0*3.0*units::EPSILON*(2.0*(sig_sqr/r_squared).powi(6) - (sig_sqr/r_squared).powi(3))
     } else {
         0.0*units::EPSILON
     }

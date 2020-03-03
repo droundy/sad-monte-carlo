@@ -160,6 +160,7 @@ for fname in fnames:
         UN = np.arange(0.5, N-1, 1)
         plt.ylabel('Pressure')
         plt.xlabel(r'$\eta$')
+        # plt.plot(UN,p, label=fname)
         plt.plot((np.pi/6)*UN/my_volume[fname],p,
                    color=my_color[fname], label=fname)
         plt.plot((np.pi/6)*UN/my_volume[fname],p_exc,'--',
@@ -175,11 +176,13 @@ for fname in fnames:
         plt.figure('Gibbs')
         Gexc_N = np.zeros(N-2)
         G = np.zeros(N-2)
+        mu = np.zeros(N-2)
         p_integer = np.zeros(N-2)
         for j in range(1,N-2):
                 p_integer[j] = (p[j]+p[j+1])/2
                 Gexc_N[j] = Fexc_N[j] + V*p_integer[j]
                 G[j] = Fideal[j] + Fexc_N[j] + V*p_integer[j]
+                mu[j] = ((Fideal[j+1]+Fexc_N[j+1]) - (Fideal[j-1]+Fexc_N[j-1]))/2 # mu = dF/dN
         GN = np.arange(1.0, N-1, 1)
         found_one = False
         for i in range(len(G)-1):
@@ -189,6 +192,8 @@ for fname in fnames:
             g1 = G[i]/GN[i]
             p2 = p_integer[i+1]
             g2 = G[i+1]/GN[i+1]
+            N1 = GN[i]
+            N2 = GN[i+1]
             def line(p):
                 return g1*(p-p2)/(p1-p2) + g2*(p-p1)/(p2-p1)
             for j in range(i+1, len(G)-1):
@@ -196,14 +201,23 @@ for fname in fnames:
                 g3 = G[j]/GN[j]
                 p4 = p_integer[j+1]
                 g4 = G[j+1]/GN[j+1]
+                N3 = GN[j]
+                N4 = GN[j+1]
                 top_pX = (g1*p2/(p1-p2))+(g2*p1/(p2-p1))-(g3*p4/(p3-p4))-(g4*p3/(p4-p3))
                 bot_pX = (g1/(p1-p2))+(g2/(p2-p1))-(g3/(p3-p4))-(g4/(p4-p3))
-                pX = top_pX/bot_pX # fixme incorrect
+                pX = top_pX/bot_pX
                 gX = line(pX)
                 if p1 < pX and p2 > pX and p3 < pX and p4 > pX and g3 < gX and g4 > gX:
                     #plt.plot([p1,p2,p3,p4], [g1,g2,g3,g4], 'r+', markersize=25)
                     #plt.plot([pX], [line(pX)], 'x', markersize=25)
                     print(pX, 'THIS IS IT!!')
+                    print(line(pX), 'chemical potential')
+                    Ngas = (N1*(p2-pX) + N2*(pX-p1))/(p2-p1)
+                    Nliq = (N3*(p4-pX) + N4*(pX-p3))/(p4-p3)
+                    print('Ngas', Ngas)
+                    print('Nliq', Nliq)
+                    print('Low', p[int(Ngas)])
+                    print('High', p[int(Nliq)])
                     found_one = True
                     break
         plt.ylabel('Chemical Potential')
@@ -215,11 +229,11 @@ for fname in fnames:
         plt.tick_params(axis='y', which='both', left='true', right='true')
         plt.legend(loc='best')
 
-        #Find Packing Fraction for Pressure of Phase Transistion#
-        p_abs = np.zeros_like(p)
-        for i in range(len(UN-1)):
-            p_abs[i] = np.abs(p[i]-pX)
-        print(min(p_abs), 'Number')
+        # #Find Packing Fraction for Pressure of Phase Transistion#
+        # p_abs = np.zeros_like(p)
+        # for i in range(len(UN-1)):
+        #     p_abs[i] = np.abs(p[i]-pX)
+        # print(min(p_abs), 'Number')
 
 
 
