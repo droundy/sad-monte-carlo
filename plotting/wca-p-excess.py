@@ -32,17 +32,6 @@ my_pressure={} #pressure of system
 my_histogram={} #histogram data
 
 
-
-#Only applicable where the data's 'name' is on same line as the data itself
-#examples are count and pexc_tot.
-def read_yaml_data(entry, yaml_data): #populate the data into array eg counts
-    temp = re.findall(entry+".*$",yaml_data,re.MULTILINE)
-    array = {}
-    for i in range(0, len(temp)):
-        array[i] = float(temp[i].split(" ")[1])
-    return array
-
-
 #The following functions (read*:) dependent on maintainance of current storage method
 #of the data in .energy, .entropy etc files.
 def read_energy_data(path):
@@ -86,9 +75,11 @@ def calc_p():   #calculate pressure and populate the my_pressure array
 fname = args.yaml
 with open(args.yaml) as y:
     yaml_data = y.read()
+    data = yaml.load(yaml_data)
+    collected = data['collected']
+    my_pexc_tot = np.array([c['pexc_tot'] for c in collected])
+    my_count = np.array([c['count'] for c in collected])
 
-my_pexc_tot = read_yaml_data("pexc_tot", yaml_data)
-my_count = read_yaml_data("count", yaml_data)
 read_energy_data(args.energy)
 read_entropy_data(args.entropy) #** need to pop .inf if needed
 
