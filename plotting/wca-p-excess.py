@@ -79,6 +79,8 @@ with open(args.yaml) as y:
     collected = data['collected']
     my_pexc_tot = np.array([c['pexc_tot'] for c in collected])
     my_count = np.array([c['count'] for c in collected])
+    entropy = np.array(data['movies']['entropy'])
+    print(entropy.shape)
 
 read_energy_data(args.energy)
 read_entropy_data(args.entropy) #** need to pop .inf if needed
