@@ -6,6 +6,7 @@ use crate::system::{units,Energy,PerEnergy};
 
 use dimensioned::Dimensionless;
 use std::default::Default;
+use internment::Intern;
 
 /// The `Binning` trait defines a type that can hold histogram-like information
 pub trait Binning : Default {
@@ -22,6 +23,16 @@ pub trait Binning : Default {
     /// This is not just an integer in order to abstract out the bin
     /// size.
     fn get_counts(&self, e: Energy) -> PerEnergy;
+    /// Accumulate some other datum that we might want to keep track
+    /// of.  This is for things like pressure for instance, and we do
+    /// not assume that they are incremented with each count, so they
+    /// need their own count.  Note that this does require storing a
+    /// HashMap of extra data, but that seems like the only really
+    /// flexible way of doing this.
+    fn accumulate_extra(&mut self, name: Intern<String>, e: Energy, value: f64);
+    /// Find the average extra value that we accumulated at this
+    /// energy.
+    fn get_extra(&self, name: Intern<String>, e: Energy) -> f64;
 }
 
 #[cfg(test)]
@@ -31,6 +42,9 @@ fn test_binning<B: Binning>() {
     assert_eq!(b.get_counts(eps), 0.0/eps);
     b.increment_counts(eps, 1.0);
     assert!(b.get_counts(eps) > 0.0/eps);
+    let mydat = Intern::new("datum".to_string());
+    b.accumulate_extra(mydat, eps, 7.0);
+    assert_eq!(b.get_extra(mydat, eps), 7.0);
 }
 
 /// A standard energy histogram
@@ -46,6 +60,8 @@ pub struct Bins {
     // pub t_found: Vec<u64>,
     /// The ln weight for each energy bin.
     pub lnw: Vec<f64>,
+    /// The extra totals
+    pub extra: std::collections::HashMap<Intern<String>, Vec<(usize,f64)>>,
 }
 
 #[test]
@@ -60,6 +76,7 @@ impl Default for Bins {
             width: units::EPSILON,
             histogram: Vec::new(),
             lnw: Vec::new(),
+            extra: std::collections::HashMap::new(),
         }
     }
 }
@@ -71,10 +88,7 @@ impl Bins {
     fn energy_to_index(&self, e: Energy) -> usize {
         *((e - self.min)/self.width).value() as usize
     }
-}
-
-impl Binning for Bins {
-    fn increment_counts(&mut self, e: Energy, gamma: f64) {
+    fn prep_for_e(&mut self, e: Energy) {
         assert!(self.width > Energy::new(0.0));
         assert_eq!(self.lnw.len(), self.histogram.len());
         while e < self.min {
@@ -82,12 +96,24 @@ impl Binning for Bins {
             // ensure we end up with enough room.
             self.histogram.insert(0, 0);
             self.lnw.insert(0, 0.0);
+            for d in self.extra.values_mut() {
+                d.insert(0, (0, 0.0));
+            }
             self.min -= self.width;
         }
         while e >= self.min + self.width*(self.lnw.len() as f64) {
             self.lnw.push(0.0);
             self.histogram.push(0);
+            for d in self.extra.values_mut() {
+                d.push((0,0.0));
+            }
         }
+    }
+}
+
+impl Binning for Bins {
+    fn increment_counts(&mut self, e: Energy, gamma: f64) {
+        self.prep_for_e(e);
         let idx = self.energy_to_index(e);
         self.histogram[idx] += 1;
         self.lnw[idx] += gamma;
@@ -101,6 +127,30 @@ impl Binning for Bins {
             self.histogram[idx] as f64/self.width
         } else {
             0.0/units::EPSILON
+        }
+    }
+    fn accumulate_extra(&mut self, name: Intern<String>, e: Energy, value: f64) {
+        self.prep_for_e(e);
+        let idx = self.energy_to_index(e);
+        if let Some(data) = self.extra.get_mut(&name) {
+            data[idx].0 += 1;
+            data[idx].1 += value;
+        } else {
+            let values = vec![(0, 0.0); self.histogram.len()];
+            self.extra.insert(name, values);
+            self.accumulate_extra(name, e, value); // sloppy recursion...
+        }
+    }
+    fn get_extra(&self, name: Intern<String>, e: Energy) -> f64 {
+        if let Some(data) = self.extra.get(&name) {
+            let idx = self.energy_to_index(e);
+            if data[idx].0 > 0 {
+                data[idx].1 / data[idx].0 as f64
+            } else {
+                0.0
+            }
+        } else {
+            0.0
         }
     }
 }
