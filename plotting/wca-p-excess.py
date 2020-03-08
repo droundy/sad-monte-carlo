@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser(description="Create graph of energy vs pressure")
 parser.add_argument('density', type=float,
                     help = 'reduced density')
+#density currently in use
 parser.add_argument('cbor',
                     help = 'path to the .cbor file')
 args = parser.parse_args()
@@ -25,6 +26,7 @@ my_entropy={} #array of entropies ###
 my_pexc_tot={} #excess pressure  ###
 my_count={} #count at each excess pressure ###
 my_pressure={} #pressure of system
+my_t={} #times
 my_histogram={} #histogram data
 
 def read_energy(data_loaded):
@@ -38,7 +40,6 @@ def read_entropy(data_loaded):
 #movie via entropy shifting for each t; p_exc_tot & energies constant
     global my_entropy
     my_entropy = data_loaded['movies']['entropy']
-    return
 
 def read_pexc_tot(data_loaded):
     global my_pexc_tot
@@ -49,6 +50,12 @@ def read_count(data_loaded):
     global my_count
     collected = data_loaded['collected']
     my_count = np.array([c['count'] for c in collected])
+
+def read_my_t(data_loaded):
+    global my_t
+    my_t = data_loaded['movies']['time']
+    for i in range(0, len(my_t)):
+        my_t[i] = float(my_t[i])
 
 def read_density(data_loaded):
     return
@@ -65,11 +72,11 @@ def read_data(path):
             print('An error occurred trying to read the file.')
     read_energy(data_loaded)
     read_entropy(data_loaded)
-    read_density(data_loaded)
-    read_hist(data_loaded)
+    #read_density(data_loaded)
+    #read_hist(data_loaded)
     read_count(data_loaded)
     read_pexc_tot(data_loaded)
-    return
+    read_my_t(data_loaded)
 
 
 #i and t are within bounds
@@ -116,12 +123,15 @@ def calc_pressure():   #calculate pressure and populate the my_pressure array
                 my_pressure[t][i] += calc_ideal_p(t, i) #p_ideal
             else:
                 my_pressure[t][i] = p_ideal #whatever inf it is; +ve or -ve
-    return
 
 
 read_data(args.cbor)
 calc_pressure()
-#plot energy vs pressure
+
+#for i in range(0, len(my_entropy)):
+#    plt.plot(my_energy, my_entropy[0])
+#    plt.show()
+
 
 #t=1
 #for i in range(0, len(my_energy)): 
