@@ -4,30 +4,39 @@ import sys, argparse, yaml, re
 import numpy as np
 import matplotlib.pyplot as plt
 
-#gradient at last point equal to the previous (second-last gradient)
+
+#Help in Running:
+    #currently supports .cbor only and manually entering reduced density
+    #on bash, enter this for further assistance
+    #   $ python <path to this script> -h
+
+
+#QUESTIONS:
+#correct to assume gradient at last point equal to the previous (second-last gradient)?
 #look at assumed calculations
-#what is p_excess is -inf and p_ideal is +inf?
-#number of entropies and energies unequal. how were they stored?
+#what if p_excess is -inf and p_ideal is +inf? P = p_excess + p_ideal
+#need proper symbols eg epsilon. Is pressure in pascal, atm etc?
+#unsure where to read the reduced density from.
+
 
 parser = argparse.ArgumentParser(description="Create graph of energy vs pressure")
 parser.add_argument('density', type=float,
                     help = 'reduced density')
-#density currently in use
+        #******************density currently in use *****************
 parser.add_argument('cbor',
                     help = 'path to the .cbor file')
 args = parser.parse_args()
 
 
-
 #plot of energy vs excess pressure hence:
-Kb=1.38066*(10**-23) #boltzmann constant ###
-my_energy={} #array of the energies read directly from .energy file ###
-my_entropy={} #array of entropies ###
-my_pexc_tot={} #excess pressure  ###
-my_count={} #count at each excess pressure ###
-my_pressure={} #pressure of system
-my_t={} #times
-my_histogram={} #histogram data
+Kb=1.38066*(10**-23) #boltzmann constant
+my_energy={} #the energies
+my_entropy={} #entropies[t][i] -> entropy at time t, energy index i
+my_pexc_tot={} #excess pressure at energy index i
+my_count={} #count of each excess pressure - hence at energy index i
+my_pressure={} #my_pressure[t][i] -> system's pressure at time t, energy index i
+my_t={} #the times 't'
+
 
 def read_energy(data_loaded):
     global my_energy
@@ -35,7 +44,6 @@ def read_energy(data_loaded):
     return
 
 def read_entropy(data_loaded):
-#x is all 151 - lines up with rest of data
 #marks the entropy at each energy at different time t
 #movie via entropy shifting for each t; p_exc_tot & energies constant
     global my_entropy
@@ -60,9 +68,6 @@ def read_my_t(data_loaded):
 def read_density(data_loaded):
     return
 
-def read_hist(data_loaded):
-    return
-
 def read_data(path):
     with open(path) as stream:
         try:
@@ -73,7 +78,6 @@ def read_data(path):
     read_energy(data_loaded)
     read_entropy(data_loaded)
     #read_density(data_loaded)
-    #read_hist(data_loaded)
     read_count(data_loaded)
     read_pexc_tot(data_loaded)
     read_my_t(data_loaded)
@@ -124,46 +128,13 @@ def calc_pressure():   #calculate pressure and populate the my_pressure array
             else:
                 my_pressure[t][i] = p_ideal #whatever inf it is; +ve or -ve
 
-
 read_data(args.cbor)
 calc_pressure()
+#plt.ion()
 
-#for i in range(0, len(my_entropy)):
-#    plt.plot(my_energy, my_entropy[0])
-#    plt.show()
-
-
-#t=1
-#for i in range(0, len(my_energy)): 
-#    try:
-#        out = float(my_pexc_tot[i]) / float(my_count[i]) #p_excess
-#    except ZeroDivisionError:
-#        if my_pexc_tot[i] < 0:
-#            out = -float('inf')
-#        else:
-#            out = float('inf')
-#        #print(out)
-#        continue
-#    p_ideal = calc_ideal_p(t, i)
-#    if p_ideal!=float('inf') and p_ideal!=-float('inf'):
-#        out += calc_ideal_p(t, i) #p_ideal
-#    else:
-#        out = p_ideal #whatever inf it is; +ve or -ve
-#    print(out)
-
-#for i in range(0, len(my_energy)): 
-#    try:
-#        print(float(my_pexc_tot[i]) / float(my_count[i])) #p_excess
-#    except ZeroDivisionError:
-#        if my_pexc_tot[i] < 0:
-#            print(-float('inf'))
-#        print(float('inf'))
-
-
-#fname = args.yaml
-#with open(args.yaml) as y:
-#    yaml_data = y.read()
-#    data = yaml.load(yaml_data)
-#    collected = data['collected']
-#    my_pexc_tot = np.array([c['pexc_tot'] for c in collected])
-#    my_count = np.array([c['count'] for c in collected])
+for i in range(0, len(my_pressure)):
+    plt.xlabel('Energy\t(E)') #need proper symbols
+    plt.ylabel('Pressure\t(P)')
+    plt.title('t = ' + str(my_t[i]))
+    plt.plot(my_energy, np.array( list(my_pressure[i].keys()) ) )
+    plt.show()
