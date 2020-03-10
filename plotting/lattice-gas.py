@@ -1,8 +1,8 @@
 import argparse, sys, yaml
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.colors import LogNorm
 
-"""
 parser = argparse.ArgumentParser()
 parser.add_argument('file')
 args = parser.parse_args()
@@ -20,14 +20,13 @@ with open(file,'rb') as stream:
             data_loaded = yaml.full_load(stream)
     except IOError:
         print('An error occurred trying to read the file.')
-"""      
-
+"""
 with open('two.yaml','r') as stream:
     try:
         data_loaded = yaml.full_load(stream)
     except yaml.yamlerror as exc:
         print(exc)
-
+"""
 time_frame = data_loaded['movies']['time']
 entropy_data = data_loaded['movies']['entropy']
 hist_data = data_loaded['movies']['histogram']
@@ -77,16 +76,15 @@ N[:,-1] = N[:,-2] + 1
 
 N -= 0.5
 
-#chemical potential
-
 S_ideal = number_data*k*(1 + np.log(N_sites/number_data))
-#is s_ideal correct?
+
 S_ideal[number_data==0] = 0
 
 T = np.zeros((col, row))
+T_inv = np.zeros((col, row))
 
 for t in range(len(entropy_data)):
-    #print('time', moves[t])
+    
     S_excess = np.array(entropy_data[t])
     S_excess.resize(col, row)
     S0_excess = S_excess[-1,0]
@@ -96,12 +94,11 @@ for t in range(len(entropy_data)):
     if hist.max() == 0:
         continue
     hist.resize(col, row)
-    #S[hist==0] = np.nan
-    #S_excess[hist==0] = np.nan
-    #hist[hist==0] = np.nan
+    S[hist==0] = np.nan
+    S_excess[hist==0] = np.nan
+    hist[hist==0] = np.nan
     
-
-    """
+    
     plt.figure('entropy')
     plt.clf()
     plt.title(f'{moves[t]} moves')
@@ -131,37 +128,55 @@ for t in range(len(entropy_data)):
     plt.title(f'{moves[t]} moves')
     plt.pcolor(N,E,hist)
     plt.colorbar()
+    
 
+    for i in np.arange(0,col-1,1):
+        for j in np.arange(0,row-1,1):
+            T[i][j] = dE / (S[i+1][j] - S[i][j])
+    
+    for i in np.arange(0,col-1,1):
+        for j in np.arange(0,row-1,1):
+            T_inv[i][j] = (S[i+1][j] - S[i][j])/dE    
+    
+    plt.figure('temperature')
+    plt.clf()
+    plt.pcolor(N,E,T, norm=LogNorm(vmin=0.01, vmax=10)) #, cmap='PuBu_r'vmax=0.5, vmin=0)
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    plt.colorbar()
+    
+    plt.figure('inverse temperature')
+    plt.clf()
+    plt.pcolor(N,E,T_inv, norm=LogNorm(vmin=0.01, vmax=10)) #, cmap='PuBu_r'vmax=0.5, vmin=0)
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    plt.colorbar() 
+    
+    """
+    plt.figure('log temperature')
+    plt.clf()
+    plt.pcolor_log(N,E,T, norm = LogNorm(vmin = 0, vmax = 0.5))
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    plt.colorbar() 
+    """
+    
+    chem_pot = np.zeros((col, row))
+    for i in np.arange(0,col-2,1):
+        for j in np.arange(0,row-2,1):
+            print(-(T[i][j+1] - T[i][j])/2)
+            chem_pot[i][j] = -(T[i][j+1] - T[i][j])/2 * ((S[i][j+1] - S[i][j]) / (N[i][j+1] - N[i][j]))
+    chem_pot[chem_pot==0] = np.nan
+    chem_pot[T<0] = np.nan
+    chem_pot[T>1] = np.nan
+    
+    plt.figure('chemical potential')
+    plt.clf()
+    plt.pcolor(N,E,chem_pot)
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    plt.colorbar()
+    
     plt.pause(1)
-"""
-
 
 plt.show()
-
-#how to integrate temperature and chemical potential into main loop?
-#temperature
-for i in np.arange(0,col-1,1):
-        for j in np.arange(0,row-1,1):
-            T[i][j] = dE / (S[i+1][j+1] - S[i][j])
-
-#T = np.delete(T, col-1, 0)       
-#T = np.delete(T, 0, row-1)
-
-
-plt.figure('temperature')
-plt.pcolor(N,E,T) 
-plt.xlabel('$N$')
-plt.ylabel('$E$')
-plt.colorbar() 
-
-#chemical potential
-chem_pot = np.zeros((col, row))
-for i in np.arange(0,col-2,1):
-    for j in np.arange(0,row-2,1):
-            chem_pot[i][j] = -T[i][j] * ((S[i+1][j+1] - S[i][j]) / (N[i+1][j+1] - N[i][j]))
-
-plt.figure('chemical potential')
-plt.pcolor(N,E,chem_pot) 
-plt.xlabel('$N$')
-plt.ylabel('$E$')
-plt.colorbar() 
