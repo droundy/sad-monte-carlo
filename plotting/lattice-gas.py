@@ -127,7 +127,7 @@ for t in range(len(entropy_data)):
     
 
     for i in np.arange(0,col-1,1):
-        for j in np.arange(0,row-1,1):
+        for j in np.arange(0,row,1):
             T[i][j] = dE / (S[i+1][j] - S[i][j])
     
     for i in np.arange(0,col-1,1):
@@ -156,18 +156,22 @@ for t in range(len(entropy_data)):
     plt.ylabel('$E$')
     plt.colorbar() 
     """
-    
+
+    averaged_T = np.zeros_like(T)
     chem_pot = np.zeros((col, row))
-    for i in np.arange(0,col-2,1):
-        for j in np.arange(0,row-2,1):
-            print(-(T[i][j+1] - T[i][j])/2)
-            chem_pot[i][j] = -(T[i][j+1] - T[i][j])/2 * ((S[i][j+1] - S[i][j]) / (N[i][j+1] - N[i][j]))
+    for i in np.arange(0,col-1,1):
+        for j in np.arange(0,row-1,1):
+            averaged_T[i][j] = 2/(T_inv[i][j+1] + T_inv[i][j])
+            chem_pot[i][j] = -averaged_T[i][j] * ((S[i][j+1] - S[i][j]) / (N[i][j+1] - N[i][j]))
     chem_pot[chem_pot==0] = np.nan
     chem_pot[T<0] = np.nan
     chem_pot[T>1] = np.nan
+    chem_pot[averaged_T>1] = np.nan
+    chem_pot[averaged_T<0] = np.nan
     
     plt.figure('chemical potential')
     plt.clf()
+    plt.title(f'{moves[t]} moves')
     plt.pcolor(N,E,chem_pot)
     plt.xlabel('$N$')
     plt.ylabel('$E$')
