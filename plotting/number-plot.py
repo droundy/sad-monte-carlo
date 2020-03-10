@@ -95,12 +95,19 @@ plt.legend(loc='best')
 #         plt.title('Figure 2: Example of partially converged histogram')
 # plt.legend(loc='best')
 #
-# plt.figure('excess free energy')
-# for fname in fnames:
-#         plt.plot(current_free_energy[fname],
-#                    color=my_color[fname], label=fname)
-#         plt.plot(current_free_energy[fname] + Fideal, '--',
-#                    color=my_color[fname], label=fname+' F')
+plt.figure('excess free energy')
+for fname in fnames:
+        plt.plot(current_free_energy[fname],
+                   color=my_color[fname], label='F Excess')
+        plt.plot(Fideal, '--',
+                   color=my_color[fname], label='F Ideal')
+        plt.plot(current_free_energy[fname] + Fideal, '--',
+                   color=my_color[fname], label='Total Free Energy at T=1.1')
+        plt.legend(loc='best')
+        plt.ylabel('Free Energy')
+        plt.xlabel('Number of Atoms')
+        plt.tick_params(axis='y', which='both', left='true', right='true')
+        plt.tight_layout()
 #
 # plt.legend(loc='best')
 #
@@ -162,14 +169,14 @@ for fname in fnames:
         plt.xlabel(r'$\eta$')
 
         plt.plot((np.pi/6)*UN/my_volume[fname],p,
-                   color=my_color[fname], label=fname)
-        plt.plot((np.pi/6)*UN/my_volume[fname],p_exc,'--',
-                   color=my_color[fname], label=fname + ' pexc')
-        plt.plot((np.pi/6)*UN/my_volume[fname],p_redundant,'r--',
-                   label=fname + ' p redundant')
-        plt.legend(loc=
-        'best')
-        plt.hlines(.0545, 0, .4)
+                   color=my_color[fname], label=('Pressure at', T))
+        # # plt.plot((np.pi/6)*UN/my_volume[fname],p_exc,'--',
+        # #            color=my_color[fname], label=fname + ' pexc')
+        # # plt.plot((np.pi/6)*UN/my_volume[fname],p_redundant,'r--',
+        #            label=fname + ' p redundant')
+        plt.legend(loc='best')
+        # plt.hlines(.0545, 0, .4)
+        plt.tick_params(axis='y', which='both', left='true', right='true')
         plt.tight_layout()
 
 
@@ -227,6 +234,11 @@ for fname in fnames:
         plt.tick_params(axis='y', which='both', left='true', right='true')
         plt.legend(loc='best')
 
+        plt.figure('Ugly way to find phase packing fraction')
+        plt.plot((np.pi/6)*UN/my_volume[fname],p,
+                       color=my_color[fname], label=fname)
+        plt.hlines(pX, 0, .5)
+
         # #Find Packing Fraction for Pressure of Phase Transistion#
         # p_abs = np.zeros_like(p)
         # for i in range(len(UN-1)):
@@ -247,8 +259,11 @@ for fname in fnames:
 
 
 plt.figure('Phase Transistion')
-Temp = np.array([1.1, 1.1, 1, 1, .9, .9])
-Pack = np.array([.075, .041, .086, .02, 0, .085])
+Temp = np.array([.9, .9, 1.0, 1.0, 1.1, 1.1])
+Pack = np.array([.003, .35, .02, .33, .04, .31])
+plt.ylabel('Temerature')
+plt.xlabel('Packing Fraction')
+plt.tick_params(axis='y', which='both', left='true', right='true')
 plt.plot(Pack, Temp, 'o')
 
 
