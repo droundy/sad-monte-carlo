@@ -13,7 +13,6 @@ use super::plugin::Plugin;
 use dimensioned::Dimensionless;
 use rand::{Rng, SeedableRng};
 use std::default::Default;
-use crate::prettyfloat::PrettyFloat;
 use internment::Intern;
 
 use binning::Binning;
@@ -262,7 +261,6 @@ impl<S: System, Bins: Binning> EnergyMC<S,Bins> {
     /// This updates the lnw based on the actual method in use.
     fn update_weights(&mut self, energy: Energy) {
         let gamma = self.gamma(); // compute gamma out front...
-        let old_lnw = self.bins.get_lnw(energy);
         let old_highest_hist = self.bins.max_count();
         self.bins.increment_count(energy, gamma);
         let mut gamma_changed = false;
@@ -365,10 +363,8 @@ impl<S: System, Bins: Binning> EnergyMC<S,Bins> {
                         return;
                     }
                 }
-                let old_hist_here = self.bins.count_extra(hist, energy);
                 let old_lowest_hist = self.bins.min_count_extra(hist);
                 self.bins.accumulate_extra(hist, energy, 0.0);
-                let hist_here = self.bins.count_extra(hist, energy);
                 let lowest_hist = self.bins.min_count_extra(hist);
 
                 if lowest_hist > old_lowest_hist
@@ -434,120 +430,107 @@ impl<S: System, Bins: Binning> EnergyMC<S, Bins> {
     }
 }
 
-// impl<S: MovableSystem, Bins: Binning> MonteCarlo for EnergyMC<S,S::CollectedData, Bins> {
-//     type Params = EnergyMCParams;
-//     type System = S;
-//     fn from_params(params: EnergyMCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
-//         let ewidth = params.energy_bin.unwrap_or(system.delta_energy().unwrap_or(Energy::new(1.0)));
-//         // center zero energy in a bin!
-//         let mut rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
-//         // Let's spend a little effort getting an energy that is
-//         // within our range of interest.  We are only aiming downward,
-//         // because it is unusual that we have trouble getting an
-//         // energy that is high enough.
-//         if let Some(maxe) = params.max_allowed_energy {
-//             for _ in 0..1e8 as u64 {
-//                 if let Some(newe) = system.plan_move(&mut rng, 0.05*units::SIGMA) {
-//                     if newe < system.energy() {
-//                         system.confirm();
-//                     }
-//                     if system.energy() < maxe {
-//                         break;
-//                     }
-//                 }
-//             }
-//         }
-//         EnergyMC {
-//             method: Method::new(params._method, system.energy(), ewidth,
-//                                 params.min_allowed_energy, params.max_allowed_energy),
-//             moves: 0,
-//             time_L: 0,
-//             accepted_moves: 0,
-//             acceptance_rate: 0.5, // arbitrary starting guess.
-//             min_allowed_energy: params.min_allowed_energy,
-//             max_allowed_energy: params.max_allowed_energy,
+impl<S: MovableSystem, Bins: Binning> MonteCarlo for EnergyMC<S,Bins> {
+    type Params = EnergyMCParams;
+    type System = S;
+    fn from_params(params: EnergyMCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
+        let ewidth = params.energy_bin.unwrap_or(system.delta_energy().unwrap_or(Energy::new(1.0)));
+        // center zero energy in a bin!
+        let mut rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
+        // Let's spend a little effort getting an energy that is
+        // within our range of interest.  We are only aiming downward,
+        // because it is unusual that we have trouble getting an
+        // energy that is high enough.
+        if let Some(maxe) = params.max_allowed_energy {
+            for _ in 0..1e8 as u64 {
+                if let Some(newe) = system.plan_move(&mut rng, 0.05*units::SIGMA) {
+                    if newe < system.energy() {
+                        system.confirm();
+                    }
+                    if system.energy() < maxe {
+                        break;
+                    }
+                }
+            }
+        }
+        EnergyMC {
+            method: Method::new(params._method, system.energy()),
+            moves: 0,
+            time_L: 0,
+            accepted_moves: 0,
+            acceptance_rate: 0.5, // arbitrary starting guess.
+            min_allowed_energy: params.min_allowed_energy,
+            max_allowed_energy: params.max_allowed_energy,
 
-//             bins: Bins::new(system.energy(), ewidth),
-//             collected: vec![S::CollectedData::default()],
+            bins: Bins::new(system.energy(), ewidth),
 
-//             have_visited_since_maxentropy: vec![false],
-//             round_trips: vec![1],
-//             max_S: 0.,
-//             max_S_energy: emin,
+            translation_scale: match params._moves {
+                MoveParams::TranslationScale(x) => x,
+                _ => 0.05*units::SIGMA,
+            },
+            move_plan: params._moves,
+            system: system,
 
-//             translation_scale: match params._moves {
-//                 MoveParams::TranslationScale(x) => x,
-//                 _ => 0.05*units::SIGMA,
-//             },
-//             move_plan: params._moves,
-//             system: system,
+            rng,
+            save_as: save_as,
+            report: plugin::Report::from(params._report),
+            save: plugin::Save::from(params._save),
+            manager: plugin::PluginManager::new(),
+        }
+    }
+    fn update_from_params(&mut self, params: Self::Params) {
+        self.report.update_from(params._report);
+        self.save.update_from(params._save);
+    }
 
-//             rng,
-//             save_as: save_as,
-//             report: plugin::Report::from(params._report),
-//             save: plugin::Save::from(params._save),
-//             manager: plugin::PluginManager::new(),
-//         }
-//     }
-//     fn update_from_params(&mut self, params: Self::Params) {
-//         self.report.update_from(params._report);
-//         self.save.update_from(params._save);
-//     }
+    fn move_once(&mut self) {
+        self.moves += 1;
+        // self.system.collect_data();
+        if self.moves % 100000000 == 0 {
+            self.system.verify_energy();
+        }
+        let e1 = self.system.energy();
+        let recent_scale = (1.0/self.moves as f64).sqrt();
+        self.acceptance_rate *= 1. - recent_scale;
+        if let Some(e2) = self.system.plan_move(&mut self.rng, self.translation_scale) {
+            let mut out_of_bounds = false;
+            if let Some(maxe) = self.max_allowed_energy {
+                out_of_bounds = e2 > maxe && e2 > e1;
+            }
+            if let Some(mine) = self.min_allowed_energy {
+                out_of_bounds = out_of_bounds || (e2 < mine && e2 < e1)
+            }
+            if !out_of_bounds {
+                if !self.reject_move(e1, e2) {
+                    self.accepted_moves += 1;
+                    self.acceptance_rate += recent_scale;
+                    self.system.confirm();
+                }
+            }
+        }
+        let energy = self.system.energy();
 
-//     fn move_once(&mut self) {
-//         self.moves += 1;
-//         // self.system.collect_data();
-//         if self.moves % 100000000 == 0 {
-//             self.system.verify_energy();
-//         }
-//         let e1 = State::new(&self.system);
-//         let recent_scale = (1.0/self.moves as f64).sqrt();
-//         self.acceptance_rate *= 1. - recent_scale;
-//         if let Some(e2) = self.system.plan_move(&mut self.rng, self.translation_scale) {
-//             let mut out_of_bounds = false;
-//             if let Some(maxe) = self.max_allowed_energy {
-//                 out_of_bounds = e2 > maxe && e2 > e1;
-//             }
-//             if let Some(mine) = self.min_allowed_energy {
-//                 out_of_bounds = out_of_bounds || (e2 < mine && e2 < e1)
-//             }
-//             if !out_of_bounds {
-//                 if !self.reject_move(e1, State { E: e2 }) {
-//                     self.accepted_moves += 1;
-//                     self.acceptance_rate += recent_scale;
-//                     self.system.confirm();
-//                 }
-//             }
-//         }
-//         let energy = State::new(&self.system);
+        self.update_weights(energy);
 
-//         self.update_weights(energy);
-
-//         let lnw = self.bins.get_lnw(energy);
-//         if lnw > self.max_S {
-//             self.max_S = lnw;
-//             self.max_S_energy = energy;
-//         }
-
-//         let plugins = [&self.report as &dyn Plugin<Self>,
-//                        &self.save,
-//         ];
-//         self.manager.run(self, &self.system, &plugins);
-//     }
-//     fn system(&self) -> &Self::System {
-//         &self.system
-//     }
-//     fn system_mut(&mut self) -> &mut Self::System {
-//         &mut self.system
-//     }
-//     fn num_moves(&self) -> u64 {
-//         self.moves
-//     }
-//     fn num_accepted_moves(&self) -> u64 {
-//         self.accepted_moves
-//     }
-//     fn save_as(&self) -> ::std::path::PathBuf {
-//         self.save_as.clone()
-//     }
-// }
+        let plugins = [&self.report as &dyn Plugin<Self>,
+                       &self.save,
+        ];
+        self.manager.run(self, &self.system, &plugins);
+    }
+    fn system(&self) -> &Self::System {
+        &self.system
+    }
+    fn system_mut(&mut self) -> &mut Self::System {
+        &mut self.system
+    }
+    fn num_moves(&self) -> u64 {
+        self.moves
+    }
+    fn num_accepted_moves(&self) -> u64 {
+        self.accepted_moves
+    }
+    fn save_as(&self) -> ::std::path::PathBuf {
+        self.save_as.clone()
+    }
+}
 
