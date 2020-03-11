@@ -69,12 +69,28 @@ def read_density(data_loaded):
     return
 
 def read_data(path):
-    with open(path) as stream:
+    with open(path, 'rb') as stream:
         try:
             import cbor
             data_loaded = cbor.load(stream)
         except IOError:
             print('An error occurred trying to read the file.')
+    print('top level:')
+    for key in data_loaded.keys():
+        print('   ', key)
+    for nested in ['system']:
+        print(nested,':')
+        for key in data_loaded[nested].keys():
+            print('   ', key)
+    print('system/cell:')
+    for key in data_loaded['system']['cell'].keys():
+        print('   ', key)
+    print('system/cell/box_diagonal:')
+    for key in data_loaded['system']['cell']['box_diagonal'].keys():
+        print('   ', key, data_loaded['system']['cell']['box_diagonal'][key])
+    box_diagonal = data_loaded['system']['cell']['box_diagonal']
+    volume = box_diagonal['x']*box_diagonal['y']*box_diagonal['z']
+    print('volume', volume)
     read_energy(data_loaded)
     read_entropy(data_loaded)
     #read_density(data_loaded)
