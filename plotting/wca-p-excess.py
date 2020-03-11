@@ -46,7 +46,8 @@ def read_entropy(data_loaded):
 #marks the entropy at each energy at different time t
 #movie via entropy shifting for each t; p_exc_tot & energies constant
     global my_entropy
-    my_entropy = data_loaded['movies']['entropy']
+    my_entropy = np.array(data_loaded['movies']['entropy'])
+    my_entropy[my_entropy==0] = np.nan
 
 def read_pexc_tot(data_loaded):
     global my_pexc_tot
@@ -102,10 +103,15 @@ def read_data(path):
 def my_temp(t, i): #i is the index, t is the time
     #given E = H - TS, dE/dS=-T hence E/S gives instataneous temp at that condition
     #hence T = - ( (curr-prev E)/(curr - prev S) ) or curr and next E and S
-    if i == len(my_energy)-1: #this assumes last gradient similar to previous gradient
-        i-=1
-    dE = float(my_energy[i+1]) - float(my_energy[i])
-    dS = float(my_entropy[t][i+1]) - float(my_entropy[t][i])
+    if i == 0:
+        dE = my_energy[i+1] - my_energy[i]
+        dS = my_entropy[t][i+1] - my_entropy[t][i]
+    elif i == len(my_energy)-1:
+        dE = my_energy[i] - my_energy[i-1]
+        dS = my_entropy[t][i] - my_entropy[t][i-1]
+    else:
+        dE = my_energy[i+1] - my_energy[i-1]
+        dS = my_entropy[t][i+1] - my_entropy[t][i-1]
     try:
         return float(-dE/dS)
     except ZeroDivisionError:
@@ -141,22 +147,18 @@ for t in range(0, len(my_entropy)):
                 my_pressure[t][i] = float('inf')
             continue
         p_ideal = calc_ideal_p(t, i)
-        print('p_exc', my_pressure[t][i])
-        print('p_ideal', p_ideal)
         if p_ideal!=float('inf') and p_ideal!=-float('inf'):
             my_pressure[t][i] += calc_ideal_p(t, i) #p_ideal
         else:
             my_pressure[t][i] = p_ideal #whatever inf it is; +ve or -ve
 
 
-plt.ion()
 for i in range(0, len(my_pressure)):
     plt.figure('pressure')
     plt.clf()
     plt.xlabel('Energy (E)') #need proper symbols
     plt.ylabel('Pressure (P)')
     plt.title('t = ' + str(my_t[i]))
-    print(my_pressure[i])
     plt.plot(my_energy, my_pressure[i])
 
     plt.figure('entropy')
