@@ -10,9 +10,17 @@ use internment::Intern;
 
 /// The `Binning` trait defines a type that can hold histogram-like information
 pub trait Binning : Default + serde::Serialize + serde::de::DeserializeOwned+ std::fmt::Debug {
+    /// The number of times we must call increment_count in order to
+    /// uniformly shift the lnw.
+    fn num_states(&self) -> usize;
+    /// The number of times we must call increment_count in order to
+    /// uniformly shift the lnw.
+    fn count_states<F: Fn(&Self, Energy) -> bool>(&self, f: F) -> usize;
     /// Increment the counts stored for a measurement of energy `e`
     /// with update factor `gamma`.
     fn increment_count(&mut self, e: Energy, gamma: f64);
+    /// Set the lnw
+    fn set_lnw<F: Fn(&Self, Energy) -> Option<f64>>(&mut self, f: F);
     /// Find the maximum of the entropy, `lnw`.
     fn max_lnw(&self) -> f64;
     /// Find the minimum of the entropy, `lnw`.
@@ -40,6 +48,8 @@ pub trait Binning : Default + serde::Serialize + serde::de::DeserializeOwned+ st
     /// HashMap of extra data, but that seems like the only really
     /// flexible way of doing this.
     fn accumulate_extra(&mut self, name: Intern<String>, e: Energy, value: f64);
+    /// Reset the accumulated extra data.
+    fn zero_out_extra(&mut self, name: Intern<String>);
     /// Find the total accumulated extra value that we accumulated at
     /// this energy.
     fn total_extra(&self, name: Intern<String>, e: Energy) -> f64;
@@ -56,11 +66,17 @@ pub trait Binning : Default + serde::Serialize + serde::de::DeserializeOwned+ st
     fn count_extra(&self, name: Intern<String>, e: Energy) -> PerEnergy;
     /// Find the number of times we have counted this thing
     fn total_count_extra(&self, name: Intern<String>) -> u64;
+    /// Find the mean value of count_extra
+    fn mean_count_extra(&self, name: Intern<String>) -> PerEnergy;
     /// Creates a Binning with the desired energy and energy width.
     ///
     /// It may be a no-op for a binning scheme that does not require a
     /// width.
     fn new(e: Energy, de: Energy) -> Self;
+    /// The highest energy that has been seen
+    fn max_energy(&self) -> Energy;
+    /// The lowest energy that has been seen
+    fn min_energy(&self) -> Energy;
 }
 
 #[cfg(test)]
@@ -167,8 +183,8 @@ impl BinCounts {
 pub struct Bins {
     /// The lowest allowed energy in any bin.
     pub min: Energy,
-    min_energy: Energy,
-    max_energy: Energy,
+    min_e: Energy,
+    max_e: Energy,
     /// The energy bin size.
     pub width: Energy,
     /// The ln weight for each energy bin.
@@ -189,16 +205,16 @@ impl Default for Bins {
             width: units::EPSILON,
             lnw: BinCounts::new(0),
             extra: std::collections::HashMap::new(),
-            min_energy: Energy::new(std::f64::INFINITY),
-            max_energy: Energy::new(-std::f64::INFINITY),
+            min_e: Energy::new(std::f64::INFINITY),
+            max_e: Energy::new(-std::f64::INFINITY),
         }
     }
 }
 
 impl Bins {
-    // fn index_to_energy(&self, i: usize) -> Energy {
-    //     self.min + (i as f64 + 0.5)*self.width
-    // }
+    fn index_to_energy(&self, i: usize) -> Energy {
+        self.min + (i as f64 + 0.5)*self.width
+    }
     fn energy_to_index(&self, e: Energy) -> usize {
         *((e - self.min)/self.width).value() as usize
     }
@@ -230,15 +246,44 @@ impl Binning for Bins {
             width,
             lnw: BinCounts::new(0),
             extra: std::collections::HashMap::new(),
-            min_energy: e,
-            max_energy: e,
+            min_e: e,
+            max_e: e,
         }
     }
     fn increment_count(&mut self, e: Energy, gamma: f64) {
+        if e > self.max_e {
+            self.max_e = e;
+        }
+        if e < self.min_e {
+            self.min_e = e;
+        }
         self.prep_for_e(e);
         let idx = self.energy_to_index(e);
         self.lnw.increment_count(e, idx, gamma);
     }
+    fn set_lnw<F: Fn(&Bins, Energy) -> Option<f64>>(&mut self, f: F) {
+        for i in 0..self.lnw.count.len() {
+            let e = self.index_to_energy(i);
+            if let Some(lnw) = f(&self, e) {
+                self.lnw.total[i] = lnw;
+                self.lnw.count[i] = 0;
+            }
+        }
+    }
+    fn count_states<F: Fn(&Bins, Energy) -> bool>(&self, f:F) -> usize {
+        let mut total = 0;
+        for i in 0..self.lnw.count.len() {
+            let e = self.index_to_energy(i);
+            if f(&self, e) {
+                total += 1;
+            }
+        }
+        total
+    }
+    fn num_states(&self) -> usize {
+        self.lnw.count.len()
+    }
+
     fn get_lnw(&self, e: Energy) -> f64 {
         self.lnw.get_total(self.energy_to_index(e))
     }
@@ -269,6 +314,21 @@ impl Binning for Bins {
             let values = BinCounts::new(self.lnw.total.len());
             self.extra.insert(name, values);
             self.accumulate_extra(name, e, value); // sloppy recursion...
+        }
+    }
+    fn zero_out_extra(&mut self, name: Intern<String>) {
+        if let Some(data) = self.extra.get_mut(&name) {
+            for v in data.count.iter_mut() {
+                *v = 0;
+            }
+            for v in data.total.iter_mut() {
+                *v = 0.;
+            }
+            data.min_total = std::f64::INFINITY;
+            data.max_total = -std::f64::INFINITY;
+            data.min_count = 0;
+            data.max_count = 0;
+            data.total_count = 0;
         }
     }
     fn mean_extra(&self, name: Intern<String>, e: Energy) -> f64 {
@@ -323,12 +383,26 @@ impl Binning for Bins {
             0
         }
     }
+    fn mean_count_extra(&self, name: Intern<String>) -> PerEnergy {
+        if let Some(data) = self.extra.get(&name) {
+            data.total_count as f64/(self.width*self.num_states() as f64)
+        } else {
+            PerEnergy::new(0.)
+        }
+    }
     fn min_count_extra(&self, name: Intern<String>) -> PerEnergy {
         if let Some(data) = self.extra.get(&name) {
             data.min_count as f64/self.width
         } else {
             PerEnergy::new(0.)
         }
+    }
+
+    fn max_energy(&self) -> Energy {
+        self.max_e
+    }
+    fn min_energy(&self) -> Energy {
+        self.min_e
     }
 }
 

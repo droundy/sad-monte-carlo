@@ -124,6 +124,7 @@ pub struct EnergyMC<S, Bins> {
 enum Method {
     /// Sad
     Sad {
+        num_states: usize,
         min_T: Energy,
         too_lo: Energy,
         too_hi: Energy,
@@ -148,6 +149,7 @@ impl Method {
         match p {
             MethodParams::Sad { min_T } =>
                 Method::Sad {
+                    num_states: 0,
                     min_T,
                     too_lo: E,
                     too_hi: E,
@@ -259,200 +261,178 @@ impl<S: System, Bins: Binning> EnergyMC<S,Bins> {
     }
     /// This updates the lnw based on the actual method in use.
     fn update_weights(&mut self, energy: Energy) {
-        unimplemented!()
-        // let gamma = self.gamma(); // compute gamma out front...
-        // let old_lnw = self.bins.get_lnw(energy);
-        // self.bins.increment_counts(energy, gamma);
-        // let mut gamma_changed = false;
-        // let mut switch_to_samc: Option<f64> = None;
-        // match self.method {
-        //     Method::Sad { min_T, ref mut too_lo, ref mut too_hi, ref mut num_states,
-        //                   ref mut tL, ref mut tF, ref mut highest_hist,
-        //                   ref mut latest_parameter, .. } => {
-        //         if *too_lo > *too_hi || energy.E < *too_lo || energy.E > *too_hi {
-        //             // Ooops, we didn't want to add gamma after all...
-        //             self.bins.lnw[i] = old_lnw;
-        //         }
+        let gamma = self.gamma(); // compute gamma out front...
+        let old_lnw = self.bins.get_lnw(energy);
+        let old_highest_hist = self.bins.max_count();
+        self.bins.increment_count(energy, gamma);
+        let mut gamma_changed = false;
+        let mut switch_to_samc: Option<f64> = None;
+        match self.method {
+            Method::Sad { min_T, ref mut too_lo, ref mut too_hi,
+                          ref mut tL, ref mut tF, ref mut num_states,
+                          ref mut latest_parameter, .. } => {
+                let hist_here = self.bins.get_count(energy);
+                if hist_here > old_highest_hist {
+                    if energy > *too_hi {
+                        let lnw_too_hi = self.bins.get_lnw(*too_hi);
+                        {
+                            let too_hi = *too_hi;
+                            self.bins.set_lnw(|bins, e| {
+                                if e > too_hi && bins.get_count(e) > PerEnergy::new(0.) {
+                                    Some(lnw_too_hi)
+                                } else {
+                                    None
+                                }
+                            });
+                        }
+                        *latest_parameter = *((energy - *too_lo)/min_T).value();
+                        *tL = self.moves;
+                        // FIXME We probably should round the energy to one
+                        // of the bins.  Add that to the Binning trait?
+                        *too_hi = energy;
+                        *num_states = self.bins.count_states(|bins,e| {
+                            e >= *too_lo && e <= *too_hi
+                                && bins.get_count(e) >= PerEnergy::new(0.)
+                        })
+                    } else if energy < *too_lo {
+                        // We should set the lnw below energy too_low
+                        // to something reasonable.
+                        let lnw_too_lo = self.bins.get_lnw(*too_lo);
+                        {
+                            let too_lo = *too_lo;
+                            self.bins.set_lnw(move |bins, e| {
+                                if e < too_lo && bins.get_count(e) > PerEnergy::new(0.) {
+                                    Some(lnw_too_lo + *((e-too_lo)/min_T).value())
+                                } else {
+                                    None
+                                }
+                            });
+                        }
+                        *latest_parameter = *((*too_hi - energy)/min_T).value();
+                        *tL = self.moves;
+                        // FIXME We probably should round the energy to one
+                        // of the bins.  Add that to the Binning trait?
+                        *too_lo = energy;
+                        *num_states = self.bins.count_states(|bins,e| {
+                            e >= *too_lo && e <= *too_hi
+                                && bins.get_count(e) >= PerEnergy::new(0.)
+                        })
+                    }
+                }
+                if *tL == self.moves {
+                    gamma_changed = true;
+                    // Set tF to the latest discovery time in the
+                    // range of energies that we actually care about.
+                    let old_tF = *tF;
+                    // *tF = self.bins.max_extra_mean(*self.bins.t_found[ilo..ihi+1].iter().max().unwrap();
+                    if old_tF == *tF {
+                        // We didn't change gamma after all!
+                        gamma_changed = false;
+                    } else {
+                        // We just discovered a new important energy.
+                        // Let's take this as an opportunity to revise our
+                        // translation scale, and also to log the news.
+                        if let MoveParams::AcceptanceRate(r) = self.move_plan {
+                            let s = self.acceptance_rate/r;
+                            let s = if s < 0.8 { 0.8 } else if s > 1.2 { 1.2 } else { s };
+                            self.translation_scale *= s;
+                            if !self.report.quiet {
+                                println!("        new translation scale: {:.3}",
+                                         self.translation_scale);
+                                println!("        acceptance rate {:.1}% [long-term: {:.1}%]",
+                                         100.0*self.acceptance_rate,
+                                         100.0*self.accepted_moves as f64
+                                         /self.moves as f64);
+                            }
+                        }
+                        if !self.report.quiet {
+                            println!("    sad: [{}]  {}:  {:.7} < {:.7} ... {:.7} < {:.7}",
+                                     *tF, self.bins.num_states(),
+                                     self.bins.min_energy().pretty(),
+                                     too_lo.pretty(),
+                                     too_hi.pretty(),
+                                     self.bins.max_energy().pretty());
+                        }
+                    }
+                }
+            }
+            Method::Samc { .. } => {}
+            Method::WL { ref mut gamma, inv_t, min_gamma } => {
+                let hist = Intern::new("hist".to_string());
+                if let Some(min_gamma) = min_gamma {
+                    if *gamma < min_gamma {
+                        // We are in a production run.
+                        return;
+                    }
+                }
+                let old_hist_here = self.bins.count_extra(hist, energy);
+                let old_lowest_hist = self.bins.min_count_extra(hist);
+                self.bins.accumulate_extra(hist, energy, 0.0);
+                let hist_here = self.bins.count_extra(hist, energy);
+                let lowest_hist = self.bins.min_count_extra(hist);
 
-        //         let hist_here = self.bins.get_counts(energy.E);
-        //         if hist_here > *highest_hist {
-        //             *highest_hist = hist_here;
-        //             if energy.E > *too_hi {
-        //                 let ihi = self.bins.state_to_index(State { E: *too_hi });
-        //                 for j in 0 .. histogram.len() {
-        //                     let ej = self.bins.index_to_state(j).E;
-        //                     let lnw = &mut self.bins.lnw;
-        //                     if ej > *too_hi && ej <= energy.E {
-        //                         if histogram[j] != 0 {
-        //                             lnw[j] = lnw[ihi];
-        //                             *num_states += 1;
-        //                         } else {
-        //                             lnw[j] = Unitless::new(0.0);
-        //                         }
-        //                     }
-        //                 }
-        //                 *latest_parameter = *((energy.E - *too_lo)/min_T).value();
-        //                 *tL = self.moves;
-        //                 // The following rounds the energy to one of the bins.
-        //                 let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E;
-        //                 *too_hi = bin_e;
-        //             } else if energy.E < *too_lo {
-        //                 let ilo = self.bins.state_to_index(State { E: *too_lo });
-        //                 for j in 0 .. histogram.len() {
-        //                     let ej = self.bins.index_to_state(j).E;
-        //                     let lnw = &mut self.bins.lnw;
-        //                     if ej < *too_lo && ej >= energy.E {
-        //                         if histogram[j] != 0 {
-        //                             lnw[j] = lnw[ilo] + (ej-*too_lo)/min_T;
-        //                             if lnw[j] < Unitless::new(0.) {
-        //                                 lnw[j] = Unitless::new(0.);
-        //                             }
-        //                             *num_states += 1;
-        //                         } else {
-        //                             lnw[j] = Unitless::new(0.0);
-        //                         }
-        //                     }
-        //                 }
-        //                 *latest_parameter = *((*too_hi - energy.E)/min_T).value();
-        //                 *tL = self.moves;
-        //                 // The following rounds the energy to one of the bins.
-        //                 let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E;
-        //                 *too_lo = bin_e;
-        //             }
-        //         }
-        //         if *tL == self.moves {
-        //             gamma_changed = true;
-        //             // Set tF to the latest discovery time in the
-        //             // range of energies that we actually care about.
-        //             let ilo = self.bins.state_to_index(State { E: *too_lo });
-        //             let ihi = self.bins.state_to_index(State { E: *too_hi });
-        //             let old_tF = *tF;
-        //             *tF = *self.bins.t_found[ilo..ihi+1].iter().max().unwrap();
-        //             if old_tF == *tF {
-        //                 // We didn't change gamma after all!
-        //                 gamma_changed = false;
-        //             } else {
-        //                 // We just discovered a new important energy.
-        //                 // Let's take this as an opportunity to revise our
-        //                 // translation scale, and also to log the news.
-        //                 if let MoveParams::AcceptanceRate(r) = self.move_plan {
-        //                     let s = self.acceptance_rate/r;
-        //                     let s = if s < 0.8 { 0.8 } else if s > 1.2 { 1.2 } else { s };
-        //                     self.translation_scale *= s;
-        //                     if !self.report.quiet {
-        //                         println!("        new translation scale: {:.3}",
-        //                                  self.translation_scale);
-        //                         println!("        acceptance rate {:.1}% [long-term: {:.1}%]",
-        //                                  100.0*self.acceptance_rate,
-        //                                  100.0*self.accepted_moves as f64
-        //                                  /self.moves as f64);
-        //                     }
-        //                 }
-        //                 if !self.report.quiet {
-        //                     println!("    sad: [{}]  {}:  {:.7} < {:.7} ... {:.7} < {:.7}",
-        //                              *tF, num_states,
-        //                              self.bins.min.pretty(),
-        //                              too_lo.pretty(),
-        //                              too_hi.pretty(),
-        //                              (self.bins.min
-        //                               + self.bins.width*(histogram.len()-1) as f64).pretty());
-        //                 }
-        //             }
-        //         }
-        //     }
-        //     Method::Samc { .. } => {}
-        //     Method::WL { ref mut gamma,
-        //                  ref mut lowest_hist, ref mut highest_hist, ref mut total_hist,
-        //                  ref mut min_energy, num_states, inv_t,
-        //                  min_gamma } => {
-        //         if let Some(min_gamma) = min_gamma {
-        //             if *gamma < min_gamma {
-        //                 // We are in a production run.
-        //                 return;
-        //             }
-        //         }
-        //         let wl_hist = Intern::new("wl".to_string());
-        //         let old_hist_here = self.bins.count_extra(wl_hist, energy.E);
-        //         self.bins.accumulate_extra(wl_hist, energy.E, 0.0);
-        //         let hist_here = self.bins.count_extra(wl_hist, energy.E);
-        //         if hist_here > *highest_hist {
-        //             *highest_hist = hist_here;
-        //         }
-        //         *total_hist += 1;
-
-        //         let max_energy = *min_energy + (hist.len() as f64)*self.bins.width;
-        //         if old_hist_here == *lowest_hist
-        //             && old_hist_here > PerEnergy::new(0.)
-        //             && (self.min_allowed_energy.is_none() || self.min_allowed_energy.unwrap() >= *min_energy)
-        //             && (self.max_allowed_energy.is_none() || self.max_allowed_energy.unwrap() <= max_energy)
-        //             && hist.iter().enumerate()
-        //                   .filter(|(i,_)| histogram[*i] != 0)
-        //                   .map(|(_,&h)|h).min() == Some(*lowest_hist+1)
-        //         {
-        //             *lowest_hist = hist[i];
-        //             if (inv_t && *lowest_hist > 0) ||
-        //                *lowest_hist as f64 >= 0.8**total_hist as f64 / num_states
-        //             {
-        //                 gamma_changed = true;
-        //                 *gamma *= 0.5;
-        //                 if *gamma > 1e-16 {
-        //                     println!("    WL:  We have reached flatness {:.2} with min {}!",
-        //                              (lowest_hist*num_states/ *total_hist as f64).pretty(),
-        //                              *lowest_hist);
-        //                 }
-        //                 for h in hist.iter_mut() {
-        //                     *h = 0;
-        //                 }
-        //                 *total_hist = 0;
-        //                 *lowest_hist = 0;
-        //                 *highest_hist = 0;
-        //                 if let Some(min_gamma) = min_gamma {
-        //                     if *gamma < min_gamma {
-        //                         // Switch to a "production" run.
-        //                         *gamma = 0.0;
-        //                     }
-        //                 }
-        //             }
-        //             if inv_t && *gamma < (num_states as f64)/(self.moves as f64) {
-        //                 println!("    1/t-WL:  Switching to 1/t!");
-        //                 switch_to_samc = Some(num_states as f64);
-        //             }
-        //         }
-        //     }
-        // }
-        // if let Some(t0) = switch_to_samc {
-        //     self.method = Method::Samc { t0 };
-        // }
-        // if gamma_changed {
-        //     // self.movies.new_gamma(self.moves, gamma);
-        //     // self.movies.new_gamma(self.moves, self.gamma());
-        // }
+                if lowest_hist > old_lowest_hist
+                    && (self.min_allowed_energy.is_none() || self.bins.get_count(self.min_allowed_energy.unwrap()) > PerEnergy::new(0.))
+                    && (self.max_allowed_energy.is_none() || self.bins.get_count(self.max_allowed_energy.unwrap()) > PerEnergy::new(0.))
+                {
+                    if (inv_t && lowest_hist > PerEnergy::new(0.)) ||
+                       lowest_hist >= 0.8*self.bins.mean_count_extra(hist)
+                    {
+                        gamma_changed = true;
+                        *gamma *= 0.5;
+                        if *gamma > 1e-16 {
+                            println!("    WL:  We have reached flatness {:.2} with min {}!",
+                                     (self.bins.min_count_extra(hist)/self.bins.mean_count_extra(hist)).pretty(),
+                                     self.bins.min_count_extra(hist));
+                        }
+                        self.bins.zero_out_extra(hist);
+                        if let Some(min_gamma) = min_gamma {
+                            if *gamma < min_gamma {
+                                // Switch to a "production" run.
+                                *gamma = 0.0;
+                            }
+                        }
+                    }
+                    if inv_t && *gamma < (self.bins.num_states() as f64)/(self.moves as f64) {
+                        println!("    1/t-WL:  Switching to 1/t!");
+                        switch_to_samc = Some(self.bins.num_states() as f64);
+                    }
+                }
+            }
+        }
+        if let Some(t0) = switch_to_samc {
+            self.method = Method::Samc { t0 };
+        }
+        if gamma_changed {
+            // self.movies.new_gamma(self.moves, gamma);
+            // self.movies.new_gamma(self.moves, self.gamma());
+        }
     }
 }
 
-// impl<S: System, Bins: Binning> EnergyMC<S, S::CollectedData, Bins> {
-//     fn gamma(&self) -> f64 {
-//         match self.method {
-//             Method::Sad { num_states, tF, latest_parameter, .. } => {
-//                 if latest_parameter*tF as f64*num_states as f64 == 0.0 {
-//                     0.0
-//                 } else {
-//                     let t = self.moves as f64;
-//                     let tF = tF as f64;
-//                     let num_states = num_states as f64;
-//                     (latest_parameter + t/tF)/(latest_parameter + t/num_states*(t/tF))
-//                 }
-//             }
-//             Method::Samc { t0 } => {
-//                 let t = self.moves as f64;
-//                 if t > t0 { t0/t } else { 1.0 }
-//             }
-//             Method::WL { gamma, .. } => {
-//                 gamma
-//             }
-//         }
-//     }
-// }
+impl<S: System, Bins: Binning> EnergyMC<S, Bins> {
+    fn gamma(&self) -> f64 {
+        match self.method {
+            Method::Sad { tF, latest_parameter, num_states, .. } => {
+                let num_states = num_states as f64;
+                if latest_parameter*tF as f64*num_states == 0.0 {
+                    0.0
+                } else {
+                    let t = self.moves as f64;
+                    let tF = tF as f64;
+                    (latest_parameter + t/tF)/(latest_parameter + t/num_states*(t/tF))
+                }
+            }
+            Method::Samc { t0 } => {
+                let t = self.moves as f64;
+                if t > t0 { t0/t } else { 1.0 }
+            }
+            Method::WL { gamma, .. } => {
+                gamma
+            }
+        }
+    }
+}
 
 // impl<S: MovableSystem, Bins: Binning> MonteCarlo for EnergyMC<S,S::CollectedData, Bins> {
 //     type Params = EnergyMCParams;
@@ -526,10 +506,10 @@ impl<S: System, Bins: Binning> EnergyMC<S,Bins> {
 //         if let Some(e2) = self.system.plan_move(&mut self.rng, self.translation_scale) {
 //             let mut out_of_bounds = false;
 //             if let Some(maxe) = self.max_allowed_energy {
-//                 out_of_bounds = e2 > maxe && e2 > e1.E;
+//                 out_of_bounds = e2 > maxe && e2 > e1;
 //             }
 //             if let Some(mine) = self.min_allowed_energy {
-//                 out_of_bounds = out_of_bounds || (e2 < mine && e2 < e1.E)
+//                 out_of_bounds = out_of_bounds || (e2 < mine && e2 < e1)
 //             }
 //             if !out_of_bounds {
 //                 if !self.reject_move(e1, State { E: e2 }) {
@@ -543,10 +523,10 @@ impl<S: System, Bins: Binning> EnergyMC<S,Bins> {
 
 //         self.update_weights(energy);
 
-//         let lnw = self.bins.get_lnw(energy.E);
+//         let lnw = self.bins.get_lnw(energy);
 //         if lnw > self.max_S {
 //             self.max_S = lnw;
-//             self.max_S_energy = energy.E;
+//             self.max_S_energy = energy;
 //         }
 
 //         let plugins = [&self.report as &dyn Plugin<Self>,
