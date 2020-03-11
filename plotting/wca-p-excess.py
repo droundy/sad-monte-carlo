@@ -3,7 +3,7 @@
 import sys, argparse, yaml, re
 import numpy as np
 import matplotlib.pyplot as plt
-
+import matplotlib.animation as ani
 
 #Help in Running:
     #currently supports .cbor only and manually entering reduced density
@@ -130,11 +130,15 @@ def calc_pressure():   #calculate pressure and populate the my_pressure array
 
 read_data(args.cbor)
 calc_pressure()
-#plt.ion()
 
+plt.ion()
 for i in range(0, len(my_pressure)):
+    plt.clf()
     plt.xlabel('Energy\t(E)') #need proper symbols
     plt.ylabel('Pressure\t(P)')
     plt.title('t = ' + str(my_t[i]))
     plt.plot(my_energy, np.array( list(my_pressure[i].keys()) ) )
-    plt.show()
+    if i!=len(my_pressure)-1:
+        plt.pause(0.6)
+    else:
+        plt.show(block=True)
