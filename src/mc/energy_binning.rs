@@ -128,7 +128,7 @@ enum Method {
         too_lo: Energy,
         too_hi: Energy,
         tL: u64,
-        tF: u64,
+        tF: f64,
         latest_parameter: f64,
     },
     /// Samc
@@ -153,7 +153,7 @@ impl Method {
                     too_lo: E,
                     too_hi: E,
                     tL: 0,
-                    tF: 0,
+                    tF: 0.,
                     latest_parameter: 0.,
                 },
             MethodParams::Samc { t0 } => Method::Samc { t0 },
@@ -262,6 +262,7 @@ impl<S: System, Bins: Binning> EnergyMC<S,Bins> {
     fn update_weights(&mut self, energy: Energy) {
         let gamma = self.gamma(); // compute gamma out front...
         let old_highest_hist = self.bins.max_count();
+        let old_hist_here = self.bins.get_count(energy);
         self.bins.increment_count(energy, gamma);
         let mut gamma_changed = false;
         let mut switch_to_samc: Option<f64> = None;
@@ -270,6 +271,10 @@ impl<S: System, Bins: Binning> EnergyMC<S,Bins> {
                           ref mut tL, ref mut tF, ref mut num_states,
                           ref mut latest_parameter, .. } => {
                 let hist_here = self.bins.get_count(energy);
+                if old_hist_here == PerEnergy::new(0.) {
+                    let tfound = Intern::new("t_found".to_string());
+                    self.bins.accumulate_extra(tfound, energy, self.moves as f64);
+                }
                 if hist_here > old_highest_hist {
                     if energy > *too_hi {
                         let lnw_too_hi = self.bins.get_lnw(*too_hi);
@@ -322,7 +327,8 @@ impl<S: System, Bins: Binning> EnergyMC<S,Bins> {
                     // Set tF to the latest discovery time in the
                     // range of energies that we actually care about.
                     let old_tF = *tF;
-                    // *tF = self.bins.max_extra_mean(*self.bins.t_found[ilo..ihi+1].iter().max().unwrap();
+                    let tfound = Intern::new("t_found".to_string());
+                    *tF = self.bins.max_total_extra(tfound);
                     if old_tF == *tF {
                         // We didn't change gamma after all!
                         gamma_changed = false;
@@ -415,7 +421,6 @@ impl<S: System, Bins: Binning> EnergyMC<S, Bins> {
                     0.0
                 } else {
                     let t = self.moves as f64;
-                    let tF = tF as f64;
                     (latest_parameter + t/tF)/(latest_parameter + t/num_states*(t/tF))
                 }
             }
