@@ -279,8 +279,8 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                         let lnw_too_hi = self.bins.get_lnw(*too_hi);
                         {
                             let too_hi = *too_hi;
-                            self.bins.set_lnw(|bins, e| {
-                                if e > too_hi && bins.get_count(e) > PerEnergy::new(0.) {
+                            self.bins.set_lnw(|e, count| {
+                                if e > too_hi && count > PerEnergy::new(0.) {
                                     Some(lnw_too_hi)
                                 } else {
                                     None
@@ -292,9 +292,8 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                         // FIXME We probably should round the energy to one
                         // of the bins.  Add that to the Binning trait?
                         *too_hi = energy;
-                        *num_states = self.bins.count_states(|bins,e| {
-                            e >= *too_lo && e <= *too_hi
-                                && bins.get_count(e) >= PerEnergy::new(0.)
+                        *num_states = self.bins.count_states(|e, count| {
+                            e >= *too_lo && e <= *too_hi && count >= PerEnergy::new(0.)
                         })
                     } else if energy < *too_lo {
                         // We should set the lnw below energy too_low
@@ -302,8 +301,8 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                         let lnw_too_lo = self.bins.get_lnw(*too_lo);
                         {
                             let too_lo = *too_lo;
-                            self.bins.set_lnw(move |bins, e| {
-                                if e < too_lo && bins.get_count(e) > PerEnergy::new(0.) {
+                            self.bins.set_lnw(move |e, count| {
+                                if e < too_lo && count > PerEnergy::new(0.) {
                                     Some(lnw_too_lo + *((e-too_lo)/min_T).value())
                                 } else {
                                     None
@@ -315,9 +314,8 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                         // FIXME We probably should round the energy to one
                         // of the bins.  Add that to the Binning trait?
                         *too_lo = energy;
-                        *num_states = self.bins.count_states(|bins,e| {
-                            e >= *too_lo && e <= *too_hi
-                                && bins.get_count(e) >= PerEnergy::new(0.)
+                        *num_states = self.bins.count_states(|e, count| {
+                            e >= *too_lo && e <= *too_hi && count >= PerEnergy::new(0.)
                         })
                     }
                 }

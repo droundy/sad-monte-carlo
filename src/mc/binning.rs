@@ -57,10 +57,9 @@ impl Binning for Bins {
             Bins::Histogram(b) => b.num_states(),
         }
     }
-    fn count_states<F: Fn(&Self, Energy) -> bool>(&self, f: F) -> usize {
-        let x = self.clone();
+    fn count_states<F: Fn(Energy, PerEnergy) -> bool>(&self, f: F) -> usize {
         match self {
-            Bins::Histogram(b) => b.count_states(move |_, e| f(&x, e)),
+            Bins::Histogram(b) => b.count_states(f),
         }
     }
 
@@ -81,10 +80,9 @@ impl Binning for Bins {
         }
     }
 
-    fn set_lnw<F: Fn(&Self, Energy) -> Option<f64>>(&mut self, f: F) {
-        let x = self.clone();
+    fn set_lnw<F: Fn(Energy, PerEnergy) -> Option<f64>>(&mut self, f: F) {
         match self {
-            Bins::Histogram(b) => b.set_lnw(move |_, e| f(&x, e)),
+            Bins::Histogram(b) => b.set_lnw(f),
         }
     }
     fn max_lnw(&self) -> f64 {
@@ -194,7 +192,7 @@ pub trait Binning : Default + serde::Serialize + serde::de::DeserializeOwned+ st
     fn num_states(&self) -> usize;
     /// The number of times we must call increment_count in order to
     /// uniformly shift the lnw.
-    fn count_states<F: Fn(&Self, Energy) -> bool>(&self, f: F) -> usize;
+    fn count_states<F: Fn(Energy, PerEnergy) -> bool>(&self, f: F) -> usize;
 
     /// Increment the counts stored for a measurement of energy `e`
     /// with update factor `gamma`.
@@ -212,7 +210,7 @@ pub trait Binning : Default + serde::Serialize + serde::de::DeserializeOwned+ st
     fn get_count(&self, e: Energy) -> PerEnergy;
 
     /// Set the lnw
-    fn set_lnw<F: Fn(&Self, Energy) -> Option<f64>>(&mut self, f: F);
+    fn set_lnw<F: Fn(Energy, PerEnergy) -> Option<f64>>(&mut self, f: F);
     /// Find the maximum of the entropy, `lnw`.
     fn max_lnw(&self) -> f64;
     /// Find the minimum of the entropy, `lnw`.
@@ -445,20 +443,20 @@ impl Binning for Histogram {
         let idx = self.energy_to_index(e);
         self.lnw.increment_count(e, idx, gamma);
     }
-    fn set_lnw<F: Fn(&Histogram, Energy) -> Option<f64>>(&mut self, f: F) {
+    fn set_lnw<F: Fn(Energy, PerEnergy) -> Option<f64>>(&mut self, f: F) {
         for i in 0..self.lnw.count.len() {
             let e = self.index_to_energy(i);
-            if let Some(lnw) = f(&self, e) {
+            if let Some(lnw) = f(e, self.get_count(e)) {
                 self.lnw.total[i] = lnw;
                 self.lnw.count[i] = 0;
             }
         }
     }
-    fn count_states<F: Fn(&Histogram, Energy) -> bool>(&self, f:F) -> usize {
+    fn count_states<F: Fn(Energy, PerEnergy) -> bool>(&self, f:F) -> usize {
         let mut total = 0;
         for i in 0..self.lnw.count.len() {
             let e = self.index_to_energy(i);
-            if f(&self, e) {
+            if f(e, self.get_count(e)) {
                 total += 1;
             }
         }
