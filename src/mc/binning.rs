@@ -7,40 +7,224 @@ use crate::system::{units,Energy,PerEnergy};
 use dimensioned::Dimensionless;
 use std::default::Default;
 use internment::Intern;
+use auto_args::AutoArgs;
+
+/// Parameters to decide how to do binning.
+#[derive(Debug, AutoArgs)]
+#[allow(non_camel_case_types)]
+pub enum BinningParams {
+    /// Use an ordinary histogram.
+    Histogram {
+        /// A histogram with this bin width
+        bin: Energy,
+    },
+}
+
+impl Default for BinningParams {
+    fn default() -> Self {
+        BinningParams::Histogram { bin: Energy::new(1.0) }
+    }
+}
+
+/// Any Binning thing
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum Bins {
+    /// Just a plain histogram
+    Histogram( Histogram ),
+}
+
+impl Default for Bins {
+    fn default() -> Self {
+        Bins::Histogram( Histogram::default() )
+    }
+}
+
+impl Bins {
+    /// Construct a Bins from an energy and a set of command-line flags
+    pub fn from_params<S: crate::system::System>(sys: &S, params: BinningParams) -> Self {
+        match params {
+            BinningParams::Histogram { bin } => {
+                Bins::Histogram(Histogram::new(sys.energy(), bin))
+            }
+        }
+    }
+}
+
+impl Binning for Bins {
+// impl Bins {
+    fn num_states(&self) -> usize {
+        match self {
+            Bins::Histogram(b) => b.num_states(),
+        }
+    }
+    fn count_states<F: Fn(&Self, Energy) -> bool>(&self, f: F) -> usize {
+        let x = self.clone();
+        match self {
+            Bins::Histogram(b) => b.count_states(move |_, e| f(&x, e)),
+        }
+    }
+
+    fn increment_count(&mut self, e: Energy, gamma: f64) {
+        match self {
+            Bins::Histogram(b) => b.increment_count(e, gamma),
+        }
+    }
+
+    fn get_lnw(&self, e: Energy) -> f64 {
+        match self {
+            Bins::Histogram(b) => b.get_lnw(e),
+        }
+    }
+    fn get_count(&self, e: Energy) -> PerEnergy {
+        match self {
+            Bins::Histogram(b) => b.get_count(e),
+        }
+    }
+
+    fn set_lnw<F: Fn(&Self, Energy) -> Option<f64>>(&mut self, f: F) {
+        let x = self.clone();
+        match self {
+            Bins::Histogram(b) => b.set_lnw(move |_, e| f(&x, e)),
+        }
+    }
+    fn max_lnw(&self) -> f64 {
+        match self {
+            Bins::Histogram(b) => b.max_lnw(),
+        }
+    }
+    fn min_lnw(&self) -> f64 {
+        match self {
+            Bins::Histogram(b) => b.min_lnw(),
+        }
+    }
+
+    fn total_count(&self) -> u64 {
+        match self {
+            Bins::Histogram(b) => b.total_count(),
+        }
+    }
+    fn max_count(&self) -> PerEnergy {
+        match self {
+            Bins::Histogram(b) => b.max_count(),
+        }
+    }
+    fn min_count(&self) -> PerEnergy {
+        match self {
+            Bins::Histogram(b) => b.min_count(),
+        }
+    }
+
+    fn accumulate_extra(&mut self, name: Intern<String>, e: Energy, value: f64) {
+        match self {
+            Bins::Histogram(b) => b.accumulate_extra(name, e, value),
+        }
+    }
+    fn zero_out_extra(&mut self, name: Intern<String>) {
+        match self {
+            Bins::Histogram(b) => b.zero_out_extra(name),
+        }
+    }
+    fn total_extra(&self, name: Intern<String>, e: Energy) -> f64 {
+        match self {
+            Bins::Histogram(b) => b.total_extra(name, e),
+        }
+    }
+    fn mean_count_extra(&self, extra: Intern<String>) -> PerEnergy {
+        match self {
+            Bins::Histogram(b) => b.mean_count_extra(extra),
+        }
+    }
+
+    fn mean_extra(&self, name: Intern<String>, e: Energy) -> f64 {
+        match self {
+            Bins::Histogram(b) => b.mean_extra(name, e),
+        }
+    }
+
+    fn min_energy(&self) -> Energy {
+        match self {
+            Bins::Histogram(b) => b.min_energy(),
+        }
+    }
+    fn max_energy(&self) -> Energy {
+        match self {
+            Bins::Histogram(b) => b.max_energy(),
+        }
+    }
+
+    fn min_total_extra(&self, name: Intern<String>) -> f64 {
+        match self {
+            Bins::Histogram(b) => b.min_total_extra(name),
+        }
+    }
+    fn max_total_extra(&self, name: Intern<String>) -> f64 {
+        match self {
+            Bins::Histogram(b) => b.max_total_extra(name),
+        }
+    }
+    fn min_count_extra(&self, name: Intern<String>) -> PerEnergy {
+        match self {
+            Bins::Histogram(b) => b.min_count_extra(name),
+        }
+    }
+    fn total_count_extra(&self, name: Intern<String>) -> u64 {
+        match self {
+            Bins::Histogram(b) => b.total_count_extra(name),
+        }
+    }
+    fn count_extra(&self, name: Intern<String>, e: Energy) -> PerEnergy {
+        match self {
+            Bins::Histogram(b) => b.count_extra(name, e),
+        }
+    }
+    fn new(e: Energy, de: Energy) -> Self {
+        Bins::Histogram(Histogram::new(e,de))
+    }
+}
+
+#[test]
+fn test_bins() {
+    test_binning::<Bins>();
+}
 
 /// The `Binning` trait defines a type that can hold histogram-like information
-pub trait Binning : Default + serde::Serialize + serde::de::DeserializeOwned+ std::fmt::Debug {
+pub trait Binning : Default + serde::Serialize + serde::de::DeserializeOwned+ std::fmt::Debug + Clone {
     /// The number of times we must call increment_count in order to
     /// uniformly shift the lnw.
     fn num_states(&self) -> usize;
     /// The number of times we must call increment_count in order to
     /// uniformly shift the lnw.
     fn count_states<F: Fn(&Self, Energy) -> bool>(&self, f: F) -> usize;
+
     /// Increment the counts stored for a measurement of energy `e`
     /// with update factor `gamma`.
     fn increment_count(&mut self, e: Energy, gamma: f64);
+
+    /// Find the current estimate of the entropy, `lnw`.
+    ///
+    /// Note that any energy value is permissible, and should not
+    /// result in a panic.
+    fn get_lnw(&self, e: Energy) -> f64;
+    /// Find the current estimate of the number of counts per energy.
+    ///
+    /// This is not just an integer in order to abstract out the bin
+    /// size.
+    fn get_count(&self, e: Energy) -> PerEnergy;
+
     /// Set the lnw
     fn set_lnw<F: Fn(&Self, Energy) -> Option<f64>>(&mut self, f: F);
     /// Find the maximum of the entropy, `lnw`.
     fn max_lnw(&self) -> f64;
     /// Find the minimum of the entropy, `lnw`.
     fn min_lnw(&self) -> f64;
-    /// Find the current estimate of the entropy, `lnw`.
-    ///
-    /// Note that any energy value is permissible, and should not
-    /// result in a panic.
-    fn get_lnw(&self, e: Energy) -> f64;
+
+    /// Total counts in the histogram.
+    fn total_count(&self) -> u64;
     /// Find the maximum of the histogram.
     fn max_count(&self) -> PerEnergy;
     /// Find the minimum of the histogram.
     fn min_count(&self) -> PerEnergy;
-    /// Total counts in the histogram.
-    fn total_count(&self) -> u64;
-    /// Find the current estimate of the number of counts per energy.
-    ///
-    /// This is not just an integer in order to abstract out the bin
-    /// size.
-    fn get_count(&self, e: Energy) -> PerEnergy;
+
     /// Accumulate some other datum that we might want to keep track
     /// of.  This is for things like pressure for instance, and we do
     /// not assume that they are incremented with each count, so they
@@ -94,7 +278,7 @@ fn test_binning<B: Binning>() {
 }
 
 /// A set of counts for a variable
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BinCounts {
     /// The total of the thing
     total: Vec<f64>,
@@ -179,8 +363,8 @@ impl BinCounts {
 }
 
 /// A standard energy histogram
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Bins {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Histogram {
     /// The lowest allowed energy in any bin.
     pub min: Energy,
     min_e: Energy,
@@ -194,13 +378,13 @@ pub struct Bins {
 }
 
 #[test]
-fn test_bins() {
-    test_binning::<Bins>();
+fn test_histogram() {
+    test_binning::<Histogram>();
 }
 
-impl Default for Bins {
+impl Default for Histogram {
     fn default() -> Self {
-        Bins {
+        Histogram {
             min: Energy::new(std::f64::INFINITY),
             width: units::EPSILON,
             lnw: BinCounts::new(0),
@@ -211,7 +395,7 @@ impl Default for Bins {
     }
 }
 
-impl Bins {
+impl Histogram {
     fn index_to_energy(&self, i: usize) -> Energy {
         self.min + (i as f64 + 0.5)*self.width
     }
@@ -238,10 +422,10 @@ impl Bins {
     }
 }
 
-impl Binning for Bins {
+impl Binning for Histogram {
     fn new(e: Energy, width: Energy) -> Self {
         let min = ((e/width).value().round() - 0.5)*width;
-        Bins {
+        Histogram {
             min,
             width,
             lnw: BinCounts::new(0),
@@ -261,7 +445,7 @@ impl Binning for Bins {
         let idx = self.energy_to_index(e);
         self.lnw.increment_count(e, idx, gamma);
     }
-    fn set_lnw<F: Fn(&Bins, Energy) -> Option<f64>>(&mut self, f: F) {
+    fn set_lnw<F: Fn(&Histogram, Energy) -> Option<f64>>(&mut self, f: F) {
         for i in 0..self.lnw.count.len() {
             let e = self.index_to_energy(i);
             if let Some(lnw) = f(&self, e) {
@@ -270,7 +454,7 @@ impl Binning for Bins {
             }
         }
     }
-    fn count_states<F: Fn(&Bins, Energy) -> bool>(&self, f:F) -> usize {
+    fn count_states<F: Fn(&Histogram, Energy) -> bool>(&self, f:F) -> usize {
         let mut total = 0;
         for i in 0..self.lnw.count.len() {
             let e = self.index_to_energy(i);

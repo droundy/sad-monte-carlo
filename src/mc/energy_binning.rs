@@ -56,12 +56,11 @@ pub struct EnergyMCParams {
     pub _method: MethodParams,
     /// The seed for the random number generator.
     pub seed: Option<u64>,
-    /// The energy binsize.
-    energy_bin: Option<Energy>,
     /// The lowest energy to allow.
     min_allowed_energy: Option<Energy>,
     /// The highest energy to allow.
     max_allowed_energy: Option<Energy>,
+    _binning: binning::BinningParams,
     _moves: MoveParams,
     _report: plugin::ReportParams,
     _save: plugin::SaveParams,
@@ -76,17 +75,17 @@ impl Default for EnergyMCParams {
             seed: None,
             min_allowed_energy: None,
             max_allowed_energy: None,
-            energy_bin: None,
             _moves: MoveParams::TranslationScale(0.05*units::SIGMA),
             _report: plugin::ReportParams::default(),
             _save: plugin::SaveParams::default(),
+            _binning: binning::BinningParams::default(),
         }
     }
 }
 
 /// A square well fluid.
 #[derive(Serialize, Deserialize, Debug)]
-pub struct EnergyMC<S, Bins> {
+pub struct EnergyMC<S> {
     /// The system we are simulating.
     pub system: S,
     /// The method we use
@@ -116,7 +115,7 @@ pub struct EnergyMC<S, Bins> {
     manager: plugin::PluginManager,
 
     /// The parameters describing the bins
-    pub bins: Bins,
+    pub bins: binning::Bins,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -214,7 +213,7 @@ impl Method {
     }
 }
 
-impl<S: System, Bins: Binning> EnergyMC<S,Bins> {
+impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
     /// This decides whether to reject the move based on the actual
     /// method in use.
     fn reject_move(&mut self, e1: Energy, e2: Energy) -> bool {
@@ -412,7 +411,7 @@ impl<S: System, Bins: Binning> EnergyMC<S,Bins> {
     }
 }
 
-impl<S: System, Bins: Binning> EnergyMC<S, Bins> {
+impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
     fn gamma(&self) -> f64 {
         match self.method {
             Method::Sad { tF, latest_parameter, num_states, .. } => {
@@ -435,11 +434,10 @@ impl<S: System, Bins: Binning> EnergyMC<S, Bins> {
     }
 }
 
-impl<S: MovableSystem, Bins: Binning> MonteCarlo for EnergyMC<S,Bins> {
+impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
     type Params = EnergyMCParams;
     type System = S;
     fn from_params(params: EnergyMCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
-        let ewidth = params.energy_bin.unwrap_or(system.delta_energy().unwrap_or(Energy::new(1.0)));
         // center zero energy in a bin!
         let mut rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
         // Let's spend a little effort getting an energy that is
@@ -467,7 +465,7 @@ impl<S: MovableSystem, Bins: Binning> MonteCarlo for EnergyMC<S,Bins> {
             min_allowed_energy: params.min_allowed_energy,
             max_allowed_energy: params.max_allowed_energy,
 
-            bins: Bins::new(system.energy(), ewidth),
+            bins: binning::Bins::from_params(&system, params._binning),
 
             translation_scale: match params._moves {
                 MoveParams::TranslationScale(x) => x,
@@ -538,4 +536,3 @@ impl<S: MovableSystem, Bins: Binning> MonteCarlo for EnergyMC<S,Bins> {
         self.save_as.clone()
     }
 }
-
