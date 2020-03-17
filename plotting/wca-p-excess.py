@@ -3,38 +3,25 @@
 import sys, argparse, yaml, re
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.animation as ani
+import scipy.constants as scipy
 
 #Help in Running:
-    #currently supports .cbor only and manually entering reduced density
-    #on bash, enter this for further assistance
+    #currently supports .cbor only
     #   $ python <path to this script> -h
 
-
-#QUESTIONS:
-#correct to assume gradient at last point equal to the previous (second-last gradient)?
-#look at assumed calculations
-#what if p_excess is -inf and p_ideal is +inf? P = p_excess + p_ideal
-#need proper symbols eg epsilon. Is pressure in pascal, atm etc?
-#unsure where to read the reduced density from.
-
-
 parser = argparse.ArgumentParser(description="Create graph of energy vs pressure")
-parser.add_argument('density', type=float,
-                    help = 'reduced density')
-        #******************density currently in use *****************
 parser.add_argument('cbor',
                     help = 'path to the .cbor file')
 args = parser.parse_args()
 
 
 #plot of energy vs excess pressure hence:
-Kb=1.38066*(10**-23) #boltzmann constant
 my_energy={} #the energies
 my_entropy={} #entropies[t][i] -> entropy at time t, energy index i
 my_pexc_tot={} #excess pressure at energy index i
 my_count={} #count of each excess pressure - hence at energy index i
-my_t={} #the times 't'
+my_t={} #the times, 't'
+density = float()
 
 
 def read_energy(data_loaded):
@@ -66,6 +53,14 @@ def read_my_t(data_loaded):
         my_t[i] = float(my_t[i])
 
 def read_density(data_loaded):
+    global density
+    box_diagonal = data_loaded['system']['cell']['box_diagonal']
+    positions = data_loaded['system']['cell']['positions']
+
+    volume = box_diagonal['x']*box_diagonal['y']*box_diagonal['z']
+    N = len(positions)
+
+    density = N/volume
     return
 
 def read_data(path):
@@ -75,25 +70,9 @@ def read_data(path):
             data_loaded = cbor.load(stream)
         except IOError:
             print('An error occurred trying to read the file.')
-    print('top level:')
-    for key in data_loaded.keys():
-        print('   ', key)
-    for nested in ['system']:
-        print(nested,':')
-        for key in data_loaded[nested].keys():
-            print('   ', key)
-    print('system/cell:')
-    for key in data_loaded['system']['cell'].keys():
-        print('   ', key)
-    print('system/cell/box_diagonal:')
-    for key in data_loaded['system']['cell']['box_diagonal'].keys():
-        print('   ', key, data_loaded['system']['cell']['box_diagonal'][key])
-    box_diagonal = data_loaded['system']['cell']['box_diagonal']
-    volume = box_diagonal['x']*box_diagonal['y']*box_diagonal['z']
-    print('volume', volume)
     read_energy(data_loaded)
     read_entropy(data_loaded)
-    #read_density(data_loaded)
+    read_density(data_loaded)
     read_count(data_loaded)
     read_pexc_tot(data_loaded)
     read_my_t(data_loaded)
@@ -124,15 +103,11 @@ def calc_ideal_p(t, i):
     #p = dkt where d is the particular density under examination
     T = my_temp(t,i)
     if T!=float('inf') and T!=-float('inf'):
-        return args.density * Kb * my_temp(t,i)
+        return density * scipy.k * my_temp(t,i)
     return T #whichever inf it was; +ve or -ve
 
+
 read_data(args.cbor)
-
-#function assumes at a given index i, my_energy[i] corresponds with my_entropy[i]
-#as well as my_pexc_tot[i] and my_count[i]
-
-#calculate pressure and populate the my_pressure array
 #given P = Pexcess + Pideal
 my_pressure={} #my_pressure[t][i] -> system's pressure at time t, energy index i
 for t in range(0, len(my_entropy)):
@@ -160,13 +135,6 @@ for i in range(0, len(my_pressure)):
     plt.ylabel('Pressure (P)')
     plt.title('t = ' + str(my_t[i]))
     plt.plot(my_energy, my_pressure[i])
-
-    plt.figure('entropy')
-    plt.clf()
-    plt.xlabel('Energy (E)') #need proper symbols
-    plt.ylabel('Entropy (S)')
-    plt.title('t = ' + str(my_t[i]))
-    plt.plot(my_energy, my_entropy[i])
 
     plt.pause(0.6)
 
