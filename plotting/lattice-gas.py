@@ -1,3 +1,4 @@
+Learn more or give us feedback
 import argparse, sys, yaml
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,13 +21,11 @@ with open(file,'rb') as stream:
             data_loaded = yaml.full_load(stream)
     except IOError:
         print('An error occurred trying to read the file.')
-"""
-with open('two.yaml','r') as stream:
-    try:
-        data_loaded = yaml.full_load(stream)
-    except yaml.yamlerror as exc:
-        print(exc)
-"""
+# with open('two.yaml','r') as stream:
+#     try:
+#         data_loaded = yaml.full_load(stream)
+#     except yaml.yamlerror as exc:
+#         print(exc)
 time_frame = data_loaded['movies']['time']
 entropy_data = data_loaded['movies']['entropy']
 hist_data = data_loaded['movies']['histogram']
@@ -97,8 +96,6 @@ for t in range(len(entropy_data)):
     S[hist==0] = np.nan
     S_excess[hist==0] = np.nan
     hist[hist==0] = np.nan
-    
-    
     plt.figure('entropy')
     plt.clf()
     plt.title(f'{moves[t]} moves')
@@ -131,7 +128,7 @@ for t in range(len(entropy_data)):
     
 
     for i in np.arange(0,col-1,1):
-        for j in np.arange(0,row-1,1):
+        for j in np.arange(0,row,1):
             T[i][j] = dE / (S[i+1][j] - S[i][j])
     
     for i in np.arange(0,col-1,1):
@@ -160,23 +157,27 @@ for t in range(len(entropy_data)):
     plt.ylabel('$E$')
     plt.colorbar() 
     """
-    
+
+    averaged_T = np.zeros_like(T)
     chem_pot = np.zeros((col, row))
-    for i in np.arange(0,col-2,1):
-        for j in np.arange(0,row-2,1):
-            print(-(T[i][j+1] - T[i][j])/2)
-            chem_pot[i][j] = -(T[i][j+1] - T[i][j])/2 * ((S[i][j+1] - S[i][j]) / (N[i][j+1] - N[i][j]))
+    for i in np.arange(0,col-1,1):
+        for j in np.arange(0,row-1,1):
+            averaged_T[i][j] = 2/(T_inv[i][j+1] + T_inv[i][j])
+            chem_pot[i][j] = -averaged_T[i][j] * ((S[i][j+1] - S[i][j]) / (N[i][j+1] - N[i][j]))
     chem_pot[chem_pot==0] = np.nan
     chem_pot[T<0] = np.nan
     chem_pot[T>1] = np.nan
+    chem_pot[averaged_T>1] = np.nan
+    chem_pot[averaged_T<0] = np.nan
     
     plt.figure('chemical potential')
     plt.clf()
+    plt.title(f'{moves[t]} moves')
     plt.pcolor(N,E,chem_pot)
     plt.xlabel('$N$')
     plt.ylabel('$E$')
     plt.colorbar()
-    
+
     plt.pause(1)
 
 plt.show()

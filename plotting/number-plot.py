@@ -79,11 +79,10 @@ Fideal = FN*T*(np.log(FN)- 1) #ignoring V for the moment?!
 plt.figure('histograms')
 for fname in fnames:
         plt.plot(current_histogram[fname],
-                   color=my_color[fname], label=fname)
+                   color=my_color[fname], label='Temperature of 1.0')
         plt.xlabel('Number of Atoms')
-        plt.ylabel('histogram (number of moves)')
+        plt.ylabel('Number of Moves')
         plt.tick_params(axis='y', which='both', left='true', right='true')
-        plt.title('Histogram of Uncovereged System')
 plt.tight_layout()
 plt.legend(loc='best')
 #
@@ -161,6 +160,7 @@ for fname in fnames:
         UN = np.arange(0.5, N-1, 1)
         plt.ylabel('Pressure')
         plt.xlabel(r'$\eta$')
+
         plt.plot((np.pi/6)*UN/my_volume[fname],p,
                    color=my_color[fname], label=fname)
         plt.plot((np.pi/6)*UN/my_volume[fname],p_exc,'--',
@@ -208,9 +208,9 @@ for fname in fnames:
                 pX = top_pX/bot_pX
                 gX = line(pX)
                 if p1 < pX and p2 > pX and p3 < pX and p4 > pX and g3 < gX and g4 > gX:
-                    plt.plot([p1,p2,p3,p4], [g1,g2,g3,g4], 'r+', markersize=25)
-                    plt.plot([pX], [line(pX)], 'x', markersize=25)
-                    print(pX, 'THIS IS IT!!')
+                    # plt.plot([p1,p2,p3,p4], [g1,g2,g3,g4], 'r+', markersize=25)
+                    # plt.plot([pX], [line(pX)], 'x', markersize=25)
+                    print('phase transition pressure', pX)
                     print(line(pX), 'chemical potential')
                     Ngas = (N1*(p2-pX) + N2*(pX-p1))/(p2-p1)
                     Nliq = (N3*(p4-pX) + N4*(pX-p3))/(p4-p3)
@@ -218,22 +218,20 @@ for fname in fnames:
                     print('Nliq', Nliq)
                     found_one = True
                     break
-        plt.ylabel('Gibbs/N')
+        plt.ylabel('Chemical Potential')
         plt.xlabel('Pressure')
         # plt.plot(p_integer,Gexc_N/GN,
         #            color=my_color[fname], label=fname)
         plt.plot(p_integer,G/GN, '.--',
-                   color=my_color[fname], label=fname+' G')
-        # FIXME, can you check if computing mu as dF/dN gives the same results?
-        # plt.plot(p_integer,mu, 'x:',
-        #            color=my_color[fname], label=fname+' mu')
+                   color=my_color[fname], label='Temperature of 1.1')
+        plt.tick_params(axis='y', which='both', left='true', right='true')
         plt.legend(loc='best')
 
-        #Find Packing Fraction for Pressure of Phase Transistion#
-        p_abs = np.zeros_like(p)
-        for i in range(len(UN-1)):
-            p_abs[i] = np.abs(p[i]-pX)
-        print(min(p_abs), 'Number')
+        # #Find Packing Fraction for Pressure of Phase Transistion#
+        # p_abs = np.zeros_like(p)
+        # for i in range(len(UN-1)):
+        #     p_abs[i] = np.abs(p[i]-pX)
+        # print(min(p_abs), 'Number')
 
 
 

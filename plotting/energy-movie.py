@@ -42,8 +42,15 @@ minT = 1.1
 for fname in args.yaml:
     print(fname)
     with open(fname) as f:
-        yaml_data = f.read()
-    data = yaml.load(yaml_data)
+        if 'cbor' in fname:
+            import cbor
+            data = cbor.load(f)
+        else:
+            import yaml
+            if 'full_load' in dir(yaml):
+                data = yaml.full_load(f)
+            else:
+                data = yaml.load(f)
     print('Done loading yaml')
     data['bins']['histogram'] = np.array(data['bins']['histogram'])
     data['bins']['lnw'] = np.array(data['bins']['lnw'])
@@ -165,7 +172,7 @@ while keep_going:
                              label=fname+' '+latex_float(len(my_entropy[fname])),
                              alpha=0.2)
                 else:
-                    plt.plot(my_energy[fname], my_entropy[fname][i-1,:], my_color[fname], alpha=0.2,
+                    plt.plot(my_energy[fname], my_entropy[fname][j,:], my_color[fname], alpha=0.2,
                              label=fname+' '+latex_float(len(my_entropy[fname])))
             else:
                 if args.match_energy is None:
@@ -174,7 +181,7 @@ while keep_going:
                              my_color[fname],
                              label=fname)
                 else:
-                    plt.plot(my_energy[fname], my_entropy[fname][i-1,:], my_color[fname], label=fname)
+                    plt.plot(my_energy[fname], my_entropy[fname][j,:], my_color[fname], label=fname)
             plt.title('$t=%s/%s$' % (latex_float(t),
                                      latex_float(my_time[fname][-1])))
             plt.ylabel('$S$')
