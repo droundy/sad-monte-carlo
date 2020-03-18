@@ -1,4 +1,3 @@
-Learn more or give us feedback
 import argparse, sys, yaml
 import matplotlib.pyplot as plt
 import numpy as np
@@ -179,5 +178,3 @@ for t in range(len(entropy_data)):
     plt.colorbar()
 
     plt.pause(1)
-
-plt.show()
