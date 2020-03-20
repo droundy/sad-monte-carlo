@@ -402,7 +402,11 @@ impl Histogram {
         self.min + (i as f64 + 0.5)*self.width
     }
     fn energy_to_index(&self, e: Energy) -> usize {
-        *((e - self.min)/self.width).value() as usize
+        if e < self.min {
+            std::usize::MAX // this is a bogus value for negative-index cases
+        } else {
+            *((e - self.min)/self.width).value() as usize
+        }
     }
     fn prep_for_e(&mut self, e: Energy) {
         assert!(self.width > Energy::new(0.0));
