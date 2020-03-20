@@ -497,6 +497,7 @@ impl Binning for Histogram {
     fn accumulate_extra(&mut self, name: Intern<String>, e: Energy, value: f64) {
         self.prep_for_e(e);
         let idx = self.energy_to_index(e);
+        assert!(idx < self.lnw.total.len());
         if let Some(data) = self.extra.get_mut(&name) {
             data.count[idx] += 1;
             data.total[idx] += value;
