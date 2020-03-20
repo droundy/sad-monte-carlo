@@ -349,7 +349,11 @@ impl BinCounts {
     }
 
     fn get_total(&self, idx: usize) -> f64 {
-        self.total[idx]
+        if idx < self.total.len() {
+            self.total[idx]
+        } else {
+            0.0
+        }
     }
     fn get_count(&self, idx: usize) -> u64 {
         if idx < self.count.len() {
