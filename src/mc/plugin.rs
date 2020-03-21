@@ -312,6 +312,89 @@ impl<MC: MonteCarlo> Plugin<MC> for Save {
     }
 }
 
+/// A plugin that schedules movie backups
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Movie {
+    movie_time: f64,
+    which_frame: Cell<i32>,
+    period: Cell<plugin::TimeToRun>,
+    dir: Option<std::path::PathBuf>,
+}
+
+/// The parameter to define the movie schedule
+#[derive(AutoArgs, Debug)]
+pub struct MovieParams {
+    /// 2.0 means a frame every time iterations double.
+    pub movie_time: Option<f64>,
+    /// Path to directory to hold movie frames
+    pub movie_dir: Option<std::path::PathBuf>,
+}
+
+impl Default for MovieParams {
+    fn default() -> Self {
+        MovieParams {
+            movie_time: None,
+            movie_dir: None,
+        }
+    }
+}
+impl From<MovieParams> for Movie {
+    fn from(params: MovieParams) -> Self {
+        Movie {
+            movie_time: params.movie_time.unwrap_or(10.0_f64.powf(1./8.)),
+            which_frame: Cell::new(0),
+            period: Cell::new(if params.movie_dir.is_some() {
+                plugin::TimeToRun::TotalMoves(1)
+            } else {
+                plugin::TimeToRun::Never
+            }),
+            dir: params.movie_dir,
+        }
+    }
+}
+impl Movie {
+    /// Save a frame of the movie.
+    pub fn save_frame<MC: MonteCarlo>(&self, mc: &MC) {
+        if let Some(dir) = &self.dir {
+            let moves = mc.num_moves();
+            let path = dir.join(format!("{:014}.cbor", moves));
+            println!("Saving movie as {:?}", path);
+
+            std::fs::create_dir_all(&dir).expect("error creating directory");
+            let f = AtomicFile::create(&path)
+                .expect(&format!("error creating file {:?}", path));
+            serde_cbor::to_writer(&f, self).expect("error writing checkpoint?!");
+        }
+    }
+}
+impl<MC: MonteCarlo> Plugin<MC> for Movie {
+    fn run(&self, mc: &MC, _sys: &MC::System) -> Action {
+        if self.dir.is_some() {
+            let moves = mc.num_moves();
+            if plugin::TimeToRun::TotalMoves(moves) == self.period.get() {
+                // Save movie now.
+                self.save_frame(mc);
+
+                // Now decide when we need the next frame to be.
+                let mut which_frame = self.which_frame.get() + 1;
+                let mut next_time = (self.movie_time.powi(which_frame) + 0.5) as u64;
+                while next_time <= moves {
+                    which_frame += 1;
+                    next_time = (self.movie_time.powi(which_frame) + 0.5) as u64;
+                }
+                self.which_frame.set(which_frame);
+                self.period.set(plugin::TimeToRun::TotalMoves(next_time));
+
+                return plugin::Action::Save;
+            } else {
+                println!("not time to movie yet: {} vs. {:?}", moves, self.period.get())
+            }
+        }
+        plugin::Action::None
+    }
+    fn run_period(&self) -> plugin::TimeToRun { self.period.get() }
+}
+
 fn format_duration(secs: u64) -> String {
     let mins = secs / 60;
     let hours = mins / 60;

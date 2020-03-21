@@ -63,6 +63,7 @@ pub struct EnergyMCParams {
     _binning: binning::BinningParams,
     _moves: MoveParams,
     _report: plugin::ReportParams,
+    _movies: plugin::MovieParams,
     _save: plugin::SaveParams,
 }
 
@@ -78,6 +79,7 @@ impl Default for EnergyMCParams {
             _moves: MoveParams::TranslationScale(0.05*units::SIGMA),
             _report: plugin::ReportParams::default(),
             _save: plugin::SaveParams::default(),
+            _movies: plugin::MovieParams::default(),
             _binning: binning::BinningParams::default(),
         }
     }
@@ -112,6 +114,7 @@ pub struct EnergyMC<S> {
     pub save_as: ::std::path::PathBuf,
     report: plugin::Report,
     save: plugin::Save,
+    movies: plugin::Movie,
     manager: plugin::PluginManager,
 
     /// The parameters describing the bins
@@ -476,6 +479,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             save_as: save_as,
             report: plugin::Report::from(params._report),
             save: plugin::Save::from(params._save),
+            movies: plugin::Movie::from(params._movies),
             manager: plugin::PluginManager::new(),
         }
     }
@@ -514,6 +518,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
         self.update_weights(energy);
 
         let plugins = [&self.report as &dyn Plugin<Self>,
+                       &self.movies,
                        &self.save,
         ];
         self.manager.run(self, &self.system, &plugins);
