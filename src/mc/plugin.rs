@@ -363,7 +363,7 @@ impl Movie {
             std::fs::create_dir_all(&dir).expect("error creating directory");
             let f = AtomicFile::create(&path)
                 .expect(&format!("error creating file {:?}", path));
-            serde_cbor::to_writer(&f, self).expect("error writing checkpoint?!");
+            serde_cbor::to_writer(&f, mc).expect("error writing movie frame?!");
         }
     }
 }

@@ -37,7 +37,7 @@ class MC:
 
 assert(len(args.dirname)==1) # fix this later
 for f in glob.glob(args.dirname[0]+'/*.cbor'):
-    print(f)
     mc = MC(f)
+    print(mc.data.keys())
 
 plt.show()
