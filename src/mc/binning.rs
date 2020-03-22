@@ -500,7 +500,14 @@ impl Binning for Histogram {
         assert!(idx < self.lnw.total.len());
         if let Some(data) = self.extra.get_mut(&name) {
             data.count[idx] += 1;
-            data.total[idx] += value;
+            let old_total = data.total[idx];
+            data.total[idx] = old_total + value;
+            if data.total[idx] > data.max_total {
+                data.max_total = data.total[idx];
+            }
+            if old_total == data.min_total {
+                data.min_total = min_of(&data.total);
+            }
         } else {
             let values = BinCounts::new(self.lnw.total.len());
             self.extra.insert(name, values);
@@ -515,7 +522,7 @@ impl Binning for Histogram {
             for v in data.total.iter_mut() {
                 *v = 0.;
             }
-            data.min_total = std::f64::INFINITY;
+            data.min_total = 0.;
             data.max_total = -std::f64::INFINITY;
             data.min_count = 0;
             data.max_count = 0;

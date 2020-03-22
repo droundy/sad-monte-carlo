@@ -29,15 +29,64 @@ allcolors = list(reversed(['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'ta
                            'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan',
                            'xkcd:lightblue', 'xkcd:puke', 'xkcd:puce', 'xkcd:turquoise']))
 
+class Bins:
+    """ A thing with bins """
+    def __init__(self, data):
+        if 'Histogram' in data:
+            self._kind = 'Histogram'
+            self._min = data['Histogram']['min']
+            self._width = data['Histogram']['width']
+            self._width = data['Histogram']['width']
+            self._lnw = np.array(data['Histogram']['lnw']['total'])
+            self._hist = np.array(data['Histogram']['lnw']['count'])
+            assert(len(self._lnw) == len(self._hist))
+            self._energy = np.arange(self._min + 0.5*self._width,
+                                     self._min + len(self._lnw)*self._width,
+                                     self._width)
+    def energy(self):
+        return self._energy
+    def histogram(self):
+        return self._hist
+    def entropy(self):
+        return self._lnw
+
 class MC:
     """ The state of a Monte Carlo simulation """
     def __init__(self, filename):
         with open(filename, 'rb') as f:
             self.data = cbor.load(f)
+            self._bins = Bins(self.data['bins'])
+    def energy(self):
+        return self.data['system']['E']
+    def cell(self):
+        diag = self.data['system']['cell']['box_diagonal']
+        return np.array([diag['x'], diag['y'], diag['z']])
+    def volume(self):
+        cell = self.cell()
+        return cell[0]*cell[1]*cell[2]
+    def energy(self):
+        return self._bins.energy()
+    def histogram(self):
+        return self._bins.histogram()
+    def entropy(self):
+        return self._bins.entropy()
 
+plt.ion()
 assert(len(args.dirname)==1) # fix this later
-for f in glob.glob(args.dirname[0]+'/*.cbor'):
+for f in sorted(glob.glob(args.dirname[0]+'/*.cbor')):
     mc = MC(f)
-    print(mc.data.keys())
 
+    plt.figure('histogram')
+    plt.clf()
+    plt.title(f)
+    plt.plot(mc.energy(), mc.histogram())
+
+    plt.figure('lnw')
+    plt.clf()
+    plt.title(f)
+    plt.plot(mc.energy(), mc.entropy())
+
+    # plt.show()
+    plt.pause(0.1)
+plt.ioff()
 plt.show()

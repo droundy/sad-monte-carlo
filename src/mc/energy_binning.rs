@@ -171,6 +171,25 @@ impl Method {
             },
         }
     }
+    fn report<S: MovableSystem>(&self, mc: &EnergyMC<S>) {
+        print!("    ");
+        match self {
+            Method::Sad { too_lo, too_hi, .. } => {
+                print!("SAD: {:.5} ({:.3}) -> {:.5} ({:.3})",
+                         too_lo.pretty(),
+                         mc.bins.get_count(*too_lo).pretty(),
+                         too_hi.pretty(),
+                         mc.bins.get_count(*too_hi).pretty(),
+                );
+            }
+            Method::Samc { .. } => {
+            }
+            Method::WL { gamma, .. } => {
+                print!("WL: {}", gamma);
+            }
+        }
+        println!(" [gamma = {:.2}]", crate::prettyfloat::PrettyFloat(mc.gamma()));
+    }
     fn entropy(&self, bins: &impl Binning, energies: &[Energy]) -> Vec<f64> {
         let mut entropy: Vec<_> = energies.iter().map(|&e| bins.get_lnw(e)).collect();
         if let Method::Sad {min_T,too_lo,too_hi, ..} = *self {
@@ -518,6 +537,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
         self.update_weights(energy);
 
         let plugins = [&self.report as &dyn Plugin<Self>,
+                       &Logger,
                        &self.movies,
                        &self.save,
         ];
@@ -537,5 +557,13 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
     }
     fn save_as(&self) -> ::std::path::PathBuf {
         self.save_as.clone()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Logger;
+impl<S: MovableSystem> Plugin<EnergyMC<S>> for Logger {
+    fn log(&self, mc: &EnergyMC<S>, _sys: &S) {
+        mc.method.report(&mc);
     }
 }
