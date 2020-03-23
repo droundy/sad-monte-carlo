@@ -44,11 +44,14 @@ class Bins:
                                      self._min + len(self._lnw)*self._width,
                                      self._width)
     def energy(self):
-        return self._energy
-    def histogram(self):
-        return self._hist
-    def entropy(self):
-        return self._lnw
+        if self._kind == 'Histogram':
+            return self._energy
+    def histogram(self, E=None):
+        if self._kind == 'Histogram':
+            return self._hist
+    def lnw(self, E=None):
+        if self._kind == 'Histogram':
+            return self._lnw
 
 class MC:
     """ The state of a Monte Carlo simulation """
@@ -69,7 +72,18 @@ class MC:
     def histogram(self):
         return self._bins.histogram()
     def entropy(self):
-        return self._bins.entropy()
+         lnw = self._bins.lnw()
+         if 'Sad' in self.data['method']:
+             E = self.energy()
+             hist = self.histogram()
+             too_lo = self.data['method']['Sad']['too_lo']
+             too_hi = self.data['method']['Sad']['too_hi']
+             i_lo = abs(E - too_lo).argmin()
+             i_hi = abs(E - too_hi).argmin()
+             mean_hist = hist[i_lo:i_hi+1].mean()
+             lnw[E < too_lo] = lnw[i_lo] + np.log(hist[E<too_lo]/mean_hist)
+             lnw[E > too_hi] = lnw[i_hi] + np.log(hist[E>too_hi]/mean_hist)
+         return lnw
 
 plt.ion()
 assert(len(args.dirname)==1) # fix this later
