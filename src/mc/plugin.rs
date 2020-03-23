@@ -386,8 +386,6 @@ impl<MC: MonteCarlo> Plugin<MC> for Movie {
                 self.period.set(plugin::TimeToRun::TotalMoves(next_time));
 
                 return plugin::Action::Save;
-            } else {
-                println!("not time to movie yet: {} vs. {:?}", moves, self.period.get())
             }
         }
         plugin::Action::None
