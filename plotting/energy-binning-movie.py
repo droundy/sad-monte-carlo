@@ -80,8 +80,9 @@ class MC:
              too_hi = self.data['method']['Sad']['too_hi']
              i_lo = abs(E - too_lo).argmin()
              i_hi = abs(E - too_hi).argmin()
+             min_T = self.data['method']['Sad']['min_T']
              mean_hist = hist[i_lo:i_hi+1].mean()
-             lnw[E < too_lo] = lnw[i_lo] + np.log(hist[E<too_lo]/mean_hist)
+             lnw[E < too_lo] = lnw[i_lo] + (E[E<too_lo] - too_lo)/min_T + np.log(hist[E<too_lo]/mean_hist)
              lnw[E > too_hi] = lnw[i_hi] + np.log(hist[E>too_hi]/mean_hist)
          return lnw
 
