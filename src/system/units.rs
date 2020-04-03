@@ -30,16 +30,10 @@ make_units! {
 impl_serde!(UNITS);
 impl_auto_args!(UNITS);
 
-impl Unitless<f64> {
+impl<A> UNITS<f64,A> {
     /// Format the number in a nice way
     pub fn pretty(&self) -> crate::prettyfloat::PrettyFloat {
-        crate::prettyfloat::PrettyFloat(*self.value())
-    }
-}
-impl Energy<f64> {
-    /// Format the number in a nice way
-    pub fn pretty(&self) -> crate::prettyfloat::PrettyFloat {
-        crate::prettyfloat::PrettyFloat(*(*self/EPSILON).value())
+        crate::prettyfloat::PrettyFloat(*self.value_unsafe())
     }
 }
 

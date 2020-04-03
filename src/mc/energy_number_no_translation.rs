@@ -500,12 +500,15 @@ pub struct MoviesParams {
     // iterations doubles.
     /// 2.0 means a frame every time iterations double.
     pub movie_time: Option<f64>,
+    /// After how many moves do we start collecting movie data?
+    pub movie_start: Option<u64>,
 }
 
 impl Default for MoviesParams {
     fn default() -> Self {
         MoviesParams {
             movie_time: None,
+            movie_start: None,
         }
     }
 }
@@ -533,7 +536,11 @@ impl From<MoviesParams> for Movies {
             movie_time: params.movie_time,
             which_frame: Cell::new(0),
             period: Cell::new(if params.movie_time.is_some() {
-                plugin::TimeToRun::TotalMoves(1)
+                if let Some(start) = params.movie_start {
+                    plugin::TimeToRun::TotalMoves(start)
+                } else {
+                    plugin::TimeToRun::TotalMoves(1)
+                }
             } else {
                 plugin::TimeToRun::Never
             }),
