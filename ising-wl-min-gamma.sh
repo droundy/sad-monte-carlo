@@ -4,7 +4,9 @@ set -ev
 cargo build --release
 
 # ISING 32 X 32
-rq run -R --max-output 20 -J 'ising-wl-32-minGamma-s1' target/release/ising-mc --N 32 --seed=1 --save-as ising-wl-32-minGamma-s1.yaml --movie-time '10^(1/8)' --translation-scale 0.05 --save-time 0.5 --min-allowed-energy=-2048 --max-allowed-energy=50 --wl --wl-min-gamma=1e-4
+rq run -R --max-output 20 -J 'ising-wl-32-minGamma-1e12-s1' target/release/ising-mc --N 32 --seed=1 --save-as ising-wl-32-minGamma-1e12-s1.yaml --movie-time '10^(1/8)' --translation-scale 0.05 --save-time 0.5 --min-allowed-energy=-2048 --max-allowed-energy=50 --wl --wl-min-gamma=1e-12
+
+rq run -R --max-output 20 -J 'ising-wl-32-minGamma-s1' target/release/ising-mc --N 32 --seed=1 --save-as ising-wl-32-minGamma-s1.yaml --movie-time '10^(1/8)' --translation-scale 0.05 --save-time 0.5 --min-allowed-energy=-2048 --max-allowed-energy=50 --wl --wl-min-gamma=1e-8
 
 rq run -R --max-output 20 -J 'ising-wl-32-minGamma-s2' target/release/ising-mc --N 32 --seed=2 --save-as ising-wl-32-minGamma-s2.yaml --movie-time '10^(1/8)' --translation-scale 0.05 --save-time 0.5 --min-allowed-energy=-2048 --max-allowed-energy=50 --wl --wl-min-gamma=1e-4
 
