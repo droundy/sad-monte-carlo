@@ -41,7 +41,7 @@ Smin = None
 minT = 1.1
 for fname in args.yaml:
     print(fname)
-    with open(fname) as f:
+    with open(fname, 'rb') as f:
         if 'cbor' in fname:
             import cbor
             data = cbor.load(f)
