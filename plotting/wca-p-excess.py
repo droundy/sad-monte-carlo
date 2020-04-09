@@ -135,13 +135,26 @@ for t in range(0, len(my_entropy)): #the time
 
 
 for i in range(0, len(my_pressure)):
-    plt.figure('pressure')
+    plt.figure('energy_pressure')
     plt.clf()
     plt.xlabel('Energy (E)') #need proper symbols
     plt.ylabel('Pressure (P)')
     plt.title('t = ' + str(my_t[i]))
     plt.plot(my_energy, my_pressure[i])
+    plt.pause(0.6)
 
+    plt.figure('energy_temperature')
+    plt.clf()
+    plt.xlabel('Energy (E)')
+    plt.ylabel('Temperature (epsilon)')
+    plt.plot(my_energy, my_temperature[i])
+    plt.pause(0.6)
+
+    plt.figure('temperature_pressure')
+    plt.clf()
+    plt.xlabel('Temperature (epsilon)')
+    plt.ylabel('Pressure (P)')
+    plt.plot(my_temperature[i], my_pressure[i])
     plt.pause(0.6)
 
 plt.show()
