@@ -21,6 +21,7 @@ my_entropy={} #entropies[t][i] -> entropy at time t, energy index i
 my_pexc_tot={} #excess pressure at energy index i
 my_count={} #count of each excess pressure - hence at energy index i
 my_t={} #the times, 't'
+my_temperature={}  #the temperatures
 density = float()
 
 
@@ -101,18 +102,23 @@ def my_temp(t, i): #i is the index, t is the time
 def calc_ideal_p(t, i):
     #given pV = NkT where k is boltzmann constant, density is constant so 
     #p = dkt where d is the particular density under examination
-    T = my_temp(t,i)
+#    T = my_temp(t,i)
+#    if T!=float('inf') and T!=-float('inf'):
+#        return density * scipy.k * T
+#    return T #whichever inf it was; +ve or -ve\
+    T = my_temperature[t][i]
     if T!=float('inf') and T!=-float('inf'):
-        return density * scipy.k * my_temp(t,i)
+        return density * scipy.k * T
     return T #whichever inf it was; +ve or -ve
-
 
 read_data(args.cbor)
 #given P = Pexcess + Pideal
 my_pressure={} #my_pressure[t][i] -> system's pressure at time t, energy index i
-for t in range(0, len(my_entropy)):
+for t in range(0, len(my_entropy)): #the time
+    my_temperature[t] = np.zeros_like(my_energy)
     my_pressure[t] = np.zeros_like(my_energy)
-    for i in range(0, len(my_energy)):
+    for i in range(0, len(my_energy)):  #the index
+        my_temperature[t][i] = my_temp(t,i)
         try:
             my_pressure[t][i] = my_pexc_tot[i] / my_count[i] #p_excess
         except ZeroDivisionError:
