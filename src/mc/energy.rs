@@ -301,14 +301,10 @@ impl Method {
             if *gamma == 0.0 {
                 // We are in a production run, so we should modify the
                 // lnw based on the histogram.
-                if !hist.iter().cloned().any(|h| h == 0) {
-                    // We have explored everything at least once, so
-                    // we can at least take a log of everything...
-                    return entropy.iter().map(|x| *x.value())
-                        .zip(hist.iter().cloned())
-                        .map(|(lnw, h)| lnw + (h as f64).ln())
-                        .collect();
-                }
+                return entropy.iter().map(|x| *x.value())
+                    .zip(hist.iter().cloned())
+                    .map(|(lnw, h)| lnw + if h > 0 { (h as f64).ln() } else { 0.0 })
+                    .collect();
             }
         }
         entropy.iter().map(|x| *(x.value())).collect()
@@ -528,6 +524,7 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                 if let Some(min_gamma) = min_gamma {
                     if *gamma < min_gamma {
                         // We are in a production run.
+                        hist[i] += 1;
                         return;
                     }
                 }
@@ -584,7 +581,8 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                         gamma_changed = true;
                         *gamma *= 0.5;
                         if *gamma > 1e-16 {
-                            println!("    WL:  We have reached flatness {:.2} with min {}!",
+                            println!("    WL: ({}) We have reached flatness {:.2} with min {}!",
+                                     PrettyFloat(*gamma),
                                      PrettyFloat(*lowest_hist as f64*num_states
                                                  / *total_hist as f64),
                                      *lowest_hist);
@@ -601,6 +599,7 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                             if *gamma < min_gamma {
                                 // Switch to a "production" run.
                                 *gamma = 0.0;
+                                println!("      WL: BEGINNING PRODUCTION MODE!");
                             }
                         }
                     }
