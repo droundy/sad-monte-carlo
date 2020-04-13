@@ -6,8 +6,42 @@ use crate::system::{units,Energy,PerEnergy};
 
 use dimensioned::Dimensionless;
 use std::default::Default;
-use internment::Intern;
 use auto_args::AutoArgs;
+
+/// A constant string that we want to use as a parameter name.
+#[derive(Hash, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize, Clone, Copy)]
+pub struct Interned(internment::Intern<std::borrow::Cow<'static,str>>);
+
+impl From<&'static str> for Interned {
+    fn from(x: &'static str) -> Self {
+        Interned(internment::Intern::new(x.into()))
+    }
+}
+impl From<String> for Interned {
+    fn from(x: String) -> Self {
+        Interned(internment::Intern::new(x.into()))
+    }
+}
+
+impl std::fmt::Display for Interned {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        self.0.fmt(f)
+    }
+}
+
+impl std::fmt::Debug for Interned {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        let mystr: &str = self.0.as_ref();
+        mystr.fmt(f)
+    }
+}
+
+#[test]
+fn test_interned() {
+    let x: Interned = "hello world".into();
+    assert_eq!(format!("{}", x), "hello world");
+    assert_eq!(format!("{:?}", x), "\"hello world\"");
+}
 
 /// Parameters to decide how to do binning.
 #[derive(Debug, AutoArgs)]
@@ -112,28 +146,28 @@ impl Binning for Bins {
         }
     }
 
-    fn accumulate_extra(&mut self, name: Intern<String>, e: Energy, value: f64) {
+    fn accumulate_extra(&mut self, name: Interned, e: Energy, value: f64) {
         match self {
             Bins::Histogram(b) => b.accumulate_extra(name, e, value),
         }
     }
-    fn zero_out_extra(&mut self, name: Intern<String>) {
+    fn zero_out_extra(&mut self, name: Interned) {
         match self {
             Bins::Histogram(b) => b.zero_out_extra(name),
         }
     }
-    fn total_extra(&self, name: Intern<String>, e: Energy) -> f64 {
+    fn total_extra(&self, name: Interned, e: Energy) -> f64 {
         match self {
             Bins::Histogram(b) => b.total_extra(name, e),
         }
     }
-    fn mean_count_extra(&self, extra: Intern<String>) -> PerEnergy {
+    fn mean_count_extra(&self, extra: Interned) -> PerEnergy {
         match self {
             Bins::Histogram(b) => b.mean_count_extra(extra),
         }
     }
 
-    fn mean_extra(&self, name: Intern<String>, e: Energy) -> f64 {
+    fn mean_extra(&self, name: Interned, e: Energy) -> f64 {
         match self {
             Bins::Histogram(b) => b.mean_extra(name, e),
         }
@@ -150,27 +184,27 @@ impl Binning for Bins {
         }
     }
 
-    fn min_total_extra(&self, name: Intern<String>) -> f64 {
+    fn min_total_extra(&self, name: Interned) -> f64 {
         match self {
             Bins::Histogram(b) => b.min_total_extra(name),
         }
     }
-    fn max_total_extra(&self, name: Intern<String>) -> f64 {
+    fn max_total_extra(&self, name: Interned) -> f64 {
         match self {
             Bins::Histogram(b) => b.max_total_extra(name),
         }
     }
-    fn min_count_extra(&self, name: Intern<String>) -> PerEnergy {
+    fn min_count_extra(&self, name: Interned) -> PerEnergy {
         match self {
             Bins::Histogram(b) => b.min_count_extra(name),
         }
     }
-    fn total_count_extra(&self, name: Intern<String>) -> u64 {
+    fn total_count_extra(&self, name: Interned) -> u64 {
         match self {
             Bins::Histogram(b) => b.total_count_extra(name),
         }
     }
-    fn count_extra(&self, name: Intern<String>, e: Energy) -> PerEnergy {
+    fn count_extra(&self, name: Interned, e: Energy) -> PerEnergy {
         match self {
             Bins::Histogram(b) => b.count_extra(name, e),
         }
@@ -229,27 +263,27 @@ pub trait Binning : Default + serde::Serialize + serde::de::DeserializeOwned+ st
     /// need their own count.  Note that this does require storing a
     /// HashMap of extra data, but that seems like the only really
     /// flexible way of doing this.
-    fn accumulate_extra(&mut self, name: Intern<String>, e: Energy, value: f64);
+    fn accumulate_extra(&mut self, name: Interned, e: Energy, value: f64);
     /// Reset the accumulated extra data.
-    fn zero_out_extra(&mut self, name: Intern<String>);
+    fn zero_out_extra(&mut self, name: Interned);
     /// Find the total accumulated extra value that we accumulated at
     /// this energy.
-    fn total_extra(&self, name: Intern<String>, e: Energy) -> f64;
+    fn total_extra(&self, name: Interned, e: Energy) -> f64;
     /// Find the average extra value that we accumulated at this
     /// energy.
-    fn mean_extra(&self, name: Intern<String>, e: Energy) -> f64;
+    fn mean_extra(&self, name: Interned, e: Energy) -> f64;
     /// Find the maximum extra value.
-    fn max_total_extra(&self, name: Intern<String>) -> f64;
+    fn max_total_extra(&self, name: Interned) -> f64;
     /// Find the minimum extra value.
-    fn min_total_extra(&self, name: Intern<String>) -> f64;
+    fn min_total_extra(&self, name: Interned) -> f64;
     /// Find the minimum extra count.
-    fn min_count_extra(&self, name: Intern<String>) -> PerEnergy;
+    fn min_count_extra(&self, name: Interned) -> PerEnergy;
     /// Find the number of times we have counted this thing
-    fn count_extra(&self, name: Intern<String>, e: Energy) -> PerEnergy;
+    fn count_extra(&self, name: Interned, e: Energy) -> PerEnergy;
     /// Find the number of times we have counted this thing
-    fn total_count_extra(&self, name: Intern<String>) -> u64;
+    fn total_count_extra(&self, name: Interned) -> u64;
     /// Find the mean value of count_extra
-    fn mean_count_extra(&self, name: Intern<String>) -> PerEnergy;
+    fn mean_count_extra(&self, name: Interned) -> PerEnergy;
     /// Creates a Binning with the desired energy and energy width.
     ///
     /// It may be a no-op for a binning scheme that does not require a
@@ -268,7 +302,7 @@ fn test_binning<B: Binning>() {
     assert_eq!(b.get_count(eps), 0.0/eps);
     b.increment_count(eps, 1.0);
     assert!(b.get_count(eps) > 0.0/eps);
-    let mydat = Intern::new("datum".to_string());
+    let mydat = "datum".into();
     b.accumulate_extra(mydat, eps, 7.0);
     assert_eq!(b.mean_extra(mydat, eps), 7.0);
     assert_eq!(b.total_extra(mydat, eps), 7.0);
@@ -376,7 +410,7 @@ pub struct Histogram {
     /// The ln weight for each energy bin.
     pub lnw: BinCounts,
     /// The extra totals
-    pub extra: std::collections::HashMap<Intern<String>, BinCounts>,
+    pub extra: std::collections::HashMap<Interned, BinCounts>,
 }
 
 #[test]
@@ -494,7 +528,7 @@ impl Binning for Histogram {
         self.lnw.min_count as f64/self.width
     }
 
-    fn accumulate_extra(&mut self, name: Intern<String>, e: Energy, value: f64) {
+    fn accumulate_extra(&mut self, name: Interned, e: Energy, value: f64) {
         self.prep_for_e(e);
         let idx = self.energy_to_index(e);
         assert!(idx < self.lnw.total.len());
@@ -514,7 +548,7 @@ impl Binning for Histogram {
             self.accumulate_extra(name, e, value); // sloppy recursion...
         }
     }
-    fn zero_out_extra(&mut self, name: Intern<String>) {
+    fn zero_out_extra(&mut self, name: Interned) {
         if let Some(data) = self.extra.get_mut(&name) {
             for v in data.count.iter_mut() {
                 *v = 0;
@@ -529,7 +563,7 @@ impl Binning for Histogram {
             data.total_count = 0;
         }
     }
-    fn mean_extra(&self, name: Intern<String>, e: Energy) -> f64 {
+    fn mean_extra(&self, name: Interned, e: Energy) -> f64 {
         if let Some(data) = self.extra.get(&name) {
             let idx = self.energy_to_index(e);
             if data.count[idx] > 0 {
@@ -541,7 +575,7 @@ impl Binning for Histogram {
             0.0
         }
     }
-    fn total_extra(&self, name: Intern<String>, e: Energy) -> f64 {
+    fn total_extra(&self, name: Interned, e: Energy) -> f64 {
         if let Some(data) = self.extra.get(&name) {
             let idx = self.energy_to_index(e);
             data.get_total(idx)
@@ -549,21 +583,21 @@ impl Binning for Histogram {
             0.0
         }
     }
-    fn max_total_extra(&self, name: Intern<String>) -> f64 {
+    fn max_total_extra(&self, name: Interned) -> f64 {
         if let Some(data) = self.extra.get(&name) {
             data.max_total
         } else {
             0.0
         }
     }
-    fn min_total_extra(&self, name: Intern<String>) -> f64 {
+    fn min_total_extra(&self, name: Interned) -> f64 {
         if let Some(data) = self.extra.get(&name) {
             data.min_total
         } else {
             0.0
         }
     }
-    fn count_extra(&self, name: Intern<String>, e: Energy) -> PerEnergy {
+    fn count_extra(&self, name: Interned, e: Energy) -> PerEnergy {
         if let Some(data) = self.extra.get(&name) {
             let idx = self.energy_to_index(e);
             data.get_count(idx) as f64 / self.width
@@ -574,21 +608,21 @@ impl Binning for Histogram {
     fn total_count(&self) -> u64 {
         self.lnw.total_count
     }
-    fn total_count_extra(&self, name: Intern<String>) -> u64 {
+    fn total_count_extra(&self, name: Interned) -> u64 {
         if let Some(data) = self.extra.get(&name) {
             data.total_count
         } else {
             0
         }
     }
-    fn mean_count_extra(&self, name: Intern<String>) -> PerEnergy {
+    fn mean_count_extra(&self, name: Interned) -> PerEnergy {
         if let Some(data) = self.extra.get(&name) {
             data.total_count as f64/(self.width*self.num_states() as f64)
         } else {
             PerEnergy::new(0.)
         }
     }
-    fn min_count_extra(&self, name: Intern<String>) -> PerEnergy {
+    fn min_count_extra(&self, name: Interned) -> PerEnergy {
         if let Some(data) = self.extra.get(&name) {
             data.min_count as f64/self.width
         } else {

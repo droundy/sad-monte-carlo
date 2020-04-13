@@ -13,7 +13,6 @@ use super::plugin::Plugin;
 use dimensioned::Dimensionless;
 use rand::{Rng, SeedableRng};
 use std::default::Default;
-use internment::Intern;
 
 use binning::Binning;
 
@@ -220,7 +219,7 @@ impl Method {
             if *gamma == 0.0 {
                 // We are in a production run, so we should modify the
                 // lnw based on the histogram.
-                let hist = Intern::new("hist".to_string());
+                let hist = "hist".into();
                 if bins.min_count_extra(hist) > PerEnergy::new(0.) {
                     // We have explored everything at least once, so
                     // we can at least take a log of everything...
@@ -293,7 +292,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                           ref mut latest_parameter, .. } => {
                 let hist_here = self.bins.get_count(energy);
                 if old_hist_here == PerEnergy::new(0.) {
-                    let tfound = Intern::new("t_found".to_string());
+                    let tfound = "t_found".into();
                     self.bins.accumulate_extra(tfound, energy, self.moves as f64);
                 }
                 if hist_here > old_highest_hist {
@@ -346,7 +345,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     // Set tF to the latest discovery time in the
                     // range of energies that we actually care about.
                     let old_tF = *tF;
-                    let tfound = Intern::new("t_found".to_string());
+                    let tfound = "t_found".into();
                     *tF = self.bins.max_total_extra(tfound);
                     if old_tF == *tF {
                         // We didn't change gamma after all!
@@ -381,7 +380,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
             }
             Method::Samc { .. } => {}
             Method::WL { ref mut gamma, inv_t, min_gamma } => {
-                let hist = Intern::new("hist".to_string());
+                let hist = "hist".into();
                 if let Some(min_gamma) = min_gamma {
                     if *gamma < min_gamma {
                         // We are in a production run.
