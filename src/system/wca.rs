@@ -179,6 +179,19 @@ impl System for Wca {
             data.pexc_tot += *(p/units::EPSILON).value();
         }
     }
+    fn data_to_collect(&self, iter: u64) -> Vec<(Interned, f64)> {
+        if iter % ((self.num_atoms()*self.num_atoms()) as u64) == 0 {
+            let mut p: Energy = units::EPSILON*0.0;
+            for (which, &r1) in self.cell.positions.iter().enumerate() {
+                for r2 in self.cell.maybe_interacting_atoms_excluding(r1, which) {
+                    p += potential_pressure((r1-r2).norm2());
+                }
+            }
+            vec![("pressure".into(), *(p/units::EPSILON).value())]
+        } else {
+            Vec::new()
+        }
+    }
     fn energy(&self) -> Energy {
         self.E
     }

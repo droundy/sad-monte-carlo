@@ -15,6 +15,8 @@ pub mod optsquare;
 pub mod wca;
 pub mod lj;
 
+pub use crate::mc::binning::Interned;
+
 /// A unitless number.  This is equivalent to a f64, but makes clear
 /// that it is going to be interpreted as a dimensionless quantity.
 pub type Unitless = units::Unitless<f64>;
@@ -79,6 +81,11 @@ pub trait System : ::serde::Serialize + ::serde::de::DeserializeOwned {
     type CollectedData: Default + ::serde::Serialize + ::serde::de::DeserializeOwned;
     /// Collect some data for the current state of the system
     fn collect_data(&self, _data: &mut Self::CollectedData, _iter: u64) {
+    }
+    /// Collect some data for the current state of the system if we
+    /// want to do so.
+    fn data_to_collect(&self, _iter: u64) -> Vec<(Interned, f64)> {
+        Vec::new()
     }
 }
 
