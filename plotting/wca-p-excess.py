@@ -81,6 +81,7 @@ def read_data(path):
 
 #i and t are within bounds
 def my_temp(t, i): #i is the index, t is the time
+    # dU = TdS - pdV  --->  T = (dU/dS)
     #given E = H - TS, dE/dS=-T hence E/S gives instataneous temp at that condition
     #hence T = - ( (curr-prev E)/(curr - prev S) ) or curr and next E and S
     if i == 0:
@@ -93,7 +94,7 @@ def my_temp(t, i): #i is the index, t is the time
         dE = my_energy[i+1] - my_energy[i-1]
         dS = my_entropy[t][i+1] - my_entropy[t][i-1]
     try:
-        return float(-dE/dS)
+        return float(dE/dS)
     except ZeroDivisionError:
         if dE > 0:
             return -float('inf')
@@ -141,6 +142,7 @@ for i in range(0, len(my_pressure)):
     plt.ylabel('Pressure (P)')
     plt.title('t = ' + str(my_t[i]))
     plt.plot(my_energy, my_pressure[i])
+    plt.tight_layout()
     plt.pause(0.6)
 
     plt.figure('energy_temperature')
@@ -148,6 +150,7 @@ for i in range(0, len(my_pressure)):
     plt.xlabel('Energy (E)')
     plt.ylabel('Temperature (epsilon)')
     plt.plot(my_energy, my_temperature[i])
+    plt.tight_layout()
     plt.pause(0.6)
 
     plt.figure('temperature_pressure')
@@ -155,6 +158,7 @@ for i in range(0, len(my_pressure)):
     plt.xlabel('Temperature (epsilon)')
     plt.ylabel('Pressure (P)')
     plt.plot(my_temperature[i], my_pressure[i])
+    plt.tight_layout()
     plt.pause(0.6)
 
 plt.show()
