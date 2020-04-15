@@ -384,14 +384,14 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
             Method::Samc { .. } => {}
             Method::WL { ref mut gamma, inv_t, min_gamma } => {
                 let hist = "hist".into();
+                let old_lowest_hist = self.bins.min_count_extra(hist);
+                self.bins.accumulate_extra(hist, energy, 0.0);
                 if let Some(min_gamma) = min_gamma {
                     if *gamma < min_gamma {
                         // We are in a production run.
                         return;
                     }
                 }
-                let old_lowest_hist = self.bins.min_count_extra(hist);
-                self.bins.accumulate_extra(hist, energy, 0.0);
                 let lowest_hist = self.bins.min_count_extra(hist);
 
                 if lowest_hist > old_lowest_hist
