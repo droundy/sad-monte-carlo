@@ -185,9 +185,8 @@ impl Method {
             }
             Method::WL { .. } => {
                 let hist = "hist".into();
-                print!("WL:  We have reached flatness {:.2} with min {}!",
-                         (mc.bins.min_count_extra(hist)/mc.bins.mean_count_extra(hist)).pretty(),
-                         mc.bins.min_count_extra(hist));
+                print!("WL:  We have reached flatness {:.2}!",
+                         (mc.bins.min_count_extra(hist)/mc.bins.mean_count_extra(hist)).pretty());
             }
         }
         println!(" [gamma = {:.2}]", crate::prettyfloat::PrettyFloat(mc.gamma()));
@@ -403,11 +402,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     {
                         gamma_changed = true;
                         *gamma *= 0.5;
-                        if *gamma > 1e-16 {
-                            println!("    WL:  We have reached flatness {:.2} with min {}!",
-                                     (self.bins.min_count_extra(hist)/self.bins.mean_count_extra(hist)).pretty(),
-                                     self.bins.min_count_extra(hist));
-                        }
+                        let flatness = self.bins.min_count_extra(hist)/self.bins.mean_count_extra(hist);
                         self.bins.zero_out_extra(hist);
                         if let Some(min_gamma) = min_gamma {
                             if *gamma < min_gamma {
@@ -415,6 +410,8 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                                 *gamma = 0.0;
                             }
                         }
+                        println!("    WL:  We have reached flatness {:.2}! gamma = {}",
+                                 flatness.pretty(), *gamma);
                     }
                     if inv_t && *gamma < (self.bins.num_states() as f64)/(self.moves as f64) {
                         println!("    1/t-WL:  Switching to 1/t!");
