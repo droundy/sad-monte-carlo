@@ -533,7 +533,14 @@ impl Binning for Histogram {
         let idx = self.energy_to_index(e);
         assert!(idx < self.lnw.total.len());
         if let Some(data) = self.extra.get_mut(&name) {
+            data.total_count += 1;
             data.count[idx] += 1;
+            if data.count[idx] == data.min_count + 1 {
+                data.min_count = data.count.iter().cloned().min().unwrap();
+            }
+            if data.count[idx] > data.max_count {
+                data.max_count = data.count[idx];
+            }
             let old_total = data.total[idx];
             data.total[idx] = old_total + value;
             if data.total[idx] > data.max_total {

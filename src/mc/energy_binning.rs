@@ -183,8 +183,11 @@ impl Method {
             }
             Method::Samc { .. } => {
             }
-            Method::WL { gamma, .. } => {
-                print!("WL: {}", gamma);
+            Method::WL { .. } => {
+                let hist = "hist".into();
+                print!("WL:  We have reached flatness {:.2} with min {}!",
+                         (mc.bins.min_count_extra(hist)/mc.bins.mean_count_extra(hist)).pretty(),
+                         mc.bins.min_count_extra(hist));
             }
         }
         println!(" [gamma = {:.2}]", crate::prettyfloat::PrettyFloat(mc.gamma()));

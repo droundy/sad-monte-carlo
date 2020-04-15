@@ -84,6 +84,9 @@ class MC:
              mean_hist = hist[i_lo:i_hi+1].mean()
              lnw[E < too_lo] = lnw[i_lo] + (E[E<too_lo] - too_lo)/min_T + np.log(hist[E<too_lo]/mean_hist)
              lnw[E > too_hi] = lnw[i_hi] + np.log(hist[E>too_hi]/mean_hist)
+         elif 'WL' in self.data['method'] and self.data['method']['WL']['gamma'] == 0:
+             hist = np.array(self.data['bins']['Histogram']['extra']['hist']['total'])
+             lnw[hist > 0] += np.log(hist[hist>0])
          return lnw
 
 plt.ion()
