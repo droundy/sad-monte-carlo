@@ -59,6 +59,8 @@ class MC:
         with open(filename, 'rb') as f:
             self.data = cbor.load(f)
             self._bins = Bins(self.data['bins'])
+    def moves(self):
+        return self.data['moves']
     def energy(self):
         return self.data['system']['E']
     def cell(self):
@@ -72,7 +74,7 @@ class MC:
     def histogram(self):
         return self._bins.histogram()
     def entropy(self):
-         lnw = self._bins.lnw()
+         lnw = 1.0*self._bins.lnw()
          if 'Sad' in self.data['method']:
              E = self.energy()
              hist = self.histogram()
@@ -84,9 +86,14 @@ class MC:
              mean_hist = hist[i_lo:i_hi+1].mean()
              lnw[E < too_lo] = lnw[i_lo] + (E[E<too_lo] - too_lo)/min_T + np.log(hist[E<too_lo]/mean_hist)
              lnw[E > too_hi] = lnw[i_hi] + np.log(hist[E>too_hi]/mean_hist)
+             lnw[np.isnan(lnw)] = 0
+             lnw[np.isinf(lnw)] = 0
          elif 'WL' in self.data['method'] and self.data['method']['WL']['gamma'] == 0:
-             hist = np.array(self.data['bins']['Histogram']['extra']['hist']['total'])
+             hist = np.array(self.data['bins']['Histogram']['extra']['hist']['count'])
              lnw[hist > 0] += np.log(hist[hist>0])
+             if hist.sum() == 0:
+                 print('where is the data?!')
+                 print(hist)
          return lnw
     def find_entropy(self, E):
          lnw = self.entropy()
@@ -115,7 +122,7 @@ for fs in things:
     plt.clf()
     plt.figure('entropy')
     plt.clf()
-    plt.plot(ref.energy(), ref.entropy() - ref.entropy().max(), ':', color='gray')
+    plt.plot(ref.energy(), ref.entropy() - ref.entropy().max(), ':', color='gray', label=reference)
     added_move = False
     for i in range(len(fs)):
 
@@ -130,7 +137,7 @@ for fs in things:
 
             label = f.split('/')[0]
             all_labels[i] = label
-            moves = float(int(f.split('/')[1].split('.')[0]))
+            moves = mc.moves() # float(int(f.split('/')[1].split('.')[0]))
             title = '${}$'.format(latex_float(moves))
 
         all_last[i] = mc
