@@ -90,19 +90,28 @@ class MC:
          return lnw
 
 plt.ion()
-assert(len(args.dirname)==1) # fix this later
-for f in sorted(glob.glob(args.dirname[0]+'/*.cbor')):
-    mc = MC(f)
-
+assert(len(args.dirname)>=1) # we need at least one dirname
+things = [sorted(glob.glob(dirname+'/*.cbor')) for dirname in args.dirname]
+things = zip(*things)
+for fs in things:
     plt.figure('histogram')
     plt.clf()
-    plt.title(f)
-    plt.plot(mc.energy(), mc.histogram())
-
     plt.figure('lnw')
     plt.clf()
-    plt.title(f)
-    plt.plot(mc.energy(), mc.entropy())
+    for f in fs:
+        mc = MC(f)
+
+        label = f.split('/')[0]
+        title = f.split('/')[1].split('.')[0]
+        plt.figure('histogram')
+        plt.title(title)
+        plt.plot(mc.energy(), mc.histogram(), label=label)
+        plt.legend(loc='best')
+
+        plt.figure('lnw')
+        plt.title(title)
+        plt.plot(mc.energy(), mc.entropy() - mc.entropy().max(), label=label)
+        plt.legend(loc='best')
 
     # plt.show()
     plt.pause(0.1)
