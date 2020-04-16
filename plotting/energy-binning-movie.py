@@ -102,7 +102,8 @@ for fs in things:
         mc = MC(f)
 
         label = f.split('/')[0]
-        title = f.split('/')[1].split('.')[0]
+        moves = float(int(f.split('/')[1].split('.')[0]))
+        title = '${}$'.format(latex_float(moves))
         plt.figure('histogram')
         plt.title(title)
         plt.plot(mc.energy(), mc.histogram(), label=label)
