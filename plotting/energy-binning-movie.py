@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import yaml, sys, argparse, cbor, glob
+import yaml, sys, argparse, cbor, glob, itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -88,33 +88,77 @@ class MC:
              hist = np.array(self.data['bins']['Histogram']['extra']['hist']['total'])
              lnw[hist > 0] += np.log(hist[hist>0])
          return lnw
+    def find_entropy(self, E):
+         lnw = self.entropy()
+         e = self.energy()
+         return np.interp(E, e, lnw, left=0, right=0)
 
 plt.ion()
 assert(len(args.dirname)>=1) # we need at least one dirname
+reference = sorted(glob.glob(args.dirname[0]+'/*.cbor'))[-1]
+ref = MC(reference)
+
+def max_entropy_error(mc):
+    E = ref.energy()
+    good_S = ref.entropy()
+    bad_S = mc.find_entropy(E)
+    return (good_S - bad_S).max() - (good_S - bad_S).min()
+
 things = [sorted(glob.glob(dirname+'/*.cbor')) for dirname in args.dirname]
-things = zip(*things)
+things = itertools.zip_longest(*things)
+all_moves = []
+all_max_entropy_errors = {}
+all_last = {}
+all_labels = {}
 for fs in things:
     plt.figure('histogram')
     plt.clf()
-    plt.figure('lnw')
+    plt.figure('entropy')
     plt.clf()
-    for f in fs:
-        mc = MC(f)
+    plt.plot(ref.energy(), ref.entropy() - ref.entropy().max(), ':', color='gray')
+    added_move = False
+    for i in range(len(fs)):
 
-        label = f.split('/')[0]
-        moves = float(int(f.split('/')[1].split('.')[0]))
-        title = '${}$'.format(latex_float(moves))
+        if fs[i] is None:
+            mc = all_last[i]
+            alpha = 0.5
+            label = all_labels[i]
+        else:
+            f = fs[i]
+            mc = MC(f)
+            alpha = 1.0
+
+            label = f.split('/')[0]
+            all_labels[i] = label
+            moves = float(int(f.split('/')[1].split('.')[0]))
+            title = '${}$'.format(latex_float(moves))
+
+        all_last[i] = mc
+
+        if not added_move:
+            added_move = True
+            all_moves.append(moves)
+        if label not in all_max_entropy_errors:
+            all_max_entropy_errors[label] = []
+        all_max_entropy_errors[label].append(max_entropy_error(mc))
+
         plt.figure('histogram')
         plt.title(title)
-        plt.plot(mc.energy(), mc.histogram(), label=label)
+        plt.plot(mc.energy(), mc.histogram(), label=label, alpha=alpha)
         plt.legend(loc='best')
 
-        plt.figure('lnw')
+        plt.figure('entropy')
         plt.title(title)
-        plt.plot(mc.energy(), mc.entropy() - mc.entropy().max(), label=label)
+        plt.plot(mc.energy(), mc.entropy() - mc.entropy().max(), label=label, alpha=alpha)
         plt.legend(loc='best')
 
     # plt.show()
     plt.pause(0.1)
+
+plt.figure('comparison')
+for label in all_labels.values():
+    plt.loglog(all_moves, all_max_entropy_errors[label], '.-', label=label)
+plt.legend(loc='best')
+
 plt.ioff()
 plt.show()
