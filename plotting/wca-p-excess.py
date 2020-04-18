@@ -114,7 +114,7 @@ def calc_ideal_p(path, t, i):
     return T #whichever inf it was; +ve or -ve
 
 my_pressure={} #my_pressure[path][t][i] -> system's pressure at time t, energy index i of file path
-t_size = {} #this array ranks the size of each file's time, as some extend beyond others
+t_size=[] #this array ranks the size of each file's time, as some extend beyond others
 
 for path in args.cbor:
     read_data(path)
@@ -140,7 +140,7 @@ for path in args.cbor:
                 my_pressure[path][t][i] = p_ideal #whatever inf it is; +ve or -ve
    
     #sort t_size - quicksort algorithm as soon as the cbor's data is read
-    t_size[len(t_size)] = path
+    t_size.append(path)
     s = len(t_size) - 1 # largest index in t_size
     if s >= 1:
         while s > 0:
@@ -150,46 +150,57 @@ for path in args.cbor:
                 t_size[s] = t_size[s-1]
                 t_size[s-1] = curr_path
             else:
-                break  #so that worst case is not the average case.
-
-#print(my_pressure[sys.argv[1]])
-#for i in range(0, len(sys.argv)-1):
-#    print(len(my_t[t_size[i]]))
-                
-    
+                break  #so that worst case is not the average case.                  
         
-    #gen idiea
-    #in a series of times, from smallest to largest time set
-    #plot the graphs
-    #the one whose boundary is reached, its latest time is maintained
-    #the overall time is from the largest time set
-    
-    #therefore. arrange names of files according to size_t
-    #for t from my_t[file][0] to my_t[file][largest], plot
-    #if t > my_t[file][largest]:
-    #   plot using [file][largest] where largest in this case alone is len(my_t[path])
-    
-    #ccould use try and outofbounds error throw instead of if statements which are costly
+#remember that t_size[x] gives the path of the cbor, where these are arranged in asending order
+#acccording to the length of time they have been running
+for t in range(0, len(my_t[ t_size[-1] ])): #uses the timeframe of cbor that has run longest
+    plt.figure('energy_temperature')
+    plt.clf() #so last figure isn't cleared
+    for path in t_size:
+        plt.xlabel('Energy (E)')
+        plt.ylabel('Temperature (epsilon)')
+        plt.title('t = ' + str(my_t[t_size[-1]][t])) #see 2 comments above
+        try:
+            plt.plot(my_energy[path], my_temperature[path][t], label=path)
+            plt.tight_layout()
+            plt.legend(loc='upper right')
+        except IndexError:
+            plt.plot(my_energy[path], my_temperature[path][-1], label=path)
+            plt.tight_layout()
+            plt.legend(loc='upper right')
+    plt.pause(0.6)
         
-
-#good plotting function below - do not alter too much
-for t in range(0, len(my_t[sys.argv[1]])):
-    
     plt.figure('energy_pressure')
     plt.clf()
-    plt.xlabel('Energy (E)') #need proper symbols
-    plt.ylabel('Pressure (P)')
-    plt.title('t = ' + str(my_t[sys.argv[1]][t]))
-    plt.plot(my_energy[sys.argv[1]], my_pressure[sys.argv[1]][t])
-    plt.tight_layout()
+    for path in t_size:
+        plt.xlabel('Energy (E)')
+        plt.ylabel('Pressure (P)')
+        plt.title('t = ' + str(my_t[t_size[-1]][t])) #see comments above
+        try:
+            plt.plot(my_energy[path], my_pressure[path][t], label=path)
+            plt.tight_layout()
+            plt.legend(loc='upper right')
+        except IndexError:
+            plt.plot(my_energy[path], my_pressure[path][-1], label=path)
+            plt.tight_layout()
+            plt.legend(loc='upper right')
     plt.pause(0.6)
     
-#    plt.figure('energy_temperature')
-#    plt.clf()
-#    plt.xlabel('Energy (E)')
-#    plt.ylabel('Temperature (epsilon)')
-#    plt.title('t = ' + str(my_t[sys.argv[1]][t]))
-#    for path in args.cbor:
-#        plt.plot(my_energy[path], my_temperature[path][t])
-#    plt.tight_layout()
-#    plt.pause(0.6)
+    plt.figure('temperature_pressure')
+    plt.clf()
+    for path in t_size:
+        plt.xlabel('Temperature (epsilon)')
+        plt.ylabel('Pressure (P)')
+        plt.title('t = ' + str(my_t[t_size[-1]][t])) #see comments above
+        try:
+            plt.plot(my_temperature[path][t], my_pressure[path][t], label=path)
+            plt.tight_layout()
+            plt.legend(loc='upper right')
+        except IndexError:
+            plt.plot(my_temperature[path][-1], my_pressure[path][-1], label=path)
+            plt.tight_layout()
+            plt.legend(loc='upper right')
+    plt.pause(0.6)
+    
+plt.show()
