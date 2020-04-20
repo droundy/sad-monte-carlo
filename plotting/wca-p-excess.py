@@ -9,8 +9,8 @@ import scipy.constants as scipy
     #currently supports .cbor only
     #   $ python <path to this script> -h
     
-#currently, density is read and overwritten as each file is read
-
+#density values are 0.9999999999999998... instead of 1.0 - should be ok though
+    
 parser = argparse.ArgumentParser(description="Create graph of energy vs pressure")
 parser.add_argument('cbor', nargs='*',
                     help = 'path to the .cbor file')
@@ -24,7 +24,7 @@ my_pexc_tot={} #excess pressure at energy index i
 my_count={} #count of each excess pressure - hence at energy index i
 my_t={} #the times, 't'
 my_temperature={}  #the temperatures
-density = float()
+density={}  #stores the density for each path
 
 
 def read_energy(data_loaded, path):
@@ -56,7 +56,7 @@ def read_my_t(data_loaded, path):
     for t in range(0, len(my_t[path])):
         my_t[path][t] = float(my_t[path][t])
 
-def read_density(data_loaded):
+def read_density(data_loaded, path):
     global density
     box_diagonal = data_loaded['system']['cell']['box_diagonal']
     positions = data_loaded['system']['cell']['positions']
@@ -64,7 +64,7 @@ def read_density(data_loaded):
     volume = box_diagonal['x']*box_diagonal['y']*box_diagonal['z']
     N = len(positions)
 
-    density = N/volume
+    density[path] = N/volume
     return
 
 def read_data(path):
@@ -78,7 +78,7 @@ def read_data(path):
     read_entropy(data_loaded, path)
     read_count(data_loaded, path)
     read_pexc_tot(data_loaded, path)
-    read_density(data_loaded)
+    read_density(data_loaded, path)
 
 #i and t are within bounds
 def my_temp(path, t, i): #i is the index, t is the time, path the filename
@@ -110,7 +110,7 @@ def calc_ideal_p(path, t, i):
 #    return T #whichever inf it was; +ve or -ve\
     T = my_temperature[path][t][i]
     if T!=float('inf') and T!=-float('inf'):
-        return density * scipy.k * T
+        return density[path] * scipy.k * T
     return T #whichever inf it was; +ve or -ve
 
 my_pressure={} #my_pressure[path][t][i] -> system's pressure at time t, energy index i of file path
