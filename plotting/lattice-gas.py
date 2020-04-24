@@ -133,12 +133,14 @@ for t in range(len(entropy_data)):
     plt.ylabel('$E$')
     plt.colorbar()
 
+    '''
     plt.figure('inverse temperature')
     plt.clf()
     plt.pcolor(N,E,T_inv, norm=LogNorm(vmin=0.01, vmax=10)) #, cmap='PuBu_r'vmax=0.5, vmin=0)
     plt.xlabel('$N$')
     plt.ylabel('$E$')
     plt.colorbar()
+    '''
 
     """
     plt.figure('log temperature')
@@ -171,3 +173,6 @@ for t in range(len(entropy_data)):
     plt.colorbar()
 
     plt.pause(1)
+
+plt.ioff()
+plt.show()
