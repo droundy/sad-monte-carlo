@@ -164,13 +164,16 @@ for t in range(len(entropy_data)):
     chem_pot[averaged_T>1] = np.nan
     chem_pot[averaged_T<0] = np.nan
 
-    plt.figure('chemical potential')
+    plt.figure('excess chemical potential')
     plt.clf()
 #    plt.title(f'{moves[t]} moves')
     plt.pcolor(N,E,chem_pot)
     plt.xlabel('$N$')
     plt.ylabel('$E$')
     plt.colorbar()
+
+    # U_exc = T*S_exc - p_exc*A + mu_exc*N # in two dimensions volume -> area
+    # p = p_ideal + p_exc = kT*N/A + p_exc
 
     plt.pause(1)
 
