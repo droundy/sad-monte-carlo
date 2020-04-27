@@ -172,6 +172,8 @@ for t in range(len(entropy_data)):
     plt.ylabel('$E$')
     plt.colorbar()
 
+    # mu = mu_ideal + mu_exc = ~?~ kT ln(N/A) + mu_exc
+
     # U_exc = T*S_exc - p_exc*A + mu_exc*N # in two dimensions volume -> area
     # p = p_ideal + p_exc = kT*N/A + p_exc
 

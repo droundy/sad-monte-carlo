@@ -39,6 +39,7 @@ class Bins:
             self._width = data['Histogram']['width']
             self._lnw = np.array(data['Histogram']['lnw']['total'])
             self._hist = np.array(data['Histogram']['lnw']['count'])
+            self._extra = data['Histogram']['extra']
             assert(len(self._lnw) == len(self._hist))
             self._energy = np.arange(self._min + 0.5*self._width,
                                      self._min + len(self._lnw)*self._width,
@@ -52,6 +53,9 @@ class Bins:
     def lnw(self, E=None):
         if self._kind == 'Histogram':
             return self._lnw
+    def mean_extra(self, label):
+        if self._kind == 'Histogram':
+            return np.array(self._extra[label]['total'])/np.array(self._extra[label]['count'])
 
 class MC:
     """ The state of a Monte Carlo simulation """
@@ -95,6 +99,11 @@ class MC:
                  print('where is the data?!')
                  print(hist)
          return lnw
+    def excess_pressure(self):
+        if 'pressure' not in self._bins._extra:
+            return np.zeros_like(self.energy())
+        return self._bins.mean_extra('pressure')
+    # TO DO: add temperature method
     def find_entropy(self, E):
          lnw = self.entropy()
          e = self.energy()
@@ -117,11 +126,11 @@ all_moves = []
 all_max_entropy_errors = {}
 all_last = {}
 all_labels = {}
+all_figures = set({})
 for fs in things:
-    plt.figure('histogram')
-    plt.clf()
+    for fig in all_figures:
+        fig.clf()
     plt.figure('entropy')
-    plt.clf()
     plt.plot(ref.energy(), ref.entropy() - ref.entropy().max(), ':', color='gray', label=reference)
     added_move = False
     for i in range(len(fs)):
@@ -149,14 +158,27 @@ for fs in things:
             all_max_entropy_errors[label] = []
         all_max_entropy_errors[label].append(max_entropy_error(mc))
 
-        plt.figure('histogram')
+        all_figures.add(plt.figure('histogram'))
         plt.title(title)
         plt.plot(mc.energy(), mc.histogram(), label=label, alpha=alpha)
+        plt.xlabel('$E$')
+        plt.ylabel('$H$')
         plt.legend(loc='best')
 
-        plt.figure('entropy')
+        all_figures.add(plt.figure('entropy'))
         plt.title(title)
         plt.plot(mc.energy(), mc.entropy() - mc.entropy().max(), label=label, alpha=alpha)
+        plt.xlabel('$E$')
+        plt.ylabel('$S_{exc}$')
+        plt.legend(loc='best')
+
+        # TO DO: add temperature vs energy plot
+
+        all_figures.add(plt.figure('excess pressure'))
+        plt.title(title)
+        plt.plot(mc.energy(), mc.excess_pressure(), label=label, alpha=alpha)
+        plt.xlabel('$E$')
+        plt.ylabel('$p_{exc}$')
         plt.legend(loc='best')
 
     # plt.show()
