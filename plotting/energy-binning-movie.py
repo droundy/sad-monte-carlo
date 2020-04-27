@@ -103,7 +103,12 @@ class MC:
         if 'pressure' not in self._bins._extra:
             return np.zeros_like(self.energy())
         return self._bins.mean_extra('pressure')
-    # TO DO: add temperature method
+    # TO DO: add temperature method, add pressure method (any more?)
+
+    # We can also compute chemical potential mu_exc (and later mu) from:
+    # G = U - TS + pV
+    # G_exc = U_exc - T S_exc + p_exc V
+    # mu_exc = G_exc/N
     def find_entropy(self, E):
          lnw = self.entropy()
          e = self.energy()
