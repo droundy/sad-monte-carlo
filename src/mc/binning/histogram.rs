@@ -143,6 +143,9 @@ impl Bins {
     }
     fn prep_for_e(&mut self, e: Energy) {
         assert!(self.width > Energy::new(0.0));
+        if self.lnw.count.len() == 0 {
+            self.min = (e/self.width).value().floor()*self.width;
+        }
         while e < self.min {
             // this is a little wasteful, but seems the easiest way to
             // ensure we end up with enough room.

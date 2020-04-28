@@ -8,6 +8,7 @@ use std::default::Default;
 use auto_args::AutoArgs;
 
 pub mod histogram;
+pub mod linear;
 
 /// A constant string that we want to use as a parameter name.
 #[derive(Hash, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize, Clone, Copy)]
@@ -300,13 +301,20 @@ pub trait Binning : Default + serde::Serialize + serde::de::DeserializeOwned+ st
 #[cfg(test)]
 pub fn test_binning<B: Binning>() {
     use crate::system::units;
+    println!("running a binning test!");
     let eps = units::EPSILON;
     let mut b = B::default();
+    println!("made default");
     assert_eq!(b.get_count(eps), 0.0/eps);
+    println!("tested get_count");
     b.increment_count(eps, 1.0);
+    println!("incremented count!");
     assert!(b.get_count(eps) > 0.0/eps);
+    println!("ran get_count!");
     let mydat = "datum".into();
+    println!("interned");
     b.accumulate_extra(mydat, eps, 7.0);
+    println!("accumulated extra!");
     assert_eq!(b.mean_extra(mydat, eps), 7.0);
     assert_eq!(b.total_extra(mydat, eps), 7.0);
     assert_eq!(b.max_total_extra(mydat), 7.0);
