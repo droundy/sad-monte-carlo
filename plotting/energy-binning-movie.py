@@ -99,6 +99,28 @@ class MC:
                  print('where is the data?!')
                  print(hist)
          return lnw
+    def temperature(self):
+        energy = self.energy()
+        entropy = self.entropy()
+        temp = np.zeros_like(entropy)
+        for t in range(0, len(entropy)):
+            for i in range(0, len(energy)):
+                if i == 0:
+                    dE = energy[i+1] - energy[i]
+                    dS = entropy[t][i+1] - entropy[t][i]
+                elif i == len(energy)-1:
+                    dE = energy[i] - energy[i-1]
+                    dS = entropy[t][i] - entropy[t][i-1]
+                else:
+                    dE = energy[i+1] - energy[i-1]
+                    dS = entropy[t][i+1] - entropy[t][i-1]
+                try:
+                    temp[t][i] = float(dE/dS)
+                except ZeroDivisionError:
+                    if dE > 0:
+                        temp[t][i] = -float('inf')
+                    temp[t][i] = float('inf') #if dE <= 0
+        return temp
     def excess_pressure(self):
         if 'pressure' not in self._bins._extra:
             return np.zeros_like(self.energy())
@@ -177,7 +199,12 @@ for fs in things:
         plt.ylabel('$S_{exc}$')
         plt.legend(loc='best')
 
-        # TO DO: add temperature vs energy plot
+        all_figures.add(plt.figure('energy_temperature'))
+        plt.title(title)
+        plt.plot(mc.energy(), mc.temperature(), label=label, alpha=alpha)
+        plt.xlabel('$E$')
+        plt.ylabel('$T$')
+        plt.legend(loc='upper right')
 
         all_figures.add(plt.figure('excess pressure'))
         plt.title(title)
