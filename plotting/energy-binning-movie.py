@@ -103,23 +103,24 @@ class MC:
         energy = self.energy()
         entropy = self.entropy()
         temp = np.zeros_like(entropy)
-        for t in range(0, len(entropy)):
-            for i in range(0, len(energy)):
-                if i == 0:
-                    dE = energy[i+1] - energy[i]
-                    dS = entropy[t][i+1] - entropy[t][i]
-                elif i == len(energy)-1:
-                    dE = energy[i] - energy[i-1]
-                    dS = entropy[t][i] - entropy[t][i-1]
-                else:
-                    dE = energy[i+1] - energy[i-1]
-                    dS = entropy[t][i+1] - entropy[t][i-1]
-                try:
-                    temp[t][i] = float(dE/dS)
-                except ZeroDivisionError:
-                    if dE > 0:
-                        temp[t][i] = -float('inf')
-                    temp[t][i] = float('inf') #if dE <= 0
+        if len(entropy) < 2:
+            return temp
+        for i in range(0, len(energy)):
+            if i == 0:
+                dE = energy[i+1] - energy[i]
+                dS = entropy[i+1] - entropy[i]
+            elif i == len(energy)-1:
+                dE = energy[i] - energy[i-1]
+                dS = entropy[i] - entropy[i-1]
+            else:
+                dE = energy[i+1] - energy[i-1]
+                dS = entropy[i+1] - entropy[i-1]
+            try:
+                temp[i] = float(dE/dS)
+            except ZeroDivisionError:
+                if dE > 0:
+                    temp[i] = -float('inf')
+                temp[i] = float('inf') #if dE <= 0
         return temp
     def excess_pressure(self):
         if 'pressure' not in self._bins._extra:
