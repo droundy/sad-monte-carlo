@@ -2,6 +2,7 @@
 
 import yaml, sys, argparse, cbor, glob, itertools
 import numpy as np
+import scipy.constants as scipy
 import matplotlib.pyplot as plt
 
 def latex_float(x):
@@ -99,6 +100,8 @@ class MC:
                  print('where is the data?!')
                  print(hist)
          return lnw
+    def density(self):
+        return 1.0
     def temperature(self):
         energy = self.energy()
         entropy = self.entropy()
@@ -126,6 +129,15 @@ class MC:
         if 'pressure' not in self._bins._extra:
             return np.zeros_like(self.energy())
         return self._bins.mean_extra('pressure')
+    def pressure(self):
+        p_excess = self.excess_pressure()
+        temp = self.temperature()
+        p_ideal = np.zeros_like(p_excess)
+        pressure = np.zeros_like(p_excess)
+        for i in range(0, len(temp)):
+            p_ideal[i] = self.density() * scipy.k * temp[i]
+            pressure[i] = p_excess[i] + p_ideal[i]
+        return pressure
     # TO DO: add temperature method, add pressure method (any more?)
 
     # We can also compute chemical potential mu_exc (and later mu) from:
@@ -205,13 +217,27 @@ for fs in things:
         plt.plot(mc.energy(), mc.temperature(), label=label, alpha=alpha)
         plt.xlabel('$E$')
         plt.ylabel('$T$')
-        plt.legend(loc='upper right')
+        plt.legend(loc='best')
 
         all_figures.add(plt.figure('excess pressure'))
         plt.title(title)
         plt.plot(mc.energy(), mc.excess_pressure(), label=label, alpha=alpha)
         plt.xlabel('$E$')
         plt.ylabel('$p_{exc}$')
+        plt.legend(loc='best')
+        
+        all_figures.add(plt.figure('energy_pressure'))
+        plt.title(title)
+        plt.plot(mc.energy(), mc.pressure(), label=label, alpha=alpha)
+        plt.xlabel('$E$')
+        plt.ylabel('$P$')
+        plt.legend(loc='best')
+        
+        all_figures.add(plt.figure('temperature_pressure'))
+        plt.title(title)
+        plt.plot(mc.temperature(), mc.pressure(), label=label, alpha=alpha)
+        plt.xlabel('$T$')
+        plt.ylabel('$P$')
         plt.legend(loc='best')
 
     # plt.show()
