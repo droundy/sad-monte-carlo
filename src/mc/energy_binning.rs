@@ -59,6 +59,8 @@ pub struct EnergyMCParams {
     min_allowed_energy: Option<Energy>,
     /// The highest energy to allow.
     max_allowed_energy: Option<Energy>,
+    /// The width of an optional high-resolution histogram
+    pub high_resolution_de: Option<Energy>,
     _binning: binning::BinningParams,
     _moves: MoveParams,
     _report: plugin::ReportParams,
@@ -75,6 +77,7 @@ impl Default for EnergyMCParams {
             seed: None,
             min_allowed_energy: None,
             max_allowed_energy: None,
+            high_resolution_de: None,
             _moves: MoveParams::TranslationScale(0.05*units::SIGMA),
             _report: plugin::ReportParams::default(),
             _save: plugin::SaveParams::default(),
@@ -118,6 +121,8 @@ pub struct EnergyMC<S> {
 
     /// The parameters describing the bins
     pub bins: binning::Bins,
+    /// The width of an optional high-resolution histogram
+    pub high_resolution: Option<binning::histogram::Bins>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -185,6 +190,18 @@ impl Method {
             }
             Method::WL { .. } => {
                 let hist = "hist".into();
+                if mc.min_allowed_energy.is_some() &&
+                    mc.bins.get_count(mc.min_allowed_energy.unwrap()) == PerEnergy::new(0.) {
+                        println!("    WL:  We only got down to {} > {}",
+                                 mc.bins.min_energy().pretty(),
+                                 mc.min_allowed_energy.unwrap().pretty());
+                    }
+                if mc.max_allowed_energy.is_some() &&
+                    mc.bins.get_count(mc.max_allowed_energy.unwrap()) == PerEnergy::new(0.) {
+                        println!("    WL:  We only got up to {} < {}",
+                                 mc.bins.max_energy().pretty(),
+                                 mc.max_allowed_energy.unwrap().pretty());
+                    }
                 print!("WL:  We have reached flatness {:.2}!",
                          (mc.bins.min_count_extra(hist)/mc.bins.mean_count_extra(hist)).pretty());
             }
@@ -286,6 +303,9 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         let old_highest_hist = self.bins.max_count();
         let old_hist_here = self.bins.get_count(energy);
         self.bins.increment_count(energy, gamma);
+        if let Some(bins) = &mut self.high_resolution {
+            bins.increment_count(energy, 0.);
+        }
         let mut gamma_changed = false;
         let mut switch_to_samc: Option<f64> = None;
         match self.method {
@@ -402,7 +422,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     {
                         gamma_changed = true;
                         *gamma *= 0.5;
-                        let flatness = self.bins.min_count_extra(hist)/self.bins.mean_count_extra(hist);
+                        let flatness = lowest_hist/self.bins.mean_count_extra(hist);
                         self.bins.zero_out_extra(hist);
                         if let Some(min_gamma) = min_gamma {
                             if *gamma < min_gamma {
@@ -485,6 +505,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             max_allowed_energy: params.max_allowed_energy,
 
             bins: binning::Bins::from_params(&system, params._binning),
+            high_resolution: params.high_resolution_de.map(|de| binning::histogram::Bins::new(system.energy(), de)),
 
             translation_scale: match params._moves {
                 MoveParams::TranslationScale(x) => x,
