@@ -54,6 +54,11 @@ pub enum BinningParams {
         /// A histogram with this bin width
         bin: Energy,
     },
+    /// Use a linear interpolation
+    Linear {
+        /// A regularly spaced linear interpolation with this bin width
+        bin: Energy,
+    },
 }
 
 impl Default for BinningParams {
@@ -67,6 +72,8 @@ impl Default for BinningParams {
 pub enum Bins {
     /// Just a plain histogram
     Histogram( histogram::Bins ),
+    /// A regularly spaced linear interpolation
+    Linear( linear::Bins ),
 }
 
 impl Default for Bins {
@@ -82,6 +89,9 @@ impl Bins {
             BinningParams::Histogram { bin } => {
                 Bins::Histogram(histogram::Bins::new(sys.energy(), bin))
             }
+            BinningParams::Linear { bin } => {
+                Bins::Linear(linear::Bins::new(sys.energy(), bin))
+            }
         }
     }
 }
@@ -91,124 +101,147 @@ impl Binning for Bins {
     fn num_states(&self) -> usize {
         match self {
             Bins::Histogram(b) => b.num_states(),
+            Bins::Linear(b) => b.num_states(),
         }
     }
     fn count_states<F: Fn(Energy, PerEnergy) -> bool>(&self, f: F) -> usize {
         match self {
             Bins::Histogram(b) => b.count_states(f),
+            Bins::Linear(b) => b.count_states(f),
         }
     }
 
     fn increment_count(&mut self, e: Energy, gamma: f64) {
         match self {
             Bins::Histogram(b) => b.increment_count(e, gamma),
+            Bins::Linear(b) => b.increment_count(e, gamma),
         }
     }
 
     fn get_lnw(&self, e: Energy) -> f64 {
         match self {
             Bins::Histogram(b) => b.get_lnw(e),
+            Bins::Linear(b) => b.get_lnw(e),
         }
     }
     fn get_count(&self, e: Energy) -> PerEnergy {
         match self {
             Bins::Histogram(b) => b.get_count(e),
+            Bins::Linear(b) => b.get_count(e),
         }
     }
 
     fn set_lnw<F: Fn(Energy, PerEnergy) -> Option<f64>>(&mut self, f: F) {
         match self {
             Bins::Histogram(b) => b.set_lnw(f),
+            Bins::Linear(b) => b.set_lnw(f),
         }
     }
     fn max_lnw(&self) -> f64 {
         match self {
             Bins::Histogram(b) => b.max_lnw(),
+            Bins::Linear(b) => b.max_lnw(),
         }
     }
     fn min_lnw(&self) -> f64 {
         match self {
             Bins::Histogram(b) => b.min_lnw(),
+            Bins::Linear(b) => b.min_lnw(),
         }
     }
 
     fn total_count(&self) -> u64 {
         match self {
             Bins::Histogram(b) => b.total_count(),
+            Bins::Linear(b) => b.total_count(),
         }
     }
     fn max_count(&self) -> PerEnergy {
         match self {
             Bins::Histogram(b) => b.max_count(),
+            Bins::Linear(b) => b.max_count(),
         }
     }
     fn min_count(&self) -> PerEnergy {
         match self {
             Bins::Histogram(b) => b.min_count(),
+            Bins::Linear(b) => b.min_count(),
         }
     }
 
     fn accumulate_extra(&mut self, name: Interned, e: Energy, value: f64) {
         match self {
             Bins::Histogram(b) => b.accumulate_extra(name, e, value),
+            Bins::Linear(b) => b.accumulate_extra(name, e, value),
         }
     }
     fn zero_out_extra(&mut self, name: Interned) {
         match self {
             Bins::Histogram(b) => b.zero_out_extra(name),
+            Bins::Linear(b) => b.zero_out_extra(name),
         }
     }
     fn total_extra(&self, name: Interned, e: Energy) -> f64 {
         match self {
             Bins::Histogram(b) => b.total_extra(name, e),
+            Bins::Linear(b) => b.total_extra(name, e),
         }
     }
     fn mean_count_extra(&self, extra: Interned) -> PerEnergy {
         match self {
             Bins::Histogram(b) => b.mean_count_extra(extra),
+            Bins::Linear(b) => b.mean_count_extra(extra),
         }
     }
 
     fn mean_extra(&self, name: Interned, e: Energy) -> f64 {
         match self {
             Bins::Histogram(b) => b.mean_extra(name, e),
+            Bins::Linear(b) => b.mean_extra(name, e),
         }
     }
 
     fn min_energy(&self) -> Energy {
         match self {
             Bins::Histogram(b) => b.min_energy(),
+            Bins::Linear(b) => b.min_energy(),
         }
     }
     fn max_energy(&self) -> Energy {
         match self {
             Bins::Histogram(b) => b.max_energy(),
+            Bins::Linear(b) => b.max_energy(),
         }
     }
 
     fn min_total_extra(&self, name: Interned) -> f64 {
         match self {
             Bins::Histogram(b) => b.min_total_extra(name),
+            Bins::Linear(b) => b.min_total_extra(name),
         }
     }
     fn max_total_extra(&self, name: Interned) -> f64 {
         match self {
             Bins::Histogram(b) => b.max_total_extra(name),
+            Bins::Linear(b) => b.max_total_extra(name),
         }
     }
     fn min_count_extra(&self, name: Interned) -> PerEnergy {
         match self {
             Bins::Histogram(b) => b.min_count_extra(name),
+            Bins::Linear(b) => b.min_count_extra(name),
         }
     }
     fn total_count_extra(&self, name: Interned) -> u64 {
         match self {
             Bins::Histogram(b) => b.total_count_extra(name),
+            Bins::Linear(b) => b.total_count_extra(name),
         }
     }
     fn count_extra(&self, name: Interned, e: Energy) -> PerEnergy {
         match self {
             Bins::Histogram(b) => b.count_extra(name, e),
+            Bins::Linear(b) => b.count_extra(name, e),
         }
     }
     fn new(e: Energy, de: Energy) -> Self {
