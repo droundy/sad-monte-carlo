@@ -73,6 +73,9 @@ T = np.zeros((col, row))
 T_inv = np.zeros((col, row))
 
 pressure = np.zeros((col, row))
+p_ideal = np.zeros((col, row))
+p_exc = np.zeros((col, row))
+gibbs_free= np.zeros((col, row))
 
 for t in range(len(entropy_data)):
 
@@ -88,6 +91,7 @@ for t in range(len(entropy_data)):
     S[hist==0] = np.nan
     S_excess[hist==0] = np.nan
     hist[hist==0] = np.nan
+
     plt.figure('entropy')
     plt.clf()
 #   plt.title(f'{moves[t]} moves')
@@ -116,7 +120,6 @@ for t in range(len(entropy_data)):
 #    plt.title(f'{moves[t]} moves')
     plt.pcolor(N,E,hist)
     plt.colorbar()
-
 
     for i in np.arange(0,col-1,1):
         for j in np.arange(0,row,1):
@@ -166,17 +169,57 @@ for t in range(len(entropy_data)):
 
     plt.figure('excess chemical potential')
     plt.clf()
-#    plt.title(f'{moves[t]} moves')
+    #plt.title(f'{moves[t]} moves')
     plt.pcolor(N,E,chem_pot)
     plt.xlabel('$N$')
     plt.ylabel('$E$')
     plt.colorbar()
 
+    """
+    for i in np.arange(0,col-1,1):
+        for j in np.arange(0,row-1,1):
+            gibbs_free[i][j] = energy_data[i][j] - 2* T[i][j] * s_excess[i][j]
+
+    """
     # mu = mu_ideal + mu_exc = ~?~ kT ln(N/A) + mu_exc
-
+    #mu_ideal = T[i][j] * np.log(number_data[][]/N_sites)
     # U_exc = T*S_exc - p_exc*A + mu_exc*N # in two dimensions volume -> area
-    # p = p_ideal + p_exc = kT*N/A + p_exc
 
+
+    for i in np.arange(0,col-1,1):
+        for j in np.arange(0,row-1,1):
+            p_exc[i][j] = (T[i][j] * S_excess[i][j] + chem_pot[i][j] * N[i][j] - energy_data[i][j])/N_sites**2
+            p_ideal = T[i][j] * number_data[i][j] / N_sites
+
+    # p = p_ideal + p_exc = kT*N/A (A = number of lattices, N = number of particles) + p_exc
+    pressure = p_ideal + p_exc
+
+    print(pressure)
+
+    """
+    pressure[pressure==0] = np.nan
+    pressure[T<0] = np.nan
+    pressure[T>1] = np.nan
+    pressure[averaged_T>1] = np.nan
+    pressure[averaged_T<0] = np.nan
+    """
+
+    plt.figure('pressure')
+    plt.clf()
+    #pressure = T(ds/dv)U,N
+    plt.pcolor(N,E,pressure)
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    plt.colorbar()
+
+    """
+    plt.figure('gibbs')
+    plt.clf()
+    plt.pcolor(N,E,gibbs_free)
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    plt.colorbar()
+    """
     plt.pause(1)
 
 plt.ioff()
