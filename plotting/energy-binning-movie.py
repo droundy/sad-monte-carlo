@@ -138,6 +138,20 @@ class MC:
             p_ideal[i] = self.density() * scipy.k * temp[i]
             pressure[i] = p_excess[i] + p_ideal[i]
         return pressure
+    def chem_potential(self):
+        energy = self.energy()
+        entropy = self.entropy()
+        temp = self.temperature()
+        pressure = self.pressure()
+        volume = self.volume()
+        N = 32
+        
+        G = np.zeros_like(energy)
+        potential = np.zeros_like(energy)
+        for i in range(0, len(energy)):
+            G[i] = energy[i] - (temp[i]*entropy[i]) + (pressure[i]*volume)
+            potential[i] = G[i]/N
+        return potential
     # TO DO: add temperature method, add pressure method (any more?)
 
     # We can also compute chemical potential mu_exc (and later mu) from:
@@ -238,6 +252,13 @@ for fs in things:
         plt.plot(mc.temperature(), mc.pressure(), label=label, alpha=alpha)
         plt.xlabel('$T$')
         plt.ylabel('$P$')
+        plt.legend(loc='best')
+        
+        all_figures.add(plt.figure('energy potential'))
+        plt.title(title)
+        plt.plot(mc.energy(), mc.chem_potential(), label=label, alpha=alpha)
+        plt.xlabel('$E$')
+        plt.ylabel('$miu$')
         plt.legend(loc='best')
 
     # plt.show()
