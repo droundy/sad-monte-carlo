@@ -104,6 +104,8 @@ impl BinCounts {
         let offset = fidx - idx as f64;
         if idx < self.total.len()-1 {
             self.total[idx]*(1.0 - offset) + self.total[idx+1]*offset
+        } else if idx < self.count.len() {
+            self.total[idx]*(1.0 - offset)
         } else {
             0.0
         }
@@ -113,6 +115,8 @@ impl BinCounts {
         let offset = fidx - idx as f64;
         if idx + 1 < self.count.len() {
             self.count[idx]*(1.0 - offset) + self.count[idx+1]*offset
+        } else if idx < self.count.len() {
+            self.count[idx]*(1.0 - offset)
         } else {
             0.0
         }
@@ -208,8 +212,9 @@ impl Binning for Bins {
         self.prep_for_e(e);
         let idx = self.energy_to_index(e);
         let int_idx = idx as usize;
+        let rescaled_gamma = *(gamma*Energy::new(1.)/self.width).value();
         self.lnw.increment_count(self.index_to_energy(int_idx),
-                                 self.index_to_energy(int_idx+1), idx, gamma);
+                                 self.index_to_energy(int_idx+1), idx, rescaled_gamma);
     }
     fn set_lnw<F: Fn(Energy, PerEnergy) -> Option<f64>>(&mut self, f: F) {
         for i in 0..self.lnw.count.len() {
@@ -239,7 +244,7 @@ impl Binning for Bins {
     }
     fn get_count(&self, e: Energy) -> PerEnergy {
         let idx = self.energy_to_index(e);
-        self.lnw.get_count(idx) as f64/self.width
+        self.lnw.get_count(idx)/self.width
     }
     fn max_lnw(&self) -> f64 {
         self.lnw.max_total
@@ -248,10 +253,10 @@ impl Binning for Bins {
         self.lnw.min_total
     }
     fn max_count(&self) -> PerEnergy {
-        self.lnw.max_count as f64/self.width
+        self.lnw.max_count/self.width
     }
     fn min_count(&self) -> PerEnergy {
-        self.lnw.min_count as f64/self.width
+        self.lnw.min_count/self.width
     }
 
     fn accumulate_extra(&mut self, name: Interned, e: Energy, value: f64) {
