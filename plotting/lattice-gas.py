@@ -121,13 +121,15 @@ for t in range(len(entropy_data)):
     plt.pcolor(N,E,hist)
     plt.colorbar()
 
-    for i in np.arange(0,col-1,1):
-        for j in np.arange(0,row,1):
-            T[i][j] = dE / (S[i+1][j] - S[i][j])
+    # for i in np.arange(0,col-1,1):
+    #     for j in np.arange(0,row,1):
+    #         T[i][j] = dE / (S[i+1][j] - S[i][j])
 
-    for i in np.arange(0,col-1,1):
-        for j in np.arange(0,row-1,1):
-            T_inv[i][j] = (S[i+1][j] - S[i][j])/dE
+    # for i in np.arange(0,col-1,1):
+    #     for j in np.arange(0,row-1,1):
+    #         T_inv[i][j] = (S[i+1][j] - S[i][j])/dE
+    T_inv[:-1,:-1] = (S[1:,:-1] - S[:-1,:-1])/dE
+    T[:-1,:-1] = 1/T_inv[:-1,:-1]
 
     plt.figure('temperature')
     plt.clf()
@@ -156,10 +158,12 @@ for t in range(len(entropy_data)):
 
     averaged_T = np.zeros_like(T)
     chem_pot = np.zeros((col, row))
-    for i in np.arange(0,col-1,1):
-        for j in np.arange(0,row-1,1):
-            averaged_T[i][j] = 2/(T_inv[i][j+1] + T_inv[i][j])
-            chem_pot[i][j] = -averaged_T[i][j] * ((S[i][j+1] - S[i][j]) / (N[i][j+1] - N[i][j]))
+    # for i in np.arange(0,col-1,1):
+    #     for j in np.arange(0,row-1,1):
+    #         averaged_T[i][j] = 2/(T_inv[i][j+1] + T_inv[i][j])
+    #         chem_pot[i][j] = -averaged_T[i][j] * ((S[i][j+1] - S[i][j]) / (N[i][j+1] - N[i][j]))
+    averaged_T[:,:-1] = 2/(T_inv[:,1:] + T_inv[:,:-1])
+    chem_pot[:,:-1] = -averaged_T[:,:-1] * (S[:,1:] - S[:,:-1]) / (number_data[:,1:] - number_data[:,:-1])
 
     chem_pot[chem_pot==0] = np.nan
     chem_pot[T<0] = np.nan
@@ -178,6 +182,7 @@ for t in range(len(entropy_data)):
     """
     for i in np.arange(0,col-1,1):
         for j in np.arange(0,row-1,1):
+            # G = chem_pot*number_data
             gibbs_free[i][j] = energy_data[i][j] - 2* T[i][j] * s_excess[i][j]
 
     """
@@ -186,15 +191,20 @@ for t in range(len(entropy_data)):
     # U_exc = T*S_exc - p_exc*A + mu_exc*N # in two dimensions volume -> area
 
 
-    for i in np.arange(0,col-1,1):
-        for j in np.arange(0,row-1,1):
-            p_exc[i][j] = (T[i][j] * S_excess[i][j] + chem_pot[i][j] * N[i][j] - energy_data[i][j])/N_sites**2
-            p_ideal = T[i][j] * number_data[i][j] / N_sites
+    # for i in np.arange(0,col-1,1):
+    #     for j in np.arange(0,row-1,1):
+    #         p_exc[i][j] = (T[i][j] * S_excess[i][j] + chem_pot[i][j] * N[i][j] - energy_data[i][j])/N_sites**2
+    #         p_ideal[i,j] = T[i][j] * number_data[i][j] / N_sites
+    print(T.shape, S_excess.shape, chem_pot.shape, N.shape, energy_data.shape)
+    print('N is', N[0,:10], '...')
+    print('number_data is', number_data[0,:10], '...')
+    p_exc = (T * S_excess + chem_pot * number_data - energy_data)/N_sites**2
+    p_ideal = T * number_data / N_sites
 
     # p = p_ideal + p_exc = kT*N/A (A = number of lattices, N = number of particles) + p_exc
     pressure = p_ideal + p_exc
 
-    print(pressure)
+    # print(pressure)
 
     """
     pressure[pressure==0] = np.nan
@@ -220,7 +230,10 @@ for t in range(len(entropy_data)):
     plt.ylabel('$E$')
     plt.colorbar()
     """
+    print('frame', t, '/', len(entropy_data))
     plt.pause(1)
+
+print("...and that's all, folks!")
 
 plt.ioff()
 plt.show()
