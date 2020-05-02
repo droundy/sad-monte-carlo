@@ -71,6 +71,8 @@ class MC:
     def cell(self):
         diag = self.data['system']['cell']['box_diagonal']
         return np.array([diag['x'], diag['y'], diag['z']])
+    def N(self):
+        return len(self.data['system']['cell']['positions'])
     def volume(self):
         cell = self.cell()
         return cell[0]*cell[1]*cell[2]
@@ -101,7 +103,7 @@ class MC:
                  print(hist)
          return lnw
     def density(self):
-        return 1.0
+        return self.N()/self.volume()
     def temperature(self):
         energy = self.energy()
         entropy = self.entropy()
@@ -144,13 +146,12 @@ class MC:
         temp = self.temperature()
         pressure = self.pressure()
         volume = self.volume()
-        N = 32
         
         G = np.zeros_like(energy)
         potential = np.zeros_like(energy)
         for i in range(0, len(energy)):
             G[i] = energy[i] - (temp[i]*entropy[i]) + (pressure[i]*volume)
-            potential[i] = G[i]/N
+            potential[i] = G[i]/self.N()
         return potential
     # TO DO: add temperature method, add pressure method (any more?)
 
@@ -254,8 +255,8 @@ for fs in things:
         plt.ylabel('$P$')
         plt.legend(loc='best')
         
-        all_figures.add(plt.figure('energy potential'))
-        plt.title(title)
+        all_figures.add(plt.figure('moves potential'))
+        plt.title("moves: " + str(mc.moves()))
         plt.plot(mc.energy(), mc.chem_potential(), label=label, alpha=alpha)
         plt.xlabel('$E$')
         plt.ylabel('$miu$')
