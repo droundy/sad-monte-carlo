@@ -45,17 +45,37 @@ class Bins:
             self._energy = np.arange(self._min + 0.5*self._width,
                                      self._min + len(self._lnw)*self._width,
                                      self._width)
+        if 'Linear' in data:
+            self._kind = 'Linear'
+            self._min = data['Linear']['min']
+            self._width = data['Linear']['width']
+            self._width = data['Linear']['width']
+            self._lnw = np.array(data['Linear']['lnw']['total'])
+            self._hist = np.array(data['Linear']['lnw']['count'])
+            self._extra = data['Linear']['extra']
+            assert(len(self._lnw) == len(self._hist))
+            self._energy = np.arange(self._min + 0.5*self._width,
+                                     self._min + len(self._lnw)*self._width,
+                                     self._width)
     def energy(self):
         if self._kind == 'Histogram':
+            return self._energy
+        elif self._kind == 'Linear':
             return self._energy
     def histogram(self, E=None):
         if self._kind == 'Histogram':
             return self._hist
+        elif self._kind == 'Linear':
+            return self._hist
     def lnw(self, E=None):
         if self._kind == 'Histogram':
             return self._lnw
+        elif self._kind == 'Linear':
+            return self._lnw
     def mean_extra(self, label):
         if self._kind == 'Histogram':
+            return np.array(self._extra[label]['total'])/np.array(self._extra[label]['count'])
+        elif self._kind == 'Linear':
             return np.array(self._extra[label]['total'])/np.array(self._extra[label]['count'])
 
 class MC:
