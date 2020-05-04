@@ -273,7 +273,7 @@ for fs in things:
         plt.title("moves: " + str(mc.moves()))
         plt.plot(mc.excess_energy(), mc.excess_chemical_potential(), label=label, alpha=alpha)
         plt.xlabel('$E$')
-        plt.ylabel(r'$\mu$')
+        plt.ylabel(r'$\mu$'+'_excess')
         plt.legend(loc='best')
 
     # plt.show()
