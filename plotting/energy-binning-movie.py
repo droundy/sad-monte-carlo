@@ -57,7 +57,7 @@ class Bins:
             self._energy = np.arange(self._min + 0.5*self._width,
                                      self._min + len(self._lnw)*self._width,
                                      self._width)
-    def energy(self):
+    def excess_energy(self):
         if self._kind == 'Histogram':
             return self._energy
         elif self._kind == 'Linear':
@@ -86,8 +86,6 @@ class MC:
             self._bins = Bins(self.data['bins'])
     def moves(self):
         return self.data['moves']
-    def energy(self):
-        return self.data['system']['E']
     def cell(self):
         diag = self.data['system']['cell']['box_diagonal']
         return np.array([diag['x'], diag['y'], diag['z']])
@@ -96,14 +94,14 @@ class MC:
     def volume(self):
         cell = self.cell()
         return cell[0]*cell[1]*cell[2]
-    def energy(self):
-        return self._bins.energy()
+    def excess_energy(self):
+        return self._bins.excess_energy()
     def histogram(self):
         return self._bins.histogram()
-    def entropy(self):
+    def excess_entropy(self):
          lnw = 1.0*self._bins.lnw()
          if 'Sad' in self.data['method']:
-             E = self.energy()
+             E = self.excess_energy()
              hist = self.histogram()
              too_lo = self.data['method']['Sad']['too_lo']
              too_hi = self.data['method']['Sad']['too_hi']
@@ -121,25 +119,25 @@ class MC:
              if hist.sum() == 0:
                  print('where is the data?!')
                  print(hist)
-         return lnw
+         return lnw - lnw.max()
     def density(self):
         return self.N()/self.volume()
     def temperature(self):
-        energy = self.energy()
-        entropy = self.entropy()
-        temp = np.zeros_like(entropy)
-        if len(entropy) < 2:
+        excess_energy = self.excess_energy()
+        excess_entropy = self.excess_entropy()
+        temp = np.zeros_like(excess_entropy)
+        if len(excess_entropy) < 2:
             return temp
-        for i in range(0, len(energy)):
+        for i in range(0, len(excess_energy)):
             if i == 0:
-                dE = energy[i+1] - energy[i]
-                dS = entropy[i+1] - entropy[i]
-            elif i == len(energy)-1:
-                dE = energy[i] - energy[i-1]
-                dS = entropy[i] - entropy[i-1]
+                dE = excess_energy[i+1] - excess_energy[i]
+                dS = excess_entropy[i+1] - excess_entropy[i]
+            elif i == len(excess_energy)-1:
+                dE = excess_energy[i] - excess_energy[i-1]
+                dS = excess_entropy[i] - excess_entropy[i-1]
             else:
-                dE = energy[i+1] - energy[i-1]
-                dS = entropy[i+1] - entropy[i-1]
+                dE = excess_energy[i+1] - excess_energy[i-1]
+                dS = excess_entropy[i+1] - excess_entropy[i-1]
             try:
                 temp[i] = float(dE/dS)
             except ZeroDivisionError:
@@ -149,7 +147,7 @@ class MC:
         return temp
     def excess_pressure(self):
         if 'pressure' not in self._bins._extra:
-            return np.zeros_like(self.energy())
+            return np.zeros_like(self.excess_energy())
         return self._bins.mean_extra('pressure')
     def pressure(self):
         p_excess = self.excess_pressure()
@@ -160,28 +158,24 @@ class MC:
             p_ideal[i] = self.density() * scipy.k * temp[i]
             pressure[i] = p_excess[i] + p_ideal[i]
         return pressure
-    def chem_potential(self):
-        energy = self.energy()
-        entropy = self.entropy()
+    def excess_chemical_potential(self):
+        excess_energy = self.excess_energy()
+        excess_entropy = self.excess_entropy()
         temp = self.temperature()
-        pressure = self.pressure()
+        excess_pressure = self.excess_pressure()
         volume = self.volume()
-        
-        G = np.zeros_like(energy)
-        potential = np.zeros_like(energy)
-        for i in range(0, len(energy)):
-            G[i] = energy[i] - (temp[i]*entropy[i]) + (pressure[i]*volume)
-            potential[i] = G[i]/self.N()
-        return potential
+
+        G = excess_energy - temp*excess_entropy + excess_pressure*volume
+        return G/self.N()
     # TO DO: add temperature method, add pressure method (any more?)
 
     # We can also compute chemical potential mu_exc (and later mu) from:
     # G = U - TS + pV
     # G_exc = U_exc - T S_exc + p_exc V
     # mu_exc = G_exc/N
-    def find_entropy(self, E):
-         lnw = self.entropy()
-         e = self.energy()
+    def find_excess_entropy(self, E):
+         lnw = self.excess_entropy()
+         e = self.excess_energy()
          return np.interp(E, e, lnw, left=0, right=0)
 
 plt.ion()
@@ -189,24 +183,24 @@ assert(len(args.dirname)>=1) # we need at least one dirname
 reference = sorted(glob.glob(args.dirname[0]+'/*.cbor'))[-1]
 ref = MC(reference)
 
-def max_entropy_error(mc):
-    E = ref.energy()
-    good_S = ref.entropy()
-    bad_S = mc.find_entropy(E)
+def max_excess_entropy_error(mc):
+    E = ref.excess_energy()
+    good_S = ref.excess_entropy()
+    bad_S = mc.find_excess_entropy(E)
     return (good_S - bad_S).max() - (good_S - bad_S).min()
 
 things = [sorted(glob.glob(dirname+'/*.cbor')) for dirname in args.dirname]
 things = itertools.zip_longest(*things)
 all_moves = []
-all_max_entropy_errors = {}
+all_max_excess_entropy_errors = {}
 all_last = {}
 all_labels = {}
 all_figures = set({})
 for fs in things:
     for fig in all_figures:
         fig.clf()
-    plt.figure('entropy')
-    plt.plot(ref.energy(), ref.entropy() - ref.entropy().max(), ':', color='gray', label=reference)
+    plt.figure('excess_entropy')
+    plt.plot(ref.excess_energy(), ref.excess_entropy() - ref.excess_entropy().max(), ':', color='gray', label=reference)
     added_move = False
     for i in range(len(fs)):
 
@@ -229,41 +223,41 @@ for fs in things:
         if not added_move:
             added_move = True
             all_moves.append(moves)
-        if label not in all_max_entropy_errors:
-            all_max_entropy_errors[label] = []
-        all_max_entropy_errors[label].append(max_entropy_error(mc))
+        if label not in all_max_excess_entropy_errors:
+            all_max_excess_entropy_errors[label] = []
+        all_max_excess_entropy_errors[label].append(max_excess_entropy_error(mc))
 
         all_figures.add(plt.figure('histogram'))
         plt.title(title)
-        plt.plot(mc.energy(), mc.histogram(), label=label, alpha=alpha)
+        plt.plot(mc.excess_energy(), mc.histogram(), label=label, alpha=alpha)
         plt.xlabel('$E$')
         plt.ylabel('$H$')
         plt.legend(loc='best')
 
-        all_figures.add(plt.figure('entropy'))
+        all_figures.add(plt.figure('excess_entropy'))
         plt.title(title)
-        plt.plot(mc.energy(), mc.entropy() - mc.entropy().max(), label=label, alpha=alpha)
+        plt.plot(mc.excess_energy(), mc.excess_entropy() - mc.excess_entropy().max(), label=label, alpha=alpha)
         plt.xlabel('$E$')
         plt.ylabel('$S_{exc}$')
         plt.legend(loc='best')
 
-        all_figures.add(plt.figure('energy_temperature'))
+        all_figures.add(plt.figure('excess_energy_temperature'))
         plt.title(title)
-        plt.plot(mc.energy(), mc.temperature(), label=label, alpha=alpha)
+        plt.plot(mc.excess_energy(), mc.temperature(), label=label, alpha=alpha)
         plt.xlabel('$E$')
         plt.ylabel('$T$')
         plt.legend(loc='best')
 
         all_figures.add(plt.figure('excess pressure'))
         plt.title(title)
-        plt.plot(mc.energy(), mc.excess_pressure(), label=label, alpha=alpha)
+        plt.plot(mc.excess_energy(), mc.excess_pressure(), label=label, alpha=alpha)
         plt.xlabel('$E$')
         plt.ylabel('$p_{exc}$')
         plt.legend(loc='best')
         
-        all_figures.add(plt.figure('energy_pressure'))
+        all_figures.add(plt.figure('excess_energy_pressure'))
         plt.title(title)
-        plt.plot(mc.energy(), mc.pressure(), label=label, alpha=alpha)
+        plt.plot(mc.excess_energy(), mc.pressure(), label=label, alpha=alpha)
         plt.xlabel('$E$')
         plt.ylabel('$P$')
         plt.legend(loc='best')
@@ -277,9 +271,9 @@ for fs in things:
         
         all_figures.add(plt.figure('moves potential'))
         plt.title("moves: " + str(mc.moves()))
-        plt.plot(mc.energy(), mc.chem_potential(), label=label, alpha=alpha)
+        plt.plot(mc.excess_energy(), mc.excess_chemical_potential(), label=label, alpha=alpha)
         plt.xlabel('$E$')
-        plt.ylabel('$miu$')
+        plt.ylabel(r'$\mu$')
         plt.legend(loc='best')
 
     # plt.show()
@@ -287,7 +281,7 @@ for fs in things:
 
 plt.figure('comparison')
 for label in all_labels.values():
-    plt.loglog(all_moves, all_max_entropy_errors[label], '.-', label=label)
+    plt.loglog(all_moves, all_max_excess_entropy_errors[label], '.-', label=label)
 plt.legend(loc='best')
 
 plt.ioff()
