@@ -417,7 +417,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     && (self.min_allowed_energy.is_none() || self.bins.get_count(self.min_allowed_energy.unwrap()) > PerEnergy::new(0.))
                     && (self.max_allowed_energy.is_none() || self.bins.get_count(self.max_allowed_energy.unwrap()) > PerEnergy::new(0.))
                 {
-                    if (inv_t && lowest_hist > PerEnergy::new(0.)) ||
+                    if ((true || inv_t) && lowest_hist > PerEnergy::new(0.)) ||
                        lowest_hist >= 0.8*self.bins.mean_count_extra(hist)
                     {
                         gamma_changed = true;
