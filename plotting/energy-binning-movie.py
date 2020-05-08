@@ -45,7 +45,7 @@ class Bins:
             self._energy = np.arange(self._min + 0.5*self._width,
                                      self._min + len(self._lnw)*self._width,
                                      self._width)
-        if 'Linear' in data:
+        elif 'Linear' in data:
             self._kind = 'Linear'
             self._min = data['Linear']['min']
             self._width = data['Linear']['width']
@@ -53,6 +53,18 @@ class Bins:
             self._lnw = np.array(data['Linear']['lnw']['total'])
             self._hist = np.array(data['Linear']['lnw']['count'])
             self._extra = data['Linear']['extra']
+            assert(len(self._lnw) == len(self._hist))
+            self._energy = np.arange(self._min + 0.5*self._width,
+                                     self._min + len(self._lnw)*self._width,
+                                     self._width)
+        else:
+            self._kind = 'Histogram'
+            self._min = data['min']
+            self._width = data['width']
+            self._width = data['width']
+            self._lnw = np.array(data['lnw']['total'])
+            self._hist = np.array(data['lnw']['count'])
+            self._extra = data['extra']
             assert(len(self._lnw) == len(self._hist))
             self._energy = np.arange(self._min + 0.5*self._width,
                                      self._min + len(self._lnw)*self._width,
@@ -77,6 +89,11 @@ class Bins:
             return np.array(self._extra[label]['total'])/np.array(self._extra[label]['count'])
         elif self._kind == 'Linear':
             return np.array(self._extra[label]['total'])/np.array(self._extra[label]['count'])
+    def extra_count(self, label):
+        if self._kind == 'Histogram':
+            return np.array(self._extra[label]['count'])
+        elif self._kind == 'Linear':
+            return np.array(self._extra[label]['count'])
 
 class MC:
     """ The state of a Monte Carlo simulation """
@@ -84,6 +101,10 @@ class MC:
         with open(filename, 'rb') as f:
             self.data = cbor.load(f)
             self._bins = Bins(self.data['bins'])
+            if 'high_resolution' in self.data:
+                self._high_resolution = Bins(self.data['high_resolution'])
+            else:
+                self._high_resolution = None
     def moves(self):
         return self.data['moves']
     def cell(self):
@@ -114,7 +135,7 @@ class MC:
              lnw[np.isnan(lnw)] = 0
              lnw[np.isinf(lnw)] = 0
          elif 'WL' in self.data['method'] and self.data['method']['WL']['gamma'] == 0:
-             hist = np.array(self.data['bins']['Histogram']['extra']['hist']['count'])
+             hist = self._bins.extra_count('hist')
              lnw[hist > 0] += np.log(hist[hist>0])
              if hist.sum() == 0:
                  print('where is the data?!')
@@ -227,13 +248,6 @@ for fs in things:
             all_max_excess_entropy_errors[label] = []
         all_max_excess_entropy_errors[label].append(max_excess_entropy_error(mc))
 
-        all_figures.add(plt.figure('histogram'))
-        plt.title(title)
-        plt.plot(mc.excess_energy(), mc.histogram(), label=label, alpha=alpha)
-        plt.xlabel('$E$')
-        plt.ylabel('$H$')
-        plt.legend(loc='best')
-
         all_figures.add(plt.figure('excess_entropy'))
         plt.title(title)
         plt.plot(mc.excess_energy(), mc.excess_entropy() - mc.excess_entropy().max(), label=label, alpha=alpha)
@@ -274,6 +288,20 @@ for fs in things:
         plt.plot(mc.excess_energy(), mc.excess_chemical_potential(), label=label, alpha=alpha)
         plt.xlabel('$E$')
         plt.ylabel(r'$\mu$'+'_excess')
+        plt.legend(loc='best')
+ 
+        all_figures.add(plt.figure('histogram'))
+        plt.title(title)
+        plt.plot(mc.excess_energy(), mc.histogram(), label=label, alpha=alpha)
+        if mc._high_resolution and len(mc.excess_energy())>1 and len(mc._high_resolution.excess_energy())>1:
+            delo = mc.excess_energy()[1] - mc.excess_energy()[0]
+            dehi = mc._high_resolution.excess_energy()[1] - mc._high_resolution.excess_energy()[0]
+            scale = delo/dehi
+            plt.plot(mc._high_resolution.excess_energy(),
+                     scale*mc._high_resolution.histogram(), ':', label=label+' hires', alpha=alpha)
+        
+        plt.xlabel('$E$')
+        plt.ylabel('$H$')
         plt.legend(loc='best')
 
     # plt.show()
