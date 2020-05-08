@@ -179,13 +179,8 @@ for t in range(len(entropy_data)):
     plt.ylabel('$E$')
     plt.colorbar()
 
-    """
-    for i in np.arange(0,col-1,1):
-        for j in np.arange(0,row-1,1):
-            # G = chem_pot*number_data
-            gibbs_free[i][j] = energy_data[i][j] - 2* T[i][j] * s_excess[i][j]
+    gibbs_free[:,:-1] = chem_pot[:,:-1]*number_data[:,1:]
 
-    """
     # mu = mu_ideal + mu_exc = ~?~ kT ln(N/A) + mu_exc
     #mu_ideal = T[i][j] * np.log(number_data[][]/N_sites)
     # U_exc = T*S_exc - p_exc*A + mu_exc*N # in two dimensions volume -> area
@@ -195,6 +190,7 @@ for t in range(len(entropy_data)):
     #     for j in np.arange(0,row-1,1):
     #         p_exc[i][j] = (T[i][j] * S_excess[i][j] + chem_pot[i][j] * N[i][j] - energy_data[i][j])/N_sites**2
     #         p_ideal[i,j] = T[i][j] * number_data[i][j] / N_sites
+
     print(T.shape, S_excess.shape, chem_pot.shape, N.shape, energy_data.shape)
     print('N is', N[0,:10], '...')
     print('number_data is', number_data[0,:10], '...')
@@ -204,36 +200,39 @@ for t in range(len(entropy_data)):
     # p = p_ideal + p_exc = kT*N/A (A = number of lattices, N = number of particles) + p_exc
     pressure = p_ideal + p_exc
 
-    # print(pressure)
-
-    """
-    pressure[pressure==0] = np.nan
-    pressure[T<0] = np.nan
-    pressure[T>1] = np.nan
-    pressure[averaged_T>1] = np.nan
-    pressure[averaged_T<0] = np.nan
-    """
-
     plt.figure('pressure')
     plt.clf()
-    #pressure = T(ds/dv)U,N
     plt.pcolor(N,E,pressure)
     plt.xlabel('$N$')
     plt.ylabel('$E$')
     plt.colorbar()
 
-    """
     plt.figure('gibbs')
     plt.clf()
     plt.pcolor(N,E,gibbs_free)
     plt.xlabel('$N$')
     plt.ylabel('$E$')
     plt.colorbar()
-    """
+
+
     print('frame', t, '/', len(entropy_data))
     plt.pause(1)
 
+
+
+
+
 print("...and that's all, folks!")
+
+print(N.shape)
+print(E.shape)
+gibbs_free.resize(col+1, row+1)
+print(gibbs_free.shape)
+plt.contour(N, E, gibbs_free, colors='black');
+#plt.imshow(gibbs_free, extent=[0, 5, 0, 5], origin='lower',
+#       cmap='RdGy', alpha=0.5)
+plt.colorbar();
+
 
 plt.ioff()
 plt.show()
