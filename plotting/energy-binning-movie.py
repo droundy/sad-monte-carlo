@@ -298,7 +298,7 @@ for fs in things:
             dehi = mc._high_resolution.excess_energy()[1] - mc._high_resolution.excess_energy()[0]
             scale = delo/dehi
             plt.plot(mc._high_resolution.excess_energy(),
-                     scale*mc._high_resolution.histogram(), ':', label=label+' hires', alpha=alpha)
+                     scale*mc._high_resolution.histogram(), ':', label=label+' hires', alpha=0.5*alpha)
         
         plt.xlabel('$E$')
         plt.ylabel('$H$')

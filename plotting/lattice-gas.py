@@ -78,6 +78,7 @@ p_exc = np.zeros((col, row))
 gibbs_free= np.zeros((col, row))
 
 for t in range(len(entropy_data)):
+    print('working on time', moves[t])
 
     S_excess = np.array(entropy_data[t])
     S_excess.resize(col, row)
@@ -86,8 +87,10 @@ for t in range(len(entropy_data)):
     S = S_excess + S_ideal
     hist = np.array(hist_data[t])*1.0 # the multiplication converts it to floating point values
     if hist.max() == 0:
+        print('there is no data in histogram!')
         continue
     hist.resize(col, row)
+    print('total data in hist is:', hist.sum())
     S[hist==0] = np.nan
     S_excess[hist==0] = np.nan
     hist[hist==0] = np.nan
