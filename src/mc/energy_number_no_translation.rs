@@ -9,7 +9,6 @@ use super::plugin::Plugin;
 use dimensioned::Dimensionless;
 use rand::{Rng, SeedableRng};
 use std::default::Default;
-use std::cell::{RefCell,Cell};
 use crate::prettyfloat::PrettyFloat;
 
 /// Parameters to configure a particular MC.
@@ -34,7 +33,7 @@ pub struct EnergyNumberMCParams {
     /// The energy binsize.
     energy_bin: Option<Energy>,
     _report: plugin::ReportParams,
-    _movies: MoviesParams,
+    _movies: plugin::MovieParams,
     _save: plugin::SaveParams,
 }
 
@@ -45,7 +44,7 @@ impl Default for EnergyNumberMCParams {
             seed: None,
             energy_bin: None,
             _report: plugin::ReportParams::default(),
-            _movies: MoviesParams::default(),
+            _movies: plugin::MovieParams::default(),
             _save: plugin::SaveParams::default(),
         }
     }
@@ -120,7 +119,7 @@ pub struct EnergyNumberMC<S> {
     /// Where to save the resume file.
     pub save_as: ::std::path::PathBuf,
     report: plugin::Report,
-    movies: Movies,
+    movies: plugin::Movie,
     save: plugin::Save,
     manager: plugin::PluginManager,
 }
@@ -167,26 +166,13 @@ impl Method {
             },
         }
     }
-}
-
-fn old_state_to_index(old_n: &[usize], old_e: &[Energy], s: State) -> Option<usize> {
-    if old_e.len() < 2 {
-        // This is a little hokey, but I don't think the data before
-        // we have discovered two states is very important to retain
-        // in the movies.
-        return None;
-    }
-    let width = old_e[1]-old_e[0];
-    let min_e = old_e[0] - width*0.5;
-    let num_n = old_n.len();
-    if s.E < min_e {
-        return None;
-    }
-    let i = (*((s.E - min_e)/width).value() as usize)*num_n + s.N;
-    if i < old_n.len() {
-        Some(i)
-    } else {
-        None
+    fn report<S: GrandSystem>(&self, mc: &EnergyNumberMC<S>) {
+        print!("    ");
+        // match self {
+        //     Method::Samc { .. } => {
+        //     }
+        // }
+        println!(" [gamma = {:.2}]", crate::prettyfloat::PrettyFloat(mc.gamma()));
     }
 }
 
@@ -271,8 +257,8 @@ impl<S: GrandSystem> EnergyNumberMC<S> {
                 if bins.prepare_for_state(e2) {
                     // Oops, we found a new energy, so let's regroup.
                     if *gamma != 1.0 || bins.histogram.len() == 0 {
-                        self.movies.new_gamma(self.moves, *gamma);
-                        self.movies.new_gamma(self.moves, 1.0);
+                        // self.movies.new_gamma(self.moves, *gamma);
+                        // self.movies.new_gamma(self.moves, 1.0);
                         println!("    WL: Starting fresh with {} energies",
                                  self.bins.lnw.len());
                         *gamma = 1.0;
@@ -331,8 +317,8 @@ impl<S: GrandSystem> EnergyNumberMC<S> {
             }
         }
         if gamma_changed {
-            self.movies.new_gamma(self.moves, gamma);
-            self.movies.new_gamma(self.moves, self.gamma());
+            // self.movies.new_gamma(self.moves, gamma);
+            // self.movies.new_gamma(self.moves, self.gamma());
         }
     }
 
@@ -409,7 +395,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
             rng: crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0)),
             save_as: save_as,
             report: plugin::Report::from(params._report),
-            movies: Movies::from(params._movies),
+            movies: plugin::Movie::from(params._movies),
             save: plugin::Save::from(params._save),
             manager: plugin::PluginManager::new(),
         }
@@ -469,6 +455,7 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
         }
 
         let plugins = [&self.report as &dyn Plugin<Self>,
+                       &Logger,
                        &self.movies,
                        &self.save,
         ];
@@ -491,217 +478,10 @@ impl<S: GrandSystem> MonteCarlo for EnergyNumberMC<S> {
     }
 }
 
-
-/// Do we want movies? Where?
-#[derive(AutoArgs, Debug)]
-pub struct MoviesParams {
-    // How often (logarithmically) do we want a movie frame? If this
-    // is 2.0, it means we want a frame every time the number of
-    // iterations doubles.
-    /// 2.0 means a frame every time iterations double.
-    pub movie_time: Option<f64>,
-    /// After how many moves do we start collecting movie data?
-    pub movie_start: Option<u64>,
-}
-
-impl Default for MoviesParams {
-    fn default() -> Self {
-        MoviesParams {
-            movie_time: None,
-            movie_start: None,
-        }
-    }
-}
-
-/// A plugin that saves movie data.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Movies {
-    movie_time: Option<f64>,
-    which_frame: Cell<i32>,
-    period: Cell<plugin::TimeToRun>,
-    entropy: RefCell<Vec<Vec<f64>>>,
-    histogram: RefCell<Vec<Vec<u64>>>,
-    time: RefCell<Vec<u64>>,
-    energy: RefCell<Vec<Energy>>,
-    number: RefCell<Vec<usize>>,
-    #[serde(default)]
-    gamma: RefCell<Vec<f64>>,
-    #[serde(default)]
-    gamma_time: RefCell<Vec<u64>>,
-}
-
-impl From<MoviesParams> for Movies {
-    fn from(params: MoviesParams) -> Self {
-        Movies {
-            movie_time: params.movie_time,
-            which_frame: Cell::new(0),
-            period: Cell::new(if params.movie_time.is_some() {
-                if let Some(start) = params.movie_start {
-                    plugin::TimeToRun::TotalMoves(start)
-                } else {
-                    plugin::TimeToRun::TotalMoves(1)
-                }
-            } else {
-                plugin::TimeToRun::Never
-            }),
-            entropy: RefCell::new(Vec::new()),
-            histogram: RefCell::new(Vec::new()),
-            time: RefCell::new(Vec::new()),
-            energy: RefCell::new(Vec::new()),
-            number: RefCell::new(Vec::new()),
-            gamma: RefCell::new(Vec::new()),
-            gamma_time: RefCell::new(Vec::new()),
-        }
-    }
-}
-impl Movies {
-    fn new_gamma(&self, t: u64, gamma: f64) {
-        self.gamma.borrow_mut().push(gamma);
-        self.gamma_time.borrow_mut().push(t);
-    }
-}
-impl<S: GrandSystem> Plugin<EnergyNumberMC<S>> for Movies {
-    fn run(&self, mc: &EnergyNumberMC<S>, _sys: &S) -> plugin::Action {
-        if let Some(movie_time) = self.movie_time {
-            let moves = mc.num_moves();
-            if plugin::TimeToRun::TotalMoves(moves) == self.period.get() {
-                println!("Saving movie...");
-                self.new_gamma(moves, mc.gamma());
-                // First, let's create the arrays for the time and
-                // energy indices.
-                self.time.borrow_mut().push(moves);
-                let new_number: Vec<_> =
-                    (0 .. mc.bins.lnw.len()).map(|i| mc.index_to_state(i).N).collect();
-                let new_energy: Vec<_> =
-                    (0 .. mc.bins.lnw.len()).map(|i| mc.index_to_state(i).E).collect();
-                let old_energy = self.energy.replace(new_energy.clone());
-                let old_number = self.number.replace(new_number.clone());
-
-
-                let histogram = &mc.bins.histogram;
-                let lnw = &mc.bins.lnw;
-                let entropy: Vec<_> = (0..new_energy.len()).map(|i| {
-                    *lnw[i].value()
-                }).collect();
-                let mut S = self.entropy.borrow_mut();
-                let mut hist_movie = self.histogram.borrow_mut();
-                if new_energy == old_energy && new_number == old_number {
-                    // We can just add a row, which means no work is needed.
-                } else {
-                    for v in S.iter_mut() {
-                        let mut newv = vec![0.0; entropy.len()];
-                        for i in 0..entropy.len() {
-                            let state = mc.index_to_state(i);
-                            if let Some(old_i) = old_state_to_index(&old_number, &old_energy, state) {
-                                newv[i] = v[old_i];
-                            }
-                        }
-                        *v = newv;
-                    }
-                    for v in hist_movie.iter_mut() {
-                        let mut newv = vec![0; entropy.len()];
-                        for i in 0..entropy.len() {
-                            let state = mc.index_to_state(i);
-                            if let Some(old_i) = old_state_to_index(&old_number, &old_energy, state) {
-                                newv[i] = v[old_i];
-                            }
-                        }
-                        *v = newv;
-                    }
-                }
-                S.push(entropy);
-                hist_movie.push(histogram.clone());
-
-                // Now decide when we need the next frame to be.
-                let mut which_frame = self.which_frame.get() + 1;
-                let mut next_time = (movie_time.powi(which_frame) + 0.5) as u64;
-                while next_time <= moves {
-                    which_frame += 1;
-                    next_time = (movie_time.powi(which_frame) + 0.5) as u64;
-                }
-                self.which_frame.set(which_frame);
-                self.period.set(plugin::TimeToRun::TotalMoves(next_time));
-                return plugin::Action::Save;
-            }
-        }
-        plugin::Action::None
-    }
-    fn run_period(&self) -> plugin::TimeToRun { self.period.get() }
-
-    /// This isn't really a movies thing, but there isn't a great
-    /// reason to create yet another plugin for an EnergyNumberMC-specific
-    /// log message.
-    fn log(&self, mc: &EnergyNumberMC<S>, sys: &S) {
-        let mut one_trip: Option<State> = None;
-        let mut ten_trips: Option<State> = None;
-        let mut hundred_trips: Option<State> = None;
-        let mut thousand_trips: Option<State> = None;
-        for (i, &trips) in mc.bins.round_trips.iter().enumerate() {
-            if one_trip.is_none() && trips >= 1 {
-                one_trip = Some(mc.index_to_state(i));
-            }
-            if ten_trips.is_none() && trips >= 10 {
-                ten_trips = Some(mc.index_to_state(i));
-            }
-            if hundred_trips.is_none() && trips >= 100 {
-                hundred_trips = Some(mc.index_to_state(i));
-            }
-            if thousand_trips.is_none() && trips >= 1000 {
-                thousand_trips = Some(mc.index_to_state(i));
-            }
-        }
-        let thousand_T = thousand_trips
-            .map(|e| format!(" ({:.1})",
-                             PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
-            .unwrap_or("".to_string());
-        let hundred_T = hundred_trips
-            .map(|e| format!(" ({:.1})",
-                             PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
-            .unwrap_or("".to_string());
-        let ten_T = ten_trips
-            .map(|e| format!(" ({:.1})",
-                             PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
-            .unwrap_or("".to_string());
-        let thousand_trips = thousand_trips.map(|e| format!("{}", e))
-            .unwrap_or("-".to_string());
-        let ten_trips = ten_trips.map(|e| format!("{}", e))
-            .unwrap_or("-".to_string());
-        let one_trip = one_trip.map(|e| format!("{}", e))
-            .unwrap_or("-".to_string());
-        let hundred_trips = hundred_trips.map(|e| format!("{}", e))
-            .unwrap_or("-".to_string());
-        if !mc.report.quiet {
-            println!("   {} * {}{} * {}{} * {}{} | {} currently {} {{{} {:.2}}}",
-                     one_trip,
-                     ten_trips, ten_T,
-                     hundred_trips, hundred_T,
-                     thousand_trips, thousand_T,
-                     mc.index_to_state(mc.bins.max_S_index),
-                     State::new(sys),
-                     mc.bins.num_states,
-                     PrettyFloat(mc.moves as f64/mc.bins.t_last as f64),
-            );
-            if let Method::WL { lowest_hist, highest_hist, total_hist, ref bins, .. } = mc.method {
-                if total_hist > 0 {
-                    let mut lowest = 123456789;
-                    let mut highest = 123456789;
-                    for (i,&h) in bins.histogram.iter().enumerate() {
-                        if h == lowest_hist && mc.bins.histogram[i] != 0 {
-                            lowest = i;
-                        }
-                        if h == highest_hist && mc.bins.histogram[i] != 0 {
-                            highest = i;
-                        }
-                    }
-                    println!("        WL:  flatness {:.1} with min {:.2} at {} and max {:.2} at {}!",
-                             PrettyFloat(lowest_hist as f64*mc.bins.num_states as f64
-                                         / total_hist as f64),
-                             PrettyFloat(lowest_hist as f64),
-                             mc.index_to_state(lowest),
-                             PrettyFloat(highest_hist as f64),
-                             mc.index_to_state(highest));
-                }
-            }
-        }
+#[derive(Serialize, Deserialize, Debug)]
+struct Logger;
+impl<S: GrandSystem> Plugin<EnergyNumberMC<S>> for Logger {
+    fn log(&self, mc: &EnergyNumberMC<S>, _sys: &S) {
+        mc.method.report(&mc);
     }
 }
