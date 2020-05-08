@@ -31,6 +31,30 @@ pub struct BinCounts {
     total_count: u64,
 }
 
+#[derive(Debug,Clone,Copy)]
+enum Idx {
+    None,
+    One(usize, f64),
+    Two(usize, f64),
+}
+
+impl Iterator for Idx {
+    type Item = (usize, f64);
+    fn next(&mut self) -> Option<(usize, f64)> {
+        match *self {
+            Idx::None => None,
+            Idx::One(i,o) => {
+                *self = Idx::None;
+                Some((i, 1.-o))
+            }
+            Idx::Two(i,o) => {
+                *self = Idx::One(i,o);
+                Some((i+1, o))
+            }
+        }
+    }
+}
+
 impl BinCounts {
     fn new(sz: usize) -> Self {
         BinCounts {
@@ -56,6 +80,20 @@ impl BinCounts {
         self.count.push(0.);
         self.min_total = 0.;
         self.min_count = 0.;
+    }
+    fn interpret_float_index(&self, fidx: f64) -> Idx {
+        if fidx < -1.0 {
+            Idx::None
+        } else if fidx < 0. {
+            Idx::One(0, -fidx)
+        } else if fidx < self.total.len() as f64 - 1. {
+            let i = fidx as usize;
+            Idx::Two(i, fidx - i as f64)
+        } else if fidx < self.total.len() as f64 {
+            Idx::One(self.total.len() - 1, fidx - (self.total.len() as f64 - 1.))
+        } else {
+            Idx::None
+        }
     }
     fn increment_count(&mut self, elo: Energy, ehi: Energy, fidx: f64, value: f64) {
         let idx = fidx as usize;
@@ -100,26 +138,18 @@ impl BinCounts {
     }
 
     fn get_total(&self, fidx: f64) -> f64 {
-        let idx = fidx as usize;
-        let offset = fidx - idx as f64;
-        if idx < self.total.len()-1 {
-            self.total[idx]*(1.0 - offset) + self.total[idx+1]*offset
-        } else if idx < self.count.len() {
-            self.total[idx]*(1.0 - offset)
-        } else {
-            0.0
+        let mut total = 0.;
+        for (i,f) in self.interpret_float_index(fidx) {
+            total += self.total[i]*f;
         }
+        total
     }
     fn get_count(&self, fidx: f64) -> f64 {
-        let idx = fidx as usize;
-        let offset = fidx - idx as f64;
-        if idx + 1 < self.count.len() {
-            self.count[idx]*(1.0 - offset) + self.count[idx+1]*offset
-        } else if idx < self.count.len() {
-            self.count[idx]*(1.0 - offset)
-        } else {
-            0.0
+        let mut total = 0.;
+        for (i,f) in self.interpret_float_index(fidx) {
+            total += self.count[i]*f;
         }
+        total
     }
 }
 
@@ -139,8 +169,21 @@ pub struct Bins {
 }
 
 #[test]
-fn test_histogram() {
+fn test_linear() {
     crate::mc::binning::test_binning::<Bins>();
+    println!("passed test_binning");
+    let mut bins = Bins::default();
+    bins.increment_count(Energy::new(1.9), 1.0);
+    assert!(bins.get_lnw(Energy::new(1.95)) > bins.get_lnw(Energy::new(1.85)));
+    assert!(bins.get_lnw(Energy::new(1.0)) > 0.0);
+    assert!(bins.get_lnw(Energy::new(0.51)) > 0.0);
+    assert!(bins.get_lnw(Energy::new(2.49)) > 0.0);
+    assert_eq!(bins.get_lnw(Energy::new(3.01)), 0.0);
+    for e in -100..100 {
+        let e = Energy::new(e as f64*0.125);
+        println!("{}: {}", e, bins.get_lnw(e));
+    }
+    assert_eq!(bins.get_lnw(Energy::new(-0.01)), 0.0);
 }
 
 impl Default for Bins {
@@ -161,11 +204,7 @@ impl Bins {
         self.min + (i as f64 + 0.5)*self.width
     }
     fn energy_to_index(&self, e: Energy) -> f64 {
-        if e < self.min {
-            1e60 // this is a bogus value for negative-index cases
-        } else {
-            *((e - self.min)/self.width).value()
-        }
+        *((e - self.min)/self.width).value()
     }
     fn prep_for_e(&mut self, e: Energy) {
         assert!(self.width > Energy::new(0.0));
