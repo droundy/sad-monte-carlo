@@ -37,8 +37,13 @@ for frame in frames:
     print(data_loaded['system']['E'])
     plt.figure('hist')
     plt.clf()
-    print(Nedges.shape, Eedges.shape, hist.shape, N.shape, E.shape)
-    plt.pcolormesh(Nedges, Eedges, hist)
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    hist_to_plot = hist*1.0
+    hist_to_plot[hist==0] = np.nan
+    plt.pcolormesh(Nedges, Eedges, hist_to_plot)
+    plt.colorbar().set_label('histogram')
+    plt.tight_layout()
 
     plt.pause(1)
 
