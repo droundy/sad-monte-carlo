@@ -138,7 +138,12 @@ impl Bins {
         if e < self.min {
             std::usize::MAX // this is a bogus value for negative-index cases
         } else {
-            *((e - self.min)/self.width).value() as usize
+            let i = *((e - self.min)/self.width).value();
+            if i == self.lnw.total.len() as f64 {
+                i as usize - 1
+            } else {
+                i as usize
+            }
         }
     }
     fn prep_for_e(&mut self, e: Energy) {
