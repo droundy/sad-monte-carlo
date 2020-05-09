@@ -534,10 +534,9 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             self.system.verify_energy();
         }
         let e1 = self.system.energy();
-        let mean_energy = "energy".into();
+        self.bins.accumulate_extra("energy".into(), e1, e1.value_unsafe);
         for (k,d) in self.system.data_to_collect(self.moves).into_iter() {
             self.bins.accumulate_extra(k, e1, d);
-            self.bins.accumulate_extra(mean_energy, e1, e1.value_unsafe);
         }
         let recent_scale = (1.0/self.moves as f64).sqrt();
         self.acceptance_rate *= 1. - recent_scale;
