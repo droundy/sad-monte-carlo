@@ -101,7 +101,7 @@ class MC:
         with open(filename, 'rb') as f:
             self.data = cbor.load(f)
             self._bins = Bins(self.data['bins'])
-            if 'high_resolution' in self.data:
+            if 'high_resolution' in self.data and self.data['high_resolution'] is not None:
                 self._high_resolution = Bins(self.data['high_resolution'])
             else:
                 self._high_resolution = None
