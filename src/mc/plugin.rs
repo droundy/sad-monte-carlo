@@ -209,17 +209,21 @@ impl<MC: MonteCarlo> Plugin<MC> for Report {
                     let frac_complete = moves as f64/max as f64;
                     let moves_left = if max >= moves { max - moves } else { 0 };
                     let time_left = (time_per_move*moves_left as f64) as u64;
-                    println!("[{}] {}% complete after {} ({} left, {:.1}us per move)",
+                    println!("[{}] {}% complete after {} ({} left, {:.1}us per move) E={}",
                              PrettyFloat(moves as f64),
                              (100.*frac_complete) as isize,
                              format_duration(runtime.as_secs()),
                              format_duration(time_left),
-                             PrettyFloat(time_per_move*1e6));
+                             PrettyFloat(time_per_move*1e6),
+                             _sys.energy().pretty(),
+                    );
                 } else {
-                    println!("[{}] after {} ({:.1}us per move)",
+                    println!("[{}] after {} ({:.1}us per move) E={}",
                              PrettyFloat(moves as f64),
                              format_duration(runtime.as_secs()),
-                             PrettyFloat(time_per_move*1e6));
+                             PrettyFloat(time_per_move*1e6),
+                             _sys.energy().pretty(),
+                    );
                 }
             }
             None => {
