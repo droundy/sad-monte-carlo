@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import yaml, sys, argparse, cbor, glob, itertools
+import yaml, sys, argparse, cbor, glob, itertools, os
 import numpy as np
 import scipy.constants as scipy
 import matplotlib.pyplot as plt
@@ -234,7 +234,7 @@ for fs in things:
             mc = MC(f)
             alpha = 1.0
 
-            label = f.split('/')[0]
+            label = os.path.dirname(f)
             all_labels[i] = label
             moves = mc.moves() # float(int(f.split('/')[1].split('.')[0]))
             title = '${}$'.format(latex_float(moves))
