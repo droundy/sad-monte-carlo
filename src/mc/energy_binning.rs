@@ -202,8 +202,9 @@ impl Method {
                                  mc.bins.max_energy().pretty(),
                                  mc.max_allowed_energy.unwrap().pretty());
                     }
-                print!("WL:  We have reached flatness {:.2}!",
-                         (mc.bins.min_count_extra(hist)/mc.bins.mean_count_extra(hist)).pretty());
+                print!("WL:  We have reached flatness {:.2} min: E={}!",
+                       (mc.bins.min_count_extra(hist)/mc.bins.mean_count_extra(hist)).pretty(),
+                       mc.bins.min_count_extra_energy(hist).pretty());
             }
         }
         println!(" [gamma = {:.2}]", crate::prettyfloat::PrettyFloat(mc.gamma()));
@@ -417,7 +418,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     && (self.min_allowed_energy.is_none() || self.bins.get_count(self.min_allowed_energy.unwrap()) > PerEnergy::new(0.))
                     && (self.max_allowed_energy.is_none() || self.bins.get_count(self.max_allowed_energy.unwrap()) > PerEnergy::new(0.))
                 {
-                    if ((true || inv_t) && lowest_hist > PerEnergy::new(0.)) ||
+                    if (inv_t && lowest_hist > PerEnergy::new(0.)) ||
                        lowest_hist >= 0.8*self.bins.mean_count_extra(hist)
                     {
                         gamma_changed = true;

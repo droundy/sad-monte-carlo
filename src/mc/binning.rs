@@ -232,6 +232,12 @@ impl Binning for Bins {
             Bins::Linear(b) => b.min_count_extra(name),
         }
     }
+    fn min_count_extra_energy(&self, name: Interned) -> Energy {
+        match self {
+            Bins::Histogram(b) => b.min_count_extra_energy(name),
+            Bins::Linear(b) => b.min_count_extra_energy(name),
+        }
+    }
     fn total_count_extra(&self, name: Interned) -> u64 {
         match self {
             Bins::Histogram(b) => b.total_count_extra(name),
@@ -313,6 +319,8 @@ pub trait Binning : Default + serde::Serialize + serde::de::DeserializeOwned+ st
     fn min_total_extra(&self, name: Interned) -> f64;
     /// Find the minimum extra count.
     fn min_count_extra(&self, name: Interned) -> PerEnergy;
+    /// Find the energy with minimum count
+    fn min_count_extra_energy(&self, name: Interned) -> Energy;
     /// Find the number of times we have counted this thing
     fn count_extra(&self, name: Interned, e: Energy) -> PerEnergy;
     /// Find the number of times we have counted this thing

@@ -422,6 +422,20 @@ impl Binning for Bins {
             PerEnergy::new(0.)
         }
     }
+    fn min_count_extra_energy(&self, name: Interned) -> Energy {
+        if let Some(data) = self.extra.get(&name) {
+            let c = data.min_count;
+            let mut i = 0;
+            for (j, x) in data.count.iter().cloned().enumerate() {
+                if x == c {
+                    i = j;
+                }
+            }
+            self.index_to_energy(i)
+        } else {
+            Energy::new(0.)
+        }
+    }
 
     fn max_energy(&self) -> Energy {
         self.max_e
