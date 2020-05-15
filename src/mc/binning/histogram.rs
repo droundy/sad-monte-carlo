@@ -27,8 +27,6 @@ pub struct BinCounts {
     max_count: u64,
     /// The energy that has the greatest count
     e_max_count: Energy,
-    /// The energy that has the lowest count
-    e_min_count: Energy,
     /// The total count
     total_count: u64,
 }
@@ -45,7 +43,6 @@ impl BinCounts {
             min_count: 0,
             max_count: 0,
             e_max_count: Energy::new(-std::f64::INFINITY),
-            e_min_count: Energy::new(-std::f64::INFINITY),
         }
     }
     fn insert_zero(&mut self) {
@@ -77,7 +74,6 @@ impl BinCounts {
         }
         if old_count == self.min_count {
             self.min_count = self.count.iter().cloned().min().unwrap();
-            self.e_min_count = e;
         }
         if self.count[idx] > self.max_count {
             self.max_count = self.count[idx];
@@ -349,7 +345,14 @@ impl Binning for Bins {
     }
     fn min_count_extra_energy(&self, name: Interned) -> Energy {
         if let Some(data) = self.extra.get(&name) {
-            data.e_min_count
+            let c = data.min_count;
+            let mut i = 0;
+            for (j, x) in data.count.iter().cloned().enumerate() {
+                if x == c {
+                    i = j;
+                }
+            }
+            self.index_to_energy(i)
         } else {
             Energy::new(0.)
         }
