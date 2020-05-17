@@ -220,8 +220,6 @@ all_figures = set({})
 for fs in things:
     for fig in all_figures:
         fig.clf()
-    plt.figure('excess_entropy')
-    plt.plot(ref.excess_energy(), ref.excess_entropy() - ref.excess_entropy().max(), ':', color='gray', label=reference)
     added_move = False
     for i in range(len(fs)):
 
@@ -247,13 +245,6 @@ for fs in things:
         if label not in all_max_excess_entropy_errors:
             all_max_excess_entropy_errors[label] = []
         all_max_excess_entropy_errors[label].append(max_excess_entropy_error(mc))
-
-        all_figures.add(plt.figure('excess_entropy'))
-        plt.title(title)
-        plt.plot(mc.excess_energy(), mc.excess_entropy() - mc.excess_entropy().max(), label=label, alpha=alpha)
-        plt.xlabel('$E$')
-        plt.ylabel('$S_{exc}$')
-        plt.legend(loc='best')
 
         all_figures.add(plt.figure('excess_energy_temperature'))
         plt.title(title)
@@ -289,7 +280,14 @@ for fs in things:
         plt.xlabel('$E$')
         plt.ylabel(r'$\mu$'+'_excess')
         plt.legend(loc='best')
- 
+
+        all_figures.add(plt.figure('excess_entropy'))
+        plt.title(title)
+        plt.plot(mc.excess_energy(), mc.excess_entropy() - mc.excess_entropy().max(), label=label, alpha=alpha)
+        plt.xlabel('$E$')
+        plt.ylabel('$S_{exc}$')
+        plt.legend(loc='best')
+
         all_figures.add(plt.figure('histogram'))
         plt.title(title)
         plt.plot(mc.excess_energy(), mc.histogram(), label=label, alpha=alpha)
@@ -303,6 +301,9 @@ for fs in things:
         plt.xlabel('$E$')
         plt.ylabel('$H$')
         plt.legend(loc='best')
+
+    plt.figure('excess_entropy')
+    plt.plot(ref.excess_energy(), ref.excess_entropy() - ref.excess_entropy().max(), ':', color='gray', label=reference, alpha=0.5)
 
     # plt.show()
     plt.pause(0.1)
