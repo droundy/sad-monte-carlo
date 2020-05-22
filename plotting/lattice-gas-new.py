@@ -5,11 +5,11 @@ from matplotlib.colors import LogNorm
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('file')
+parser.add_argument('moviedir')
 args = parser.parse_args()
-file = args.file
+moviedir = args.moviedir
 
-frames = sorted(glob.glob(file+'/*.cbor'))
+frames = sorted(glob.glob(moviedir+'/*.cbor'))
 
 
 for frame in frames:
