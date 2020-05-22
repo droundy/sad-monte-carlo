@@ -24,6 +24,7 @@ for frame in frames:
 
     NE = data_loaded['bins']['num_E']
     Nmax = data_loaded['bins']['max_N']
+    moves = data_loaded['moves']
 
     E = np.flip(-np.arange(0, NE, 1.0))
     N = np.arange(0, Nmax+1, 1.0)
@@ -43,6 +44,7 @@ for frame in frames:
     hist_to_plot[hist==0] = np.nan
     plt.pcolormesh(Nedges, Eedges, hist_to_plot)
     plt.colorbar().set_label('histogram')
+    plt.title('%.3g moves' % moves)
     plt.tight_layout()
 
     plt.pause(1)
