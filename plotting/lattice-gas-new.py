@@ -23,7 +23,6 @@ for frame in frames:
     print(data_loaded.keys())
 
     Sexcess = np.array(data_loaded['bins']['lnw'])
-    Sexcess = Sexcess - Sexcess[1,0]
 
     NE = data_loaded['bins']['num_E']
     Nmax = data_loaded['bins']['max_N']
@@ -38,6 +37,11 @@ for frame in frames:
     Nedges, Eedges = np.meshgrid(Nedges, Eedges)
 
     hist = np.reshape(hist, (NE, Nmax+1))
+
+    Sexcess = np.reshape(Sexcess, (NE, Nmax+1))
+    Sexcess = Sexcess - Sexcess[-1,0]
+    Sexcess[hist==0] = np.nan
+
     print(data_loaded['system']['E'])
     plt.figure('hist')
     plt.clf()
@@ -49,12 +53,13 @@ for frame in frames:
     plt.colorbar().set_label('histogram')
     plt.title('%.3g moves' % moves)
     plt.tight_layout()
+    plt.pause(1e-9)
 
     plt.figure('S_excess')
     plt.clf()
     plt.xlabel('$N$')
     plt.ylabel('$E$')
-    plt.pcolormesh(Nedges, Eedges, S_excess)
+    plt.pcolormesh(Nedges, Eedges, Sexcess)
     plt.colorbar().set_label('S_excess')
     plt.title('%.3g moves' % moves)
     plt.tight_layout()
