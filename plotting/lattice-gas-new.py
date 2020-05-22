@@ -11,6 +11,25 @@ file = args.file
 
 frames = sorted(glob.glob(file+'/*.cbor'))
 
+col = 1
+row = 1
+
+T = np.zeros((col, row))
+T_inv = np.zeros((col, row))
+pressure = np.zeros((col, row))
+p_ideal = np.zeros((col, row))
+p_exc = np.zeros((col, row))
+pressure = np.zeros((col, row))
+gibbs_free = np.zeros((col, row))
+S_excess = np.zeros((col, row))
+S_ideal = number_data*(1 + np.log(N_sites/number_data))
+averaged_T = np.zeros((col, row))
+T_inv = np.zeros((col, row))
+T = np.zeros((col, row))
+chem_potential = np.zeros((col, row))
+
+number_data = np.zeros((col, row))
+N_sites = 1
 
 for frame in frames:
     print('frame is', frame)
@@ -34,7 +53,13 @@ for frame in frames:
     Nedges, Eedges = np.meshgrid(Nedges, Eedges)
 
     hist = np.reshape(hist, (NE, Nmax+1))
+    if hist.max() == 0:
+        print('there is no data in histogram!')
+        continue
+    print('total data in hist is:', hist.sum())
+
     print(data_loaded['system']['E'])
+
     plt.figure('hist')
     plt.clf()
     plt.xlabel('$N$')
@@ -43,6 +68,68 @@ for frame in frames:
     hist_to_plot[hist==0] = np.nan
     plt.pcolormesh(Nedges, Eedges, hist_to_plot)
     plt.colorbar().set_label('histogram')
+    plt.tight_layout()
+
+    S0_excess = S_excess[-1,0]
+    S_excess = S_excess - S0_excess
+    S = S_excess + S_ideal
+
+    plt.figure('entropy')
+    plt.clf()
+    plt.pcolor(N,E,S)
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    plt.pcolormesh(Nedges, Eedges, hist_to_plot)
+    plt.colorbar().set_label('entropy')
+    plt.tight_layout()
+
+    T_inv[:-1,:-1] = (S[1:,:-1] - S[:-1,:-1])
+    T[:-1,:-1] = 1/T_inv[:-1,:-1]
+
+    plt.figure('temperature')
+    plt.clf()
+    plt.pcolor(N,E,T, norm=LogNorm(vmin=0.01, vmax=10))
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    plt.pcolormesh(Nedges, Eedges, hist_to_plot)
+    plt.colorbar().set_label('temperature')
+    plt.tight_layout()
+
+    averaged_T[:,:-1] = 2/(T_inv[:,1:] + T_inv[:,:-1])
+    chem_potential[:,:-1] = -averaged_T[:,:-1] * (S[:,1:] - S[:,:-1]) / (number_data[:,1:] - number_data[:,:-1])
+
+    plt.figure('excess chemical potential')
+    plt.clf()
+    #plt.title(f'{moves[t]} moves')
+    plt.pcolor(N,E,chem_potential)
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    plt.pcolormesh(Nedges, Eedges, hist_to_plot)
+    plt.colorbar().set_label('excess chemical potential')
+    plt.tight_layout()
+
+    p_exc = (T * S_excess + chem_potential * number_data - energy_data)/N_sites**2
+    p_ideal = T * number_data / N_sites
+    pressure = p_ideal + p_exc
+
+    plt.figure('pressure')
+    plt.clf()
+    plt.pcolor(N,E,pressure)
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    plt.pcolormesh(Nedges, Eedges, hist_to_plot)
+    plt.colorbar().set_label('pressure')
+    plt.tight_layout()
+
+    gibbs_free[:,:-1] = chem_potential[:,:-1]*number_data[:,1:]
+
+    plt.figure('gibbs')
+    plt.clf()
+    plt.pcolor(N,E,gibbs_free)
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    plt.pcolormesh(Nedges, Eedges, hist_to_plot)
+    plt.colorbar().set_label('gibbs')
     plt.tight_layout()
 
     plt.pause(1)
