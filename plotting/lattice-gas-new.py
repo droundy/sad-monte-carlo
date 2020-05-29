@@ -93,6 +93,7 @@ for frame in frames:
     Sexcess = Sexcess - Sexcess[-1,0]
     Sexcess[hist==0] = np.nan
 
+
     print(data_loaded['system']['E'])
 
     plt.figure('hist')
@@ -169,7 +170,7 @@ for frame in frames:
     plt.pcolormesh(Nedges, Eedges, hist_to_plot)
     plt.colorbar().set_label('pressure')
     plt.tight_layout()
-    
+
     #what is gibbs?
     #gibbs_free[:,:-1] = chem_potential[:,:-1]*number_data[:,1:]
     gibbs_free = np.zeros((col, row))
