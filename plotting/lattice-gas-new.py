@@ -5,14 +5,29 @@ from matplotlib.colors import LogNorm
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('file')
+parser.add_argument('moviedir')
 args = parser.parse_args()
-file = args.file
+moviedir = args.moviedir
 
-frames = sorted(glob.glob(file+'/*.cbor'))
+frames = sorted(glob.glob(moviedir+'/*.cbor'))
 
 col = 1
 row = 1
+
+#how to set the row and column from the cbor file?
+#row = sys.argv[3]
+#col = sys.argv[4]
+
+"""
+row = 0
+for i in range(len(energy_data)-1):
+    if energy_data[i+1] != energy_data[i]:
+        row = int(i + 1)
+        break
+print(row)
+col = int(len(energy_data)/row)
+print(col)
+"""
 
 T = np.zeros((col, row))
 T_inv = np.zeros((col, row))
@@ -22,14 +37,16 @@ p_exc = np.zeros((col, row))
 pressure = np.zeros((col, row))
 gibbs_free = np.zeros((col, row))
 S_excess = np.zeros((col, row))
-S_ideal = number_data*(1 + np.log(N_sites/number_data))
+energy_data = np.zeros((col, row))
 averaged_T = np.zeros((col, row))
 T_inv = np.zeros((col, row))
 T = np.zeros((col, row))
 chem_potential = np.zeros((col, row))
-
 number_data = np.zeros((col, row))
 N_sites = 1
+S_ideal = number_data*(1 + np.log(N_sites/number_data))
+
+
 
 for frame in frames:
     print('frame is', frame)
@@ -41,8 +58,20 @@ for frame in frames:
     print('bins', data_loaded['bins'].keys())
     print(data_loaded.keys())
 
+
+
+    Sexcess = np.array(data_loaded['bins']['lnw'])
+
     NE = data_loaded['bins']['num_E']
     Nmax = data_loaded['bins']['max_N']
+    moves = data_loaded['moves']
+
+    number_data = np.array(data_loaded['bins']['histogram'])
+    energy_data = np.array(data_loaded['bins']['histogram'])
+
+    #what is number and energy?
+    #number_data = np.array(data_loaded['movies']['number'])
+    #energy_data = np.array(data_loaded['movies']['energy'])
 
     E = np.flip(-np.arange(0, NE, 1.0))
     N = np.arange(0, Nmax+1, 1.0)
@@ -53,10 +82,16 @@ for frame in frames:
     Nedges, Eedges = np.meshgrid(Nedges, Eedges)
 
     hist = np.reshape(hist, (NE, Nmax+1))
+
     if hist.max() == 0:
         print('there is no data in histogram!')
         continue
     print('total data in hist is:', hist.sum())
+
+
+    Sexcess = np.reshape(Sexcess, (NE, Nmax+1))
+    Sexcess = Sexcess - Sexcess[-1,0]
+    Sexcess[hist==0] = np.nan
 
     print(data_loaded['system']['E'])
 
@@ -68,6 +103,17 @@ for frame in frames:
     hist_to_plot[hist==0] = np.nan
     plt.pcolormesh(Nedges, Eedges, hist_to_plot)
     plt.colorbar().set_label('histogram')
+    plt.title('%.3g moves' % moves)
+    plt.tight_layout()
+    plt.pause(1e-9)
+
+    plt.figure('S_excess')
+    plt.clf()
+    plt.xlabel('$N$')
+    plt.ylabel('$E$')
+    plt.pcolormesh(Nedges, Eedges, Sexcess)
+    plt.colorbar().set_label('S_excess')
+    plt.title('%.3g moves' % moves)
     plt.tight_layout()
 
     S0_excess = S_excess[-1,0]
@@ -96,8 +142,11 @@ for frame in frames:
     plt.tight_layout()
 
     averaged_T[:,:-1] = 2/(T_inv[:,1:] + T_inv[:,:-1])
-    chem_potential[:,:-1] = -averaged_T[:,:-1] * (S[:,1:] - S[:,:-1]) / (number_data[:,1:] - number_data[:,:-1])
 
+    #what is chemical potential?
+    #chem_potential[:,:-1] = -averaged_T[:,:-1] * (S[:,1:] - S[:,:-1]) / (number_data[:,1:] - number_data[:,:-1])
+    chem_potential = np.array(data_loaded['bins']['histogram'])
+    """
     plt.figure('excess chemical potential')
     plt.clf()
     #plt.title(f'{moves[t]} moves')
@@ -107,7 +156,7 @@ for frame in frames:
     plt.pcolormesh(Nedges, Eedges, hist_to_plot)
     plt.colorbar().set_label('excess chemical potential')
     plt.tight_layout()
-
+    """
     p_exc = (T * S_excess + chem_potential * number_data - energy_data)/N_sites**2
     p_ideal = T * number_data / N_sites
     pressure = p_ideal + p_exc
@@ -120,9 +169,10 @@ for frame in frames:
     plt.pcolormesh(Nedges, Eedges, hist_to_plot)
     plt.colorbar().set_label('pressure')
     plt.tight_layout()
-
-    gibbs_free[:,:-1] = chem_potential[:,:-1]*number_data[:,1:]
-
+    
+    #what is gibbs?
+    #gibbs_free[:,:-1] = chem_potential[:,:-1]*number_data[:,1:]
+    gibbs_free = np.zeros((col, row))
     plt.figure('gibbs')
     plt.clf()
     plt.pcolor(N,E,gibbs_free)

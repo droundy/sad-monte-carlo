@@ -319,10 +319,9 @@ impl<MC: MonteCarlo> Plugin<MC> for Save {
 /// A plugin that schedules movie backups
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Movie {
-    movie_time: f64,
+    movie_time: Option<f64>,
     which_frame: Cell<i32>,
     period: Cell<plugin::TimeToRun>,
-    dir: Option<std::path::PathBuf>,
 }
 
 /// The parameter to define the movie schedule
@@ -330,36 +329,33 @@ pub struct Movie {
 pub struct MovieParams {
     /// 2.0 means a frame every time iterations double.
     pub movie_time: Option<f64>,
-    /// Path to directory to hold movie frames
-    pub movie_dir: Option<std::path::PathBuf>,
 }
 
 impl Default for MovieParams {
     fn default() -> Self {
         MovieParams {
             movie_time: None,
-            movie_dir: None,
         }
     }
 }
 impl From<MovieParams> for Movie {
     fn from(params: MovieParams) -> Self {
         Movie {
-            movie_time: params.movie_time.unwrap_or(10.0_f64.powf(1./8.)),
+            movie_time: params.movie_time,
             which_frame: Cell::new(0),
-            period: Cell::new(if params.movie_dir.is_some() {
+            period: Cell::new(if params.movie_time.is_some() {
                 plugin::TimeToRun::TotalMoves(1)
             } else {
                 plugin::TimeToRun::Never
             }),
-            dir: params.movie_dir,
         }
     }
 }
 impl Movie {
     /// Save a frame of the movie.
     pub fn save_frame<MC: MonteCarlo>(&self, mc: &MC) {
-        if let Some(dir) = &self.dir {
+        if let Some(dir) = mc.save_as().file_stem() {
+            let dir = std::path::Path::new(dir);
             let moves = mc.num_moves();
             let path = dir.join(format!("{:014}.cbor", moves));
             println!("Saving movie as {:?}", path);
@@ -373,7 +369,7 @@ impl Movie {
 }
 impl<MC: MonteCarlo> Plugin<MC> for Movie {
     fn run(&self, mc: &MC, _sys: &MC::System) -> Action {
-        if self.dir.is_some() {
+        if let Some(time) = self.movie_time {
             let moves = mc.num_moves();
             if plugin::TimeToRun::TotalMoves(moves) == self.period.get() {
                 // Save movie now.
@@ -381,10 +377,10 @@ impl<MC: MonteCarlo> Plugin<MC> for Movie {
 
                 // Now decide when we need the next frame to be.
                 let mut which_frame = self.which_frame.get() + 1;
-                let mut next_time = (self.movie_time.powi(which_frame) + 0.5) as u64;
+                let mut next_time = (time.powi(which_frame) + 0.5) as u64;
                 while next_time <= moves {
                     which_frame += 1;
-                    next_time = (self.movie_time.powi(which_frame) + 0.5) as u64;
+                    next_time = (time.powi(which_frame) + 0.5) as u64;
                 }
                 self.which_frame.set(which_frame);
                 self.period.set(plugin::TimeToRun::TotalMoves(next_time));

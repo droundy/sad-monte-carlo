@@ -303,7 +303,7 @@ for fs in things:
         plt.legend(loc='best')
 
     plt.figure('excess_entropy')
-    plt.plot(ref.excess_energy(), ref.excess_entropy() - ref.excess_entropy().max(), ':', color='gray', label=reference, alpha=0.5)
+    plt.plot(ref.excess_energy()/ref.N(), ref.excess_entropy() - ref.excess_entropy().max(), ':', color='gray', label=reference, alpha=0.5)
 
     # plt.show()
     plt.pause(0.1)
