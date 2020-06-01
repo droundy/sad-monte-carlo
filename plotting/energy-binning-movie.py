@@ -259,21 +259,21 @@ for fs in things:
         plt.xlabel('$E/N$')
         plt.ylabel('$p_{exc}/N$')
         plt.legend(loc='best')
-        
+
         all_figures.add(plt.figure('excess_energy_pressure'))
         plt.title(title)
         plt.plot(mc.excess_energy()/mc.N(), mc.pressure()/mc.N(), label=label, alpha=alpha)
         plt.xlabel('$E/N$')
         plt.ylabel('$P/N$')
         plt.legend(loc='best')
-        
+
         all_figures.add(plt.figure('temperature_pressure'))
         plt.title(title)
         plt.plot(mc.temperature(), mc.pressure()/mc.N(), label=label, alpha=alpha)
         plt.xlabel('$T$')
         plt.ylabel('$P/N$')
         plt.legend(loc='best')
-        
+
         all_figures.add(plt.figure('moves potential'))
         plt.title("moves: " + str(mc.moves()))
         plt.plot(mc.excess_energy()/mc.N(), mc.excess_chemical_potential(), label=label, alpha=alpha)
@@ -283,10 +283,13 @@ for fs in things:
 
         all_figures.add(plt.figure('excess_entropy'))
         plt.title(title)
-        plt.plot(mc.excess_energy()/mc.N(), mc.excess_entropy() - mc.excess_entropy().max(), label=label, alpha=alpha)
+        plt.plot(mc.excess_energy()/mc.N(),
+                 (mc.excess_entropy() - mc.excess_entropy().max())/mc.N(),
+                 label=label, alpha=alpha)
         plt.xlabel('$E/N$')
-        plt.ylabel('$S_{exc}$')
+        plt.ylabel('$S_{exc}/N$')
         plt.legend(loc='best')
+        plt.tight_layout()
 
         all_figures.add(plt.figure('histogram'))
         plt.title(title)
@@ -297,13 +300,15 @@ for fs in things:
             scale = delo/dehi
             plt.plot(mc._high_resolution.excess_energy(),
                      scale*mc._high_resolution.histogram(), ':', label=label+' hires', alpha=0.5*alpha)
-        
+
         plt.xlabel('$E$')
         plt.ylabel('$H$')
         plt.legend(loc='best')
 
     plt.figure('excess_entropy')
-    plt.plot(ref.excess_energy()/ref.N(), ref.excess_entropy() - ref.excess_entropy().max(), ':', color='gray', label=reference, alpha=0.5)
+    plt.plot(ref.excess_energy()/ref.N(),
+             (ref.excess_entropy() - ref.excess_entropy().max())/ref.N(),
+             ':', color='gray', label=reference, alpha=0.5)
 
     # plt.show()
     plt.pause(0.1)
