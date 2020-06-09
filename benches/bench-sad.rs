@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate criterion;
 
-use rand::Rng;
+use rand::{ Rng, SeedableRng };
 use rand::distributions::Uniform;
 use criterion::Criterion;
 
@@ -11,6 +11,7 @@ use sadmc::mc::energy::{EnergyMC, EnergyMCParams};
 use sadmc::system::square::{SquareWell, SquareWellNParams};
 use sadmc::system::{Length, MovableSystem, ConfirmSystem};
 use sadmc::system::optsquare;
+use sadmc::rng::vector;
 
 fn gen_sw(n_atoms: usize) -> SquareWell {
     let mut sw_params = SquareWellNParams::default();
@@ -126,7 +127,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         let mut rng = sadmc::rng::MyRng::seed_from_u64(2);
         b.iter_with_setup(|| {
             let r = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
-            r + rng.vector()*0.1*units::SIGMA
+            r + vector(&mut rng)*0.1*units::SIGMA
         }, |r| sw.put_in_cell(r));
     });
     let sloppy_put = criterion::Fun::new("sloppy", |b,&n_atoms| {
@@ -134,7 +135,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         let mut rng = sadmc::rng::MyRng::seed_from_u64(2);
         b.iter_with_setup(|| {
             let r = sw.positions[rng.sample(Uniform::new(0, sw.positions.len()))];
-            r + rng.vector()*0.1*units::SIGMA
+            r + vector(&mut rng)*0.1*units::SIGMA
         }, |r| sw.sloppy_put_in_cell(r));
     });
     let funs = vec![put, sloppy_put];
@@ -145,7 +146,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         let mut rng = sadmc::rng::MyRng::seed_from_u64(2);
         b.iter_with_setup(|| {
             let r = sw.cell.positions[rng.sample(Uniform::new(0, sw.cell.positions.len()))];
-            r + rng.vector()*0.1*units::SIGMA
+            r + vector(&mut rng)*0.1*units::SIGMA
         }, |r| sw.cell.put_in_cell(r));
     });
     let sloppy_put = criterion::Fun::new("sloppy", |b,&n_atoms| {
@@ -153,7 +154,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         let mut rng = sadmc::rng::MyRng::seed_from_u64(2);
         b.iter_with_setup(|| {
             let r = sw.cell.positions[rng.sample(Uniform::new(0, sw.cell.positions.len()))];
-            r + rng.vector()*0.1*units::SIGMA
+            r + vector(&mut rng)*0.1*units::SIGMA
         }, |r| sw.cell.sloppy_put_in_cell(r));
     });
     let funs = vec![put, sloppy_put];
