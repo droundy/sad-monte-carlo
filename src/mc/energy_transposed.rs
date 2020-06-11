@@ -6,8 +6,8 @@
 
 #![allow(non_snake_case)]
 
-use crate::system::*;
 use super::*;
+use crate::system::*;
 
 use super::plugin::Plugin;
 use rand::{Rng, SeedableRng};
@@ -47,12 +47,12 @@ impl Default for EnergyMCParams {
     fn default() -> Self {
         EnergyMCParams {
             min_gamma: None,
-            min_T: 0.2*units::EPSILON,
+            min_T: 0.2 * units::EPSILON,
             f: 0.5,
             seed: None,
             min_allowed_energy: None,
             max_allowed_energy: None,
-            _moves: MoveParams::TranslationScale(0.05*units::SIGMA),
+            _moves: MoveParams::TranslationScale(0.05 * units::SIGMA),
             _report: plugin::ReportParams::default(),
             _save: plugin::SaveParams::default(),
             _movies: plugin::MovieParams::default(),
@@ -115,7 +115,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
     }
     fn e_to_idx(&self, energy: Energy) -> usize {
-        for (i,e) in self.energies.iter().cloned().enumerate() {
+        for (i, e) in self.energies.iter().cloned().enumerate() {
             if energy > e {
                 return i;
             }
@@ -132,15 +132,15 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
             // No way to shift things just yet, as we do not have a length scale.
         } else if i == 0 {
             // shift the right side if we are on far left
-            let de = self.energies[i+1] - self.energies[i];
-            self.energies[i] += de*self.gamma;
-        } else if i == self.histogram.len()-1 {
+            let de = self.energies[i + 1] - self.energies[i];
+            self.energies[i] += de * self.gamma;
+        } else if i == self.histogram.len() - 1 {
             // shift the left side if we are on the far right
-            let de = self.energies[i-1] - self.energies[i-2];
-            self.energies[i-1] += de*self.gamma;
+            let de = self.energies[i - 1] - self.energies[i - 2];
+            self.energies[i - 1] += de * self.gamma;
             // Now decide whether to add a new bin
-            let elow = self.total_energy[i]/self.histogram[i] as f64;
-            if self.energies[i-1] - elow > self.min_T {
+            let elow = self.total_energy[i] / self.histogram[i] as f64;
+            if self.energies[i - 1] - elow > self.min_T {
                 // We have room for another bin (we think)
                 self.energies.push(elow); // FIXME
                 self.histogram.pop();
@@ -150,27 +150,33 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 let lnw_last = self.lnw.last().copied().unwrap();
                 if self.lnw.len() > 1 {
                     self.lnw.push(lnw_last + self.f.ln()); // insert a regular bin
-                    self.lnw.push(lnw_last + self.f.ln() + (1./self.f-1.).ln()); // insert a new "big" bin.
+                    self.lnw
+                        .push(lnw_last + self.f.ln() + (1. / self.f - 1.).ln());
+                // insert a new "big" bin.
                 } else {
                     // We had just two bins to start with, so we need to treat the first one specially
                     // to maintain the large "negative temperature" bin.
-                    self.lnw.push(lnw_last + (1.-self.f).ln());
-                    self.lnw.push(lnw_last + (1./self.f - 1.).ln());
+                    self.lnw.push(lnw_last + (1. - self.f).ln());
+                    self.lnw.push(lnw_last + (1. / self.f - 1.).ln());
                 }
-                self.total_energy[self.histogram.len()-1] = Energy::new(0.);
+                self.total_energy[self.histogram.len() - 1] = Energy::new(0.);
                 self.total_energy.push(Energy::new(0.));
             }
         } else if i < self.energies.len() {
             // shift both sides of the bin
-            let de_plus = self.energies[i+1] - self.energies[i];
-            let de_minus = self.energies[i-1] - self.energies[i-2];
-            let de_self = self.energies[i] - self.energies[i-1];
+            let de_plus = self.energies[i + 1] - self.energies[i];
+            let de_minus = self.energies[i - 1] - self.energies[i - 2];
+            let de_self = self.energies[i] - self.energies[i - 1];
             // Left side
-            let de = if de_self < de_minus { de_self } else { de_minus };
-            self.energies[i-1] += de*self.gamma;
+            let de = if de_self < de_minus {
+                de_self
+            } else {
+                de_minus
+            };
+            self.energies[i - 1] += de * self.gamma;
             // Right side
             let de = if de_self < de_plus { de_self } else { de_plus };
-            self.energies[i] += de*self.gamma;
+            self.energies[i] += de * self.gamma;
         }
         if let Some(min_gamma) = self.min_gamma {
             if self.gamma < min_gamma {
@@ -204,7 +210,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
         // energy that is high enough.
         if let Some(maxe) = params.max_allowed_energy {
             for _ in 0..1e8 as u64 {
-                if let Some(newe) = system.plan_move(&mut rng, 0.05*units::SIGMA) {
+                if let Some(newe) = system.plan_move(&mut rng, 0.05 * units::SIGMA) {
                     if newe < system.energy() {
                         system.confirm();
                     }
@@ -232,7 +238,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
 
             translation_scale: match params._moves {
                 MoveParams::TranslationScale(x) => x,
-                _ => 0.05*units::SIGMA,
+                _ => 0.05 * units::SIGMA,
             },
             move_plan: params._moves,
             system: system,
@@ -257,7 +263,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             self.system.verify_energy();
         }
         let e1 = self.system.energy();
-        let recent_scale = (1.0/self.moves as f64).sqrt();
+        let recent_scale = (1.0 / self.moves as f64).sqrt();
         self.acceptance_rate *= 1. - recent_scale;
         if let Some(e2) = self.system.plan_move(&mut self.rng, self.translation_scale) {
             let mut out_of_bounds = false;
@@ -279,10 +285,11 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
 
         self.update_weights(energy);
 
-        let plugins = [&self.report as &dyn Plugin<Self>,
-                       &Logger,
-                       &self.movies,
-                       &self.save,
+        let plugins = [
+            &self.report as &dyn Plugin<Self>,
+            &Logger,
+            &self.movies,
+            &self.save,
         ];
         self.manager.run(self, &self.system, &plugins);
     }
@@ -308,6 +315,9 @@ struct Logger;
 impl<S: MovableSystem> Plugin<EnergyMC<S>> for Logger {
     fn log(&self, mc: &EnergyMC<S>, _sys: &S) {
         print!("    ");
-        println!(" [gamma = {:.2}]", crate::prettyfloat::PrettyFloat(mc.gamma));
+        println!(
+            " [gamma = {:.2}]",
+            crate::prettyfloat::PrettyFloat(mc.gamma)
+        );
     }
 }

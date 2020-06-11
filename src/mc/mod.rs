@@ -1,13 +1,13 @@
 //! These are different Monte Carlo algorithms.
 
-pub mod plugin;
+pub mod binning;
 pub mod energy;
 pub mod energy_binning;
-pub mod energy_transposed;
-pub mod number;
 pub mod energy_number;
 pub mod energy_number_no_translation;
-pub mod binning;
+pub mod energy_transposed;
+pub mod number;
+pub mod plugin;
 
 use crate::system::*;
 use auto_args::AutoArgs;
@@ -26,7 +26,7 @@ enum Params<MP, SP> {
     },
 }
 
-const VERSION : &str = git_version::git_describe!("--always", "--dirty");
+const VERSION: &str = git_version::git_describe!("--always", "--dirty");
 
 /// A Monte Carlo algorithm.
 pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
@@ -35,7 +35,11 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
     /// A type defining the corresponding system
     type System: System;
     /// Create this MonteCarlo from its parameters
-    fn from_params(params: Self::Params, system: Self::System, save_as: ::std::path::PathBuf) -> Self;
+    fn from_params(
+        params: Self::Params,
+        system: Self::System,
+        save_as: ::std::path::PathBuf,
+    ) -> Self;
 
     /// This method is called when the program is resumed, so certain
     /// flags may be updated, e.g. the maximum number of iterations to
@@ -50,18 +54,12 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
                 if let Some(ref save_as) = save_as {
                     if let Ok(f) = ::std::fs::File::open(save_as) {
                         let mut s = match save_as.extension().and_then(|x| x.to_str()) {
-                            Some("yaml") => {
-                                serde_yaml::from_reader::<_,Self>(&f)
-                                    .expect("error parsing save-as file")
-                            }
-                            Some("json") => {
-                                serde_json::from_reader::<_,Self>(&f)
-                                    .expect("error parsing save-as file")
-                            }
-                            Some("cbor") => {
-                                serde_cbor::from_reader::<Self,_>(&f)
-                                    .expect("error parsing save-as file")
-                            }
+                            Some("yaml") => serde_yaml::from_reader::<_, Self>(&f)
+                                .expect("error parsing save-as file"),
+                            Some("json") => serde_json::from_reader::<_, Self>(&f)
+                                .expect("error parsing save-as file"),
+                            Some("cbor") => serde_cbor::from_reader::<Self, _>(&f)
+                                .expect("error parsing save-as file"),
                             _ => panic!("I don't know how to read file {:?}", f),
                         };
                         println!("Resuming from file {:?}", save_as);
@@ -74,20 +72,22 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
                 }
                 let save_as = save_as.unwrap_or(::std::path::PathBuf::from("resume.yaml"));
                 Self::from_params(_mc, _sys.into(), save_as)
-            },
+            }
             Params::ResumeFrom(p) => {
-                let f = ::std::fs::File::open(&p)
-                    .expect(&format!("error reading file {:?}", &p));
+                let f = ::std::fs::File::open(&p).expect(&format!("error reading file {:?}", &p));
                 match p.extension().and_then(|x| x.to_str()) {
-                    Some("yaml") =>
-                        serde_yaml::from_reader(&f).expect("error reading checkpoint?!"),
-                    Some("json") =>
-                        serde_json::from_reader(&f).expect("error reading checkpoint?!"),
-                    Some("cbor") =>
-                        serde_cbor::from_reader(&f).expect("error reading checkpoint?!"),
+                    Some("yaml") => {
+                        serde_yaml::from_reader(&f).expect("error reading checkpoint?!")
+                    }
+                    Some("json") => {
+                        serde_json::from_reader(&f).expect("error reading checkpoint?!")
+                    }
+                    Some("cbor") => {
+                        serde_cbor::from_reader(&f).expect("error reading checkpoint?!")
+                    }
                     _ => panic!("I don't know how to read file {:?}", f),
                 }
-            },
+            }
         }
     }
 
@@ -96,16 +96,12 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
         let f = AtomicFile::create(self.save_as())
             .expect(&format!("error creating file {:?}", self.save_as()));
         match self.save_as().extension().and_then(|x| x.to_str()) {
-            Some("yaml") =>
-                serde_yaml::to_writer(&f, self).expect("error writing checkpoint?!"),
-            Some("json") =>
-                serde_json::to_writer(&f, self).expect("error writing checkpoint?!"),
-            Some("cbor") =>
-                serde_cbor::to_writer(&f, self).expect("error writing checkpoint?!"),
+            Some("yaml") => serde_yaml::to_writer(&f, self).expect("error writing checkpoint?!"),
+            Some("json") => serde_json::to_writer(&f, self).expect("error writing checkpoint?!"),
+            Some("cbor") => serde_cbor::to_writer(&f, self).expect("error writing checkpoint?!"),
             _ => panic!("I don't know how to create file {:?}", self.save_as()),
         }
     }
-
 
     /// Make one random move, collecting appropriate statistics.
     fn move_once(&mut self);

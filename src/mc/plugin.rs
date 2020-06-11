@@ -3,10 +3,10 @@
 
 use super::*;
 
+use crate::prettyfloat::PrettyFloat;
 use std::cell::Cell;
 use std::default::Default;
 use std::time;
-use crate::prettyfloat::PrettyFloat;
 
 /// A `Plugin` is an object that can be used to configure a MonteCarlo
 /// simulation.  The plugin will be called regularly, and will have a
@@ -18,13 +18,17 @@ pub trait Plugin<MC: MonteCarlo> {
     /// information, you will have to use interior mutability, because
     /// I can't figure out any practical way to borrow `self` mutably
     /// while still giving read access to the `MC`.
-    fn run(&self, _mc: &MC, _sys: &MC::System) -> Action { Action::None }
+    fn run(&self, _mc: &MC, _sys: &MC::System) -> Action {
+        Action::None
+    }
     /// How often we need the plugin to run.  A `None` value means
     /// that this plugin never needs to run.  Note that it is expected
     /// that this period may change any time the plugin is called, so
     /// this should be a cheap call as it may happen frequently.  Also
     /// note that this is an upper, not a lower bound.
-    fn run_period(&self) -> TimeToRun { TimeToRun::Never }
+    fn run_period(&self) -> TimeToRun {
+        TimeToRun::Never
+    }
     /// We might be about to die, so please do any cleanup or saving.
     /// Note that the plugin state is stored on each checkpoint.  This
     /// is called in response to `Action::Save` and `Action::Exit`.
@@ -78,13 +82,15 @@ pub struct PluginManager {
 impl PluginManager {
     /// Create a plugin manager.
     pub fn new() -> PluginManager {
-        PluginManager { period: Cell::new(1), moves: Cell::new(0) }
+        PluginManager {
+            period: Cell::new(1),
+            moves: Cell::new(0),
+        }
     }
     /// Run all the plugins, if needed.  This should always be called
     /// with the same set of plugins.  If you want different sets of
     /// plugins, use different managers.
-    pub fn run<MC: MonteCarlo>(&self, mc: &MC, sys: &MC::System,
-                               plugins: &[&dyn Plugin<MC>]) {
+    pub fn run<MC: MonteCarlo>(&self, mc: &MC, sys: &MC::System, plugins: &[&dyn Plugin<MC>]) {
         let moves = self.moves.get() + 1;
         self.moves.set(moves);
         if moves >= self.period.get() {
@@ -107,8 +113,10 @@ impl PluginManager {
                 }
                 let saving_time = time.elapsed().as_secs();
                 if saving_time > 5 {
-                    println!("        checkpointing took {}",
-                             format_duration(saving_time));
+                    println!(
+                        "        checkpointing took {}",
+                        format_duration(saving_time)
+                    );
                 }
             }
             if todo >= plugin::Action::Exit {
@@ -197,32 +205,38 @@ impl<MC: MonteCarlo> Plugin<MC> for Report {
         }
         Action::None
     }
-    fn run_period(&self) -> TimeToRun { self.max_iter }
+    fn run_period(&self) -> TimeToRun {
+        self.max_iter
+    }
     fn log(&self, mc: &MC, _sys: &MC::System) {
-        if self.quiet { return; }
+        if self.quiet {
+            return;
+        }
         match self.start.get() {
             Some((start_time, start_iter)) => {
                 let moves = mc.num_moves();
                 let runtime = start_time.elapsed();
-                let time_per_move = duration_to_secs(runtime)/(moves - start_iter) as f64;
+                let time_per_move = duration_to_secs(runtime) / (moves - start_iter) as f64;
                 if let TimeToRun::TotalMoves(max) = self.max_iter {
-                    let frac_complete = moves as f64/max as f64;
+                    let frac_complete = moves as f64 / max as f64;
                     let moves_left = if max >= moves { max - moves } else { 0 };
-                    let time_left = (time_per_move*moves_left as f64) as u64;
-                    println!("[{}] {}% complete after {} ({} left, {:.1}us per move) E={}",
-                             PrettyFloat(moves as f64),
-                             (100.*frac_complete) as isize,
-                             format_duration(runtime.as_secs()),
-                             format_duration(time_left),
-                             PrettyFloat(time_per_move*1e6),
-                             _sys.energy().pretty(),
+                    let time_left = (time_per_move * moves_left as f64) as u64;
+                    println!(
+                        "[{}] {}% complete after {} ({} left, {:.1}us per move) E={}",
+                        PrettyFloat(moves as f64),
+                        (100. * frac_complete) as isize,
+                        format_duration(runtime.as_secs()),
+                        format_duration(time_left),
+                        PrettyFloat(time_per_move * 1e6),
+                        _sys.energy().pretty(),
                     );
                 } else {
-                    println!("[{}] after {} ({:.1}us per move) E={}",
-                             PrettyFloat(moves as f64),
-                             format_duration(runtime.as_secs()),
-                             PrettyFloat(time_per_move*1e6),
-                             _sys.energy().pretty(),
+                    println!(
+                        "[{}] after {} ({:.1}us per move) E={}",
+                        PrettyFloat(moves as f64),
+                        format_duration(runtime.as_secs()),
+                        PrettyFloat(time_per_move * 1e6),
+                        _sys.energy().pretty(),
                     );
                 }
             }
@@ -232,15 +246,19 @@ impl<MC: MonteCarlo> Plugin<MC> for Report {
         }
     }
     fn save(&self, mc: &MC, _sys: &MC::System) {
-        if self.quiet { return; }
+        if self.quiet {
+            return;
+        }
         let accepted = mc.num_accepted_moves();
         let moves = mc.num_moves();
-        println!("        Accepted {:.2}/{:.2} = {:.0}% of the moves",
-                 PrettyFloat(accepted as f64), PrettyFloat(moves as f64),
-                 100.0*accepted as f64/moves as f64);
+        println!(
+            "        Accepted {:.2}/{:.2} = {:.0}% of the moves",
+            PrettyFloat(accepted as f64),
+            PrettyFloat(moves as f64),
+            100.0 * accepted as f64 / moves as f64
+        );
     }
 }
-
 
 /// A plugin that schedules when to save
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -264,7 +282,7 @@ pub struct SaveParams {
 
 impl Default for SaveParams {
     fn default() -> Self {
-        SaveParams { save_time: None, }
+        SaveParams { save_time: None }
     }
 }
 impl From<SaveParams> for Save {
@@ -272,7 +290,7 @@ impl From<SaveParams> for Save {
         Save {
             next_output: Cell::new(1),
             start: Cell::new(Some((time::Instant::now(), 0))),
-            save_time_seconds: params.save_time.map(|h| 60.*60.*h),
+            save_time_seconds: params.save_time.map(|h| 60. * 60. * h),
         }
     }
 }
@@ -280,7 +298,7 @@ impl Save {
     /// Allows a resuming simulation to get updated save parameters
     /// from the flags.
     pub fn update_from(&mut self, params: SaveParams) {
-        self.save_time_seconds = params.save_time.map(|h| 60.*60.*h);
+        self.save_time_seconds = params.save_time.map(|h| 60. * 60. * h);
     }
 }
 impl<MC: MonteCarlo> Plugin<MC> for Save {
@@ -300,18 +318,17 @@ impl<MC: MonteCarlo> Plugin<MC> for Save {
                 Some((start_time, start_iter)) => {
                     let moves = mc.num_moves();
                     let runtime = start_time.elapsed();
-                    let time_per_move =
-                        duration_to_secs(runtime)/(moves - start_iter) as f64;
-                    let moves_per_period = 1 + (period/time_per_move) as u64;
+                    let time_per_move = duration_to_secs(runtime) / (moves - start_iter) as f64;
+                    let moves_per_period = 1 + (period / time_per_move) as u64;
                     self.next_output.set(moves + moves_per_period);
                 }
                 None => {
                     self.start.set(Some((time::Instant::now(), mc.num_moves())));
-                    self.next_output.set(mc.num_moves() + (1<<20));
+                    self.next_output.set(mc.num_moves() + (1 << 20));
                 }
             }
         } else {
-            self.next_output.set(self.next_output.get()*2)
+            self.next_output.set(self.next_output.get() * 2)
         }
     }
 }
@@ -333,9 +350,7 @@ pub struct MovieParams {
 
 impl Default for MovieParams {
     fn default() -> Self {
-        MovieParams {
-            movie_time: None,
-        }
+        MovieParams { movie_time: None }
     }
 }
 impl From<MovieParams> for Movie {
@@ -361,8 +376,7 @@ impl Movie {
             println!("Saving movie as {:?}", path);
 
             std::fs::create_dir_all(&dir).expect("error creating directory");
-            let f = AtomicFile::create(&path)
-                .expect(&format!("error creating file {:?}", path));
+            let f = AtomicFile::create(&path).expect(&format!("error creating file {:?}", path));
             serde_cbor::to_writer(&f, mc).expect("error writing movie frame?!");
         }
     }
@@ -390,7 +404,9 @@ impl<MC: MonteCarlo> Plugin<MC> for Movie {
         }
         plugin::Action::None
     }
-    fn run_period(&self) -> plugin::TimeToRun { self.period.get() }
+    fn run_period(&self) -> plugin::TimeToRun {
+        self.period.get()
+    }
 }
 
 fn format_duration(secs: u64) -> String {
@@ -412,5 +428,5 @@ fn format_duration(secs: u64) -> String {
     }
 }
 fn duration_to_secs(t: time::Duration) -> f64 {
-    t.as_secs() as f64 + t.subsec_nanos() as f64*1e-9
+    t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9
 }

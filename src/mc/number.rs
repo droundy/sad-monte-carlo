@@ -3,15 +3,15 @@
 
 #![allow(non_snake_case)]
 
-use crate::system::*;
 use super::*;
+use crate::system::*;
 
 use super::plugin::Plugin;
+use crate::prettyfloat::PrettyFloat;
 use dimensioned::Dimensionless;
 use rand::{Rng, SeedableRng};
+use std::cell::{Cell, RefCell};
 use std::default::Default;
-use std::cell::{RefCell,Cell};
-use crate::prettyfloat::PrettyFloat;
 
 /// Parameters to configure a particular MC.
 #[derive(Debug, AutoArgs)]
@@ -68,8 +68,8 @@ impl Default for NumberMCParams {
             T: Energy::new(1.0),
             seed: None,
             max_N: None,
-            _moves: MoveParams::_Explicit{
-                translation_scale: 0.05*units::SIGMA,
+            _moves: MoveParams::_Explicit {
+                translation_scale: 0.05 * units::SIGMA,
                 addremove_probability: 0.05,
             },
             _report: plugin::ReportParams::default(),
@@ -93,14 +93,22 @@ impl ::std::fmt::Display for State {
         if self.E == Energy::new(0.) {
             write!(f, "{}", self.N)
         } else {
-            write!(f, "{}:{}", self.N, PrettyFloat(*(self.E/units::EPSILON).value()))
+            write!(
+                f,
+                "{}:{}",
+                self.N,
+                PrettyFloat(*(self.E / units::EPSILON).value())
+            )
         }
     }
 }
 impl State {
     /// Find the state of a system
     pub fn new<S: GrandSystem>(sys: &S) -> State {
-        State { E: sys.energy(), N: sys.num_atoms() }
+        State {
+            E: sys.energy(),
+            N: sys.num_atoms(),
+        }
     }
 }
 
@@ -176,9 +184,7 @@ pub struct NumberMC<S> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 enum Method {
     /// Samc
-    Samc {
-        t0: f64,
-    },
+    Samc { t0: f64 },
     /// Samc
     Sad {
         mu_max: Energy,
@@ -194,7 +200,7 @@ enum Method {
         highest_hist: u64,
         total_hist: u64,
         bins: Bins,
-    }
+    },
 }
 
 impl Method {
@@ -218,7 +224,7 @@ impl Method {
                     lnw: vec![Unitless::new(0.0)],
                     total_energy: vec![Energy::new(0.0)],
                     total_energy_squared: vec![EnergySquared::new(0.0)],
-                    translation_scale: vec![0.05*units::SIGMA],
+                    translation_scale: vec![0.05 * units::SIGMA],
                     num_translation_attempts: vec![0],
                     num_translation_accepted: vec![0],
                     t_found: vec![0],
@@ -230,7 +236,7 @@ impl Method {
                     maxlnw_index: 0,
                     num_states: 1,
                     t_last: 1,
-                }
+                },
             },
         }
     }
@@ -253,7 +259,7 @@ impl Bins {
     /// if we had to make changes.
     pub fn prepare_for_state(&mut self, e: State) -> bool {
         let mut made_change = false;
-        while e.N+1 > self.lnw.len() {
+        while e.N + 1 > self.lnw.len() {
             self.lnw.push(Unitless::new(0.));
             self.total_energy.push(Energy::new(0.));
             self.total_energy_squared.push(EnergySquared::new(0.));
@@ -287,36 +293,45 @@ impl<S: GrandSystem> NumberMC<S> {
     fn reject_move(&mut self, e1: State, e2: State) -> bool {
         let i1 = self.state_to_index(e1);
         let i2 = self.state_to_index(e2);
-        let lnw1 = *(self.bins.lnw[i1] + e1.E/self.T).value();
-        let lnw2 = *(self.bins.lnw[i2] + e2.E/self.T).value();
+        let lnw1 = *(self.bins.lnw[i1] + e1.E / self.T).value();
+        let lnw2 = *(self.bins.lnw[i2] + e2.E / self.T).value();
         match self.method {
-            Method::Samc { .. } => {
-                lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
-            }
-            Method::Sad { too_many, mu_max, .. } => {
+            Method::Samc { .. } => lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp(),
+            Method::Sad {
+                too_many, mu_max, ..
+            } => {
                 let lnw = &self.bins.lnw;
                 let lnw1 = if e1.N > too_many {
-                    let max_slope = *(mu_max/self.T).value();
-                    *(lnw[too_many] + (e1.N - too_many) as f64/max_slope).value()
+                    let max_slope = *(mu_max / self.T).value();
+                    *(lnw[too_many] + (e1.N - too_many) as f64 / max_slope).value()
                 } else {
                     lnw1
                 };
                 let lnw2 = if e2.N > too_many {
-                    let max_slope = *(mu_max/self.T).value();
-                    *(lnw[too_many] + (e2.N - too_many) as f64/max_slope).value()
+                    let max_slope = *(mu_max / self.T).value();
+                    *(lnw[too_many] + (e2.N - too_many) as f64 / max_slope).value()
                 } else {
                     lnw2
                 };
                 lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
             }
-            Method::WL { ref mut bins, ref mut gamma, ref mut lowest_hist, ref mut highest_hist, ref mut total_hist, .. } => {
+            Method::WL {
+                ref mut bins,
+                ref mut gamma,
+                ref mut lowest_hist,
+                ref mut highest_hist,
+                ref mut total_hist,
+                ..
+            } => {
                 if bins.prepare_for_state(e2) {
                     // Oops, we found a new energy, so let's regroup.
                     if *gamma != 1.0 || bins.histogram.len() == 0 {
                         self.movies.new_gamma(self.moves, *gamma);
                         self.movies.new_gamma(self.moves, 1.0);
-                        println!("    WL: Starting fresh with {} numbers",
-                                 self.bins.lnw.len());
+                        println!(
+                            "    WL: Starting fresh with {} numbers",
+                            self.bins.lnw.len()
+                        );
                         *gamma = 1.0;
                         *lowest_hist = 0;
                         *highest_hist = 0;
@@ -340,8 +355,14 @@ impl<S: GrandSystem> NumberMC<S> {
         let n = i; // number of atoms is also the index.
         match self.method {
             Method::Samc { .. } => {}
-            Method::Sad { mu_max, ref mut too_many, ref mut tF, ref mut highest_hist,
-                          ref mut latest_parameter, .. } => {
+            Method::Sad {
+                mu_max,
+                ref mut too_many,
+                ref mut tF,
+                ref mut highest_hist,
+                ref mut latest_parameter,
+                ..
+            } => {
                 let histogram = &self.bins.histogram;
                 if n > *too_many {
                     // Ooops, we didn't want to add gamma after all...
@@ -352,34 +373,43 @@ impl<S: GrandSystem> NumberMC<S> {
                     *highest_hist = histogram[i];
                     if n > *too_many {
                         let ihi = *too_many;
-                        for j in ihi+1 .. histogram.len() {
+                        for j in ihi + 1..histogram.len() {
                             let lnw = &mut self.bins.lnw;
                             lnw[j] = if histogram[j] != 0 {
-                                lnw[ihi] + (j - ihi) as f64 *mu_max/self.T
+                                lnw[ihi] + (j - ihi) as f64 * mu_max / self.T
                             } else {
                                 Unitless::new(0.0)
                             };
                         }
-                        *latest_parameter = *(*too_many as f64 *mu_max/self.T).value();
+                        *latest_parameter = *(*too_many as f64 * mu_max / self.T).value();
                         *too_many = n;
 
                         gamma_changed = true;
                         // Set tF to the latest discovery time in the
                         // range of energies that we actually care about.
-                        *tF = *self.bins.t_found[0..n+1].iter().max().unwrap();
+                        *tF = *self.bins.t_found[0..n + 1].iter().max().unwrap();
                         // We just discovered a new important number of atoms.
                         // Should we take this as an opportunity to
                         // revise our translation scale? We should definitely
                         // log the news.
                         if !self.report.quiet {
-                            println!("    sad: [{}]:  0 < {} < {}",
-                                     self.moves, *too_many, self.bins.histogram.len()+1);
+                            println!(
+                                "    sad: [{}]:  0 < {} < {}",
+                                self.moves,
+                                *too_many,
+                                self.bins.histogram.len() + 1
+                            );
                         }
                     }
                 }
             }
-            Method::WL { ref mut gamma,
-                         ref mut lowest_hist, ref mut highest_hist, ref mut total_hist, ref mut bins } => {
+            Method::WL {
+                ref mut gamma,
+                ref mut lowest_hist,
+                ref mut highest_hist,
+                ref mut total_hist,
+                ref mut bins,
+            } => {
                 let num_states = self.bins.num_states as f64;
                 bins.histogram[i] += 1;
                 if bins.histogram[i] > *highest_hist {
@@ -388,19 +418,27 @@ impl<S: GrandSystem> NumberMC<S> {
                 *total_hist += 1;
                 let histogram = &self.bins.histogram;
                 if bins.histogram[i] == *lowest_hist + 1
-                    && bins.histogram.iter().enumerate()
-                          .filter(|(i,_)| histogram[*i] != 0)
-                          .map(|(_,&h)|h).min() == Some(*lowest_hist+1)
+                    && bins
+                        .histogram
+                        .iter()
+                        .enumerate()
+                        .filter(|(i, _)| histogram[*i] != 0)
+                        .map(|(_, &h)| h)
+                        .min()
+                        == Some(*lowest_hist + 1)
                 {
                     *lowest_hist = bins.histogram[i];
-                    if bins.histogram.len() > 1 && *lowest_hist as f64 >= 0.8**total_hist as f64 / num_states {
+                    if bins.histogram.len() > 1
+                        && *lowest_hist as f64 >= 0.8 * *total_hist as f64 / num_states
+                    {
                         gamma_changed = true;
                         *gamma *= 0.5;
                         if *gamma > 1e-16 {
-                            println!("    WL:  We have reached flatness {:.2} with min {}!",
-                                     PrettyFloat(*lowest_hist as f64*num_states
-                                                 / *total_hist as f64),
-                                     *lowest_hist);
+                            println!(
+                                "    WL:  We have reached flatness {:.2} with min {}!",
+                                PrettyFloat(*lowest_hist as f64 * num_states / *total_hist as f64),
+                                *lowest_hist
+                            );
                             println!("         gamma => {}", PrettyFloat(*gamma));
                         }
                         bins.histogram.iter_mut().map(|x| *x = 0).count();
@@ -422,21 +460,28 @@ impl<S> NumberMC<S> {
         match self.method {
             Method::Samc { t0 } => {
                 let t = self.moves as f64;
-                if t > t0 { t0/t } else { 1.0 }
+                if t > t0 {
+                    t0 / t
+                } else {
+                    1.0
+                }
             }
-            Method::Sad { latest_parameter, too_many, tF, .. } => {
+            Method::Sad {
+                latest_parameter,
+                too_many,
+                tF,
+                ..
+            } => {
                 let t = self.moves as f64;
                 let tF = tF as f64;
                 let too_many = too_many as f64;
                 if latest_parameter == 0.0 {
                     0.0
                 } else {
-                    (latest_parameter + t/tF)/(latest_parameter + t/too_many*(t/tF))
+                    (latest_parameter + t / tF) / (latest_parameter + t / too_many * (t / tF))
                 }
             }
-            Method::WL { gamma, .. } => {
-                gamma
-            }
+            Method::WL { gamma, .. } => gamma,
         }
     }
 }
@@ -457,8 +502,10 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
                 total_energy: vec![Energy::new(0.0)],
                 total_energy_squared: vec![EnergySquared::new(0.0)],
                 translation_scale: vec![match params._moves {
-                    MoveParams::_Explicit { translation_scale, .. } => translation_scale,
-                    _ => 0.05*units::SIGMA,
+                    MoveParams::_Explicit {
+                        translation_scale, ..
+                    } => translation_scale,
+                    _ => 0.05 * units::SIGMA,
                 }],
                 num_translation_attempts: vec![0],
                 num_translation_accepted: vec![0],
@@ -474,7 +521,11 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
             },
             move_plan: params._moves,
             addremove_probability: {
-                if let MoveParams::_Explicit { addremove_probability, .. } = params._moves {
+                if let MoveParams::_Explicit {
+                    addremove_probability,
+                    ..
+                } = params._moves
+                {
                     addremove_probability
                 } else {
                     // This is the case where we will dynamically
@@ -508,11 +559,13 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
 
         if self.rng.gen::<f64>() > self.addremove_probability {
             self.bins.num_translation_attempts[e1.N] += 1;
-            if let Some(e2) = self.system.plan_move(&mut self.rng,
-                                                    self.bins.translation_scale[e1.N]) {
+            if let Some(e2) = self
+                .system
+                .plan_move(&mut self.rng, self.bins.translation_scale[e1.N])
+            {
                 let e2 = State { E: e2, N: e1.N };
                 self.bins.prepare_for_state(e2);
-                if !self.reject_move(e1,e2) {
+                if !self.reject_move(e1, e2) {
                     self.accepted_moves += 1;
                     self.bins.num_translation_accepted[e1.N] += 1;
                     self.system.confirm();
@@ -526,22 +579,29 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
                     if e1.N == max_N {
                         None
                     } else {
-                        self.system.plan_add(&mut self.rng).map(|e2| State { E: e2, N: e1.N+1 })
+                        self.system
+                            .plan_add(&mut self.rng)
+                            .map(|e2| State { E: e2, N: e1.N + 1 })
                     }
                 } else {
-                    self.system.plan_add(&mut self.rng).map(|e2| State { E: e2, N: e1.N+1 })
+                    self.system
+                        .plan_add(&mut self.rng)
+                        .map(|e2| State { E: e2, N: e1.N + 1 })
                 }
             } else {
                 // remove
                 if e1.N > 0 {
-                    Some(State { E: self.system.plan_remove(&mut self.rng), N: e1.N-1})
+                    Some(State {
+                        E: self.system.plan_remove(&mut self.rng),
+                        N: e1.N - 1,
+                    })
                 } else {
                     None
                 }
             };
             if let Some(e2) = option_e2 {
                 self.bins.prepare_for_state(e2);
-                if !self.reject_move(e1,e2) {
+                if !self.reject_move(e1, e2) {
                     self.accepted_moves += 1;
                     self.bins.num_addremove_accepted += 1;
                     self.system.confirm();
@@ -559,16 +619,14 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
         if self.moves % self.bins.t_last == 0 {
             if let MoveParams::AcceptanceRate(r) = self.move_plan {
                 let old_addremove_prob = self.addremove_probability;
-                let overall_acceptance_rate =
-                    self.accepted_moves as f64 / self.moves as f64;
-                let addremove_acceptance_rate =
-                    self.bins.num_addremove_accepted as f64
+                let overall_acceptance_rate = self.accepted_moves as f64 / self.moves as f64;
+                let addremove_acceptance_rate = self.bins.num_addremove_accepted as f64
                     / self.bins.num_addremove_attempts as f64;
                 let translation_goal = if addremove_acceptance_rate > r {
                     // addremove has too high an acceptance rate, so
                     // we want translations to have too low an
                     // acceptance rate.
-                    r*r
+                    r * r
                 } else {
                     // addremove has too low an acceptance rate, so we
                     // want translations to have a higher acceptance
@@ -577,7 +635,7 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
                 };
                 let translation_acceptance_rate =
                     (self.accepted_moves - self.bins.num_addremove_accepted) as f64
-                    / (self.moves - self.bins.num_addremove_attempts) as f64;
+                        / (self.moves - self.bins.num_addremove_attempts) as f64;
                 // Fine-tune the translation scales.
                 for i in 2..self.bins.lnw.len() {
                     if self.bins.num_translation_attempts[i] == 0 {
@@ -586,22 +644,30 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
                     let old_scale = self.bins.translation_scale[i];
                     let my_rate = self.bins.num_translation_accepted[i] as f64
                         / self.bins.num_translation_attempts[i] as f64;
-                    let s = (my_rate/translation_goal).sqrt();
-                    let s = if s < 0.8 { 0.8 } else if s > 1.2 { 1.2 } else { s };
+                    let s = (my_rate / translation_goal).sqrt();
+                    let s = if s < 0.8 {
+                        0.8
+                    } else if s > 1.2 {
+                        1.2
+                    } else {
+                        s
+                    };
                     self.bins.translation_scale[i] *= s;
                     if self.bins.translation_scale[i] > self.system.max_size() {
                         self.bins.translation_scale[i] = self.system.max_size();
                     }
                     if !self.report.quiet && self.bins.translation_scale[i] != old_scale {
-                        println!("        new translation scale for N={}: {:.3}",
-                                 i, self.bins.translation_scale[i]);
-                        println!("          acceptance rate {:.1}%", 100.0*my_rate);
+                        println!(
+                            "        new translation scale for N={}: {:.3}",
+                            i, self.bins.translation_scale[i]
+                        );
+                        println!("          acceptance rate {:.1}%", 100.0 * my_rate);
                     }
                 }
                 // Now adjust the addremove probability to try to get
                 // the net acceptance rate to match our goal "r".
                 let new_p = (r - translation_acceptance_rate)
-                      /(addremove_acceptance_rate - translation_acceptance_rate);
+                    / (addremove_acceptance_rate - translation_acceptance_rate);
                 if !new_p.is_nan() {
                     if new_p > 0.99 {
                         self.addremove_probability = 0.99;
@@ -611,18 +677,24 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
                         self.addremove_probability = new_p;
                     }
                 }
-                if !self.report.quiet && (self.addremove_probability - old_addremove_prob).abs() > 0.01 {
-                    println!("        new addremove_probability: {:.2}",
-                             self.addremove_probability);
-                    println!("        acceptance rate {:.1}% [add/remove: {:.1}%]",
-                             100.0*overall_acceptance_rate,
-                             100.0*addremove_acceptance_rate);
+                if !self.report.quiet
+                    && (self.addremove_probability - old_addremove_prob).abs() > 0.01
+                {
+                    println!(
+                        "        new addremove_probability: {:.2}",
+                        self.addremove_probability
+                    );
+                    println!(
+                        "        acceptance rate {:.1}% [add/remove: {:.1}%]",
+                        100.0 * overall_acceptance_rate,
+                        100.0 * addremove_acceptance_rate
+                    );
                 }
             }
         }
         self.bins.histogram[i] += 1;
         self.bins.total_energy[i] += energy.E;
-        self.bins.total_energy_squared[i] += energy.E*energy.E;
+        self.bins.total_energy_squared[i] += energy.E * energy.E;
         self.update_weights(energy);
 
         if self.bins.lnw[i] > self.bins.maxlnw {
@@ -642,10 +714,7 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
             self.bins.round_trips[i] += 1;
         }
 
-        let plugins = [&self.report as &dyn Plugin<Self>,
-                       &self.movies,
-                       &self.save,
-        ];
+        let plugins = [&self.report as &dyn Plugin<Self>, &self.movies, &self.save];
         self.manager.run(self, &self.system, &plugins);
     }
     fn system(&self) -> &Self::System {
@@ -665,7 +734,6 @@ impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
     }
 }
 
-
 /// Do we want movies? Where?
 #[derive(AutoArgs, Debug)]
 pub struct MoviesParams {
@@ -678,9 +746,7 @@ pub struct MoviesParams {
 
 impl Default for MoviesParams {
     fn default() -> Self {
-        MoviesParams {
-            time: None,
-        }
+        MoviesParams { time: None }
     }
 }
 
@@ -766,7 +832,9 @@ impl<S: GrandSystem> Plugin<NumberMC<S>> for Movies {
         }
         plugin::Action::None
     }
-    fn run_period(&self) -> plugin::TimeToRun { self.period.get() }
+    fn run_period(&self) -> plugin::TimeToRun {
+        self.period.get()
+    }
 
     /// This isn't really a movies thing, but there isn't a great
     /// reason to create yet another plugin for an NumberMC-specific
@@ -790,27 +858,42 @@ impl<S: GrandSystem> Plugin<NumberMC<S>> for Movies {
                 thousand_trips = Some(mc.index_to_state(i));
             }
         }
-        let thousand_trips = thousand_trips.map(|e| format!("{}", e))
+        let thousand_trips = thousand_trips
+            .map(|e| format!("{}", e))
             .unwrap_or("-".to_string());
-        let ten_trips = ten_trips.map(|e| format!("{}", e))
+        let ten_trips = ten_trips
+            .map(|e| format!("{}", e))
             .unwrap_or("-".to_string());
-        let one_trip = one_trip.map(|e| format!("{}", e))
+        let one_trip = one_trip
+            .map(|e| format!("{}", e))
             .unwrap_or("-".to_string());
-        let hundred_trips = hundred_trips.map(|e| format!("{}", e))
+        let hundred_trips = hundred_trips
+            .map(|e| format!("{}", e))
             .unwrap_or("-".to_string());
         if !mc.report.quiet {
-            println!("   {} * {} * {} * {} | {} currently {} {{{} {:.2}}}",
-                     one_trip, ten_trips, hundred_trips, thousand_trips,
-                     mc.index_to_state(mc.bins.maxlnw_index),
-                     State::new(sys),
-                     mc.bins.num_states,
-                     PrettyFloat(mc.moves as f64/mc.bins.t_last as f64),
+            println!(
+                "   {} * {} * {} * {} | {} currently {} {{{} {:.2}}}",
+                one_trip,
+                ten_trips,
+                hundred_trips,
+                thousand_trips,
+                mc.index_to_state(mc.bins.maxlnw_index),
+                State::new(sys),
+                mc.bins.num_states,
+                PrettyFloat(mc.moves as f64 / mc.bins.t_last as f64),
             );
-            if let Method::WL { lowest_hist, highest_hist, total_hist, ref bins, .. } = mc.method {
+            if let Method::WL {
+                lowest_hist,
+                highest_hist,
+                total_hist,
+                ref bins,
+                ..
+            } = mc.method
+            {
                 if total_hist > 0 {
                     let mut lowest = 123456789;
                     let mut highest = 123456789;
-                    for (i,&h) in bins.histogram.iter().enumerate() {
+                    for (i, &h) in bins.histogram.iter().enumerate() {
                         if h == lowest_hist && mc.bins.histogram[i] != 0 {
                             lowest = i;
                         }
@@ -818,13 +901,16 @@ impl<S: GrandSystem> Plugin<NumberMC<S>> for Movies {
                             highest = i;
                         }
                     }
-                    println!("        WL:  flatness {:.1} with min {:.2} at {} and max {:.2} at {}!",
-                             PrettyFloat(lowest_hist as f64*mc.bins.num_states as f64
-                                         / total_hist as f64),
-                             PrettyFloat(lowest_hist as f64),
-                             mc.index_to_state(lowest),
-                             PrettyFloat(highest_hist as f64),
-                             mc.index_to_state(highest));
+                    println!(
+                        "        WL:  flatness {:.1} with min {:.2} at {} and max {:.2} at {}!",
+                        PrettyFloat(
+                            lowest_hist as f64 * mc.bins.num_states as f64 / total_hist as f64
+                        ),
+                        PrettyFloat(lowest_hist as f64),
+                        mc.index_to_state(lowest),
+                        PrettyFloat(highest_hist as f64),
+                        mc.index_to_state(highest)
+                    );
                 }
             }
         }

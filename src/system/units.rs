@@ -30,7 +30,7 @@ make_units! {
 impl_serde!(UNITS);
 impl_auto_args!(UNITS);
 
-impl<A> UNITS<f64,A> {
+impl<A> UNITS<f64, A> {
     /// Format the number in a nice way
     pub fn pretty(&self) -> crate::prettyfloat::PrettyFloat {
         crate::prettyfloat::PrettyFloat(*self.value_unsafe())

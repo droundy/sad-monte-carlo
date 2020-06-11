@@ -2,8 +2,8 @@
 
 #![allow(non_snake_case)]
 
-use crate::system::{units,Energy,PerEnergy};
-use crate::mc::binning::{ Binning, Interned };
+use crate::mc::binning::{Binning, Interned};
+use crate::system::{units, Energy, PerEnergy};
 
 use dimensioned::Dimensionless;
 use std::default::Default;
@@ -31,7 +31,7 @@ pub struct BinCounts {
     total_count: u64,
 }
 
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug, Clone, Copy)]
 enum Idx {
     None,
     One(usize, f64),
@@ -43,13 +43,13 @@ impl Iterator for Idx {
     fn next(&mut self) -> Option<(usize, f64)> {
         match *self {
             Idx::None => None,
-            Idx::One(i,o) => {
+            Idx::One(i, o) => {
                 *self = Idx::None;
-                Some((i, 1.-o))
+                Some((i, 1. - o))
             }
-            Idx::Two(i,o) => {
-                *self = Idx::One(i,o);
-                Some((i+1, o))
+            Idx::Two(i, o) => {
+                *self = Idx::One(i, o);
+                Some((i + 1, o))
             }
         }
     }
@@ -101,24 +101,20 @@ impl BinCounts {
 
         self.total_count += 1;
         let old_count = self.count[idx];
-        let old_plus_count = self.count[idx+1];
+        let old_plus_count = self.count[idx + 1];
         self.count[idx] += 1. - offset;
-        self.count[idx+1] += offset;
+        self.count[idx + 1] += offset;
 
         let old_total = self.total[idx];
-        let old_plus_total = self.total[idx+1];
-        self.total[idx] += value*(1.-offset);
-        self.total[idx+1] += value*offset;
-        if self.total[idx] > self.max_total
-            && max_of(&self.total) == self.total[idx]
-        {
+        let old_plus_total = self.total[idx + 1];
+        self.total[idx] += value * (1. - offset);
+        self.total[idx + 1] += value * offset;
+        if self.total[idx] > self.max_total && max_of(&self.total) == self.total[idx] {
             self.max_total = self.total[idx];
             self.e_max_total = elo;
         }
-        if self.total[idx+1] > self.max_total
-            && max_of(&self.total) == self.total[idx+1]
-        {
-            self.max_total = self.total[idx+1];
+        if self.total[idx + 1] > self.max_total && max_of(&self.total) == self.total[idx + 1] {
+            self.max_total = self.total[idx + 1];
             self.e_max_total = ehi;
         }
         if old_total == self.min_total || old_plus_total == self.min_total {
@@ -131,23 +127,23 @@ impl BinCounts {
             self.max_count = self.count[idx];
             self.e_max_count = elo;
         }
-        if self.count[idx+1] > self.max_count {
-            self.max_count = self.count[idx+1];
+        if self.count[idx + 1] > self.max_count {
+            self.max_count = self.count[idx + 1];
             self.e_max_count = ehi;
         }
     }
 
     fn get_total(&self, fidx: f64) -> f64 {
         let mut total = 0.;
-        for (i,f) in self.interpret_float_index(fidx) {
-            total += self.total[i]*f;
+        for (i, f) in self.interpret_float_index(fidx) {
+            total += self.total[i] * f;
         }
         total
     }
     fn get_count(&self, fidx: f64) -> f64 {
         let mut total = 0.;
-        for (i,f) in self.interpret_float_index(fidx) {
-            total += self.count[i]*f;
+        for (i, f) in self.interpret_float_index(fidx) {
+            total += self.count[i] * f;
         }
         total
     }
@@ -180,7 +176,7 @@ fn test_linear() {
     assert!(bins.get_lnw(Energy::new(2.49)) > 0.0);
     assert_eq!(bins.get_lnw(Energy::new(3.01)), 0.0);
     for e in -100..100 {
-        let e = Energy::new(e as f64*0.125);
+        let e = Energy::new(e as f64 * 0.125);
         println!("{}: {}", e, bins.get_lnw(e));
     }
     assert_eq!(bins.get_lnw(Energy::new(-0.01)), 0.0);
@@ -201,15 +197,15 @@ impl Default for Bins {
 
 impl Bins {
     fn index_to_energy(&self, i: usize) -> Energy {
-        self.min + (i as f64 + 0.5)*self.width
+        self.min + (i as f64 + 0.5) * self.width
     }
     fn energy_to_index(&self, e: Energy) -> f64 {
-        *((e - self.min)/self.width).value()
+        *((e - self.min) / self.width).value()
     }
     fn prep_for_e(&mut self, e: Energy) {
         assert!(self.width > Energy::new(0.0));
         if self.lnw.count.len() == 0 {
-            self.min = (e/self.width).value().floor()*self.width;
+            self.min = (e / self.width).value().floor() * self.width;
         }
         while e < self.min {
             // this is a little wasteful, but seems the easiest way to
@@ -220,7 +216,7 @@ impl Bins {
             }
             self.min -= self.width;
         }
-        while e >= self.min + self.width*(self.lnw.count.len() as f64 - 1.0) {
+        while e >= self.min + self.width * (self.lnw.count.len() as f64 - 1.0) {
             self.lnw.push_zero();
             for d in self.extra.values_mut() {
                 d.push_zero();
@@ -231,7 +227,7 @@ impl Bins {
 
 impl Binning for Bins {
     fn new(e: Energy, width: Energy) -> Self {
-        let min = ((e/width).value().round() - 0.5)*width;
+        let min = ((e / width).value().round() - 0.5) * width;
         Bins {
             min,
             width,
@@ -251,9 +247,13 @@ impl Binning for Bins {
         self.prep_for_e(e);
         let idx = self.energy_to_index(e);
         let int_idx = idx as usize;
-        let rescaled_gamma = *(gamma*Energy::new(1.)/self.width).value();
-        self.lnw.increment_count(self.index_to_energy(int_idx),
-                                 self.index_to_energy(int_idx+1), idx, rescaled_gamma);
+        let rescaled_gamma = *(gamma * Energy::new(1.) / self.width).value();
+        self.lnw.increment_count(
+            self.index_to_energy(int_idx),
+            self.index_to_energy(int_idx + 1),
+            idx,
+            rescaled_gamma,
+        );
     }
     fn set_lnw<F: Fn(Energy, PerEnergy) -> Option<f64>>(&mut self, f: F) {
         for i in 0..self.lnw.count.len() {
@@ -264,7 +264,7 @@ impl Binning for Bins {
             }
         }
     }
-    fn count_states<F: Fn(Energy, PerEnergy) -> bool>(&self, f:F) -> usize {
+    fn count_states<F: Fn(Energy, PerEnergy) -> bool>(&self, f: F) -> usize {
         let mut total = 0;
         for i in 0..self.lnw.count.len() {
             let e = self.index_to_energy(i);
@@ -283,7 +283,7 @@ impl Binning for Bins {
     }
     fn get_count(&self, e: Energy) -> PerEnergy {
         let idx = self.energy_to_index(e);
-        self.lnw.get_count(idx)/self.width
+        self.lnw.get_count(idx) / self.width
     }
     fn max_lnw(&self) -> f64 {
         self.lnw.max_total
@@ -292,10 +292,10 @@ impl Binning for Bins {
         self.lnw.min_total
     }
     fn max_count(&self) -> PerEnergy {
-        self.lnw.max_count/self.width
+        self.lnw.max_count / self.width
     }
     fn min_count(&self) -> PerEnergy {
-        self.lnw.min_count/self.width
+        self.lnw.min_count / self.width
     }
 
     fn accumulate_extra(&mut self, name: Interned, e: Energy, value: f64) {
@@ -309,28 +309,28 @@ impl Binning for Bins {
             data.total_count += 1;
 
             let old_count = data.count[int_idx];
-            let old_plus_count = data.count[int_idx+1];
+            let old_plus_count = data.count[int_idx + 1];
             data.count[int_idx] += 1.0 - offset;
-            data.count[int_idx+1] += offset;
+            data.count[int_idx + 1] += offset;
             if old_count == data.min_count || old_plus_count == data.min_count {
                 data.min_count = min_of(&data.count);
             }
             if data.count[int_idx] > data.max_count {
                 data.max_count = data.count[int_idx];
             }
-            if data.count[int_idx+1] > data.max_count {
-                data.max_count = data.count[int_idx+1];
+            if data.count[int_idx + 1] > data.max_count {
+                data.max_count = data.count[int_idx + 1];
             }
 
             let old_total = data.total[int_idx];
-            let old_plus_total = data.total[int_idx+1];
-            data.total[int_idx] = old_total + value*(1.-offset);
-            data.total[int_idx+1] = old_plus_total + value*offset;
+            let old_plus_total = data.total[int_idx + 1];
+            data.total[int_idx] = old_total + value * (1. - offset);
+            data.total[int_idx + 1] = old_plus_total + value * offset;
             if data.total[int_idx] > data.max_total {
                 data.max_total = data.total[int_idx];
             }
-            if data.total[int_idx+1] > data.max_total {
-                data.max_total = data.total[int_idx+1];
+            if data.total[int_idx + 1] > data.max_total {
+                data.max_total = data.total[int_idx + 1];
             }
             if old_total == data.min_total || old_plus_total == data.min_total {
                 data.min_total = min_of(&data.total);
@@ -410,14 +410,14 @@ impl Binning for Bins {
     }
     fn mean_count_extra(&self, name: Interned) -> PerEnergy {
         if let Some(data) = self.extra.get(&name) {
-            data.total_count as f64/(self.width*self.num_states() as f64)
+            data.total_count as f64 / (self.width * self.num_states() as f64)
         } else {
             PerEnergy::new(0.)
         }
     }
     fn min_count_extra(&self, name: Interned) -> PerEnergy {
         if let Some(data) = self.extra.get(&name) {
-            data.min_count as f64/self.width
+            data.min_count as f64 / self.width
         } else {
             PerEnergy::new(0.)
         }
@@ -446,9 +446,9 @@ impl Binning for Bins {
 }
 
 fn max_of(stuff: &[f64]) -> f64 {
-    stuff.iter().cloned().fold(0./0., f64::max)
+    stuff.iter().cloned().fold(0. / 0., f64::max)
 }
 
 fn min_of(stuff: &[f64]) -> f64 {
-    stuff.iter().cloned().fold(0./0., f64::min)
+    stuff.iter().cloned().fold(0. / 0., f64::min)
 }

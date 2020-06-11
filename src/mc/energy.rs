@@ -2,15 +2,15 @@
 
 #![allow(non_snake_case)]
 
-use crate::system::*;
 use super::*;
+use crate::system::*;
 
 use super::plugin::Plugin;
+use crate::prettyfloat::PrettyFloat;
 use dimensioned::Dimensionless;
 use rand::{Rng, SeedableRng};
+use std::cell::{Cell, RefCell};
 use std::default::Default;
-use std::cell::{RefCell,Cell};
-use crate::prettyfloat::PrettyFloat;
 
 /// Which experimental version of SAD are we doing?
 #[derive(Serialize, Deserialize, Debug, AutoArgs, Clone, Copy, PartialEq, Eq, Hash)]
@@ -21,12 +21,13 @@ pub enum SadVersion {
 
 impl SadVersion {
     fn compute_gamma(&self, latest_parameter: f64, t: f64, tF: f64, num_states: f64) -> f64 {
-        if latest_parameter*tF*num_states == 0.0 {
+        if latest_parameter * tF * num_states == 0.0 {
             0.0
         } else {
             match *self {
                 SadVersion::Sad => {
-                   let g = (latest_parameter + t/tF)/(latest_parameter + t/num_states*(t/tF));
+                    let g = (latest_parameter + t / tF)
+                        / (latest_parameter + t / num_states * (t / tF));
                     if g.is_nan() {
                         println!("problem with {} and {}", tF, num_states);
                         assert!(!g.is_nan());
@@ -93,13 +94,13 @@ impl Default for EnergyMCParams {
     fn default() -> Self {
         EnergyMCParams {
             _method: MethodParams::Sad {
-                min_T: 0.2*units::EPSILON,
+                min_T: 0.2 * units::EPSILON,
             },
             seed: None,
             min_allowed_energy: None,
             max_allowed_energy: None,
             energy_bin: None,
-            _moves: MoveParams::TranslationScale(0.05*units::SIGMA),
+            _moves: MoveParams::TranslationScale(0.05 * units::SIGMA),
             _report: plugin::ReportParams::default(),
             _movies: MoviesParams::default(),
             _save: plugin::SaveParams::default(),
@@ -116,7 +117,7 @@ pub struct State {
 }
 impl ::std::fmt::Display for State {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "{}", PrettyFloat(*(self.E/units::EPSILON).value()))
+        write!(f, "{}", PrettyFloat(*(self.E / units::EPSILON).value()))
     }
 }
 impl State {
@@ -175,7 +176,6 @@ pub struct EnergyMC<S, C> {
 
     // The following were formerly part of Bins.  I joined them all
     // together in EnergyMC.
-
     /// The parameters describing the bins
     pub bins: Bins,
     /// System-specific data that has been collected
@@ -206,9 +206,7 @@ enum Method {
         latest_parameter: f64,
     },
     /// Samc
-    Samc {
-        t0: f64,
-    },
+    Samc { t0: f64 },
     /// Wang Landau
     WL {
         gamma: f64,
@@ -220,34 +218,43 @@ enum Method {
         min_energy: Energy,
         inv_t: bool,
         min_gamma: Option<f64>,
-    }
+    },
 }
 
 impl Method {
-    fn new(p: MethodParams, E: Energy, dE: Energy,
-           min_allowed_energy: Option<Energy>,
-           max_allowed_energy: Option<Energy>) -> Self {
+    fn new(
+        p: MethodParams,
+        E: Energy,
+        dE: Energy,
+        min_allowed_energy: Option<Energy>,
+        max_allowed_energy: Option<Energy>,
+    ) -> Self {
         match p {
-            MethodParams::Sad { min_T } =>
-                Method::Sad {
-                    min_T,
-                    too_lo: E,
-                    too_hi: E,
-                    tL: 0,
-                    tF: 0,
-                    num_states: 1,
-                    highest_hist: 1,
-                    version: SadVersion::Sad,
-                    latest_parameter: 0.,
-                },
+            MethodParams::Sad { min_T } => Method::Sad {
+                min_T,
+                too_lo: E,
+                too_hi: E,
+                tL: 0,
+                tF: 0,
+                num_states: 1,
+                highest_hist: 1,
+                version: SadVersion::Sad,
+                latest_parameter: 0.,
+            },
             MethodParams::Samc { t0 } => Method::Samc { t0 },
             MethodParams::WL { min_gamma } => Method::WL {
                 gamma: 1.0,
-                lowest_hist: if min_allowed_energy.is_some() && max_allowed_energy.is_some() { 0 } else { 1 },
+                lowest_hist: if min_allowed_energy.is_some() && max_allowed_energy.is_some() {
+                    0
+                } else {
+                    1
+                },
                 highest_hist: 1,
                 total_hist: 0,
-                num_states: if let (Some(mine), Some(maxe)) = (min_allowed_energy, max_allowed_energy) {
-                    *((maxe - mine)/dE).value()
+                num_states: if let (Some(mine), Some(maxe)) =
+                    (min_allowed_energy, max_allowed_energy)
+                {
+                    *((maxe - mine) / dE).value()
                 } else {
                     1.0
                 },
@@ -258,11 +265,17 @@ impl Method {
             },
             MethodParams::Inv_t_WL => Method::WL {
                 gamma: 1.0,
-                lowest_hist: if min_allowed_energy.is_some() && max_allowed_energy.is_some() { 0 } else { 1 },
+                lowest_hist: if min_allowed_energy.is_some() && max_allowed_energy.is_some() {
+                    0
+                } else {
+                    1
+                },
                 highest_hist: 1,
                 total_hist: 0,
-                num_states: if let (Some(mine), Some(maxe)) = (min_allowed_energy, max_allowed_energy) {
-                    *((maxe - mine)/dE).value()
+                num_states: if let (Some(mine), Some(maxe)) =
+                    (min_allowed_energy, max_allowed_energy)
+                {
+                    *((maxe - mine) / dE).value()
                 } else {
                     1.0
                 },
@@ -275,7 +288,14 @@ impl Method {
     }
     fn entropy(&self, bins: &Bins) -> Vec<f64> {
         let mut entropy = bins.lnw.clone();
-        if let Method::Sad {min_T,too_lo,too_hi, num_states, ..} = *self {
+        if let Method::Sad {
+            min_T,
+            too_lo,
+            too_hi,
+            num_states,
+            ..
+        } = *self
+        {
             let mut meanhist = 0.0;
             let too_lo_entropy = bins.lnw[bins.state_to_index(State { E: too_lo })];
             let too_hi_entropy = bins.lnw[bins.state_to_index(State { E: too_hi })];
@@ -285,23 +305,29 @@ impl Method {
                 }
             }
             // Round too_lo to the center of the energy bin.
-            let too_lo = bins.index_to_state(bins.state_to_index(State { E: too_lo })).E;
+            let too_lo = bins
+                .index_to_state(bins.state_to_index(State { E: too_lo }))
+                .E;
             meanhist /= num_states as f64;
             for (i, s) in entropy.iter_mut().enumerate() {
                 let e = bins.index_to_state(i).E;
                 if bins.histogram[i] == 0 {
                     *s *= 0.0;
                 } else if e < too_lo {
-                    *s = (bins.histogram[i] as f64/meanhist).ln() + too_lo_entropy + (e - too_lo)/min_T;
+                    *s = (bins.histogram[i] as f64 / meanhist).ln()
+                        + too_lo_entropy
+                        + (e - too_lo) / min_T;
                 } else if e > too_hi {
-                    *s = (bins.histogram[i] as f64/meanhist).ln() + too_hi_entropy;
+                    *s = (bins.histogram[i] as f64 / meanhist).ln() + too_hi_entropy;
                 }
             }
         } else if let Method::WL { gamma, hist, .. } = self {
             if *gamma == 0.0 {
                 // We are in a production run, so we should modify the
                 // lnw based on the histogram.
-                return entropy.iter().map(|x| *x.value())
+                return entropy
+                    .iter()
+                    .map(|x| *x.value())
                     .zip(hist.iter().cloned())
                     .map(|(lnw, h)| lnw + if h > 0 { (h as f64).ln() } else { 0.0 })
                     .collect();
@@ -313,13 +339,14 @@ impl Method {
 
 impl Bins {
     fn index_to_state(&self, i: usize) -> State {
-        State { E: self.min + (i as f64 + 0.5)*self.width }
+        State {
+            E: self.min + (i as f64 + 0.5) * self.width,
+        }
     }
     fn state_to_index(&self, s: State) -> usize {
-        *((s.E - self.min)/self.width).value() as usize
+        *((s.E - self.min) / self.width).value() as usize
     }
 }
-
 
 impl<S: System> EnergyMC<S, S::CollectedData> {
     /// Find the index corresponding to a given energy.  This should
@@ -346,7 +373,7 @@ impl<S: System> EnergyMC<S, S::CollectedData> {
             self.bins.min -= self.bins.width;
             self.collected.insert(0, S::CollectedData::default());
         }
-        while e >= self.bins.min + self.bins.width*(self.bins.lnw.len() as f64) {
+        while e >= self.bins.min + self.bins.width * (self.bins.lnw.len() as f64) {
             self.bins.lnw.push(Unitless::new(0.0));
             self.bins.histogram.push(0);
             self.bins.t_found.push(0);
@@ -357,24 +384,29 @@ impl<S: System> EnergyMC<S, S::CollectedData> {
     }
 }
 
-impl<S: System> EnergyMC<S,S::CollectedData> {
+impl<S: System> EnergyMC<S, S::CollectedData> {
     /// This decides whether to reject the move based on the actual
     /// method in use.
     fn reject_move(&mut self, e1: State, e2: State) -> bool {
         let i1 = self.state_to_index(e1);
         let i2 = self.state_to_index(e2);
         match self.method {
-            Method::Sad { too_lo, too_hi, min_T, .. } => {
+            Method::Sad {
+                too_lo,
+                too_hi,
+                min_T,
+                ..
+            } => {
                 let lnw = &self.bins.lnw;
                 let lnw1 = if e1.E < too_lo {
-                    lnw[self.state_to_index(State { E: too_lo })] + (e1.E - too_lo)/min_T
+                    lnw[self.state_to_index(State { E: too_lo })] + (e1.E - too_lo) / min_T
                 } else if e1.E > too_hi {
                     lnw[self.state_to_index(State { E: too_hi })]
                 } else {
                     lnw[i1]
                 };
                 let lnw2 = if e2.E < too_lo {
-                    lnw[self.state_to_index(State { E: too_lo })] + (e2.E - too_lo)/min_T
+                    lnw[self.state_to_index(State { E: too_lo })] + (e2.E - too_lo) / min_T
                 } else if e2.E > too_hi {
                     lnw[self.state_to_index(State { E: too_hi })]
                 } else {
@@ -386,13 +418,17 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                     // we encounter an energy in our important range
                     // that we have never seen before.
                     match &mut self.method {
-                        Method::Sad { ref mut num_states, ref mut tL,
-                                      ref mut latest_parameter, .. } => {
-                            *latest_parameter = *((too_hi - too_lo)/min_T).value();
+                        Method::Sad {
+                            ref mut num_states,
+                            ref mut tL,
+                            ref mut latest_parameter,
+                            ..
+                        } => {
+                            *latest_parameter = *((too_hi - too_lo) / min_T).value();
                             *num_states += 1;
                             *tL = self.moves;
                         }
-                        _ => unreachable!()
+                        _ => unreachable!(),
                     }
                 }
                 rejected
@@ -402,7 +438,11 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                 let lnw2 = self.bins.lnw[i2].value();
                 lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
             }
-            Method::WL { ref mut num_states, lowest_hist, .. } => {
+            Method::WL {
+                ref mut num_states,
+                lowest_hist,
+                ..
+            } => {
                 let lnw1 = self.bins.lnw[i1].value();
                 let lnw2 = self.bins.lnw[i2].value();
                 let rejected = lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp();
@@ -422,9 +462,17 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
         let mut gamma_changed = false;
         let mut switch_to_samc: Option<f64> = None;
         match self.method {
-            Method::Sad { min_T, ref mut too_lo, ref mut too_hi, ref mut num_states,
-                          ref mut tL, ref mut tF, ref mut highest_hist,
-                          ref mut latest_parameter, .. } => {
+            Method::Sad {
+                min_T,
+                ref mut too_lo,
+                ref mut too_hi,
+                ref mut num_states,
+                ref mut tL,
+                ref mut tF,
+                ref mut highest_hist,
+                ref mut latest_parameter,
+                ..
+            } => {
                 let histogram = &self.bins.histogram;
                 if *too_lo > *too_hi || energy.E < *too_lo || energy.E > *too_hi {
                     // Ooops, we didn't want to add gamma after all...
@@ -435,7 +483,7 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                     *highest_hist = histogram[i];
                     if energy.E > *too_hi {
                         let ihi = self.bins.state_to_index(State { E: *too_hi });
-                        for j in 0 .. histogram.len() {
+                        for j in 0..histogram.len() {
                             let ej = self.bins.index_to_state(j).E;
                             let lnw = &mut self.bins.lnw;
                             if ej > *too_hi && ej <= energy.E {
@@ -447,19 +495,19 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                                 }
                             }
                         }
-                        *latest_parameter = *((energy.E - *too_lo)/min_T).value();
+                        *latest_parameter = *((energy.E - *too_lo) / min_T).value();
                         *tL = self.moves;
                         // The following rounds the energy to one of the bins.
                         let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E;
                         *too_hi = bin_e;
                     } else if energy.E < *too_lo {
                         let ilo = self.bins.state_to_index(State { E: *too_lo });
-                        for j in 0 .. histogram.len() {
+                        for j in 0..histogram.len() {
                             let ej = self.bins.index_to_state(j).E;
                             let lnw = &mut self.bins.lnw;
                             if ej < *too_lo && ej >= energy.E {
                                 if histogram[j] != 0 {
-                                    lnw[j] = lnw[ilo] + (ej-*too_lo)/min_T;
+                                    lnw[j] = lnw[ilo] + (ej - *too_lo) / min_T;
                                     if lnw[j] < Unitless::new(0.) {
                                         lnw[j] = Unitless::new(0.);
                                     }
@@ -469,7 +517,7 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                                 }
                             }
                         }
-                        *latest_parameter = *((*too_hi - energy.E)/min_T).value();
+                        *latest_parameter = *((*too_hi - energy.E) / min_T).value();
                         *tL = self.moves;
                         // The following rounds the energy to one of the bins.
                         let bin_e = self.bins.index_to_state(self.bins.state_to_index(energy)).E;
@@ -483,7 +531,7 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                     let ilo = self.bins.state_to_index(State { E: *too_lo });
                     let ihi = self.bins.state_to_index(State { E: *too_hi });
                     let old_tF = *tF;
-                    *tF = *self.bins.t_found[ilo..ihi+1].iter().max().unwrap();
+                    *tF = *self.bins.t_found[ilo..ihi + 1].iter().max().unwrap();
                     if old_tF == *tF {
                         // We didn't change gamma after all!
                         gamma_changed = false;
@@ -492,35 +540,54 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                         // Let's take this as an opportunity to revise our
                         // translation scale, and also to log the news.
                         if let MoveParams::AcceptanceRate(r) = self.move_plan {
-                            let s = self.acceptance_rate/r;
-                            let s = if s < 0.8 { 0.8 } else if s > 1.2 { 1.2 } else { s };
+                            let s = self.acceptance_rate / r;
+                            let s = if s < 0.8 {
+                                0.8
+                            } else if s > 1.2 {
+                                1.2
+                            } else {
+                                s
+                            };
                             self.translation_scale *= s;
                             if !self.report.quiet {
-                                println!("        new translation scale: {:.3}",
-                                         self.translation_scale);
-                                println!("        acceptance rate {:.1}% [long-term: {:.1}%]",
-                                         100.0*self.acceptance_rate,
-                                         100.0*self.accepted_moves as f64
-                                         /self.moves as f64);
+                                println!(
+                                    "        new translation scale: {:.3}",
+                                    self.translation_scale
+                                );
+                                println!(
+                                    "        acceptance rate {:.1}% [long-term: {:.1}%]",
+                                    100.0 * self.acceptance_rate,
+                                    100.0 * self.accepted_moves as f64 / self.moves as f64
+                                );
                             }
                         }
                         if !self.report.quiet {
-                            println!("    sad: [{}]  {}:  {:.7} < {:.7} ... {:.7} < {:.7}",
-                                     *tF, num_states,
-                                     self.bins.min.pretty(),
-                                     too_lo.pretty(),
-                                     too_hi.pretty(),
-                                     (self.bins.min
-                                      + self.bins.width*(histogram.len()-1) as f64).pretty());
+                            println!(
+                                "    sad: [{}]  {}:  {:.7} < {:.7} ... {:.7} < {:.7}",
+                                *tF,
+                                num_states,
+                                self.bins.min.pretty(),
+                                too_lo.pretty(),
+                                too_hi.pretty(),
+                                (self.bins.min + self.bins.width * (histogram.len() - 1) as f64)
+                                    .pretty()
+                            );
                         }
                     }
                 }
             }
             Method::Samc { .. } => {}
-            Method::WL { ref mut gamma,
-                         ref mut lowest_hist, ref mut highest_hist, ref mut total_hist,
-                         ref mut hist, ref mut min_energy, num_states, inv_t,
-                         min_gamma } => {
+            Method::WL {
+                ref mut gamma,
+                ref mut lowest_hist,
+                ref mut highest_hist,
+                ref mut total_hist,
+                ref mut hist,
+                ref mut min_energy,
+                num_states,
+                inv_t,
+                min_gamma,
+            } => {
                 if let Some(min_gamma) = min_gamma {
                     if *gamma < min_gamma {
                         // We are in a production run.
@@ -531,8 +598,10 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                 if hist.len() != self.bins.lnw.len() {
                     // Oops, we found a new energy, so let's regroup.
                     if hist.len() == 0 || (*gamma != 1.0 && *lowest_hist > 0) {
-                        println!("    WL: Starting fresh with {} energies",
-                                 self.bins.lnw.len());
+                        println!(
+                            "    WL: Starting fresh with {} energies",
+                            self.bins.lnw.len()
+                        );
                         gamma_changed = true;
                         *gamma = 1.0;
                         *lowest_hist = 0;
@@ -547,12 +616,12 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                         // found...
                         while *min_energy > self.bins.min {
                             *min_energy -= self.bins.width;
-                            hist.insert(0,0);
+                            hist.insert(0, 0);
                         }
                         while hist.len() < self.bins.lnw.len() {
                             hist.push(0);
                         }
-                        for (i,h) in hist.iter().cloned().enumerate() {
+                        for (i, h) in hist.iter().cloned().enumerate() {
                             if self.bins.histogram[i] > 0 && h < *lowest_hist {
                                 *lowest_hist = h;
                             }
@@ -565,29 +634,42 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                 }
                 *total_hist += 1;
                 let histogram = &self.bins.histogram;
-                let max_energy = *min_energy + (hist.len() as f64)*self.bins.width;
+                let max_energy = *min_energy + (hist.len() as f64) * self.bins.width;
                 if hist[i] == *lowest_hist + 1
                     && hist.len() > 1
-                    && (self.min_allowed_energy.is_none() || self.min_allowed_energy.unwrap() >= *min_energy)
-                    && (self.max_allowed_energy.is_none() || self.max_allowed_energy.unwrap() <= max_energy)
-                    && hist.iter().enumerate()
-                          .filter(|(i,_)| histogram[*i] != 0)
-                          .map(|(_,&h)|h).min() == Some(*lowest_hist+1)
+                    && (self.min_allowed_energy.is_none()
+                        || self.min_allowed_energy.unwrap() >= *min_energy)
+                    && (self.max_allowed_energy.is_none()
+                        || self.max_allowed_energy.unwrap() <= max_energy)
+                    && hist
+                        .iter()
+                        .enumerate()
+                        .filter(|(i, _)| histogram[*i] != 0)
+                        .map(|(_, &h)| h)
+                        .min()
+                        == Some(*lowest_hist + 1)
                 {
                     *lowest_hist = hist[i];
-                    if (inv_t && *lowest_hist > 0) ||
-                       *lowest_hist as f64 >= 0.8**total_hist as f64 / num_states
+                    if (inv_t && *lowest_hist > 0)
+                        || *lowest_hist as f64 >= 0.8 * *total_hist as f64 / num_states
                     {
                         gamma_changed = true;
                         *gamma *= 0.5;
                         if *gamma > 1e-16 {
-                            println!("    WL: ({}) We have reached flatness {:.2} with min {}!",
-                                     PrettyFloat(*gamma),
-                                     PrettyFloat(*lowest_hist as f64*num_states
-                                                 / *total_hist as f64),
-                                     *lowest_hist);
-                            report_wl_flatness(*lowest_hist, *highest_hist, *total_hist,
-                                               num_states, hist, &self.bins);
+                            println!(
+                                "    WL: ({}) We have reached flatness {:.2} with min {}!",
+                                PrettyFloat(*gamma),
+                                PrettyFloat(*lowest_hist as f64 * num_states / *total_hist as f64),
+                                *lowest_hist
+                            );
+                            report_wl_flatness(
+                                *lowest_hist,
+                                *highest_hist,
+                                *total_hist,
+                                num_states,
+                                hist,
+                                &self.bins,
+                            );
                         }
                         for h in hist.iter_mut() {
                             *h = 0;
@@ -603,7 +685,7 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
                             }
                         }
                     }
-                    if inv_t && *gamma < (num_states as f64)/(self.moves as f64) {
+                    if inv_t && *gamma < (num_states as f64) / (self.moves as f64) {
                         println!("    1/t-WL:  Switching to 1/t!");
                         switch_to_samc = Some(num_states as f64);
                     }
@@ -628,20 +710,24 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
         for j in 0..i {
             let lnwj = self.bins.lnw[j];
             if lnwj > Unitless::new(0.) {
-                let Tj = (energy - self.index_to_state(j).E)/(lnwi - lnwj);
-                if Tj > Tlo { Tlo = Tj; }
+                let Tj = (energy - self.index_to_state(j).E) / (lnwi - lnwj);
+                if Tj > Tlo {
+                    Tlo = Tj;
+                }
             }
         }
         let mut Thi = Energy::new(1e300);
-        for j in i+1 .. self.bins.lnw.len() {
+        for j in i + 1..self.bins.lnw.len() {
             let lnwj = self.bins.lnw[j];
             if lnwj > Unitless::new(0.) {
-                let Tj = (energy - self.index_to_state(j).E)/(lnwi - lnwj);
-                if Tj < Thi { Thi = Tj; }
+                let Tj = (energy - self.index_to_state(j).E) / (lnwi - lnwj);
+                if Tj < Thi {
+                    Thi = Tj;
+                }
             }
         }
         if Thi > Tlo && Tlo > Energy::new(0.) {
-            return 0.5*(Thi + Tlo);
+            return 0.5 * (Thi + Tlo);
         }
         if Tlo > Energy::new(0.) {
             return Tlo;
@@ -653,26 +739,38 @@ impl<S: System> EnergyMC<S,S::CollectedData> {
 impl<S: System> EnergyMC<S, S::CollectedData> {
     fn gamma(&self) -> f64 {
         match self.method {
-            Method::Sad { num_states, tF, version, latest_parameter, .. } => {
-                version.compute_gamma(latest_parameter, self.moves as f64,
-                                      tF as f64, num_states as f64)
-            }
+            Method::Sad {
+                num_states,
+                tF,
+                version,
+                latest_parameter,
+                ..
+            } => version.compute_gamma(
+                latest_parameter,
+                self.moves as f64,
+                tF as f64,
+                num_states as f64,
+            ),
             Method::Samc { t0 } => {
                 let t = self.moves as f64;
-                if t > t0 { t0/t } else { 1.0 }
+                if t > t0 {
+                    t0 / t
+                } else {
+                    1.0
+                }
             }
-            Method::WL { gamma, .. } => {
-                gamma
-            }
+            Method::WL { gamma, .. } => gamma,
         }
     }
 }
 
-impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
+impl<S: MovableSystem> MonteCarlo for EnergyMC<S, S::CollectedData> {
     type Params = EnergyMCParams;
     type System = S;
     fn from_params(params: EnergyMCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
-        let ewidth = params.energy_bin.unwrap_or(system.delta_energy().unwrap_or(Energy::new(1.0)));
+        let ewidth = params
+            .energy_bin
+            .unwrap_or(system.delta_energy().unwrap_or(Energy::new(1.0)));
         // center zero energy in a bin!
         let mut rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
         // Let's spend a little effort getting an energy that is
@@ -681,7 +779,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
         // energy that is high enough.
         if let Some(maxe) = params.max_allowed_energy {
             for _ in 0..1e8 as u64 {
-                if let Some(newe) = system.plan_move(&mut rng, 0.05*units::SIGMA) {
+                if let Some(newe) = system.plan_move(&mut rng, 0.05 * units::SIGMA) {
                     if newe < system.energy() {
                         system.confirm();
                     }
@@ -691,10 +789,15 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
                 }
             }
         }
-        let emin = ((system.energy()/ewidth).value().round() - 0.5)*ewidth;
+        let emin = ((system.energy() / ewidth).value().round() - 0.5) * ewidth;
         EnergyMC {
-            method: Method::new(params._method, system.energy(), ewidth,
-                                params.min_allowed_energy, params.max_allowed_energy),
+            method: Method::new(
+                params._method,
+                system.energy(),
+                ewidth,
+                params.min_allowed_energy,
+                params.max_allowed_energy,
+            ),
             moves: 0,
             time_L: 0,
             accepted_moves: 0,
@@ -718,7 +821,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
 
             translation_scale: match params._moves {
                 MoveParams::TranslationScale(x) => x,
-                _ => 0.05*units::SIGMA,
+                _ => 0.05 * units::SIGMA,
             },
             move_plan: params._moves,
             system: system,
@@ -739,11 +842,13 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
     fn move_once(&mut self) {
         self.moves += 1;
         // self.system.collect_data();
-        if self.moves % (self.bins.histogram.len() as u64*self.bins.histogram.len() as u64*1000) == 0 {
+        if self.moves % (self.bins.histogram.len() as u64 * self.bins.histogram.len() as u64 * 1000)
+            == 0
+        {
             self.system.verify_energy();
         }
         let e1 = State::new(&self.system);
-        let recent_scale = (1.0/self.moves as f64).sqrt();
+        let recent_scale = (1.0 / self.moves as f64).sqrt();
         self.acceptance_rate *= 1. - recent_scale;
         if let Some(e2) = self.system.plan_move(&mut self.rng, self.translation_scale) {
             let mut out_of_bounds = false;
@@ -757,7 +862,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
                 let e2 = State { E: e2 };
                 self.prepare_for_state(e2);
 
-                if !self.reject_move(e1,e2) {
+                if !self.reject_move(e1, e2) {
                     self.accepted_moves += 1;
                     self.acceptance_rate += recent_scale;
                     self.system.confirm();
@@ -792,10 +897,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
             self.round_trips[i] += 1;
         }
 
-        let plugins = [&self.report as &dyn Plugin<Self>,
-                       &self.movies,
-                       &self.save,
-        ];
+        let plugins = [&self.report as &dyn Plugin<Self>, &self.movies, &self.save];
         self.manager.run(self, &self.system, &plugins);
     }
     fn system(&self) -> &Self::System {
@@ -814,7 +916,6 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S,S::CollectedData> {
         self.save_as.clone()
     }
 }
-
 
 /// Do we want movies? Where?
 #[derive(AutoArgs, Debug)]
@@ -882,8 +983,8 @@ impl Movies {
         self.gamma_time.borrow_mut().push(t);
     }
 }
-impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
-    fn run(&self, mc: &EnergyMC<S,S::CollectedData>, _sys: &S) -> plugin::Action {
+impl<S: MovableSystem> Plugin<EnergyMC<S, S::CollectedData>> for Movies {
+    fn run(&self, mc: &EnergyMC<S, S::CollectedData>, _sys: &S) -> plugin::Action {
         if let Some(movie_time) = self.movie_time {
             let moves = mc.num_moves();
             if plugin::TimeToRun::TotalMoves(moves) == self.period.get() {
@@ -892,8 +993,9 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
                 // First, let's create the arrays for the time and
                 // energy indices.
                 self.time.borrow_mut().push(moves);
-                let new_energy: Vec<_> =
-                    (0 .. mc.bins.lnw.len()).map(|i| mc.index_to_state(i).E).collect();
+                let new_energy: Vec<_> = (0..mc.bins.lnw.len())
+                    .map(|i| mc.index_to_state(i).E)
+                    .collect();
                 let old_energy = self.energy.replace(new_energy.clone());
 
                 let histogram = &mc.bins.histogram;
@@ -909,8 +1011,8 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
                     let mut hist_movie = self.histogram.borrow_mut();
                     let mut S = self.entropy.borrow_mut();
                     let left_zeros: usize = if energy.len() > 1 && old_energy.len() > 0 {
-                        let de = energy[1]-energy[0];
-                        ((old_energy[0] - energy[0])/de).value().round() as usize
+                        let de = energy[1] - energy[0];
+                        ((old_energy[0] - energy[0]) / de).value().round() as usize
                     } else {
                         0
                     };
@@ -920,7 +1022,7 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
                             v.push(0.);
                         }
                         for _ in 0..left_zeros {
-                            v.insert(0,0.);
+                            v.insert(0, 0.);
                         }
                     }
                     for v in hist_movie.iter_mut() {
@@ -928,7 +1030,7 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
                             v.push(0);
                         }
                         for _ in 0..left_zeros {
-                            v.insert(0,0);
+                            v.insert(0, 0);
                         }
                     }
                     S.push(entropy);
@@ -962,8 +1064,13 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
                     let err = format!("error writing to file {:?}", name);
                     let mut f = AtomicFile::create(&name)
                         .expect(&format!("error creating file {:?}", name));
-                    for (t,g) in self.gamma_time.borrow().iter().zip(self.gamma.borrow().iter()) {
-                        writeln!(f, "{}\t{}", t,g).expect(&err);
+                    for (t, g) in self
+                        .gamma_time
+                        .borrow()
+                        .iter()
+                        .zip(self.gamma.borrow().iter())
+                    {
+                        writeln!(f, "{}\t{}", t, g).expect(&err);
                     }
                 }
                 {
@@ -972,7 +1079,7 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
                     let mut f = AtomicFile::create(&name)
                         .expect(&format!("error creating file {:?}", name));
                     for t in self.energy.borrow().iter() {
-                        writeln!(f, "{}", *t/units::EPSILON).expect(&err);
+                        writeln!(f, "{}", *t / units::EPSILON).expect(&err);
                     }
                 }
                 {
@@ -1007,12 +1114,14 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
         }
         plugin::Action::None
     }
-    fn run_period(&self) -> plugin::TimeToRun { self.period.get() }
+    fn run_period(&self) -> plugin::TimeToRun {
+        self.period.get()
+    }
 
     /// This isn't really a movies thing, but there isn't a great
     /// reason to create yet another plugin for an EnergyMC-specific
     /// log message.
-    fn log(&self, mc: &EnergyMC<S,S::CollectedData>, sys: &S) {
+    fn log(&self, mc: &EnergyMC<S, S::CollectedData>, sys: &S) {
         let mut one_trip: Option<State> = None;
         let mut ten_trips: Option<State> = None;
         let mut hundred_trips: Option<State> = None;
@@ -1032,50 +1141,88 @@ impl<S: MovableSystem> Plugin<EnergyMC<S,S::CollectedData>> for Movies {
             }
         }
         let thousand_T = thousand_trips
-            .map(|e| format!(" ({:.1})",
-                             PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
+            .map(|e| {
+                format!(
+                    " ({:.1})",
+                    PrettyFloat(*(mc.temperature(e) / units::EPSILON).value())
+                )
+            })
             .unwrap_or("".to_string());
         let hundred_T = hundred_trips
-            .map(|e| format!(" ({:.1})",
-                             PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
+            .map(|e| {
+                format!(
+                    " ({:.1})",
+                    PrettyFloat(*(mc.temperature(e) / units::EPSILON).value())
+                )
+            })
             .unwrap_or("".to_string());
         let ten_T = ten_trips
-            .map(|e| format!(" ({:.1})",
-                             PrettyFloat(*(mc.temperature(e)/units::EPSILON).value())))
+            .map(|e| {
+                format!(
+                    " ({:.1})",
+                    PrettyFloat(*(mc.temperature(e) / units::EPSILON).value())
+                )
+            })
             .unwrap_or("".to_string());
-        let thousand_trips = thousand_trips.map(|e| format!("{:.7}", e.E.pretty()))
+        let thousand_trips = thousand_trips
+            .map(|e| format!("{:.7}", e.E.pretty()))
             .unwrap_or("-".to_string());
-        let ten_trips = ten_trips.map(|e| format!("{:.7}", e.E.pretty()))
+        let ten_trips = ten_trips
+            .map(|e| format!("{:.7}", e.E.pretty()))
             .unwrap_or("-".to_string());
-        let one_trip = one_trip.map(|e| format!("{:.7}", e.E.pretty()))
+        let one_trip = one_trip
+            .map(|e| format!("{:.7}", e.E.pretty()))
             .unwrap_or("-".to_string());
-        let hundred_trips = hundred_trips.map(|e| format!("{:.7}", e.E.pretty()))
+        let hundred_trips = hundred_trips
+            .map(|e| format!("{:.7}", e.E.pretty()))
             .unwrap_or("-".to_string());
         if !mc.report.quiet {
-            println!("   {} * {}{} * {}{} * {}{} | {:.7} currently {}",
-                     one_trip,
-                     ten_trips, ten_T,
-                     hundred_trips, hundred_T,
-                     thousand_trips, thousand_T,
-                     mc.index_to_state(mc.max_S_index).E.pretty(),
-                     (sys.energy()/units::EPSILON).pretty(),
+            println!(
+                "   {} * {}{} * {}{} * {}{} | {:.7} currently {}",
+                one_trip,
+                ten_trips,
+                ten_T,
+                hundred_trips,
+                hundred_T,
+                thousand_trips,
+                thousand_T,
+                mc.index_to_state(mc.max_S_index).E.pretty(),
+                (sys.energy() / units::EPSILON).pretty(),
             );
-            if let Method::WL { lowest_hist, highest_hist, total_hist, num_states,
-                                ref hist, .. } = mc.method {
-                report_wl_flatness(lowest_hist, highest_hist, total_hist, num_states,
-                                   hist, &mc.bins);
+            if let Method::WL {
+                lowest_hist,
+                highest_hist,
+                total_hist,
+                num_states,
+                ref hist,
+                ..
+            } = mc.method
+            {
+                report_wl_flatness(
+                    lowest_hist,
+                    highest_hist,
+                    total_hist,
+                    num_states,
+                    hist,
+                    &mc.bins,
+                );
             }
         }
     }
 }
 
-fn report_wl_flatness(lowest_hist: u64, highest_hist: u64, total_hist: u64,
-                      num_states: f64, hist: &[u64],
-                      bins: &Bins) {
+fn report_wl_flatness(
+    lowest_hist: u64,
+    highest_hist: u64,
+    total_hist: u64,
+    num_states: f64,
+    hist: &[u64],
+    bins: &Bins,
+) {
     if total_hist > 0 && hist.len() > 1 {
         let mut lowest = 111111111;
         let mut highest = 111111111;
-        for (i,&h) in hist.iter().enumerate() {
+        for (i, &h) in hist.iter().enumerate() {
             if h == lowest_hist && bins.histogram[i] != 0 {
                 lowest = i;
             }
@@ -1095,9 +1242,11 @@ fn report_wl_flatness(lowest_hist: u64, highest_hist: u64, total_hist: u64,
         };
         if lowest_hist == 0 {
             let zeros = hist.iter().cloned().filter(|&x| x == 0).count();
-            println!("        WL:  {:.3}/{:.3} bins have been unexplored",
-                     PrettyFloat(zeros as f64),
-                     PrettyFloat(num_states as f64));
+            println!(
+                "        WL:  {:.3}/{:.3} bins have been unexplored",
+                PrettyFloat(zeros as f64),
+                PrettyFloat(num_states as f64)
+            );
         } else {
             println!("        WL:  flatness {:.1} with min {:.2} at {:.7} and max {:.2} at {:.7} (with total {:.2})!",
                      PrettyFloat(lowest_hist as f64*num_states as f64

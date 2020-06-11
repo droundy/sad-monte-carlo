@@ -1,6 +1,6 @@
 //! This module attempts to provide a %g formatter.
 
-use std::fmt::{Display, Formatter, Result, Alignment};
+use std::fmt::{Alignment, Display, Formatter, Result};
 
 /// Wrap this type around an `f64` in order to print it nicely.
 pub struct PrettyFloat(pub f64);
@@ -56,32 +56,33 @@ impl Display for PrettyFloat {
     fn fmt(&self, f: &mut Formatter) -> Result {
         if let Some(precision) = f.precision() {
             let ndec = n_decimals(self.0, precision);
-            let options = &[cut_trailing(format!("{}", self.0)),
-                            cut_trailing(format!("{:e}", self.0)),
-                            cut_trailing(format!("{:.*}", ndec, self.0)),
-                            cut_trailing(format!("{:.*e}", precision, self.0))];
+            let options = &[
+                cut_trailing(format!("{}", self.0)),
+                cut_trailing(format!("{:e}", self.0)),
+                cut_trailing(format!("{:.*}", ndec, self.0)),
+                cut_trailing(format!("{:.*e}", precision, self.0)),
+            ];
             let s = options.into_iter().min_by_key(|s| s.len()).unwrap();
             if let Some(width) = f.width() {
                 // If we received a width, we use it
                 match f.align() {
-                    Some(Alignment::Left)    => write!(f, "{:<width$}", s, width = width),
-                    Some(Alignment::Right)   => write!(f, "{:>width$}", s, width = width),
-                    Some(Alignment::Center)  => write!(f, "{:^width$}", s, width = width),
+                    Some(Alignment::Left) => write!(f, "{:<width$}", s, width = width),
+                    Some(Alignment::Right) => write!(f, "{:>width$}", s, width = width),
+                    Some(Alignment::Center) => write!(f, "{:^width$}", s, width = width),
                     None => write!(f, "{:width$}", s, width = width),
                 }
             } else {
                 f.write_str(s)
             }
         } else {
-            let options = &[format!("{}", self.0),
-                            format!("{:e}", self.0)];
+            let options = &[format!("{}", self.0), format!("{:e}", self.0)];
             let s = options.into_iter().min_by_key(|s| s.len()).unwrap();
             if let Some(width) = f.width() {
                 // If we received a width, we use it
                 match f.align() {
-                    Some(Alignment::Left)    => write!(f, "{:<width$}", s, width = width),
-                    Some(Alignment::Right)   => write!(f, "{:>width$}", s, width = width),
-                    Some(Alignment::Center)  => write!(f, "{:^width$}", s, width = width),
+                    Some(Alignment::Left) => write!(f, "{:<width$}", s, width = width),
+                    Some(Alignment::Right) => write!(f, "{:>width$}", s, width = width),
+                    Some(Alignment::Center) => write!(f, "{:^width$}", s, width = width),
                     None => write!(f, "{:width$}", s, width = width),
                 }
             } else {
@@ -144,7 +145,10 @@ fn known_numbers() {
     assert_eq!(&format!("{:.4}", PrettyFloat(1.00000000001)), "1");
 
     println!("1.00000000001e30");
-    assert_eq!(&format!("{}", PrettyFloat(1.00000000001e30)), "1.00000000001e30");
+    assert_eq!(
+        &format!("{}", PrettyFloat(1.00000000001e30)),
+        "1.00000000001e30"
+    );
     println!("1.11111111 prec 1");
     assert_eq!(&format!("{:.1}", PrettyFloat(1.00000000001e30)), "1e30");
     println!("1.11111111 prec 2");
@@ -155,7 +159,10 @@ fn known_numbers() {
     assert_eq!(&format!("{:.4}", PrettyFloat(1.00000000001e30)), "1e30");
 
     println!("1.11111111e200");
-    assert_eq!(&format!("{}", PrettyFloat(1.11111111e200)), "1.11111111e200");
+    assert_eq!(
+        &format!("{}", PrettyFloat(1.11111111e200)),
+        "1.11111111e200"
+    );
     println!("1.11111111 prec 1");
     assert_eq!(&format!("{:.1}", PrettyFloat(1.11111111e200)), "1.1e200");
     println!("1.11111111 prec 2");
@@ -179,7 +186,7 @@ fn known_numbers() {
 
 #[test]
 fn short_representation_with_prec() {
-    for &prec in &[1,3,6,16,30] {
+    for &prec in &[1, 3, 6, 16, 30] {
         println!("testing with {} digits", prec);
         for &f in &[0.1_f64, 1e-100, 0.1111111111111111] {
             println!("  testing {}", f);
@@ -191,11 +198,16 @@ fn short_representation_with_prec() {
 #[cfg(test)]
 fn shortest_with_prec(f: f64, prec: usize) {
     use std::str::FromStr;
-    println!("{:.prec$} {:.prec$} {:.prec$}", f, f, PrettyFloat(f), prec=prec);
-    assert!(format!("{:.*}", prec, PrettyFloat(f)).len() <=
-            format!("{:.*e}", prec, f).len());
+    println!(
+        "{:.prec$} {:.prec$} {:.prec$}",
+        f,
+        f,
+        PrettyFloat(f),
+        prec = prec
+    );
+    assert!(format!("{:.*}", prec, PrettyFloat(f)).len() <= format!("{:.*e}", prec, f).len());
     if let Ok(fprec) = f64::from_str(&format!("{:.*}", prec, PrettyFloat(f))) {
-        assert!(((fprec - f)/f).abs() < 10_f64.powf(-(prec as f64)));
+        assert!(((fprec - f) / f).abs() < 10_f64.powf(-(prec as f64)));
     } else {
         panic!("this is crazy talk!");
     }
@@ -212,9 +224,7 @@ fn short_representation() {
 fn shortest(f: f64) {
     use std::str::FromStr;
     println!("{} {:e} {}", f, f, PrettyFloat(f));
-    assert!(format!("{}", PrettyFloat(f)).len() <=
-            format!("{}", f).len());
-    assert!(format!("{}", PrettyFloat(f)).len() <=
-            format!("{:e}", f).len());
+    assert!(format!("{}", PrettyFloat(f)).len() <= format!("{}", f).len());
+    assert!(format!("{}", PrettyFloat(f)).len() <= format!("{:e}", f).len());
     assert_eq!(f64::from_str(&format!("{}", PrettyFloat(f))), Ok(f));
 }

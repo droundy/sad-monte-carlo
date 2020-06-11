@@ -3,13 +3,14 @@ extern crate tempfile;
 extern crate difference;
 
 use std::env;
-use std::process::Command;
 use std::fs::File;
 use std::io::Read;
+use std::process::Command;
 
 fn test_resume_with(total_iters: u64, first_iters: u64) {
     let dir = tempfile::tempdir().expect("Unable to create temp directory");
-    let mut root = env::current_exe().unwrap()
+    let mut root = env::current_exe()
+        .unwrap()
         .parent()
         .expect("executable's directory")
         .to_path_buf();
@@ -19,8 +20,7 @@ fn test_resume_with(total_iters: u64, first_iters: u64) {
     println!("root and dir are {:?} and {:?}", root, dir);
     let mut cmd = Command::new(root.join("energy-mc"));
     cmd.env("RUST_BACKTRACE", "1");
-    cmd.current_dir(dir.path())
-        .args(&["--help"]);
+    cmd.current_dir(dir.path()).args(&["--help"]);
     let out = cmd.output().expect("command failed to run");
     println!("{}", String::from_utf8_lossy(&out.stdout));
     println!("{}", String::from_utf8_lossy(&out.stderr));
@@ -32,7 +32,7 @@ fn test_resume_with(total_iters: u64, first_iters: u64) {
         "--well-width=1.3",
         "--sad-min-T=0.5",
         "--acceptance-rate=0.5",
-        ];
+    ];
 
     println!("About to start the big guy for {} moves", total_iters);
     let mut cmd = Command::new(root.join("energy-mc"));
@@ -41,9 +41,7 @@ fn test_resume_with(total_iters: u64, first_iters: u64) {
     cmd.env("RUST_BACKTRACE", "1");
     cmd.current_dir(dir.path())
         .args(common_flags)
-        .args(&[&total_max_iter,
-                "--save-as=big-guy.yaml",
-                ]);
+        .args(&[&total_max_iter, "--save-as=big-guy.yaml"]);
     let out = cmd.output().expect("command failed to run");
     println!("{}", String::from_utf8_lossy(&out.stdout));
     println!("{}", String::from_utf8_lossy(&out.stderr));
@@ -54,9 +52,7 @@ fn test_resume_with(total_iters: u64, first_iters: u64) {
     let mut cmd = Command::new(root.join("energy-mc"));
     cmd.current_dir(dir.path())
         .args(common_flags)
-        .args(&[&first_max_iter,
-                "--save-as=small-guy.yaml",
-                ]);
+        .args(&[&first_max_iter, "--save-as=small-guy.yaml"]);
     let out = cmd.output().expect("command failed to run");
     println!("{}", String::from_utf8_lossy(&out.stdout));
     println!("{}", String::from_utf8_lossy(&out.stderr));
@@ -67,9 +63,7 @@ fn test_resume_with(total_iters: u64, first_iters: u64) {
     let mut cmd = Command::new(root.join("energy-mc"));
     cmd.current_dir(dir.path())
         .args(common_flags)
-        .args(&[&total_max_iter,
-                "--save-as=small-guy.yaml",
-                ]);
+        .args(&[&total_max_iter, "--save-as=small-guy.yaml"]);
     let out = cmd.output().expect("command failed to run");
     println!("{}", String::from_utf8_lossy(&out.stdout));
     println!("{}", String::from_utf8_lossy(&out.stderr));

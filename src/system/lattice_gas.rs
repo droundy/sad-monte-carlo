@@ -35,7 +35,7 @@ impl From<LatticeGasParams> for LatticeGas {
         let mut ising = LatticeGas {
             E: Energy::new(0.),
             L: params.L,
-            N: vec![0; params.L*params.L],
+            N: vec![0; params.L * params.L],
             natoms: 0,
             possible_change: None,
         };
@@ -51,18 +51,18 @@ impl System for LatticeGas {
         self.E
     }
     fn compute_energy(&self) -> Energy {
-        let mut e: Energy = units::EPSILON*0.0;
-        for i1 in 0 .. self.L {
-            for j1 in 0 .. self.L {
+        let mut e: Energy = units::EPSILON * 0.0;
+        for i1 in 0..self.L {
+            for j1 in 0..self.L {
                 let j2 = (j1 + 1) % self.L;
-                let mut neighbor_tot = self.N[i1 + j2*self.L];
+                let mut neighbor_tot = self.N[i1 + j2 * self.L];
                 // let j2 = modulus(j - 1, self.L);
                 // neighbor_tot += self.N[i1 + j2*self.L];
                 let i2 = (i1 + 1) % self.L;
-                neighbor_tot += self.N[i2 + j1*self.L];
+                neighbor_tot += self.N[i2 + j1 * self.L];
                 // let i2 = modulus(i - 1, self.L);
                 // neighbor_tot += self.N[i1 + j2*self.L];
-                e -= neighbor_tot as f64 * Energy::new(self.N[i1+j1*self.L] as f64);
+                e -= neighbor_tot as f64 * Energy::new(self.N[i1 + j1 * self.L] as f64);
             }
         }
         e
@@ -96,20 +96,20 @@ impl GrandSystem for LatticeGas {
     fn plan_add(&mut self, rng: &mut MyRng) -> Option<Energy> {
         let i = rng.gen_range(0, self.L);
         let j = rng.gen_range(0, self.L);
-        if self.N[i+j*self.L] == 1 {
+        if self.N[i + j * self.L] == 1 {
             self.possible_change = None;
             return None;
         }
         let j2 = (j + 1) % self.L;
-        let mut neighbor_tot = self.N[i + j2*self.L];
+        let mut neighbor_tot = self.N[i + j2 * self.L];
         let j2 = (j + self.L - 1) % self.L;
-        neighbor_tot += self.N[i + j2*self.L];
+        neighbor_tot += self.N[i + j2 * self.L];
         let i2 = (i + 1) % self.L;
-        neighbor_tot += self.N[i2 + j*self.L];
+        neighbor_tot += self.N[i2 + j * self.L];
         let i2 = (i + self.L - 1) % self.L;
-        neighbor_tot += self.N[i2 + j*self.L];
+        neighbor_tot += self.N[i2 + j * self.L];
         let e = self.E - neighbor_tot as f64 * units::EPSILON;
-        self.possible_change = Some((i+j*self.L, e));
+        self.possible_change = Some((i + j * self.L, e));
         Some(e)
     }
     fn plan_remove(&mut self, rng: &mut MyRng) -> Energy {
@@ -118,20 +118,28 @@ impl GrandSystem for LatticeGas {
             return self.E;
         }
         let which = rng.gen_range(0, self.natoms);
-        let index = self.N.iter().enumerate().filter(|(_,&n)| n == 1).enumerate()
-            .filter(move |(i,_)| *i == which).map(|(_,(i,_))| i).next().unwrap();
+        let index = self
+            .N
+            .iter()
+            .enumerate()
+            .filter(|(_, &n)| n == 1)
+            .enumerate()
+            .filter(move |(i, _)| *i == which)
+            .map(|(_, (i, _))| i)
+            .next()
+            .unwrap();
         let j = index / self.L;
         let i = index % self.L;
         let j2 = (j + 1) % self.L;
-        let mut neighbor_tot = self.N[i + j2*self.L];
+        let mut neighbor_tot = self.N[i + j2 * self.L];
         let j2 = (j + self.L - 1) % self.L;
-        neighbor_tot += self.N[i + j2*self.L];
+        neighbor_tot += self.N[i + j2 * self.L];
         let i2 = (i + 1) % self.L;
-        neighbor_tot += self.N[i2 + j*self.L];
+        neighbor_tot += self.N[i2 + j * self.L];
         let i2 = (i + self.L - 1) % self.L;
-        neighbor_tot += self.N[i2 + j*self.L];
+        neighbor_tot += self.N[i2 + j * self.L];
         let e = self.E + neighbor_tot as f64 * units::EPSILON;
-        self.possible_change = Some((i+j*self.L, e));
+        self.possible_change = Some((i + j * self.L, e));
         e
     }
     fn num_atoms(&self) -> usize {
@@ -161,7 +169,7 @@ fn energy_works_with_L(L: usize) {
 
 #[test]
 fn energy_works() {
-    for &n in &[2,3,10,15,137,150] {
+    for &n in &[2, 3, 10, 15, 137, 150] {
         println!("testing with L={}", n);
         energy_works_with_L(n);
     }

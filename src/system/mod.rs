@@ -4,16 +4,16 @@
 use super::rng::MyRng;
 use auto_args::AutoArgs;
 
-pub mod units;
 pub mod cell;
 pub mod optcell;
+pub mod units;
 
 pub mod ising;
 pub mod lattice_gas;
-pub mod square;
-pub mod optsquare;
-pub mod wca;
 pub mod lj;
+pub mod optsquare;
+pub mod square;
+pub mod wca;
 
 pub use crate::mc::binning::Interned;
 
@@ -44,7 +44,7 @@ pub type Force = units::Force<f64>;
 
 /// A physical system, which has some energy, and to which we can make
 /// some changes.
-pub trait System : ::serde::Serialize + ::serde::de::DeserializeOwned {
+pub trait System: ::serde::Serialize + ::serde::de::DeserializeOwned {
     /// Returns the energy of the system, and is fast.  This should
     /// just access a cached variable.
     fn energy(&self) -> Energy;
@@ -71,17 +71,14 @@ pub trait System : ::serde::Serialize + ::serde::de::DeserializeOwned {
     /// Update any cached info after resume.  This is to make it
     /// possible for a system to avoid saving information that is easy
     /// and safe to recompute when restarting.
-    fn update_caches(&mut self) {
-    }
+    fn update_caches(&mut self) {}
     /// Verify as well as we can that the energy is currently correct.
-    fn verify_energy(&self) {
-    }
+    fn verify_energy(&self) {}
     /// The data type describing what we want to collect in terms of
     /// statistics.
     type CollectedData: Default + ::serde::Serialize + ::serde::de::DeserializeOwned;
     /// Collect some data for the current state of the system
-    fn collect_data(&self, _data: &mut Self::CollectedData, _iter: u64) {
-    }
+    fn collect_data(&self, _data: &mut Self::CollectedData, _iter: u64) {}
     /// Collect some data for the current state of the system if we
     /// want to do so.
     fn data_to_collect(&self, _iter: u64) -> Vec<(Interned, f64)> {
@@ -89,15 +86,14 @@ pub trait System : ::serde::Serialize + ::serde::de::DeserializeOwned {
     }
 }
 
-
 /// A system that can have a change confirmed.
-pub trait ConfirmSystem : System {
+pub trait ConfirmSystem: System {
     /// Confirm the change, whatever it may have been.
     fn confirm(&mut self);
 }
 
 /// A system that can be moved.
-pub trait MovableSystem : ConfirmSystem {
+pub trait MovableSystem: ConfirmSystem {
     /// Considers moving an atom, and returns the resulting energy of
     /// the system.  If, however, the move is impossible (i.e. has
     /// infinite energy), `None` is returned, and no change is made to
@@ -111,7 +107,7 @@ pub trait MovableSystem : ConfirmSystem {
 }
 
 /// A system that can gain or lose atoms?
-pub trait GrandSystem : MovableSystem {
+pub trait GrandSystem: MovableSystem {
     /// Considers adding an atom, and returns the resulting energy of
     /// the system.  If the add is impossible (i.e. has infinite
     /// energy), `None` is returned, and no change is made to the

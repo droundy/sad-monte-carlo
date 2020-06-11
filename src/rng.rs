@@ -11,15 +11,14 @@
 //! The [xoshiro128plus
 //! RNG](http://xoshiro.di.unimi.it/xoroshiro128plus.c).
 
-use std::num::Wrapping;
-use std::{fmt};
-use rand_core::{RngCore, SeedableRng, Error, impls, le};
 use rand::Rng as RandRng;
-
+use rand_core::{impls, le, Error, RngCore, SeedableRng};
+use std::fmt;
+use std::num::Wrapping;
 
 /// The [xoshiro128plus
 /// RNG](http://xoshiro.di.unimi.it/xoroshiro128plus.c).
-#[derive(Clone,Serialize,Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Xoroshiro128plusRng {
     s: [Wrapping<u64>; 2],
 }
@@ -36,7 +35,7 @@ impl fmt::Debug for Xoroshiro128plusRng {
 }
 
 fn rotl(x: Wrapping<u64>, k: usize) -> Wrapping<u64> {
-    (x << k) | (x >> (64-k))
+    (x << k) | (x >> (64 - k))
 }
 
 impl RngCore for Xoroshiro128plusRng {
@@ -52,7 +51,7 @@ impl RngCore for Xoroshiro128plusRng {
         let result = s0 + s1;
 
         s1 ^= s0;
-        self.s[0] = rotl(s0,24) ^ s1 ^ (s1 << 16); // a, b
+        self.s[0] = rotl(s0, 24) ^ s1 ^ (s1 << 16); // a, b
         self.s[1] = rotl(s1, 37);
         result.0
     }
@@ -83,16 +82,14 @@ impl Xoroshiro128plusRng {
         } else {
             Wrapping(seed)
         };
-	z = (z ^ (z >> 30)) * Wrapping(0xBF58476D1CE4E5B9);
-	z = (z ^ (z >> 27)) * Wrapping(0x94D049BB133111EB);
+        z = (z ^ (z >> 30)) * Wrapping(0xBF58476D1CE4E5B9);
+        z = (z ^ (z >> 27)) * Wrapping(0x94D049BB133111EB);
         seed_u64[0] = z ^ (z >> 31);
-	z = (z ^ (z >> 30)) * Wrapping(0xBF58476D1CE4E5B9);
-	z = (z ^ (z >> 27)) * Wrapping(0x94D049BB133111EB);
+        z = (z ^ (z >> 30)) * Wrapping(0xBF58476D1CE4E5B9);
+        z = (z ^ (z >> 27)) * Wrapping(0x94D049BB133111EB);
         seed_u64[1] = z ^ (z >> 31);
 
-        Xoroshiro128plusRng {
-            s: seed_u64,
-        }
+        Xoroshiro128plusRng { s: seed_u64 }
     }
     /// Generates a random number with a Gaussian distribution, with
     /// mean 0 and variance 1.
@@ -102,17 +99,21 @@ impl Xoroshiro128plusRng {
     /// Generates a random vector with a Gaussian distribution, with
     /// mean 0 and variance 1 in each direction.
     pub fn vector(&mut self) -> ::vector3d::Vector3d<f64> {
-        ::vector3d::Vector3d::new(self.sample(rand_distr::StandardNormal),
-                                  self.sample(rand_distr::StandardNormal),
-                                  self.sample(rand_distr::StandardNormal))
+        ::vector3d::Vector3d::new(
+            self.sample(rand_distr::StandardNormal),
+            self.sample(rand_distr::StandardNormal),
+            self.sample(rand_distr::StandardNormal),
+        )
     }
 }
 
 /// Generage
 pub fn vector<R: rand::Rng>(rng: &mut R) -> ::vector3d::Vector3d<f64> {
-    vector3d::Vector3d::new(rng.sample(rand_distr::StandardNormal),
-                            rng.sample(rand_distr::StandardNormal),
-                            rng.sample(rand_distr::StandardNormal))
+    vector3d::Vector3d::new(
+        rng.sample(rand_distr::StandardNormal),
+        rng.sample(rand_distr::StandardNormal),
+        rng.sample(rand_distr::StandardNormal),
+    )
 }
 
 impl SeedableRng for Xoroshiro128plusRng {
@@ -146,14 +147,14 @@ impl SeedableRng for Xoroshiro128plusRng {
 
 #[cfg(test)]
 mod tests {
-    use rand_core::{RngCore, SeedableRng};
     use super::Xoroshiro128plusRng;
+    use rand_core::{RngCore, SeedableRng};
 
     #[test]
     fn test_xoshiro_zero_seed() {
         // Xoroshiro does not work with an all zero seed.
         // Assert it does not panic.
-        let seed = [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
+        let seed = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut rng = Xoroshiro128plusRng::from_seed(seed);
         let a = rng.next_u64();
         let b = rng.next_u64();
@@ -163,7 +164,7 @@ mod tests {
 
     #[test]
     fn test_xoshiro_clone() {
-        let seed = [1,2,3,4, 5,5,7,8, 8,7,6,5, 4,3,2,1];
+        let seed = [1, 2, 3, 4, 5, 5, 7, 8, 8, 7, 6, 5, 4, 3, 2, 1];
         let mut rng1 = Xoroshiro128plusRng::from_seed(seed);
         let mut rng2 = rng1.clone();
         for _ in 0..16 {

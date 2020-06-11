@@ -2,17 +2,17 @@
 
 #![allow(non_snake_case)]
 
-use crate::system::{Energy,PerEnergy};
+use crate::system::{Energy, PerEnergy};
 
-use std::default::Default;
 use auto_args::AutoArgs;
+use std::default::Default;
 
 pub mod histogram;
 pub mod linear;
 
 /// A constant string that we want to use as a parameter name.
 #[derive(Hash, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize, Clone, Copy)]
-pub struct Interned(internment::Intern<std::borrow::Cow<'static,str>>);
+pub struct Interned(internment::Intern<std::borrow::Cow<'static, str>>);
 
 impl From<&'static str> for Interned {
     fn from(x: &'static str) -> Self {
@@ -63,7 +63,9 @@ pub enum BinningParams {
 
 impl Default for BinningParams {
     fn default() -> Self {
-        BinningParams::Histogram { bin: Energy::new(1.0) }
+        BinningParams::Histogram {
+            bin: Energy::new(1.0),
+        }
     }
 }
 
@@ -71,14 +73,14 @@ impl Default for BinningParams {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Bins {
     /// Just a plain histogram
-    Histogram( histogram::Bins ),
+    Histogram(histogram::Bins),
     /// A regularly spaced linear interpolation
-    Linear( linear::Bins ),
+    Linear(linear::Bins),
 }
 
 impl Default for Bins {
     fn default() -> Self {
-        Bins::Histogram( histogram::Bins::default() )
+        Bins::Histogram(histogram::Bins::default())
     }
 }
 
@@ -89,15 +91,13 @@ impl Bins {
             BinningParams::Histogram { bin } => {
                 Bins::Histogram(histogram::Bins::new(sys.energy(), bin))
             }
-            BinningParams::Linear { bin } => {
-                Bins::Linear(linear::Bins::new(sys.energy(), bin))
-            }
+            BinningParams::Linear { bin } => Bins::Linear(linear::Bins::new(sys.energy(), bin)),
         }
     }
 }
 
 impl Binning for Bins {
-// impl Bins {
+    // impl Bins {
     fn num_states(&self) -> usize {
         match self {
             Bins::Histogram(b) => b.num_states(),
@@ -251,7 +251,7 @@ impl Binning for Bins {
         }
     }
     fn new(e: Energy, de: Energy) -> Self {
-        Bins::Histogram(histogram::Bins::new(e,de))
+        Bins::Histogram(histogram::Bins::new(e, de))
     }
 }
 
@@ -261,7 +261,9 @@ fn test_bins() {
 }
 
 /// The `Binning` trait defines a type that can hold histogram-like information
-pub trait Binning : Default + serde::Serialize + serde::de::DeserializeOwned+ std::fmt::Debug + Clone {
+pub trait Binning:
+    Default + serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug + Clone
+{
     /// The number of times we must call increment_count in order to
     /// uniformly shift the lnw.
     fn num_states(&self) -> usize;
@@ -346,11 +348,11 @@ pub fn test_binning<B: Binning>() {
     let eps = units::EPSILON;
     let mut b = B::default();
     println!("made default");
-    assert_eq!(b.get_count(eps), 0.0/eps);
+    assert_eq!(b.get_count(eps), 0.0 / eps);
     println!("tested get_count");
     b.increment_count(eps, 1.0);
     println!("incremented count!");
-    assert!(b.get_count(eps) > 0.0/eps);
+    assert!(b.get_count(eps) > 0.0 / eps);
     println!("ran get_count!");
     let mydat = "datum".into();
     println!("interned");

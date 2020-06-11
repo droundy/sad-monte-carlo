@@ -2,8 +2,8 @@
 
 #![allow(non_snake_case)]
 
-use crate::system::{units,Energy,PerEnergy};
-use crate::mc::binning::{ Binning, Interned };
+use crate::mc::binning::{Binning, Interned};
+use crate::system::{units, Energy, PerEnergy};
 
 use dimensioned::Dimensionless;
 use std::default::Default;
@@ -63,9 +63,7 @@ impl BinCounts {
         self.count[idx] += 1;
         let old_total = self.total[idx];
         self.total[idx] += value;
-        if self.total[idx] > self.max_total
-            && max_of(&self.total) == self.total[idx]
-        {
+        if self.total[idx] > self.max_total && max_of(&self.total) == self.total[idx] {
             self.max_total = self.total[idx];
             self.e_max_total = e;
         }
@@ -132,13 +130,13 @@ impl Default for Bins {
 
 impl Bins {
     fn index_to_energy(&self, i: usize) -> Energy {
-        self.min + (i as f64 + 0.5)*self.width
+        self.min + (i as f64 + 0.5) * self.width
     }
     fn energy_to_index(&self, e: Energy) -> usize {
         if e < self.min {
             std::usize::MAX // this is a bogus value for negative-index cases
         } else {
-            let i = *((e - self.min)/self.width).value();
+            let i = *((e - self.min) / self.width).value();
             if i == self.lnw.total.len() as f64 {
                 i as usize - 1
             } else {
@@ -149,7 +147,7 @@ impl Bins {
     fn prep_for_e(&mut self, e: Energy) {
         assert!(self.width > Energy::new(0.0));
         if self.lnw.count.len() == 0 {
-            self.min = (e/self.width).value().floor()*self.width;
+            self.min = (e / self.width).value().floor() * self.width;
         }
         while e < self.min {
             // this is a little wasteful, but seems the easiest way to
@@ -160,7 +158,7 @@ impl Bins {
             }
             self.min -= self.width;
         }
-        while e >= self.min + self.width*(self.lnw.count.len() as f64) {
+        while e >= self.min + self.width * (self.lnw.count.len() as f64) {
             self.lnw.push_zero();
             for d in self.extra.values_mut() {
                 d.push_zero();
@@ -171,7 +169,7 @@ impl Bins {
 
 impl Binning for Bins {
     fn new(e: Energy, width: Energy) -> Self {
-        let min = ((e/width).value().round() - 0.5)*width;
+        let min = ((e / width).value().round() - 0.5) * width;
         Bins {
             min,
             width,
@@ -201,7 +199,7 @@ impl Binning for Bins {
             }
         }
     }
-    fn count_states<F: Fn(Energy, PerEnergy) -> bool>(&self, f:F) -> usize {
+    fn count_states<F: Fn(Energy, PerEnergy) -> bool>(&self, f: F) -> usize {
         let mut total = 0;
         for i in 0..self.lnw.count.len() {
             let e = self.index_to_energy(i);
@@ -220,7 +218,7 @@ impl Binning for Bins {
     }
     fn get_count(&self, e: Energy) -> PerEnergy {
         let idx = self.energy_to_index(e);
-        self.lnw.get_count(idx) as f64/self.width
+        self.lnw.get_count(idx) as f64 / self.width
     }
     fn max_lnw(&self) -> f64 {
         self.lnw.max_total
@@ -229,10 +227,10 @@ impl Binning for Bins {
         self.lnw.min_total
     }
     fn max_count(&self) -> PerEnergy {
-        self.lnw.max_count as f64/self.width
+        self.lnw.max_count as f64 / self.width
     }
     fn min_count(&self) -> PerEnergy {
-        self.lnw.min_count as f64/self.width
+        self.lnw.min_count as f64 / self.width
     }
 
     fn accumulate_extra(&mut self, name: Interned, e: Energy, value: f64) {
@@ -331,14 +329,14 @@ impl Binning for Bins {
     }
     fn mean_count_extra(&self, name: Interned) -> PerEnergy {
         if let Some(data) = self.extra.get(&name) {
-            data.total_count as f64/(self.width*self.num_states() as f64)
+            data.total_count as f64 / (self.width * self.num_states() as f64)
         } else {
             PerEnergy::new(0.)
         }
     }
     fn min_count_extra(&self, name: Interned) -> PerEnergy {
         if let Some(data) = self.extra.get(&name) {
-            data.min_count as f64/self.width
+            data.min_count as f64 / self.width
         } else {
             PerEnergy::new(0.)
         }
@@ -367,9 +365,9 @@ impl Binning for Bins {
 }
 
 fn max_of(stuff: &[f64]) -> f64 {
-    stuff.iter().cloned().fold(0./0., f64::max)
+    stuff.iter().cloned().fold(0. / 0., f64::max)
 }
 
 fn min_of(stuff: &[f64]) -> f64 {
-    stuff.iter().cloned().fold(0./0., f64::min)
+    stuff.iter().cloned().fold(0. / 0., f64::min)
 }

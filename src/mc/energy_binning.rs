@@ -6,8 +6,8 @@
 
 #![allow(non_snake_case)]
 
-use crate::system::*;
 use super::*;
+use crate::system::*;
 
 use super::plugin::Plugin;
 use dimensioned::Dimensionless;
@@ -72,13 +72,13 @@ impl Default for EnergyMCParams {
     fn default() -> Self {
         EnergyMCParams {
             _method: MethodParams::Sad {
-                min_T: 0.2*units::EPSILON,
+                min_T: 0.2 * units::EPSILON,
             },
             seed: None,
             min_allowed_energy: None,
             max_allowed_energy: None,
             high_resolution_de: None,
-            _moves: MoveParams::TranslationScale(0.05*units::SIGMA),
+            _moves: MoveParams::TranslationScale(0.05 * units::SIGMA),
             _report: plugin::ReportParams::default(),
             _save: plugin::SaveParams::default(),
             _movies: plugin::MovieParams::default(),
@@ -138,30 +138,27 @@ enum Method {
         latest_parameter: f64,
     },
     /// Samc
-    Samc {
-        t0: f64,
-    },
+    Samc { t0: f64 },
     /// Wang Landau
     WL {
         gamma: f64,
         inv_t: bool,
         min_gamma: Option<f64>,
-    }
+    },
 }
 
 impl Method {
     fn new(p: MethodParams, E: Energy) -> Self {
         match p {
-            MethodParams::Sad { min_T } =>
-                Method::Sad {
-                    num_states: 0,
-                    min_T,
-                    too_lo: E,
-                    too_hi: E,
-                    tL: 0,
-                    tF: 0.,
-                    latest_parameter: 0.,
-                },
+            MethodParams::Sad { min_T } => Method::Sad {
+                num_states: 0,
+                min_T,
+                too_lo: E,
+                too_hi: E,
+                tL: 0,
+                tF: 0.,
+                latest_parameter: 0.,
+            },
             MethodParams::Samc { t0 } => Method::Samc { t0 },
             MethodParams::WL { min_gamma } => Method::WL {
                 gamma: 1.0,
@@ -179,39 +176,56 @@ impl Method {
         print!("    ");
         match self {
             Method::Sad { too_lo, too_hi, .. } => {
-                print!("SAD: {:.5} ({:.3}) -> {:.5} ({:.3})",
-                         too_lo.pretty(),
-                         mc.bins.get_count(*too_lo).pretty(),
-                         too_hi.pretty(),
-                         mc.bins.get_count(*too_hi).pretty(),
+                print!(
+                    "SAD: {:.5} ({:.3}) -> {:.5} ({:.3})",
+                    too_lo.pretty(),
+                    mc.bins.get_count(*too_lo).pretty(),
+                    too_hi.pretty(),
+                    mc.bins.get_count(*too_hi).pretty(),
                 );
             }
-            Method::Samc { .. } => {
-            }
+            Method::Samc { .. } => {}
             Method::WL { .. } => {
                 let hist = "hist".into();
-                if mc.min_allowed_energy.is_some() &&
-                    mc.bins.get_count(mc.min_allowed_energy.unwrap()) == PerEnergy::new(0.) {
-                        println!("    WL:  We only got down to {} > {}",
-                                 mc.bins.min_energy().pretty(),
-                                 mc.min_allowed_energy.unwrap().pretty());
-                    }
-                if mc.max_allowed_energy.is_some() &&
-                    mc.bins.get_count(mc.max_allowed_energy.unwrap()) == PerEnergy::new(0.) {
-                        println!("    WL:  We only got up to {} < {}",
-                                 mc.bins.max_energy().pretty(),
-                                 mc.max_allowed_energy.unwrap().pretty());
-                    }
-                print!("WL:  We have reached flatness {:.2} min: E={}!",
-                       (mc.bins.min_count_extra(hist)/mc.bins.mean_count_extra(hist)).pretty(),
-                       mc.bins.min_count_extra_energy(hist).pretty());
+                if mc.min_allowed_energy.is_some()
+                    && mc.bins.get_count(mc.min_allowed_energy.unwrap()) == PerEnergy::new(0.)
+                {
+                    println!(
+                        "    WL:  We only got down to {} > {}",
+                        mc.bins.min_energy().pretty(),
+                        mc.min_allowed_energy.unwrap().pretty()
+                    );
+                }
+                if mc.max_allowed_energy.is_some()
+                    && mc.bins.get_count(mc.max_allowed_energy.unwrap()) == PerEnergy::new(0.)
+                {
+                    println!(
+                        "    WL:  We only got up to {} < {}",
+                        mc.bins.max_energy().pretty(),
+                        mc.max_allowed_energy.unwrap().pretty()
+                    );
+                }
+                print!(
+                    "WL:  We have reached flatness {:.2} min: E={}!",
+                    (mc.bins.min_count_extra(hist) / mc.bins.mean_count_extra(hist)).pretty(),
+                    mc.bins.min_count_extra_energy(hist).pretty()
+                );
             }
         }
-        println!(" [gamma = {:.2}]", crate::prettyfloat::PrettyFloat(mc.gamma()));
+        println!(
+            " [gamma = {:.2}]",
+            crate::prettyfloat::PrettyFloat(mc.gamma())
+        );
     }
     fn entropy(&self, bins: &impl Binning, energies: &[Energy]) -> Vec<f64> {
         let mut entropy: Vec<_> = energies.iter().map(|&e| bins.get_lnw(e)).collect();
-        if let Method::Sad {min_T,too_lo,too_hi, ..} = *self {
+        if let Method::Sad {
+            min_T,
+            too_lo,
+            too_hi,
+            ..
+        } = *self
+        {
             let mut meanhist = PerEnergy::new(0.0);
             let mut meancount = 0.0;
             let too_lo_entropy = bins.get_lnw(too_lo);
@@ -228,9 +242,11 @@ impl Method {
                 if bins.get_count(e) == PerEnergy::new(0.) {
                     *s = 0.0;
                 } else if e < too_lo {
-                    *s = (bins.get_count(e)/meanhist).ln() + too_lo_entropy + *((e - too_lo)/min_T).value();
+                    *s = (bins.get_count(e) / meanhist).ln()
+                        + too_lo_entropy
+                        + *((e - too_lo) / min_T).value();
                 } else if e > too_hi {
-                    *s = (bins.get_count(e)/meanhist).ln() + too_hi_entropy;
+                    *s = (bins.get_count(e) / meanhist).ln() + too_hi_entropy;
                 } else {
                     *s = bins.get_lnw(e);
                 }
@@ -245,7 +261,7 @@ impl Method {
                     // we can at least take a log of everything...
                     for (i, s) in entropy.iter_mut().enumerate() {
                         let e = energies[i];
-                        *s += (bins.count_extra(hist, e)*units::EPSILON).ln();
+                        *s += (bins.count_extra(hist, e) * units::EPSILON).ln();
                     }
                 }
             }
@@ -261,23 +277,32 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         let lnw1 = self.bins.get_lnw(e1);
         let lnw2 = self.bins.get_lnw(e2);
         match self.method {
-            Method::Sad { too_lo, too_hi, min_T, .. } => {
+            Method::Sad {
+                too_lo,
+                too_hi,
+                min_T,
+                ..
+            } => {
                 let lnw1 = if e1 < too_lo {
-                    self.bins.get_lnw(too_lo) + *((e1 - too_lo)/min_T).value()
+                    self.bins.get_lnw(too_lo) + *((e1 - too_lo) / min_T).value()
                 } else if e1 > too_hi {
                     self.bins.get_lnw(too_hi)
                 } else {
                     lnw1
                 };
                 let lnw2 = if e2 < too_lo {
-                    self.bins.get_lnw(too_lo) + *((e2 - too_lo)/min_T).value()
+                    self.bins.get_lnw(too_lo) + *((e2 - too_lo) / min_T).value()
                 } else if e2 > too_hi {
                     self.bins.get_lnw(too_hi)
                 } else {
                     lnw2
                 };
                 let rejected = lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp();
-                if !rejected && self.bins.get_count(e2) == PerEnergy::new(0.) && e2 < too_hi && e2 > too_lo {
+                if !rejected
+                    && self.bins.get_count(e2) == PerEnergy::new(0.)
+                    && e2 < too_hi
+                    && e2 > too_lo
+                {
                     // Here we do changes that need only happen when
                     // we encounter an energy in our important range
                     // that we have never seen before.
@@ -285,17 +310,13 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                         Method::Sad { ref mut tL, .. } => {
                             *tL = self.moves;
                         }
-                        _ => unreachable!()
+                        _ => unreachable!(),
                     }
                 }
                 rejected
             }
-            Method::Samc { .. } => {
-                lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
-            }
-            Method::WL { .. } => {
-                lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
-            }
+            Method::Samc { .. } => lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp(),
+            Method::WL { .. } => lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp(),
         }
     }
     /// This updates the lnw based on the actual method in use.
@@ -310,13 +331,21 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         let mut gamma_changed = false;
         let mut switch_to_samc: Option<f64> = None;
         match self.method {
-            Method::Sad { min_T, ref mut too_lo, ref mut too_hi,
-                          ref mut tL, ref mut tF, ref mut num_states,
-                          ref mut latest_parameter, .. } => {
+            Method::Sad {
+                min_T,
+                ref mut too_lo,
+                ref mut too_hi,
+                ref mut tL,
+                ref mut tF,
+                ref mut num_states,
+                ref mut latest_parameter,
+                ..
+            } => {
                 let hist_here = self.bins.get_count(energy);
                 if old_hist_here == PerEnergy::new(0.) {
                     let tfound = "t_found".into();
-                    self.bins.accumulate_extra(tfound, energy, self.moves as f64);
+                    self.bins
+                        .accumulate_extra(tfound, energy, self.moves as f64);
                 }
                 if hist_here > old_highest_hist {
                     if energy > *too_hi {
@@ -331,7 +360,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                                 }
                             });
                         }
-                        *latest_parameter = *((energy - *too_lo)/min_T).value();
+                        *latest_parameter = *((energy - *too_lo) / min_T).value();
                         *tL = self.moves;
                         // FIXME We probably should round the energy to one
                         // of the bins.  Add that to the Binning trait?
@@ -347,13 +376,13 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                             let too_lo = *too_lo;
                             self.bins.set_lnw(move |e, count| {
                                 if e < too_lo && count > PerEnergy::new(0.) {
-                                    Some(lnw_too_lo + *((e-too_lo)/min_T).value())
+                                    Some(lnw_too_lo + *((e - too_lo) / min_T).value())
                                 } else {
                                     None
                                 }
                             });
                         }
-                        *latest_parameter = *((*too_hi - energy)/min_T).value();
+                        *latest_parameter = *((*too_hi - energy) / min_T).value();
                         *tL = self.moves;
                         // FIXME We probably should round the energy to one
                         // of the bins.  Add that to the Binning trait?
@@ -378,31 +407,47 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                         // Let's take this as an opportunity to revise our
                         // translation scale, and also to log the news.
                         if let MoveParams::AcceptanceRate(r) = self.move_plan {
-                            let s = self.acceptance_rate/r;
-                            let s = if s < 0.8 { 0.8 } else if s > 1.2 { 1.2 } else { s };
+                            let s = self.acceptance_rate / r;
+                            let s = if s < 0.8 {
+                                0.8
+                            } else if s > 1.2 {
+                                1.2
+                            } else {
+                                s
+                            };
                             self.translation_scale *= s;
                             if !self.report.quiet {
-                                println!("        new translation scale: {:.3}",
-                                         self.translation_scale);
-                                println!("        acceptance rate {:.1}% [long-term: {:.1}%]",
-                                         100.0*self.acceptance_rate,
-                                         100.0*self.accepted_moves as f64
-                                         /self.moves as f64);
+                                println!(
+                                    "        new translation scale: {:.3}",
+                                    self.translation_scale
+                                );
+                                println!(
+                                    "        acceptance rate {:.1}% [long-term: {:.1}%]",
+                                    100.0 * self.acceptance_rate,
+                                    100.0 * self.accepted_moves as f64 / self.moves as f64
+                                );
                             }
                         }
                         if !self.report.quiet {
-                            println!("    sad: [{}]  {}:  {:.7} < {:.7} ... {:.7} < {:.7}",
-                                     *tF, self.bins.num_states(),
-                                     self.bins.min_energy().pretty(),
-                                     too_lo.pretty(),
-                                     too_hi.pretty(),
-                                     self.bins.max_energy().pretty());
+                            println!(
+                                "    sad: [{}]  {}:  {:.7} < {:.7} ... {:.7} < {:.7}",
+                                *tF,
+                                self.bins.num_states(),
+                                self.bins.min_energy().pretty(),
+                                too_lo.pretty(),
+                                too_hi.pretty(),
+                                self.bins.max_energy().pretty()
+                            );
                         }
                     }
                 }
             }
             Method::Samc { .. } => {}
-            Method::WL { ref mut gamma, inv_t, min_gamma } => {
+            Method::WL {
+                ref mut gamma,
+                inv_t,
+                min_gamma,
+            } => {
                 let hist = "hist".into();
                 let old_lowest_hist = self.bins.min_count_extra(hist);
                 self.bins.accumulate_extra(hist, energy, 0.0);
@@ -415,15 +460,19 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 let lowest_hist = self.bins.min_count_extra(hist);
 
                 if lowest_hist > old_lowest_hist
-                    && (self.min_allowed_energy.is_none() || self.bins.get_count(self.min_allowed_energy.unwrap()) > PerEnergy::new(0.))
-                    && (self.max_allowed_energy.is_none() || self.bins.get_count(self.max_allowed_energy.unwrap()) > PerEnergy::new(0.))
+                    && (self.min_allowed_energy.is_none()
+                        || self.bins.get_count(self.min_allowed_energy.unwrap())
+                            > PerEnergy::new(0.))
+                    && (self.max_allowed_energy.is_none()
+                        || self.bins.get_count(self.max_allowed_energy.unwrap())
+                            > PerEnergy::new(0.))
                 {
-                    if (inv_t && lowest_hist > PerEnergy::new(0.)) ||
-                       lowest_hist >= 0.8*self.bins.mean_count_extra(hist)
+                    if (inv_t && lowest_hist > PerEnergy::new(0.))
+                        || lowest_hist >= 0.8 * self.bins.mean_count_extra(hist)
                     {
                         gamma_changed = true;
                         *gamma *= 0.5;
-                        let flatness = lowest_hist/self.bins.mean_count_extra(hist);
+                        let flatness = lowest_hist / self.bins.mean_count_extra(hist);
                         self.bins.zero_out_extra(hist);
                         if let Some(min_gamma) = min_gamma {
                             if *gamma < min_gamma {
@@ -431,10 +480,13 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                                 *gamma = 0.0;
                             }
                         }
-                        println!("    WL:  We have reached flatness {:.2}! gamma = {}",
-                                 flatness.pretty(), *gamma);
+                        println!(
+                            "    WL:  We have reached flatness {:.2}! gamma = {}",
+                            flatness.pretty(),
+                            *gamma
+                        );
                     }
-                    if inv_t && *gamma < (self.bins.num_states() as f64)/(self.moves as f64) {
+                    if inv_t && *gamma < (self.bins.num_states() as f64) / (self.moves as f64) {
                         println!("    1/t-WL:  Switching to 1/t!");
                         switch_to_samc = Some(self.bins.num_states() as f64);
                     }
@@ -454,22 +506,29 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
 impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
     fn gamma(&self) -> f64 {
         match self.method {
-            Method::Sad { tF, latest_parameter, num_states, .. } => {
+            Method::Sad {
+                tF,
+                latest_parameter,
+                num_states,
+                ..
+            } => {
                 let num_states = num_states as f64;
-                if latest_parameter*tF as f64*num_states == 0.0 {
+                if latest_parameter * tF as f64 * num_states == 0.0 {
                     0.0
                 } else {
                     let t = self.moves as f64;
-                    (latest_parameter + t/tF)/(latest_parameter + t/num_states*(t/tF))
+                    (latest_parameter + t / tF) / (latest_parameter + t / num_states * (t / tF))
                 }
             }
             Method::Samc { t0 } => {
                 let t = self.moves as f64;
-                if t > t0 { t0/t } else { 1.0 }
+                if t > t0 {
+                    t0 / t
+                } else {
+                    1.0
+                }
             }
-            Method::WL { gamma, .. } => {
-                gamma
-            }
+            Method::WL { gamma, .. } => gamma,
         }
     }
 }
@@ -486,7 +545,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
         // energy that is high enough.
         if let Some(maxe) = params.max_allowed_energy {
             for _ in 0..1e8 as u64 {
-                if let Some(newe) = system.plan_move(&mut rng, 0.05*units::SIGMA) {
+                if let Some(newe) = system.plan_move(&mut rng, 0.05 * units::SIGMA) {
                     if newe < system.energy() {
                         system.confirm();
                     }
@@ -506,11 +565,13 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             max_allowed_energy: params.max_allowed_energy,
 
             bins: binning::Bins::from_params(&system, params._binning),
-            high_resolution: params.high_resolution_de.map(|de| binning::histogram::Bins::new(system.energy(), de)),
+            high_resolution: params
+                .high_resolution_de
+                .map(|de| binning::histogram::Bins::new(system.energy(), de)),
 
             translation_scale: match params._moves {
                 MoveParams::TranslationScale(x) => x,
-                _ => 0.05*units::SIGMA,
+                _ => 0.05 * units::SIGMA,
             },
             move_plan: params._moves,
             system: system,
@@ -535,11 +596,12 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             self.system.verify_energy();
         }
         let e1 = self.system.energy();
-        self.bins.accumulate_extra("energy".into(), e1, e1.value_unsafe);
-        for (k,d) in self.system.data_to_collect(self.moves).into_iter() {
+        self.bins
+            .accumulate_extra("energy".into(), e1, e1.value_unsafe);
+        for (k, d) in self.system.data_to_collect(self.moves).into_iter() {
             self.bins.accumulate_extra(k, e1, d);
         }
-        let recent_scale = (1.0/self.moves as f64).sqrt();
+        let recent_scale = (1.0 / self.moves as f64).sqrt();
         self.acceptance_rate *= 1. - recent_scale;
         if let Some(e2) = self.system.plan_move(&mut self.rng, self.translation_scale) {
             let mut out_of_bounds = false;
@@ -561,10 +623,11 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
 
         self.update_weights(energy);
 
-        let plugins = [&self.report as &dyn Plugin<Self>,
-                       &Logger,
-                       &self.movies,
-                       &self.save,
+        let plugins = [
+            &self.report as &dyn Plugin<Self>,
+            &Logger,
+            &self.movies,
+            &self.save,
         ];
         self.manager.run(self, &self.system, &plugins);
     }

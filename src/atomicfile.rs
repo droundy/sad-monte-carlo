@@ -2,9 +2,9 @@
 
 use tempfile::TempDir;
 
-use std::path::{PathBuf, Path};
-use std::fs::{File, rename};
-use std::io::{Result, Error, ErrorKind, Write};
+use std::fs::{rename, File};
+use std::io::{Error, ErrorKind, Result, Write};
+use std::path::{Path, PathBuf};
 
 /// A version of File that should never leave a partially-written
 /// file.  This is only useful for creating files, and will overwrite
@@ -21,13 +21,12 @@ impl AtomicFile {
         let filepath = p.as_ref();
         let p = match filepath.parent() {
             None => {
-                return Err(Error::new(ErrorKind::Other,
-                                      format!("Cannot create a file named {:?}",
-                                              filepath)));
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("Cannot create a file named {:?}", filepath),
+                ));
             }
-            Some(p) if p.as_os_str().len() == 0 => {
-                &Path::new(".")
-            }
+            Some(p) if p.as_os_str().len() == 0 => &Path::new("."),
             Some(p) => p,
         };
         let dir = TempDir::new_in(p)?;
@@ -72,6 +71,6 @@ impl Drop for AtomicFile {
         self.file.sync_data().ok();
         // we ignore errors in drop, because there is no nice way to
         // handle them.
-        rename( self.dir.path().join("temp"), &self.path ).ok();
+        rename(self.dir.path().join("temp"), &self.path).ok();
     }
 }
