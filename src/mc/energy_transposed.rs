@@ -69,8 +69,8 @@ pub struct EnergyMC<S> {
     min_T: Energy,
     /// The system we are simulating.
     pub system: S,
-    /// The current gamma value
-    pub gamma: f64,
+    /// The current gamma value for each energy separator
+    pub gamma: Vec<f64>,
     /// The minimum gamma before we start a production run
     pub min_gamma: Option<f64>,
     /// The number of moves that have been made.
@@ -106,6 +106,13 @@ pub struct EnergyMC<S> {
     pub total_energy: Vec<Energy>,
 }
 
+fn min_of(stuff: &[f64]) -> f64 {
+    stuff.iter().cloned().fold(0. / 0., f64::min)
+}
+fn max_of(stuff: &[f64]) -> f64 {
+    stuff.iter().cloned().fold(0. / 0., f64::max)
+}
+
 impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
     /// This decides whether to reject the move based on the actual
     /// method in use.
@@ -128,24 +135,55 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         let old_hist_here = self.histogram[i];
         self.histogram[i] += 1;
         self.total_energy[i] += energy;
-        if self.energies.len() < 2 {
-            // No way to shift things just yet, as we do not have a length scale.
+        self.histogram.len();
+        let de_left = if i == 0 {
+            self.energies[i] - self.energies[i + 1]
+        } else if i == 1 {
+            self.energies[i - 1] - self.energies[i]
+        } else if i == self.energies.len() {
+            self.energies[i - 2] - self.energies[i - 1]
+        } else if self.energies[i - 1] - self.energies[i]
+            < self.energies[i - 2] - self.energies[i - 1]
+        {
+            self.energies[i - 1] - self.energies[i]
+        } else {
+            self.energies[i - 2] - self.energies[i - 1]
+        };
+        assert!(de_left > Energy::new(0.));
+        let de_right = if i == self.energies.len() {
+            self.energies[i - 2] - self.energies[i - 1]
+        } else if i == self.energies.len() - 1 {
+            self.energies[i - 1] - self.energies[i]
         } else if i == 0 {
-            // shift the right side if we are on far left
-            let de = self.energies[i + 1] - self.energies[i];
-            self.energies[i] += de * self.gamma;
-        } else if i == self.histogram.len() - 1 {
-            // shift the left side if we are on the far right
-            let de = self.energies[i - 1] - self.energies[i - 2];
-            self.energies[i - 1] += de * self.gamma;
+            self.energies[i] - self.energies[i + 1]
+        } else if self.energies[i - 1] - self.energies[i] < self.energies[i] - self.energies[i + 1]
+        {
+            self.energies[i - 1] - self.energies[i]
+        } else {
+            self.energies[i] - self.energies[i + 1]
+        };
+        assert!(de_right > Energy::new(0.));
+        // println!("currently {}", energy);
+        if i < self.energies.len() {
+            // println!("adding {:.3} to {}", (de_right * self.gamma[i]).pretty(), i);
+            self.energies[i] += de_right * self.gamma[i];
+        }
+        if i > 0 {
+            // println!("subtracting {:.3} from {}", (de_left * self.gamma[i - 1]).pretty(), i-1);
+            self.energies[i - 1] -= de_left * self.gamma[i - 1];
+        }
+        // We only are willing to add a new bin *after* we know that every bin has been
+        // re-rexplored at least once since the last time we added a bin.  Otberwise, we
+        // can accumulate far too many bins.
+        if i == self.histogram.len() - 1 && self.gamma[i-1] < 0.25 {
             // Now decide whether to add a new bin
             let elow = self.total_energy[i] / self.histogram[i] as f64;
             if self.energies[i - 1] - elow > self.min_T {
                 // We have room for another bin (we think)
-                self.energies.push(elow); // FIXME
-                self.histogram.pop();
-                self.histogram.push(0);
-                self.histogram.push(0);
+                let T = self.energies[i - 1] - elow;
+                let enew = self.energies[i - 1] + T*(1.-self.f).ln();
+                self.energies.push(enew);
+                self.gamma.push(0.25);
                 self.lnw.pop(); // get rid of the last "big" bin
                 let lnw_last = self.lnw.last().copied().unwrap();
                 if self.lnw.len() > 1 {
@@ -159,41 +197,52 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     self.lnw.push(lnw_last + (1. - self.f).ln());
                     self.lnw.push(lnw_last + (1. / self.f - 1.).ln());
                 }
-                self.total_energy[self.histogram.len() - 1] = Energy::new(0.);
-                self.total_energy.push(Energy::new(0.));
+                self.histogram.pop();
+                self.total_energy.pop();
+                for _ in 0..2 {
+                    self.total_energy.push(Energy::new(0.));
+                    self.histogram.push(0);
+                }
+                assert_eq!(self.lnw.len(), self.energies.len() + 1);
+                assert_eq!(self.histogram.len(), self.lnw.len());
+                assert_eq!(self.total_energy.len(), self.lnw.len());
             }
-        } else if i < self.energies.len() {
-            // shift both sides of the bin
-            let de_plus = self.energies[i + 1] - self.energies[i];
-            let de_minus = self.energies[i - 1] - self.energies[i - 2];
-            let de_self = self.energies[i] - self.energies[i - 1];
-            // Left side
-            let de = if de_self < de_minus {
-                de_self
-            } else {
-                de_minus
-            };
-            self.energies[i - 1] += de * self.gamma;
-            // Right side
-            let de = if de_self < de_plus { de_self } else { de_plus };
-            self.energies[i] += de * self.gamma;
         }
         if let Some(min_gamma) = self.min_gamma {
-            if self.gamma < min_gamma {
+            if max_of(&self.gamma) < min_gamma {
                 // We are in a production run.
                 return;
             }
         }
-        if old_hist_here == 0 && !self.histogram.iter().any(|&x| x == 0) {
+        for i in 0..self.energies.len() - 1 {
+            if self.energies[i + 1] >= self.energies[i] {
+                println!(
+                    "craziness at i={} with {} and {}",
+                    i,
+                    self.energies[i + 1],
+                    self.energies[i]
+                );
+            }
+            assert!(self.energies[i + 1] < self.energies[i]);
+        }
+        if old_hist_here == 0 && self.histogram.len() > 2 && !self.histogram.iter().any(|&x| x == 0)
+        {
             // We have explored all the bins!
-            self.gamma *= 0.5;
+            for g in self.gamma.iter_mut() {
+                *g *= 0.5;
+            }
             for h in self.histogram.iter_mut() {
                 *h = 0;
             }
             for e in self.total_energy.iter_mut() {
                 *e = Energy::new(0.);
             }
-            println!("    WL:  We have found everything, gamma = {}", self.gamma);
+            println!(
+                "    WL:  We have found all {} bins, {} <= gamma <= {}",
+                self.histogram.len(),
+                crate::prettyfloat::PrettyFloat(min_of(&self.gamma)),
+                crate::prettyfloat::PrettyFloat(max_of(&self.gamma))
+            );
         }
     }
 }
@@ -220,21 +269,27 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
                 }
             }
         }
+        let f = params.f;
+        let min_T = params.min_T;
         EnergyMC {
-            gamma: 0.5,
             min_gamma: params.min_gamma,
             moves: 0,
-            min_T: params.min_T,
-            f: params.f,
+            min_T,
+            f,
             accepted_moves: 0,
             acceptance_rate: 0.5, // arbitrary starting guess.
             min_allowed_energy: params.min_allowed_energy,
             max_allowed_energy: params.max_allowed_energy,
 
-            energies: vec![system.energy()],
-            histogram: vec![0, 0],
-            lnw: vec![0., 0.5f64.ln()],
-            total_energy: vec![Energy::new(0.0), Energy::new(0.0)],
+            energies: vec![
+                system.energy(),
+                system.energy() - min_T,
+                system.energy() - 2. * min_T,
+            ],
+            gamma: vec![0.25; 3],
+            histogram: vec![0; 4],
+            lnw: vec![0., f.ln(), 2. * f.ln(), 2. * f.ln() + (1. / f - 1.).ln()],
+            total_energy: vec![Energy::new(0.0); 4],
 
             translation_scale: match params._moves {
                 MoveParams::TranslationScale(x) => x,
@@ -313,11 +368,26 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
 #[derive(Serialize, Deserialize, Debug)]
 struct Logger;
 impl<S: MovableSystem> Plugin<EnergyMC<S>> for Logger {
-    fn log(&self, mc: &EnergyMC<S>, _sys: &S) {
-        print!("    ");
+    fn log(&self, mc: &EnergyMC<S>, sys: &S) {
+        // print!("    ");
+        for i in 0..mc.energies.len() {
+            if sys.energy() > mc.energies[i] && (i == 0 || sys.energy() < mc.energies[i-1]) {
+                print!(">>>");
+            } else {
+                print!("   ");
+            }
+            println!(" {:8.3}: {}", mc.energies[i].pretty(), mc.histogram[i]);
+        }
         println!(
-            " [gamma = {:.2}]",
-            crate::prettyfloat::PrettyFloat(mc.gamma)
+            "    {:8.3}: {}  [currently {:.3} after {:.2} moves]",
+            "",
+            mc.histogram[mc.histogram.len() - 1],
+            sys.energy().pretty(),
+            crate::prettyfloat::PrettyFloat(mc.moves as f64)
+        );
+        println!(
+            " [biggest gamma = {:.2}]",
+            crate::prettyfloat::PrettyFloat(max_of(&mc.gamma))
         );
     }
 }
