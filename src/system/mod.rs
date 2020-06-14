@@ -15,6 +15,8 @@ pub mod optsquare;
 pub mod square;
 pub mod wca;
 
+pub mod linear_energy;
+
 pub use crate::mc::binning::Interned;
 
 /// A unitless number.  This is equivalent to a f64, but makes clear

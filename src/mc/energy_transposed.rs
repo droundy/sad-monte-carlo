@@ -175,28 +175,19 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         // We only are willing to add a new bin *after* we know that every bin has been
         // re-rexplored at least once since the last time we added a bin.  Otberwise, we
         // can accumulate far too many bins.
-        if i == self.histogram.len() - 1 && self.gamma[i-1] < 0.25 {
+        if i == self.histogram.len() - 1 && self.gamma[i - 1] < 0.25 {
             // Now decide whether to add a new bin
             let elow = self.total_energy[i] / self.histogram[i] as f64;
             if self.energies[i - 1] - elow > self.min_T {
                 // We have room for another bin (we think)
                 let T = self.energies[i - 1] - elow;
-                let enew = self.energies[i - 1] + T*(1.-self.f).ln();
+                let enew = self.energies[i - 1] + T * (1. - self.f).ln();
                 self.energies.push(enew);
                 self.gamma.push(0.25);
                 self.lnw.pop(); // get rid of the last "big" bin
                 let lnw_last = self.lnw.last().copied().unwrap();
-                if self.lnw.len() > 1 {
-                    self.lnw.push(lnw_last + self.f.ln()); // insert a regular bin
-                    self.lnw
-                        .push(lnw_last + self.f.ln() + (1. / self.f - 1.).ln());
-                // insert a new "big" bin.
-                } else {
-                    // We had just two bins to start with, so we need to treat the first one specially
-                    // to maintain the large "negative temperature" bin.
-                    self.lnw.push(lnw_last + (1. - self.f).ln());
-                    self.lnw.push(lnw_last + (1. / self.f - 1.).ln());
-                }
+                self.lnw.push(lnw_last + self.f.ln()); // insert a regular bin
+                self.lnw.push(lnw_last + self.f.ln() + (self.f/(1. - self.f)).ln());
                 self.histogram.pop();
                 self.total_energy.pop();
                 for _ in 0..2 {
@@ -227,9 +218,15 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         }
         if old_hist_here == 0 && self.histogram.len() > 2 && !self.histogram.iter().any(|&x| x == 0)
         {
+            let mut announce_this = false;
             // We have explored all the bins!
             for g in self.gamma.iter_mut() {
                 *g *= 0.5;
+                if *g < self.histogram.len() as f64 / self.moves as f64 {
+                    *g = self.histogram.len() as f64 / self.moves as f64;
+                } else {
+                    announce_this = true;
+                }
             }
             for h in self.histogram.iter_mut() {
                 *h = 0;
@@ -237,13 +234,15 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
             for e in self.total_energy.iter_mut() {
                 *e = Energy::new(0.);
             }
-            println!(
-                "[{:14}] WL:  We have found all {} bins, {:.3} <= gamma <= {:.3}",
-                crate::prettyfloat::PrettyFloat(self.moves as f64),
-                self.histogram.len(),
-                crate::prettyfloat::PrettyFloat(min_of(&self.gamma)),
-                crate::prettyfloat::PrettyFloat(max_of(&self.gamma))
-            );
+            if announce_this {
+                println!(
+                    "[{:14}] WL:  We have found all {} bins, {:.3} <= gamma <= {:.3}",
+                    crate::prettyfloat::PrettyFloat(self.moves as f64),
+                    self.histogram.len(),
+                    crate::prettyfloat::PrettyFloat(min_of(&self.gamma)),
+                    crate::prettyfloat::PrettyFloat(max_of(&self.gamma))
+                );
+            }
         }
     }
 }
@@ -289,7 +288,12 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             ],
             gamma: vec![0.25; 3],
             histogram: vec![0; 4],
-            lnw: vec![0., (1.-f).ln(), (1.-f).ln()+ f.ln(), (1.-f).ln()+ f.ln() + (1. / f - 1.).ln()],
+            lnw: vec![
+                0.,
+                (1. - f).ln(),
+                (1. - f).ln() + f.ln(),
+                (1. - f).ln() + f.ln() + (f / (1. - f)).ln(),
+            ],
             total_energy: vec![Energy::new(0.0); 4],
 
             translation_scale: match params._moves {
@@ -372,7 +376,7 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Logger {
     fn log(&self, mc: &EnergyMC<S>, sys: &S) {
         // print!("    ");
         for i in 0..mc.energies.len() {
-            if sys.energy() > mc.energies[i] && (i == 0 || sys.energy() < mc.energies[i-1]) {
+            if sys.energy() > mc.energies[i] && (i == 0 || sys.energy() < mc.energies[i - 1]) {
                 print!(">>>");
             } else {
                 print!("   ");
