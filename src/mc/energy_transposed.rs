@@ -238,7 +238,8 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 *e = Energy::new(0.);
             }
             println!(
-                "    WL:  We have found all {} bins, {} <= gamma <= {}",
+                "[{:14}] WL:  We have found all {} bins, {:.3} <= gamma <= {:.3}",
+                crate::prettyfloat::PrettyFloat(self.moves as f64),
                 self.histogram.len(),
                 crate::prettyfloat::PrettyFloat(min_of(&self.gamma)),
                 crate::prettyfloat::PrettyFloat(max_of(&self.gamma))
@@ -288,7 +289,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             ],
             gamma: vec![0.25; 3],
             histogram: vec![0; 4],
-            lnw: vec![0., f.ln(), 2. * f.ln(), 2. * f.ln() + (1. / f - 1.).ln()],
+            lnw: vec![0., (1.-f).ln(), (1.-f).ln()+ f.ln(), (1.-f).ln()+ f.ln() + (1. / f - 1.).ln()],
             total_energy: vec![Energy::new(0.0); 4],
 
             translation_scale: match params._moves {
