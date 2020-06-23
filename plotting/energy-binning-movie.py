@@ -217,6 +217,7 @@ all_max_excess_entropy_errors = {}
 all_last = {}
 all_labels = {}
 all_figures = set({})
+all_figure_names = set({})
 for fs in things:
     for fig in all_figures:
         fig.clf()
@@ -246,6 +247,7 @@ for fs in things:
             all_max_excess_entropy_errors[label] = []
         all_max_excess_entropy_errors[label].append(max_excess_entropy_error(mc))
 
+        all_figure_names.add('excess_energy_temperature')
         all_figures.add(plt.figure('excess_energy_temperature'))
         plt.title(title)
         plt.plot(mc.excess_energy()/mc.N(), mc.temperature(), label=label, alpha=alpha)
@@ -253,6 +255,7 @@ for fs in things:
         plt.ylabel('$T$')
         plt.legend(loc='best')
 
+        all_figure_names.add('excess pressure')
         all_figures.add(plt.figure('excess pressure'))
         plt.title(title)
         plt.plot(mc.excess_energy()/mc.N(), mc.excess_pressure()/mc.N(), label=label, alpha=alpha)
@@ -260,6 +263,7 @@ for fs in things:
         plt.ylabel('$p_{exc}/N$')
         plt.legend(loc='best')
 
+        all_figure_names.add('excess_energy_pressure')
         all_figures.add(plt.figure('excess_energy_pressure'))
         plt.title(title)
         plt.plot(mc.excess_energy()/mc.N(), mc.pressure()/mc.N(), label=label, alpha=alpha)
@@ -267,6 +271,7 @@ for fs in things:
         plt.ylabel('$P/N$')
         plt.legend(loc='best')
 
+        all_figure_names.add('temperature_pressure')
         all_figures.add(plt.figure('temperature_pressure'))
         plt.title(title)
         plt.plot(mc.temperature(), mc.pressure()/mc.N(), label=label, alpha=alpha)
@@ -274,6 +279,7 @@ for fs in things:
         plt.ylabel('$P/N$')
         plt.legend(loc='best')
 
+        all_figure_names.add('moves potential')
         all_figures.add(plt.figure('moves potential'))
         plt.title("moves: " + str(mc.moves()))
         plt.plot(mc.excess_energy()/mc.N(), mc.excess_chemical_potential(), label=label, alpha=alpha)
@@ -281,6 +287,7 @@ for fs in things:
         plt.ylabel(r'$\mu$'+'_excess')
         plt.legend(loc='best')
 
+        all_figure_names.add('excess_entropy')
         all_figures.add(plt.figure('excess_entropy'))
         plt.title(title)
         plt.plot(mc.excess_energy()/mc.N(),
@@ -291,6 +298,7 @@ for fs in things:
         plt.legend(loc='best')
         plt.tight_layout()
 
+        all_figure_names.add('histogram')
         all_figures.add(plt.figure('histogram'))
         plt.title(title)
         plt.plot(mc.excess_energy(), mc.histogram(), label=label, alpha=alpha)
@@ -310,6 +318,9 @@ for fs in things:
              (ref.excess_entropy() - ref.excess_entropy().max())/ref.N(),
              ':', color='gray', label=reference, alpha=0.5)
 
+    for fig in all_figure_names:
+        plt.figure(fig)
+        plt.pause(1e-9)
     # plt.show()
     plt.pause(0.1)
 
