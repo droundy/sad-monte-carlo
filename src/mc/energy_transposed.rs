@@ -128,17 +128,17 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
     }
     fn e_to_idx(&self, energy: Energy) -> usize {
         let mut e = self.max_energy;
-        let dedw = (self.max_energy - self.min_energy)/self.bin_norm;
+        let dedw = (self.max_energy - self.min_energy) / self.bin_norm;
         for (i, w) in self.rel_bins.iter().cloned().enumerate() {
             if energy > e {
                 return i;
             }
-            e -= dedw*w;
+            e -= dedw * w;
         }
         if energy > e {
             return self.rel_bins.len();
         }
-        self.rel_bins.len()+1
+        self.rel_bins.len() + 1
     }
     /// This updates the lnw based on the actual method in use.
     fn update_weights(&mut self, energy: Energy) {
@@ -147,23 +147,32 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         self.total_energy[i] += energy;
         if i == 0 {
             // We are in the widthless arbitrarily high-energy bin.
-            let de = (self.max_energy - self.min_energy)*self.gamma;
+            let de = (self.max_energy - self.min_energy) * self.gamma;
             self.max_energy += de;
-        } else if i == self.rel_bins.len()+1 {
+        } else if i == self.rel_bins.len() + 1 {
             // We are in the low-energy bin.
-            let de = (self.max_energy - self.min_energy)*self.gamma;
+            let de = (self.max_energy - self.min_energy) * self.gamma;
             self.min_energy -= de;
 
             // Now decide whether we want a new bin here.
-            let min_de: Energy = -self.min_T*self.f.ln();
+            let min_de: Energy = -self.min_T * self.f.ln();
             assert!(min_de > Energy::new(0.));
-            let min_w = *(self.bin_norm*min_de/(self.max_energy-self.min_energy)).value();
+            let min_w = *(self.bin_norm * min_de / (self.max_energy - self.min_energy)).value();
             if min_w < 0. {
-                println!(" {} vs {}", self.max_energy, self.min_energy);
+                println!(
+                    " maximum energy {} vs minimum energy {}",
+                    self.max_energy, self.min_energy
+                );
+                println!("this gives min_de of {}", min_de);
+                println!(
+                    "this gives bin_norm of {} compared with {}",
+                    self.bin_norm,
+                    self.rel_bins.iter().cloned().sum::<f64>()
+                );
                 println!("this gives min_w of {}", min_w);
                 assert!(false);
             }
-            let de = self.min_energy - self.total_energy[i]/self.histogram[i] as f64;
+            let de = self.min_energy - self.total_energy[i] / self.histogram[i] as f64;
             if de > self.min_T && min_of(&self.rel_bins) > min_w {
                 self.rel_bins.push(min_w);
                 self.bin_norm += min_w;
@@ -171,9 +180,10 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 self.histogram.push(0);
                 self.total_energy.push(Energy::new(0.));
                 self.have_seen.push(false);
-                let lnw_last = self.lnw[i-1];
+                let lnw_last = self.lnw[i - 1];
                 self.lnw[i] = lnw_last + self.f.ln(); // make the last bin a regular bin
-                self.lnw.push(lnw_last + self.f.ln() + (self.f/(1. - self.f)).ln());
+                self.lnw
+                    .push(lnw_last + self.f.ln() + (self.f / (1. - self.f)).ln());
                 for h in self.have_seen.iter_mut() {
                     *h = false;
                 }
@@ -182,11 +192,23 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 Logger.log(self, &self.system);
             }
         } else {
-            let w = self.rel_bins[i-1];
-            let dw = self.gamma*w;
-            self.rel_bins[i-1] -= dw;
+            let w = self.rel_bins[i - 1];
+            let dw = self.gamma * w;
+            self.rel_bins[i - 1] -= dw;
+            assert!(self.rel_bins[i - 1] > 0.0);
             self.bin_norm -= dw;
-            let de = (self.max_energy - self.min_energy)*self.gamma/ self.rel_bins.len() as f64;
+            if self.bin_norm <= 0.0 {
+                self.bin_norm = self.rel_bins.iter().cloned().sum::<f64>();
+                // Let's re-normalize the bin widths, since we must be close to
+                // underflow.
+                for w in self.rel_bins.iter_mut() {
+                    *w /= self.bin_norm;
+                }
+                // The following should be about 1, but due to roundoff error it is
+                // not, and we don't want any (unavoidable) errors in our binning.
+                self.bin_norm = self.rel_bins.iter().cloned().sum::<f64>();
+            }
+            let de = (self.max_energy - self.min_energy) * self.gamma / self.rel_bins.len() as f64;
             self.max_energy -= de;
             self.min_energy += de;
         }
@@ -248,10 +270,10 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             accepted_moves: 0,
             acceptance_rate: 0.5, // arbitrary starting guess.
             max_energy: system.energy(),
-            min_energy: system.energy() - 2.0*params.min_T,
+            min_energy: system.energy() - 2.0 * params.min_T,
             max_allowed_energy: params.max_allowed_energy,
 
-            rel_bins: vec![1.0,1.0],
+            rel_bins: vec![1.0, 1.0],
             bin_norm: 2.0,
             gamma: 0.25,
             histogram: vec![0; 4],
@@ -352,20 +374,33 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Logger {
         let mut i = 0;
         print_am_here(i);
         println!("  {:8.5} -> infty   : {}", etop.pretty(), mc.histogram[i]);
-        let dedw = (mc.max_energy - mc.min_energy)/mc.bin_norm;
+        let dedw = (mc.max_energy - mc.min_energy) / mc.bin_norm;
         while i < mc.rel_bins.len() {
-            ebot = etop - dedw*mc.rel_bins[i];
-            print_am_here(i+1);
-            println!("  {:8.5} -> {:8.5}: {}", ebot.pretty(), etop.pretty(), mc.histogram[i+1]);
+            ebot = etop - dedw * mc.rel_bins[i];
+            print_am_here(i + 1);
+            println!(
+                "  {:8.5} -> {:8.5}: {}",
+                ebot.pretty(),
+                etop.pretty(),
+                mc.histogram[i + 1]
+            );
             i += 1;
             etop = ebot;
         }
-        print_am_here(i+1);
-        println!("  -infty   -> {:8.5}: {}", etop.pretty(), mc.histogram[i+1]);
+        print_am_here(i + 1);
+        println!(
+            "  -infty   -> {:8.5}: {}",
+            etop.pretty(),
+            mc.histogram[i + 1]
+        );
         println!(
             " [gamma = {:.2}]",
             crate::prettyfloat::PrettyFloat(mc.gamma)
         );
-        println!("        norm: {} vs. {}", mc.bin_norm, mc.rel_bins.iter().cloned().sum::<f64>());
+        println!(
+            "        norm: {} vs. {}",
+            mc.bin_norm,
+            mc.rel_bins.iter().cloned().sum::<f64>()
+        );
     }
 }
