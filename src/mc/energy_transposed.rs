@@ -114,9 +114,6 @@ pub struct EnergyMC<S> {
 fn min_of(stuff: &[f64]) -> f64 {
     stuff.iter().cloned().fold(0. / 0., f64::min)
 }
-fn max_of(stuff: &[f64]) -> f64 {
-    stuff.iter().cloned().fold(0. / 0., f64::max)
-}
 
 impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
     /// This decides whether to reject the move based on the actual

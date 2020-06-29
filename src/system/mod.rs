@@ -16,6 +16,7 @@ pub mod square;
 pub mod wca;
 
 pub mod linear_energy;
+pub mod fake;
 
 pub use crate::mc::binning::Interned;
 
