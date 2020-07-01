@@ -12,17 +12,24 @@ use rand::prelude::*;
 pub enum Function {
     /// linear
     Linear,
+    /// quadratic
+    Quadratic {
+        /// number of dimensions
+        dimensions: usize,
+    },
 }
 
 impl Function {
     fn dimensions(&self) -> usize {
         match self {
             Function::Linear => 1,
+            Function::Quadratic { dimensions } => *dimensions,
         }
     }
     fn energy(&self, r: f64) -> Energy {
         match self {
             Function::Linear => r * Energy::new(1.),
+            Function::Quadratic{..} => r*r * Energy::new(1.),
         }
     }
 }
