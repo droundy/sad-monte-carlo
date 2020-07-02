@@ -171,9 +171,9 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
             }
             let de = self.min_energy - self.total_energy[i] / self.histogram[i] as f64;
             if de > self.min_T && min_of(&self.rel_bins) > min_w {
-                self.rel_bins.push(min_w);
-                self.bin_norm += min_w;
-                println!("new norm is {} from {}", self.bin_norm, min_w);
+                let my_w = -*(self.bin_norm * de / (self.max_energy - self.min_energy)).value()*self .f.ln();
+                self.rel_bins.push(my_w);
+                self.bin_norm += my_w;
                 self.histogram.push(0);
                 self.total_energy.push(Energy::new(0.));
                 self.have_seen.push(false);
@@ -270,18 +270,17 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             min_energy: system.energy() - 2.0 * params.min_T,
             max_allowed_energy: params.max_allowed_energy,
 
-            rel_bins: vec![1.0, 1.0],
+            rel_bins: vec![1.0],
             bin_norm: 2.0,
             gamma: 0.25,
-            histogram: vec![0; 4],
-            have_seen: vec![false; 4],
+            histogram: vec![0; 3],
+            have_seen: vec![false; 3],
             lnw: vec![
                 0.,
-                (1. - f).ln(),
-                (1. - f).ln() + f.ln(),
-                (1. - f).ln() + f.ln() + (f / (1. - f)).ln(),
+                f.ln(),
+                f.ln() + (f / (1. - f)).ln(),
             ],
-            total_energy: vec![Energy::new(0.0); 4],
+            total_energy: vec![Energy::new(0.0); 3],
 
             translation_scale: match params._moves {
                 MoveParams::TranslationScale(x) => x,
