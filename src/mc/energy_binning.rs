@@ -217,57 +217,57 @@ impl Method {
             crate::prettyfloat::PrettyFloat(mc.gamma())
         );
     }
-    fn entropy(&self, bins: &impl Binning, energies: &[Energy]) -> Vec<f64> {
-        let mut entropy: Vec<_> = energies.iter().map(|&e| bins.get_lnw(e)).collect();
-        if let Method::Sad {
-            min_T,
-            too_lo,
-            too_hi,
-            ..
-        } = *self
-        {
-            let mut meanhist = PerEnergy::new(0.0);
-            let mut meancount = 0.0;
-            let too_lo_entropy = bins.get_lnw(too_lo);
-            let too_hi_entropy = bins.get_lnw(too_hi);
-            for e in energies.iter().cloned() {
-                if e >= too_lo && e <= too_hi {
-                    meanhist += bins.get_count(e);
-                    meancount += 1.;
-                }
-            }
-            meanhist /= meancount;
-            for (i, s) in entropy.iter_mut().enumerate() {
-                let e = energies[i];
-                if bins.get_count(e) == PerEnergy::new(0.) {
-                    *s = 0.0;
-                } else if e < too_lo {
-                    *s = (bins.get_count(e) / meanhist).ln()
-                        + too_lo_entropy
-                        + *((e - too_lo) / min_T).value();
-                } else if e > too_hi {
-                    *s = (bins.get_count(e) / meanhist).ln() + too_hi_entropy;
-                } else {
-                    *s = bins.get_lnw(e);
-                }
-            }
-        } else if let Method::WL { gamma, .. } = self {
-            if *gamma == 0.0 {
-                // We are in a production run, so we should modify the
-                // lnw based on the histogram.
-                let hist = "hist".into();
-                if bins.min_count_extra(hist) > PerEnergy::new(0.) {
-                    // We have explored everything at least once, so
-                    // we can at least take a log of everything...
-                    for (i, s) in entropy.iter_mut().enumerate() {
-                        let e = energies[i];
-                        *s += (bins.count_extra(hist, e) * units::EPSILON).ln();
-                    }
-                }
-            }
-        }
-        entropy
-    }
+    // fn entropy(&self, bins: &impl Binning, energies: &[Energy]) -> Vec<f64> {
+    //     let mut entropy: Vec<_> = energies.iter().map(|&e| bins.get_lnw(e)).collect();
+    //     if let Method::Sad {
+    //         min_T,
+    //         too_lo,
+    //         too_hi,
+    //         ..
+    //     } = *self
+    //     {
+    //         let mut meanhist = PerEnergy::new(0.0);
+    //         let mut meancount = 0.0;
+    //         let too_lo_entropy = bins.get_lnw(too_lo);
+    //         let too_hi_entropy = bins.get_lnw(too_hi);
+    //         for e in energies.iter().cloned() {
+    //             if e >= too_lo && e <= too_hi {
+    //                 meanhist += bins.get_count(e);
+    //                 meancount += 1.;
+    //             }
+    //         }
+    //         meanhist /= meancount;
+    //         for (i, s) in entropy.iter_mut().enumerate() {
+    //             let e = energies[i];
+    //             if bins.get_count(e) == PerEnergy::new(0.) {
+    //                 *s = 0.0;
+    //             } else if e < too_lo {
+    //                 *s = (bins.get_count(e) / meanhist).ln()
+    //                     + too_lo_entropy
+    //                     + *((e - too_lo) / min_T).value();
+    //             } else if e > too_hi {
+    //                 *s = (bins.get_count(e) / meanhist).ln() + too_hi_entropy;
+    //             } else {
+    //                 *s = bins.get_lnw(e);
+    //             }
+    //         }
+    //     } else if let Method::WL { gamma, .. } = self {
+    //         if *gamma == 0.0 {
+    //             // We are in a production run, so we should modify the
+    //             // lnw based on the histogram.
+    //             let hist = "hist".into();
+    //             if bins.min_count_extra(hist) > PerEnergy::new(0.) {
+    //                 // We have explored everything at least once, so
+    //                 // we can at least take a log of everything...
+    //                 for (i, s) in entropy.iter_mut().enumerate() {
+    //                     let e = energies[i];
+    //                     *s += (bins.count_extra(hist, e) * units::EPSILON).ln();
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     entropy
+    // }
 }
 
 impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
