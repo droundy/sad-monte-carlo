@@ -17,6 +17,11 @@ pub enum Function {
         /// number of dimensions
         dimensions: usize,
     },
+    /// Gaussian
+    Gaussian {
+        /// width of the gaussian
+        sigma: f64,
+    },
 }
 
 impl Function {
@@ -24,12 +29,14 @@ impl Function {
         match self {
             Function::Linear => 1,
             Function::Quadratic { dimensions } => *dimensions,
+            Function::Gaussian { .. } => 3,
         }
     }
     fn energy(&self, r: f64) -> Energy {
         match self {
-            Function::Linear => r * Energy::new(1.),
-            Function::Quadratic{..} => r*r * Energy::new(1.),
+            Function::Linear => Energy::new(r),
+            Function::Quadratic { .. } => Energy::new(r * r),
+            Function::Gaussian { sigma } => Energy::new((-r * r / (2.0 * *sigma * *sigma)).exp()),
         }
     }
 }

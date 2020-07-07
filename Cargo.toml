@@ -5,6 +5,7 @@ authors = ["David Roundy <roundyd@oregonstate.edu>"]
 edition = "2018"
 
 [lib]
+
 name = "sadmc"
 path = "src/lib.rs"
 
@@ -21,6 +22,7 @@ auto-args = "0.2.7"
 internment = "0.3.2"
 
 vector3d = { version = "0.1.9", features=["serde1", "auto-args"] }
+statrs = "0.7.0"
 rand_core = "0.5.1"
 rand = "0.7.2"
 rand_distr = "0.2.2"
