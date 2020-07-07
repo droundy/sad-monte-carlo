@@ -36,7 +36,7 @@ impl Function {
         match self {
             Function::Linear => Energy::new(r),
             Function::Quadratic { .. } => Energy::new(r * r),
-            Function::Gaussian { sigma } => Energy::new((-r * r / (2.0 * *sigma * *sigma)).exp()),
+            Function::Gaussian { sigma } => Energy::new(-(-r * r / (2.0 * *sigma * *sigma)).exp()),
         }
     }
 }
