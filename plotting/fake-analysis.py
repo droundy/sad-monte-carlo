@@ -61,4 +61,4 @@ except IndexError:
     plt.tight_layout()
     plt.legend(loc='upper right')
     
-plt.pause(0.6)
+plt.show()
