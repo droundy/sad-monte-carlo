@@ -65,8 +65,7 @@ plt.ylabel('Entropy')
 try:
     dE = rel_bins/bin_norm
     E = total_energy/histogram
-    W = np.array(2**np.arange(len(dE))[::-1], dtype = np.double)
-    W = np.reciprocal(W)
+    W = np.array(1 / 2**np.arange(len(dE))[::-1], dtype=np.double)
     plt.plot(E, np.log(W/dE), label=args.yaml)
     plt.plot(E, np.log(W), label='Exact')
     
