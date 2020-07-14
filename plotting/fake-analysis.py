@@ -8,16 +8,30 @@ parser = argparse.ArgumentParser(description="fake energies analysis")
 parser.add_argument('yaml', help = 'the yaml file')
 args = parser.parse_args()
 
+def linear_density_of_states(E):
+    return 1
+def other_density_of_states(E):
+    return 2
+
 with open(args.yaml,'rb') as stream:
     try:
         data_loaded = yaml.full_load(stream)
     except IOError:
         print('An error occurred trying to read the file.')
 
+exact_density_of_states = linear_density_of_states
+if 'linear' in args.yaml:
+    exact_density_of_states = linear_density_of_states
+elif 'other' in args.yaml:
+    exact_density_of_states = other_density_of_states
+
 total_energy = np.array(data_loaded['total_energy'])
 histogram = np.array(data_loaded['histogram'])
 rel_bins = np.array(data_loaded['rel_bins'])
 lnw = np.array(data_loaded['lnw'])
+lnw = lnw - lnw.max()
+lnw -= np.log(np.sum(np.exp(lnw))) # w = w / sum(w)
+
 bin_norm = data_loaded['bin_norm']
 max_energy = data_loaded['max_energy']
 min_energy = data_loaded['min_energy']
@@ -75,7 +89,7 @@ dE = rel_bins/bin_norm
 E = total_energy/histogram
 W = np.array(1 / 2**np.arange(len(dE))[::-1], dtype=np.double)
 plt.plot(E, lnw - np.log(dE), label=args.yaml)
-plt.plot(E, np.log(W), label='Exact')
+plt.plot(E, np.log(exact_density_of_states(E)), label='Exact')
 
 print(W)
 plt.tight_layout()
