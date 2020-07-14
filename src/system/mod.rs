@@ -17,7 +17,7 @@ pub mod wca;
 
 pub mod linear_energy;
 pub mod fake;
-// pub mod gaussian;
+pub mod erfinv;
 
 pub use crate::mc::binning::Interned;
 
