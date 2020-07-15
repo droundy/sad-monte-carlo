@@ -276,9 +276,9 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             histogram: vec![0; 3],
             have_seen: vec![false; 3],
             lnw: vec![
-                0.,
-                f.ln(),
-                f.ln() + (f / (1. - f)).ln(),
+                (1.-f).ln(),
+                (1.-f).ln()+f.ln(),
+                (1.-f).ln()+f.ln() + (f / (1. - f)).ln(),
             ],
             total_energy: vec![Energy::new(0.0); 3],
 
