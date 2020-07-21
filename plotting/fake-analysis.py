@@ -8,7 +8,7 @@ parser.add_argument('yaml', help = 'the yaml file')
 args = parser.parse_args()
 
 def linear_density_of_states(E):
-    return 1
+    return np.ones_like(E)
 def other_density_of_states(E):
     return 2
 
@@ -88,6 +88,10 @@ plt.figure('entropy')
 plt.xlabel('Average Energy in bin')
 plt.ylabel('Entropy')
 plt.plot(middle_mean_energy, middle_entropies_A, label=args.yaml)
+
+energies = np.linspace(middle_mean_energy.min(), middle_mean_energy.max(), 1000)
+
+plt.plot(energies, np.log(exact_density_of_states(energies)), label='exact')
 #plt.plot(middle_mean_energy, np.log(exact_density_of_states), label='Exact')
 plt.tight_layout()
 plt.legend(loc='upper right')
