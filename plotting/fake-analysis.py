@@ -7,8 +7,10 @@ parser = argparse.ArgumentParser(description="fake energies analysis")
 parser.add_argument('yaml', help = 'the yaml file')
 args = parser.parse_args()
 
-def linear_density_of_states(E):
-    return np.ones_like(E)
+def linear_density_of_states(E, S_lo, E_avg_lo):
+    E_lo = np.amin(E)
+    entropies = S_lo - (E_lo - E) / (E_lo - E_avg_lo)
+    return np.exp(entropies)
 def other_density_of_states(E):
     return 2
 
@@ -43,20 +45,24 @@ energy_per_rel_bin = 1/bin_norm*(max_energy-min_energy)
 for b in rel_bins:
     energy_boundaries.append( energy_boundaries[-1] - b*energy_per_rel_bin)
 energy_boundaries = np.array(energy_boundaries)
-print('energy boundarie3 are ', energy_boundaries)
+#print('energy boundarie3 are ', energy_boundaries)
 
 mean_energy = total_energy/histogram #includes unbounded extremes
-print('mean energies are', mean_energy)
+#print('mean energies are', mean_energy)
 
 middle_mean_energy = mean_energy[1:-1] #excludes unbounded extremes
-print('middle mean energies are', middle_mean_energy)
+#print('middle mean energies are', middle_mean_energy)
 
 energy_width = -np.diff(energy_boundaries)
-print('energy widths are', energy_width)
+#print('energy widths are', energy_width)
 
 middle_entropies_A = lnw[1:-1] - np.log(energy_width)
-print('middle entropies are', middle_entropies_A)
+#print('middle entropies are', middle_entropies_A)
 
+all_entropies = [lnw[0] - (max_energy - energy_boundaries[0])]
+all_entropies = np.append(all_entropies, middle_entropies_A)
+all_entropies = np.append(all_entropies, lnw[-1] - (energy_boundaries[-1] - min_energy))
+#print('all entropies are', all_entropies)
 
 
 #Plotting
@@ -75,7 +81,7 @@ bins = np.arange(len(energy_width)) #references bin no. or id eg bin 1, 2...
 plt.plot(bins, energy_width, label=args.yaml)
 plt.tight_layout()
 plt.legend(loc='upper right')
-    
+
 plt.figure('bin_size v avg_temp')
 plt.xlabel('Bin Size')
 plt.ylabel('Average Energy')
@@ -87,12 +93,11 @@ plt.legend(loc='upper right')
 plt.figure('entropy')
 plt.xlabel('Average Energy in bin')
 plt.ylabel('Entropy')
+energies = np.linspace(middle_mean_energy.min(), middle_mean_energy.max(), 1000)
 plt.plot(middle_mean_energy, middle_entropies_A, label=args.yaml)
 
-energies = np.linspace(middle_mean_energy.min(), middle_mean_energy.max(), 1000)
+plt.plot(energies, np.log(exact_density_of_states(energies, np.amin(all_entropies), np.amin(mean_energy))), label='exact')
 
-plt.plot(energies, np.log(exact_density_of_states(energies)), label='exact')
-#plt.plot(middle_mean_energy, np.log(exact_density_of_states), label='Exact')
 plt.tight_layout()
 plt.legend(loc='upper right')
     
