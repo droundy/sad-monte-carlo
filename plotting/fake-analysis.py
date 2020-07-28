@@ -10,7 +10,6 @@ args = parser.parse_args()
 def linear_density_of_states(E):
     return np.heaviside(E, 0.5)*np.heaviside(1-E, 0.5)
 def quadratic_density_of_states(E):
-    # TODO: work out density of states of E=x**2 and put it here
     return 1.5*np.sqrt(E)*np.heaviside(E, 0)*np.heaviside(1-E, 0)
 def other_density_of_states(E):
     return 2
