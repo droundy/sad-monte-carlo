@@ -7,10 +7,11 @@ parser = argparse.ArgumentParser(description="fake energies analysis")
 parser.add_argument('yaml', help = 'the yaml file')
 args = parser.parse_args()
 
-def linear_density_of_states(E, S_lo, E_avg_lo):
-    E_lo = np.amin(E)
-    entropies = S_lo - (E_lo - E) / (E_lo - E_avg_lo)
-    return np.exp(entropies)
+def linear_density_of_states(E):
+    return np.heaviside(E, 0.5)*np.heaviside(1-E, 0.5)
+def quadratic_density_of_states(E):
+    # TODO: work out density of states of E=x**2 and put it here
+    return 1.5*np.sqrt(E)*np.heaviside(E, 0)*np.heaviside(1-E, 0)
 def other_density_of_states(E):
     return 2
 
@@ -37,6 +38,10 @@ lnw -= np.log(np.sum(np.exp(lnw))) # w = w / sum(w)
 exact_density_of_states = linear_density_of_states
 if 'linear' in args.yaml:
     exact_density_of_states = linear_density_of_states
+elif 'quadratic' in args.yaml:
+    exact_density_of_states = quadratic_density_of_states
+elif 'other' in args.yaml:
+    exact_density_of_states = other_density_of_states
 elif 'other' in args.yaml:
     exact_density_of_states = other_density_of_states
 
@@ -93,10 +98,24 @@ plt.legend(loc='upper right')
 plt.figure('entropy')
 plt.xlabel('Average Energy in bin')
 plt.ylabel('Entropy')
-energies = np.linspace(middle_mean_energy.min(), middle_mean_energy.max(), 1000)
 plt.plot(middle_mean_energy, middle_entropies_A, label=args.yaml)
 
-plt.plot(energies, np.log(exact_density_of_states(energies, np.amin(all_entropies), np.amin(mean_energy))), label='exact')
+entropy_boundaries = np.zeros_like(energy_boundaries)
+E_lo = energy_boundaries[-1]
+E = np.linspace(4*mean_energy[-1] - 3*E_lo, middle_mean_energy.max(), 10000)
+S = np.zeros_like(E)
+S_lo = lnw[-1] - np.log(E_lo - mean_energy[-1])
+S[E < E_lo] = (S_lo - (E_lo - E) / (E_lo - mean_energy[-1]))[E < E_lo]
+entropy_boundaries[-1] = S_lo
+
+
+
+# TODO: Calculate the entropy values in the other bins
+# (see top of last page of notes from 7/21)
+
+plt.plot(E, S, label='new approximation')
+plt.plot(energy_boundaries, entropy_boundaries, '.-', label='new approximaton in middle')
+plt.plot(E, np.log(exact_density_of_states(E)), label='exact')
 
 plt.tight_layout()
 plt.legend(loc='upper right')
