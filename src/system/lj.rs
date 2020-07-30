@@ -32,7 +32,7 @@ pub struct GrandLjParams {
 
 #[allow(non_snake_case)]
 /// A WCA fluid.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Lj {
     /// The energy of the system
     E: Energy,
@@ -333,6 +333,23 @@ impl GrandSystem for Lj {
     }
     fn num_atoms(&self) -> usize {
         self.positions.len()
+    }
+}
+
+impl GrandReplicaSystem for Lj {
+    fn plan_swap_atom(&self, other: &Self, rng: &mut MyRng) -> Option<(usize, Energy, Energy)> {
+        let which = rng.sample(Uniform::new(0, self.num_atoms()));
+        let e_self = self.E - self.compute_one_atom_energy(which);
+        let mut other: Lj = other.clone();
+        other.positions.push(self.positions[which]);
+        let e_other = other.E + other.compute_one_atom_energy(self.positions.len() - 1);
+        Some((which, e_self, e_other))
+    }
+    fn swap_atom(&mut self, other: &mut Self, which: usize) {
+        let r= self.positions.swap_remove(which);
+        self.E = self.compute_energy();
+        other.positions.push(r);
+        other.E = other.compute_energy();
     }
 }
 

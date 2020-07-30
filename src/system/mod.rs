@@ -125,3 +125,11 @@ pub trait GrandSystem: MovableSystem {
     /// The number of atoms
     fn num_atoms(&self) -> usize;
 }
+
+/// A system that can gain or lose atoms?
+pub trait GrandReplicaSystem: GrandSystem {
+    /// Consider swapping an atom between two systems.  Returns the 
+    fn plan_swap_atom(&self, other: &Self, _: &mut MyRng) -> Option<(usize, Energy, Energy)>;
+    /// Swap an atom between two systems.
+    fn swap_atom(&mut self, other: &mut Self, which: usize);
+}
