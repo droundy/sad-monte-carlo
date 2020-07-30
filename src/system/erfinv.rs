@@ -110,3 +110,20 @@ impl GrandSystem for ErfInv {
         self.position.len()
     }
 }
+
+impl GrandReplicaSystem for ErfInv {
+    fn plan_swap_atom(&self, other: &Self, rng: &mut MyRng) -> Option<(usize, Energy, Energy)> {
+        let which = rng.gen_range(0, self.num_atoms());
+        let mut p = self.position.clone();
+        let moved = p.swap_remove(which);
+        let e_self = self.find_energy(&p);
+        p = other.position.clone();
+        p.push(moved);
+        let e_other = other.find_energy(&p);
+        Some((which, e_self, e_other))
+    }
+    fn swap_atom(&mut self, other: &mut Self, which: usize) {
+        let r = self.position.swap_remove(which);
+        other.position.push(r);
+    }
+}
