@@ -13,6 +13,17 @@ pub struct Parameters {
     /// the mean energy
     pub mean_energy: Energy,
 }
+/// The parameters needed to configure an fake model with N dimensions.
+///
+/// These parameters are normally set via command-line arguments.
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
+#[allow(non_snake_case)]
+pub struct ParametersN {
+    /// the fundamental parameters
+    pub _parameters: Parameters,
+    /// the number of dimensions
+    pub N: usize,
+}
 
 #[allow(non_snake_case)]
 /// An Fake model.
@@ -32,6 +43,16 @@ impl From<Parameters> for ErfInv {
             position: Vec::new(),
             possible_change: Vec::new(),
             parameters: parameters,
+        }
+    }
+}
+
+impl From<ParametersN> for ErfInv {
+    fn from(parameters: ParametersN) -> ErfInv {
+        ErfInv {
+            position: vec![0.5; parameters.N],
+            possible_change: Vec::new(),
+            parameters: parameters._parameters,
         }
     }
 }

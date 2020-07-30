@@ -346,7 +346,7 @@ impl GrandReplicaSystem for Lj {
         Some((which, e_self, e_other))
     }
     fn swap_atom(&mut self, other: &mut Self, which: usize) {
-        let r= self.positions.swap_remove(which);
+        let r = self.positions.swap_remove(which);
         self.E = self.compute_energy();
         other.positions.push(r);
         other.E = other.compute_energy();
@@ -452,4 +452,17 @@ fn mk_lj(natoms: usize) -> Lj {
 #[test]
 fn init_lj() {
     mk_lj(50);
+}
+
+#[test]
+fn test_swap() {
+    let mut system_one = mk_lj(5);
+    let mut system_two = mk_lj(6);
+    let mut ran = MyRng::seed_from_u64(1);
+    let (which, energy_two, energy_one) = system_two.plan_swap_atom(&system_one, &mut ran).unwrap();
+    system_two.swap_atom(&mut system_one, which);
+    assert!((system_one.energy() - energy_one).abs() < Energy::new(0.00001));
+    assert!((system_two.energy() - energy_two).abs() < Energy::new(0.00001));
+    assert_eq!(system_one.num_atoms(), 6);
+    assert_eq!(system_two.num_atoms(), 5);
 }
