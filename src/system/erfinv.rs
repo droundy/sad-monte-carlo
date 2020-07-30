@@ -90,6 +90,9 @@ impl MovableSystem for ErfInv {
         self.possible_change = self.position.clone();
         let v: f64 = rng.sample(rand_distr::StandardNormal);
         self.possible_change[i] += v * d.value_unsafe;
+        if self.possible_change[i] >= 1.0 || self.possible_change[i] <= -1.0 {
+            return None;
+        }
         Some(self.find_energy(&self.possible_change))
     }
 }
@@ -97,7 +100,7 @@ impl MovableSystem for ErfInv {
 impl GrandSystem for ErfInv {
     fn plan_add(&mut self, rng: &mut MyRng) -> Option<Energy> {
         self.possible_change = self.position.clone();
-        self.possible_change.push( rng.gen_range(0., 1.));
+        self.possible_change.push( rng.gen_range(-1., 1.));
         Some(self.find_energy(&self.possible_change))
     }
     fn plan_remove(&mut self, rng: &mut MyRng) -> Energy {
