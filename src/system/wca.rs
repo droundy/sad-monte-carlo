@@ -92,7 +92,15 @@ fn potential_pressure(r_squared: Area) -> Energy {
 }
 
 impl Wca {
-    /// Add an atom at a given location.  Returns the change in
+    /// Find energy to add an atom at a given location.
+    pub fn consider_adding_atom_at(&self, r: Vector3d<Length>) -> Energy {
+        let mut e = self.E;
+        for r1 in self.cell.maybe_interacting_atoms(r) {
+            e += potential((r1 - r).norm2());
+        }
+        e
+    }
+    /// Add an atom at a given location.  Returns the new
     /// energy, or `None` if the atom could not be placed there.
     pub fn add_atom_at(&mut self, r: Vector3d<Length>) -> Option<Energy> {
         let mut dabse = Energy::new(0.0);
@@ -106,7 +114,7 @@ impl Wca {
         };
         Some(self.E + dabse)
     }
-    /// Move a specified atom.  Returns the change in energy, or
+    /// Move a specified atom.  Returns the new energy, or
     /// `None` if the atom could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
         let mut e = self.E;
@@ -130,7 +138,16 @@ impl Wca {
         };
         Some(e)
     }
-    /// Plan to remove the specified atom.  Returns the change in energy.
+    /// Get energy after removing this atom.
+    pub fn consider_removing_atom_number(&self, which: usize) -> Energy {
+        let r = self.cell.positions[which];
+        let mut dabse = Energy::new(0.0);
+        for r1 in self.cell.maybe_interacting_atoms_excluding(r, which) {
+            dabse += potential((r1 - r).norm2());
+        }
+        self.E - dabse
+    }
+    /// Plan to remove the specified atom.  Returns the new energy.
     pub fn remove_atom_number(&mut self, which: usize) -> Energy {
         let r = self.cell.positions[which];
         let mut dabse = Energy::new(0.0);
@@ -297,6 +314,20 @@ impl GrandSystem for Wca {
     }
     fn num_atoms(&self) -> usize {
         self.cell.positions.len()
+    }
+}
+
+impl GrandReplicaSystem for Wca {
+    fn plan_swap_atom(&self, other: &Self, rng: &mut MyRng) -> Option<(usize, Energy, Energy)> {
+        let which = rng.sample(Uniform::new(0, self.num_atoms()));
+        let e_self = self.consider_removing_atom_number(which);
+        let e_other = other.consider_adding_atom_at(self.cell.positions[which]);
+        Some((which, e_self, e_other))
+    }
+    fn swap_atom(&mut self, other: &mut Self, which: usize) {
+        let r = self.cell.positions[which];
+        self.cell.remove_atom(which);
+        other.cell.add_atom_at(r);
     }
 }
 
