@@ -17,8 +17,8 @@ def other_density_of_states(E):
 
 #The function needs to be callable
 
-def fn_entropy(S_i_1):
-    E_i_1, E_i, W_i, S_i = fn_args[:4]
+def fn_entropy(S_i_1, E_i_1, E_i, W_i, S_i):
+    ''' This is the thing that should be zero '''
     return ((S_i - S_i_1)/(E_i - E_i_1)
             * np.exp( (S_i_1*E_i - S_i*E_i_1) / (E_i - E_i_1) )
             * (
@@ -28,9 +28,7 @@ def fn_entropy(S_i_1):
             - W_i)
 def optimize_bin_entropy(i, E_bounds, W, S_i):
     #i is the bin whose entropy we are calculating
-    global fn_args
-    fn_args = [E_bounds[i-1], E_bounds[i], W[i-1], S_i]
-    sol = optimize.root(fn_entropy, [0])
+    sol = optimize.root(fn_entropy, [0], args=(E_bounds[i-1], E_bounds[i], W[i-1], S_i))
     return sol.x
 def bisect_bin_entropy(i):
     #i is the bin whose entropy we are calculating
