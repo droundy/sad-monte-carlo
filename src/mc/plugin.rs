@@ -157,7 +157,7 @@ pub struct Report {
 
 /// The parameters to define the report information as well as stop
 /// time (which is part of the report).
-#[derive(AutoArgs, Debug)]
+#[derive(AutoArgs, Debug, Clone)]
 pub struct ReportParams {
     /// The maximum number of iterations to run.
     pub max_iter: Option<u64>,
@@ -274,7 +274,7 @@ pub struct Save {
 }
 
 /// The parameter to define the save schedule
-#[derive(AutoArgs, Debug)]
+#[derive(AutoArgs, Debug, Clone)]
 pub struct SaveParams {
     /// Maximum time between saves in hours
     pub save_time: Option<f64>,
@@ -342,7 +342,7 @@ pub struct Movie {
 }
 
 /// The parameter to define the movie schedule
-#[derive(AutoArgs, Debug)]
+#[derive(AutoArgs, Debug, Clone)]
 pub struct MovieParams {
     /// 2.0 means a frame every time iterations double.
     pub movie_time: Option<f64>,

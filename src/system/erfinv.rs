@@ -7,7 +7,7 @@ use rand::prelude::*;
 /// The parameters needed to configure an fake model.
 ///
 /// These parameters are normally set via command-line arguments.
-#[derive(Serialize, Deserialize, Debug, AutoArgs)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs, Clone)]
 #[allow(non_snake_case)]
 pub struct Parameters {
     /// the mean energy
@@ -16,7 +16,7 @@ pub struct Parameters {
 /// The parameters needed to configure an fake model with N dimensions.
 ///
 /// These parameters are normally set via command-line arguments.
-#[derive(Serialize, Deserialize, Debug, AutoArgs)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs, Clone)]
 #[allow(non_snake_case)]
 pub struct ParametersN {
     /// the fundamental parameters
@@ -27,7 +27,7 @@ pub struct ParametersN {
 
 #[allow(non_snake_case)]
 /// An Fake model.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ErfInv {
     /// The state of the system
     pub position: Vec<f64>,

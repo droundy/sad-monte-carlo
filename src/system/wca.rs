@@ -19,7 +19,7 @@ pub struct WcaParams {
 
 #[allow(non_snake_case)]
 /// A WCA fluid.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Wca {
     /// The energy of the system
     E: Energy,
@@ -199,7 +199,7 @@ impl From<WcaParams> for Wca {
 }
 
 /// This defines the pressure.
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Collected {
     /// The sum of dE/dϵ where ϵ is the strain (or fractional
     /// expansion) over all elements in the ensemble.

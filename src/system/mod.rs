@@ -128,9 +128,10 @@ pub trait GrandSystem: MovableSystem {
 
 /// A system that can gain or lose atoms?
 pub trait GrandReplicaSystem: GrandSystem {
-    /// Consider swapping an atom from self to other.  Returns which atom was contemplated to be removed,
-    /// and the final energies of the two systems.
+    /// Consider swapping an atom from self to other.  Returns which atom was contemplated to be eremoved,
+    /// and the final energies of the two systems.  The first energy is for the system which
+    /// lost an atom, and the second is for the system that gained an atom.
     fn plan_swap_atom(&self, other: &Self, _: &mut MyRng) -> Option<(usize, Energy, Energy)>;
-    /// Swap an atom between two systems.
+    /// Swap an atom from self to the other system.
     fn swap_atom(&mut self, other: &mut Self, which: usize);
 }

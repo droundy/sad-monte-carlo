@@ -23,7 +23,7 @@ struct Neighbor {
 }
 
 /// A box of atoms
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Cell {
     /// The dimensions of the box.
     pub box_diagonal: Vector3d<Length>,

@@ -6,6 +6,7 @@ pub mod energy_binning;
 pub mod energy_number;
 pub mod energy_number_no_translation;
 pub mod energy_transposed;
+pub mod grand_transposed;
 pub mod number;
 pub mod plugin;
 

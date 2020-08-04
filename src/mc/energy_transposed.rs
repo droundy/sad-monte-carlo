@@ -16,7 +16,7 @@ use std::default::Default;
 use dimensioned::Dimensionless;
 
 /// Parameters to configure the moves.
-#[derive(Serialize, Deserialize, Debug, AutoArgs)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs, Clone)]
 pub enum MoveParams {
     /// The rms distance of moves
     TranslationScale(Length),
@@ -25,7 +25,7 @@ pub enum MoveParams {
 }
 
 /// The parameters needed to configure a simulation.
-#[derive(Debug, AutoArgs)]
+#[derive(Debug, AutoArgs, Clone)]
 pub struct EnergyMCParams {
     /// The rejection fraction.
     pub f: f64,
@@ -38,9 +38,12 @@ pub struct EnergyMCParams {
     /// The highest energy to allow.
     max_allowed_energy: Option<Energy>,
     _moves: MoveParams,
-    _report: plugin::ReportParams,
-    _movies: plugin::MovieParams,
-    _save: plugin::SaveParams,
+    /// report input
+    pub _report: plugin::ReportParams,
+    /// report input
+    pub _movies: plugin::MovieParams,
+    /// report input
+    pub _save: plugin::SaveParams,
 }
 
 impl Default for EnergyMCParams {
@@ -137,6 +140,10 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         }
         self.rel_bins.len() + 1
     }
+    /// Find out the lnw for a given energy
+    pub fn e_to_lnw(&self, energy: Energy) -> f64 {
+        self.lnw[self.e_to_idx(energy)]
+    }
     /// This updates the lnw based on the actual method in use.
     fn update_weights(&mut self, energy: Energy) {
         let i = self.e_to_idx(energy);
@@ -171,7 +178,8 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
             }
             let de = self.min_energy - self.total_energy[i] / self.histogram[i] as f64;
             if de > self.min_T && min_of(&self.rel_bins) > min_w {
-                let my_w = -*(self.bin_norm * de / (self.max_energy - self.min_energy)).value()*self .f.ln();
+                let my_w = -*(self.bin_norm * de / (self.max_energy - self.min_energy)).value()
+                    * self.f.ln();
                 self.rel_bins.push(my_w);
                 self.bin_norm += my_w;
                 self.histogram.push(0);
@@ -276,9 +284,9 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
             histogram: vec![0; 3],
             have_seen: vec![false; 3],
             lnw: vec![
-                (1.-f).ln(),
-                (1.-f).ln()+f.ln(),
-                (1.-f).ln()+f.ln() + (f / (1. - f)).ln(),
+                (1. - f).ln(),
+                (1. - f).ln() + f.ln(),
+                (1. - f).ln() + f.ln() + (f / (1. - f)).ln(),
             ],
             total_energy: vec![Energy::new(0.0); 3],
 

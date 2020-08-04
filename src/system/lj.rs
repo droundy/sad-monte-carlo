@@ -1,4 +1,4 @@
-//! A square well fluid.
+//! A lennard jones fluid.
 
 use super::*;
 
@@ -8,7 +8,7 @@ use rand::distributions::Uniform;
 use rand::{Rng, SeedableRng};
 use vector3d::Vector3d;
 
-/// The parameters needed to configure a Weeks-Chandler-Anderson (WCA) system.
+/// The parameters needed to configure a lennard jones  system.
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, AutoArgs)]
 pub struct LjParams {
@@ -20,7 +20,7 @@ pub struct LjParams {
     n_radial: Option<usize>,
 }
 
-/// The parameters needed to configure a Weeks-Chandler-Anderson (WCA) system for a grand computation.
+/// The parameters needed to configure a lennard jones system for a grand computation.
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, AutoArgs)]
 pub struct GrandLjParams {
@@ -31,7 +31,7 @@ pub struct GrandLjParams {
 }
 
 #[allow(non_snake_case)]
-/// A WCA fluid.
+/// A lennard jones fluid.
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Lj {
     /// The energy of the system
@@ -51,7 +51,7 @@ pub struct Lj {
 }
 
 /// This defines the energy/radial bins.
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default,Clone)]
 pub struct Collected {
     /// The number of atoms for each radial bin from center of sphere.
     pub from_center: Vec<u64>,
