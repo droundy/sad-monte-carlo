@@ -17,19 +17,19 @@ def other_density_of_states(E):
 
 #The function needs to be callable
 
-def fn_entropy(S_i_1, E_i_1, E_i, W_i, S_i):
+def fn_entropy(S_i_1, E_i_1, E_i, lnw_i, S_i):
     ''' This is the thing that should be zero '''
-    return ((S_i - S_i_1)/(E_i - E_i_1)
-            * np.exp( (S_i_1*E_i - S_i*E_i_1) / (E_i - E_i_1) )
-            * (
-                np.exp( (S_i - S_i_1)/(E_i - E_i_1) * E_i_1 )
-                - np.exp( (S_i - S_i_1)/(E_i - E_i_1) * E_i )
-            )
-            - W_i)
-def optimize_bin_entropy(i, E_bounds, W, S_i):
+    first_thing = -(S_i - S_i_1)/(E_i - E_i_1)
+    last_thing = np.exp( (S_i - S_i_1)/(E_i - E_i_1) * E_i )-np.exp( (S_i - S_i_1)/(E_i - E_i_1) * E_i_1 )
+    return (np.log(first_thing*last_thing)
+            + (S_i_1*E_i - S_i*E_i_1) / (E_i - E_i_1)
+            - lnw_i)
+def optimize_bin_entropy(i, E_bounds, lnw, S_i):
     #i is the bin whose entropy we are calculating
-    sol = optimize.root(fn_entropy, [0], args=(E_bounds[i-1], E_bounds[i], W[i-1], S_i))
-    return sol.x
+    print('solving E_i_1', E_bounds[i-1], 'E_i', E_bounds[i], 'lnw_i', lnw[i], 'S_i', S_i)
+    sol = optimize.root(fn_entropy, [0], args=(E_bounds[i-1], E_bounds[i], lnw[i], S_i))
+    # print('fn_entropy gives', fn_entropy(sol.x, E_bounds[i-1], E_bounds[i], lnw[i], S_i))
+    return sol.x[0]
 def bisect_bin_entropy(i):
     #i is the bin whose entropy we are calculating
     return
@@ -89,35 +89,37 @@ all_entropies = np.append(all_entropies, lnw[-1] - (energy_boundaries[-1] - min_
 #print('all entropies are', all_entropies)
 
 
-#Plotting
-plt.figure('average_energy')
-plt.xlabel('Bin')
-plt.ylabel('Average Energy')
-bins = np.arange(len(middle_mean_energy)) #references bin no. or id eg bin 1, 2...
-plt.plot(bins, middle_mean_energy, label=args.yaml)
-plt.tight_layout()
-plt.legend(loc='upper right')
+# #Plotting
+# plt.figure('average_energy')
+# plt.xlabel('Bin')
+# plt.ylabel('Average Energy')
+# bins = np.arange(len(middle_mean_energy)) #references bin no. or id eg bin 1, 2...
+# plt.plot(bins, middle_mean_energy, label=args.yaml)
+# plt.tight_layout()
+# plt.legend(loc='upper right')
 
-plt.figure('bin_sizes')
-plt.xlabel('Bin')
-plt.ylabel('Bin Size')
-bins = np.arange(len(energy_width)) #references bin no. or id eg bin 1, 2...
-plt.plot(bins, energy_width, label=args.yaml)
-plt.tight_layout()
-plt.legend(loc='upper right')
+# plt.figure('bin_sizes')
+# plt.xlabel('Bin')
+# plt.ylabel('Bin Size')
+# bins = np.arange(len(energy_width)) #references bin no. or id eg bin 1, 2...
+# plt.plot(bins, energy_width, label=args.yaml)
+# plt.tight_layout()
+# plt.legend(loc='upper right')
 
-plt.figure('bin_size v avg_temp')
-plt.xlabel('Bin Size')
-plt.ylabel('Average Energy')
-bins = np.arange(len(middle_mean_energy)) #references bin no. or id eg bin 1, 2
-plt.bar(bins, middle_mean_energy, width=energy_width, label=args.yaml)
-plt.tight_layout()
-plt.legend(loc='upper right')
+# plt.figure('bin_size v avg_temp')
+# plt.xlabel('Bin Size')
+# plt.ylabel('Average Energy')
+# bins = np.arange(len(middle_mean_energy)) #references bin no. or id eg bin 1, 2
+# plt.bar(bins, middle_mean_energy, width=energy_width, label=args.yaml)
+# plt.tight_layout()
+# plt.legend(loc='upper right')
 
-plt.figure('entropy')
-plt.xlabel('Average Energy in bin')
-plt.ylabel('Entropy')
-plt.plot(middle_mean_energy, middle_entropies_A, label=args.yaml)
+# plt.figure('entropy')
+# plt.xlabel('Average Energy in bin')
+# plt.ylabel('Entropy')
+# plt.plot(middle_mean_energy, middle_entropies_A, label=args.yaml)
+
+print('energy_boundaries', energy_boundaries)
 
 entropy_boundaries = np.zeros_like(energy_boundaries)
 E_lo = energy_boundaries[-1]
@@ -130,13 +132,19 @@ entropy_boundaries[-1] = S_lo
 
 # TODO: Calculate the entropy values in the other bins
 # (see top of last page of notes from 7/21)
+for i in range(len(energy_boundaries)-1, 1, -1):
+    entropy_boundaries[i-1] = optimize_bin_entropy(i, energy_boundaries, lnw, entropy_boundaries[i])
+
+print(entropy_boundaries)
 
 plt.plot(E, S, label='new approximation')
-plt.plot(energy_boundaries, entropy_boundaries, '.-', label='new approximaton in middle')
+plt.plot(energy_boundaries, entropy_boundaries, '.-', label='new approximaton with optimize_bin_entropy')
 plt.plot(E, np.log(exact_density_of_states(E)), label='exact')
+plt.xlabel('$E$')
+plt.ylabel('$S$')
 
 S_i = 3 #just some random entropy boundary. Its unrealistic
-print(optimize_bin_entropy(3, energy_boundaries, np.exp(lnw), S_i))
+print(optimize_bin_entropy(3, energy_boundaries, lnw, S_i))
 
 
 plt.tight_layout()
