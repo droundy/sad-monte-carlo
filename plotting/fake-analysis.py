@@ -1,6 +1,7 @@
 import numpy as np
 import yaml, argparse, sys
-import scipy.constants as scipy
+import scipy.constants as const
+import scipy.optimize as optimize
 import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description="fake energies analysis")
@@ -13,6 +14,27 @@ def quadratic_density_of_states(E):
     return 1.5*np.sqrt(E)*np.heaviside(E, 0)*np.heaviside(1-E, 0)
 def other_density_of_states(E):
     return 2
+
+#The function needs to be callable
+
+def fn_entropy(S_i_1):
+    E_i_1, E_i, W_i, S_i = fn_args[:4]
+    return ((S_i - S_i_1)/(E_i - E_i_1)
+            * np.exp( (S_i_1*E_i - S_i*E_i_1) / (E_i - E_i_1) )
+            * (
+                np.exp( (S_i - S_i_1)/(E_i - E_i_1) * E_i_1 )
+                - np.exp( (S_i - S_i_1)/(E_i - E_i_1) * E_i )
+            )
+            - W_i)
+def optimize_bin_entropy(i, E_bounds, W, S_i):
+    #i is the bin whose entropy we are calculating
+    global fn_args
+    fn_args = [E_bounds[i-1], E_bounds[i], W[i-1], S_i]
+    sol = optimize.root(fn_entropy, [0])
+    return sol.x
+def bisect_bin_entropy(i):
+    #i is the bin whose entropy we are calculating
+    return
 
 #Read From Yaml file
 with open(args.yaml,'rb') as stream:
@@ -108,13 +130,16 @@ S[E < E_lo] = (S_lo - (E_lo - E) / (E_lo - mean_energy[-1]))[E < E_lo]
 entropy_boundaries[-1] = S_lo
 
 
-
 # TODO: Calculate the entropy values in the other bins
 # (see top of last page of notes from 7/21)
 
 plt.plot(E, S, label='new approximation')
 plt.plot(energy_boundaries, entropy_boundaries, '.-', label='new approximaton in middle')
 plt.plot(E, np.log(exact_density_of_states(E)), label='exact')
+
+S_i = 3 #just some random entropy boundary. Its unrealistic
+print(optimize_bin_entropy(3, energy_boundaries, np.exp(lnw), S_i))
+
 
 plt.tight_layout()
 plt.legend(loc='upper right')
