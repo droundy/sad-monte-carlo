@@ -203,6 +203,9 @@ impl<S: Clone + ConfirmSystem + GrandReplicaSystem> GrandMC<S> {
             }
         }
         if self.replica_plan.it_is_time(self.moves) {
+            for (i,mc) in self.mc.iter().enumerate() {
+                assert_eq!(i+1, mc.system.num_atoms());
+            }
             let iterator = if self.random.gen::<f64>() > 0.5 {
                 // Try swapping odd onces
                 self.mc.chunks_exact_mut(2)
@@ -212,6 +215,7 @@ impl<S: Clone + ConfirmSystem + GrandReplicaSystem> GrandMC<S> {
             };
             for chunk in iterator {
                 if let [mc0, mc1] = chunk {
+                    assert_eq!(mc0.system.num_atoms()+1, mc1.system.num_atoms());
                     if let Some((which, e1, e0)) =
                         mc1.system.plan_swap_atom(&mc0.system, &mut self.random)
                     {
@@ -221,10 +225,10 @@ impl<S: Clone + ConfirmSystem + GrandReplicaSystem> GrandMC<S> {
                         if (old_lnw - new_lnw).exp() > self.random.gen::<f64>() {
                             println!(
                                 "I am swapping an atom from {} to {}!",
-                                mc0.system.num_atoms(),
-                                mc1.system.num_atoms()
+                                mc1.system.num_atoms(),
+                                mc0.system.num_atoms()
                             );
-                            mc0.system.swap_atom(&mut mc1.system, which);
+                            mc1.system.swap_atom(&mut mc0.system, which);
                             std::mem::swap(&mut mc0.system, &mut mc1.system);
                             self.accepted_swaps += 1;
                         }
