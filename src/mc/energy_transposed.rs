@@ -177,7 +177,20 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 assert!(false);
             }
             let de = self.min_energy - self.total_energy[i] / self.histogram[i] as f64;
-            if de > self.min_T && min_of(&self.rel_bins) > min_w {
+            if self.gamma < 0.25 && de > self.min_T && min_of(&self.rel_bins) > min_w {
+                // We add a new low energy bin under the following circumstances:
+                //
+                // 1. We must have visited all bins since the last time we added a new bin.
+                //    This is important because otherwise we could end up adding way too many
+                //    bins if we start out at some insanely high energy.
+                //
+                // 2. The mean energy in the unbounded low-energy bin must be at least min_T
+                //    below the upper value of that bin.  This means that the temperature in this
+                //    bin must be greater than the minimum temperature we are aiming for.
+                //
+                // 3. There must be now bins that are smaller than min_w, which is itself
+                //    proportional to min_T.  If a smaller bin existed somewhere, then we
+                //    could conclude that the bins are not yet well equilibrated.
                 let my_w = -*(self.bin_norm * de / (self.max_energy - self.min_energy)).value()
                     * self.f.ln();
                 self.rel_bins.push(my_w);
