@@ -80,7 +80,9 @@ impl<S: Clone + ConfirmSystem + GrandReplicaSystem> GrandMC<S> {
     /// read from params
     pub fn from_params(_mc: GrandMCParams, _sys: S, save_as: std::path::PathBuf) -> Self {
         let mut random = crate::rng::MyRng::seed_from_u64(_mc._energy.seed.unwrap_or(0));
-        let mc = Vec::new();
+        let mut mc = Vec::new();
+        // First create the output directory if it does not yet exist.
+        std::fs::create_dir_all(save_as.file_stem().unwrap()).ok();
         for n in 1.._mc.max_N {
             let mut s = EnergyMC::from_params(
                 _mc._energy.clone(),
@@ -92,10 +94,12 @@ impl<S: Clone + ConfirmSystem + GrandReplicaSystem> GrandMC<S> {
                 )
                 .into(),
             );
-            for _ in 0..n {
-                while s.system.plan_add(&mut random).is_some() {}
+            for i in 0..n {
+                while s.system.plan_add(&mut random).is_none() {}
                 s.system.confirm();
             }
+            mc.push(s);
+            println!("Finished initializing system with {} atoms...", n);
         }
         GrandMC {
             mc,
