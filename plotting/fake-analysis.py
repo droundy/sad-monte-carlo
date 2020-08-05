@@ -19,16 +19,26 @@ def other_density_of_states(E):
 
 def fn_entropy(S_i_1, E_i_1, E_i, lnw_i, S_i):
     ''' This is the thing that should be zero '''
-    first_thing = -(S_i - S_i_1)/(E_i - E_i_1)
-    last_thing = np.exp( (S_i - S_i_1)/(E_i - E_i_1) * E_i )-np.exp( (S_i - S_i_1)/(E_i - E_i_1) * E_i_1 )
-    return (np.log(first_thing*last_thing)
-            + (S_i_1*E_i - S_i*E_i_1) / (E_i - E_i_1)
-            - lnw_i)
+    ''' Equation initially is:
+            W_i = e^coefficient * (inside) / denominator
+            
+            introducing ln simplifies to:
+                lnW_i = ln(coefficient*inside) - ln(denominator)
+                lnW_i = ln(coefficient) + ln(inside) - ln(denominator)
+                0 = ln(coefficient) + ln(inside) - ln(denominator) - lnW_i
+    '''
+    denominator = np.log( (S_i - S_i_1) / (E_i - E_i_1) )
+    coefficient = (S_i*E_i - S_i_1*E_i_1) / (E_i - E_i_1)
+    inside = np.log(
+                    np.exp( E_i_1 * ((S_i - S_i_1) / (E_i - E_i_1)) )
+                    - np.exp( E_i * ((S_i - S_i_1) / (E_i - E_i_1)) ) 
+                    )
+    return coefficient + inside - denominator - lnw_i
 def optimize_bin_entropy(i, E_bounds, lnw, S_i):
     #i is the bin whose entropy we are calculating
     print('solving E_i_1', E_bounds[i-1], 'E_i', E_bounds[i], 'lnw_i', lnw[i], 'S_i', S_i)
     sol = optimize.root(fn_entropy, [0], args=(E_bounds[i-1], E_bounds[i], lnw[i], S_i))
-    # print('fn_entropy gives', fn_entropy(sol.x, E_bounds[i-1], E_bounds[i], lnw[i], S_i))
+    
     return sol.x[0]
 def bisect_bin_entropy(i):
     #i is the bin whose entropy we are calculating
@@ -144,7 +154,7 @@ plt.xlabel('$E$')
 plt.ylabel('$S$')
 
 S_i = 3 #just some random entropy boundary. Its unrealistic
-print(optimize_bin_entropy(3, energy_boundaries, lnw, S_i))
+print('x is', optimize_bin_entropy(3, energy_boundaries, lnw, S_i))
 
 
 plt.tight_layout()
