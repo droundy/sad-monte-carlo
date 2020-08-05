@@ -326,8 +326,10 @@ impl GrandReplicaSystem for Wca {
     }
     fn swap_atom(&mut self, other: &mut Self, which: usize) {
         let r = self.cell.positions[which];
-        self.cell.remove_atom(which);
-        other.cell.add_atom_at(r);
+        self.remove_atom_number(which);
+        self.confirm();
+        other.add_atom_at(r);
+        other.confirm();
     }
 }
 
