@@ -369,16 +369,15 @@ impl From<MovieParams> for Movie {
 impl Movie {
     /// Save a frame of the movie.
     pub fn save_frame<MC: MonteCarlo>(&self, mc: &MC) {
-        if let Some(dir) = mc.save_as().file_stem() {
-            let dir = std::path::Path::new(dir);
-            let moves = mc.num_moves();
-            let path = dir.join(format!("{:014}.cbor", moves));
-            println!("Saving movie as {:?}", path);
+        let dir = mc.save_as().with_extension("");
+        let dir = std::path::Path::new(&dir);
+        let moves = mc.num_moves();
+        let path = dir.join(format!("{:014}.cbor", moves));
+        println!("Saving movie as {:?}", path);
 
-            std::fs::create_dir_all(&dir).expect("error creating directory");
-            let f = AtomicFile::create(&path).expect(&format!("error creating file {:?}", path));
-            serde_cbor::to_writer(&f, mc).expect("error writing movie frame?!");
-        }
+        std::fs::create_dir_all(&dir).expect("error creating directory");
+        let f = AtomicFile::create(&path).expect(&format!("error creating file {:?}", path));
+        serde_cbor::to_writer(&f, mc).expect("error writing movie frame?!");
     }
 }
 impl<MC: MonteCarlo> Plugin<MC> for Movie {

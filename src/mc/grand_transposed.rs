@@ -8,6 +8,7 @@
 
 use super::*;
 use crate::system::*;
+use rayon::prelude::*;
 
 use rand::{Rng, SeedableRng};
 use std::default::Default;
@@ -76,7 +77,7 @@ pub struct GrandMC<S> {
     save_time_seconds: Option<f64>,
 }
 
-impl<S: Clone + ConfirmSystem + GrandReplicaSystem> GrandMC<S> {
+impl<S: Clone + ConfirmSystem + GrandReplicaSystem + Sync + Send> GrandMC<S> {
     /// read from params
     pub fn from_params(_mc: GrandMCParams, _sys: S, save_as: std::path::PathBuf) -> Self {
         let mut random = crate::rng::MyRng::seed_from_u64(_mc._energy.seed.unwrap_or(0));
@@ -118,7 +119,18 @@ impl<S: Clone + ConfirmSystem + GrandReplicaSystem> GrandMC<S> {
     pub fn from_args<A: AutoArgs + Into<S>>() -> Self {
         println!("git version: {}", VERSION);
         match <Params<GrandMCParams, A>>::from_args() {
-            Params::_Params { _sys, _mc, save_as } => {
+            Params::_Params {
+                _sys,
+                _mc,
+                save_as,
+                num_threads,
+            } => {
+                if let Some(num_threads) = num_threads {
+                    rayon::ThreadPoolBuilder::new()
+                        .num_threads(num_threads)
+                        .build_global()
+                        .unwrap()
+                }
                 if let Some(ref save_as) = save_as {
                     if let Ok(f) = ::std::fs::File::open(save_as) {
                         let mut s = match save_as.extension().and_then(|x| x.to_str()) {
@@ -197,14 +209,15 @@ impl<S: Clone + ConfirmSystem + GrandReplicaSystem> GrandMC<S> {
     }
     /// Run a simulation
     pub fn run_once(&mut self) {
-        for mc in self.mc.iter_mut() {
+        self.mc.par_iter_mut().for_each(|mc| {
             for _ in 0..mc.system.num_atoms() {
                 mc.move_once();
             }
-        }
+        });
+
         if self.replica_plan.it_is_time(self.moves) {
-            for (i,mc) in self.mc.iter().enumerate() {
-                assert_eq!(i+1, mc.system.num_atoms());
+            for (i, mc) in self.mc.iter().enumerate() {
+                assert_eq!(i + 1, mc.system.num_atoms());
             }
             let iterator = if self.random.gen::<f64>() > 0.5 {
                 // Try swapping odd onces
@@ -213,16 +226,17 @@ impl<S: Clone + ConfirmSystem + GrandReplicaSystem> GrandMC<S> {
                 // Try swapping even ones.
                 self.mc[1..].chunks_exact_mut(2)
             };
-            for chunk in iterator {
+            self.accepted_swaps += iterator.map(|chunk| {
+            // for chunk in iterator {
                 if let [mc0, mc1] = chunk {
-                    assert_eq!(mc0.system.num_atoms()+1, mc1.system.num_atoms());
+                    assert_eq!(mc0.system.num_atoms() + 1, mc1.system.num_atoms());
                     if let Some((which, e1, e0)) =
-                        mc1.system.plan_swap_atom(&mc0.system, &mut self.random)
+                        mc1.system.plan_swap_atom(&mc0.system, &mut mc0.rng)
                     {
                         let old_lnw =
                             mc1.e_to_lnw(mc1.system.energy()) + mc0.e_to_lnw(mc0.system.energy());
                         let new_lnw = mc1.e_to_lnw(e0) + mc0.e_to_lnw(e1);
-                        if (old_lnw - new_lnw).exp() > self.random.gen::<f64>() {
+                        if (old_lnw - new_lnw).exp() > mc0.rng.gen::<f64>() {
                             println!(
                                 "I am swapping an atom from {} to {}!",
                                 mc1.system.num_atoms(),
@@ -230,11 +244,13 @@ impl<S: Clone + ConfirmSystem + GrandReplicaSystem> GrandMC<S> {
                             );
                             mc1.system.swap_atom(&mut mc0.system, which);
                             std::mem::swap(&mut mc0.system, &mut mc1.system);
-                            self.accepted_swaps += 1;
+                            // self.accepted_swaps += 1;
+                            return 1; // one swap accepted!
                         }
                     }
                 }
-            }
+                0
+            }).sum::<u64>();
         }
         self.moves += 1;
         self.save();

@@ -24,6 +24,8 @@ enum Params<MP, SP> {
         _sys: SP,
         _mc: MP,
         save_as: Option<::std::path::PathBuf>,
+        /// The maximum number of threads to use (specify 0 for using all cores)
+        num_threads: Option<usize>,
     },
 }
 
@@ -51,7 +53,18 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
     fn from_args<S: AutoArgs + Into<Self::System>>() -> Self {
         println!("git version: {}", VERSION);
         match <Params<Self::Params, S>>::from_args() {
-            Params::_Params { _sys, _mc, save_as } => {
+            Params::_Params {
+                _sys,
+                _mc,
+                save_as,
+                num_threads,
+            } => {
+                if let Some(num_threads) = num_threads {
+                    rayon::ThreadPoolBuilder::new()
+                        .num_threads(num_threads)
+                        .build_global()
+                        .unwrap()
+                }
                 if let Some(ref save_as) = save_as {
                     if let Ok(f) = ::std::fs::File::open(save_as) {
                         let mut s = match save_as.extension().and_then(|x| x.to_str()) {
