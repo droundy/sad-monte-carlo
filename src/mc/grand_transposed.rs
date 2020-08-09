@@ -237,11 +237,11 @@ impl<S: Clone + ConfirmSystem + GrandReplicaSystem + Sync + Send> GrandMC<S> {
                             mc1.e_to_lnw(mc1.system.energy()) + mc0.e_to_lnw(mc0.system.energy());
                         let new_lnw = mc1.e_to_lnw(e0) + mc0.e_to_lnw(e1);
                         if (old_lnw - new_lnw).exp() > mc0.rng.gen::<f64>() {
-                            println!(
-                                "I am swapping an atom from {} to {}!",
-                                mc1.system.num_atoms(),
-                                mc0.system.num_atoms()
-                            );
+                            // println!(
+                            //     "I am swapping an atom from {} to {}!",
+                            //     mc1.system.num_atoms(),
+                            //     mc0.system.num_atoms()
+                            // );
                             mc1.system.swap_atom(&mut mc0.system, which);
                             std::mem::swap(&mut mc0.system, &mut mc1.system);
                             // self.accepted_swaps += 1;
