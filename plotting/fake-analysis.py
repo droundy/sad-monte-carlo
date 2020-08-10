@@ -5,8 +5,7 @@ import scipy.optimize as optimize
 import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description="fake energies analysis")
-parser.add_argument('yaml', nargs='*', help = 'the yaml file')
-parser.add_argument('cbor', nargs='*', help = 'the cbor file(s)')
+parser.add_argument('fname', help = 'the yaml or cbor file')
 
 args = parser.parse_args()
 
@@ -49,19 +48,22 @@ def bisect_bin_entropy(i):
 #Read Data
 data_loaded = {}
 #each file has different path (including extension) so concatenating is easy
-for fname in args.yaml:
-    print(fname)
-    with open(fname,'rb') as stream:
+fname = args.fname
+print(fname)
+with open(fname,'rb') as stream:
+    if 'yaml' in fname:
         try:
             data_loaded[fname] = yaml.full_load(stream)
         except IOError:
             print('An error occurred trying to read the file.')
-for fname in args.cbor:
-    with open(fname, 'rb') as stream:
+    elif 'cbor' in fname:
         try:
             data_loaded[fname] = cbor.load(stream)
         except IOError:
             print('An error occurred trying to read the file.')
+    else:
+        print('What kind of file is this?!')
+        exit(1)
 
 total_energy={}
 histogram={}
@@ -83,11 +85,14 @@ for key in data_loaded:
 
 #Analysis
 exact_density_of_states = linear_density_of_states
-if 'linear' in args.yaml:
+if 'linear' in fname:
+    print('\n\n\nusing the linear_density_of_states\n\n\n')
     exact_density_of_states = linear_density_of_states
-elif 'quadratic' in args.yaml:
+elif 'quadratic' in fname:
+    print('\n\n\nusing the quadratic_density_of_states\n\n\n')
     exact_density_of_states = quadratic_density_of_states
-elif 'other' in args.yaml:
+else:
+    print('\n\n\nusing the most bogus density of states\n\n\n')
     exact_density_of_states = other_density_of_states
 
 energy_boundaries={}
