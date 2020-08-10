@@ -206,8 +206,8 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     *h = false;
                 }
                 self.gamma = 0.25; // reset gamma since we have just discovered something potentially important.
-                println!("opened up a new bin: current energy {}", energy.pretty());
-                Logger.log(self, &self.system);
+                // println!("opened up a new bin: current energy {}", energy.pretty());
+                // Logger.log(self, &self.system);
             }
         } else {
             let w = self.rel_bins[i - 1];
@@ -248,9 +248,8 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 // not, and we don't want any (unavoidable) errors in our binning.
                 self.bin_norm = self.rel_bins.iter().cloned().sum::<f64>();
                 if self.gamma < self.rel_bins.len() as f64 / self.moves as f64 {
+                    // We are in the 1/t stage.
                     self.gamma = self.rel_bins.len() as f64 / self.moves as f64;
-                } else {
-                    println!("found all energies: gamma -> {}", self.gamma)
                 }
             }
         }
@@ -378,46 +377,45 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
 struct Logger;
 impl<S: MovableSystem> Plugin<EnergyMC<S>> for Logger {
     fn log(&self, mc: &EnergyMC<S>, sys: &S) {
-        // print!("    ");
-        let print_am_here = |i| {
-            if i == mc.e_to_idx(sys.energy()) {
-                print!(" >");
-            } else {
-                print!("  ");
-            }
-        };
-        let mut etop = mc.max_energy;
-        let mut ebot;
-        let mut i = 0;
-        print_am_here(i);
-        println!("  {:8.5} -> infty   : {}", etop.pretty(), mc.histogram[i]);
-        let dedw = (mc.max_energy - mc.min_energy) / mc.bin_norm;
-        while i < mc.rel_bins.len() {
-            ebot = etop - dedw * mc.rel_bins[i];
-            print_am_here(i + 1);
-            println!(
-                "  {:8.5} -> {:8.5}: {}",
-                ebot.pretty(),
-                etop.pretty(),
-                mc.histogram[i + 1]
-            );
-            i += 1;
-            etop = ebot;
-        }
-        print_am_here(i + 1);
-        println!(
-            "  -infty   -> {:8.5}: {}",
-            etop.pretty(),
-            mc.histogram[i + 1]
-        );
+        // let print_am_here = |i| {
+        //     if i == mc.e_to_idx(sys.energy()) {
+        //         print!(" >");
+        //     } else {
+        //         print!("  ");
+        //     }
+        // };
+        // let mut etop = mc.max_energy;
+        // let mut ebot;
+        // let mut i = 0;
+        // print_am_here(i);
+        // println!("  {:8.5} -> infty   : {}", etop.pretty(), mc.histogram[i]);
+        // let dedw = (mc.max_energy - mc.min_energy) / mc.bin_norm;
+        // while i < mc.rel_bins.len() {
+        //     ebot = etop - dedw * mc.rel_bins[i];
+        //     print_am_here(i + 1);
+        //     println!(
+        //         "  {:8.5} -> {:8.5}: {}",
+        //         ebot.pretty(),
+        //         etop.pretty(),
+        //         mc.histogram[i + 1]
+        //     );
+        //     i += 1;
+        //     etop = ebot;
+        // }
+        // print_am_here(i + 1);
+        // println!(
+        //     "  -infty   -> {:8.5}: {}",
+        //     etop.pretty(),
+        //     mc.histogram[i + 1]
+        // );
         println!(
             " [gamma = {:.2}]",
             crate::prettyfloat::PrettyFloat(mc.gamma)
         );
-        println!(
-            "        norm: {} vs. {}",
-            mc.bin_norm,
-            mc.rel_bins.iter().cloned().sum::<f64>()
-        );
+        // println!(
+        //     "        norm: {} vs. {}",
+        //     mc.bin_norm,
+        //     mc.rel_bins.iter().cloned().sum::<f64>()
+        // );
     }
 }
