@@ -84,11 +84,9 @@ impl<S: Clone + ConfirmSystem + GrandReplicaSystem + Sync + Send> GrandMC<S> {
         let mut mc = Vec::new();
         // First create the output directory if it does not yet exist.
         std::fs::create_dir_all(save_as.file_stem().unwrap()).ok();
-        let mut energy_params = _mc._energy.clone();
-        energy_params._report.quiet = true;
         for n in 1.._mc.max_N {
             let mut s = EnergyMC::from_params(
-                energy_params.clone(),
+                _mc._energy.clone(),
                 _sys.clone(),
                 format!(
                     "{}/N-{}.cbor",
