@@ -376,7 +376,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
 #[derive(Serialize, Deserialize, Debug)]
 struct Logger;
 impl<S: MovableSystem> Plugin<EnergyMC<S>> for Logger {
-    fn log(&self, mc: &EnergyMC<S>, sys: &S) {
+    fn log(&self, mc: &EnergyMC<S>, _sys: &S) {
         // let print_am_here = |i| {
         //     if i == mc.e_to_idx(sys.energy()) {
         //         print!(" >");
