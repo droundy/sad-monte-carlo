@@ -33,7 +33,6 @@ def fn_entropy(S_i_1, E_i_1, E_i, lnw_i, S_i):
     delta_S = S_i_1 - S_i
     S_0 = S_i_1
     if abs(delta_S) < 1e-14:
-        print('hello world')
         return np.log(delta_E) + S_0
     else:
         return np.log(delta_E) + S_0 - np.log((np.exp(delta_S)- 1)/delta_S)
@@ -176,10 +175,12 @@ for key in data_loaded:
     entropy_boundaries[key][-1] = S_lo
     
     for i in range(len(energy_boundaries[key])-1, 1, -1):
+        print('solving for i =', i)
         entropy_boundaries[key][i-1] = optimize_bin_entropy(i, energy_boundaries[key], lnw[key], entropy_boundaries[key][i])
     
     print(entropy_boundaries)
     
+    plt.figure('entropy')
     plt.plot(E, S, label='new approximation')
     plt.plot(energy_boundaries[key], entropy_boundaries[key], '.-',
              label=fname+' optimize_bin_entropy approx.')
@@ -187,7 +188,19 @@ for key in data_loaded:
     plt.xlabel('$E$')
     plt.ylabel('$S$')
 
+    plt.figure('density of states')
+    plt.plot(E, np.exp(S), label='new approximation')
+    plt.plot(energy_boundaries[key], np.exp(entropy_boundaries[key]), '.-',
+             label=fname+' optimize_bin_entropy approx.')
+    plt.plot(E, exact_density_of_states(E), label=fname+' exact')
+    plt.xlabel('$E$')
+    plt.ylabel('$D(E)$')
 
+    exact = exact_density_of_states(E)
+    plt.ylim(0, 1.1*exact[exact == exact].max())
+
+
+plt.figure('entropy')
 plt.tight_layout()
 plt.legend(loc='upper right')
     
