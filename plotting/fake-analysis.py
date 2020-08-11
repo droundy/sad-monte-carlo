@@ -28,7 +28,17 @@ def fn_entropy(S_i_1, E_i_1, E_i, lnw_i, S_i):
                 lnW_i = ln(coefficient) + ln(inside) - ln(denominator)
                 0 = ln(coefficient) + ln(inside) - ln(denominator) - lnW_i
     '''
-    denominator = np.log( (S_i - S_i_1) / (E_i - E_i_1) )
+    delta_E = E_i_1 - E_i
+    assert(delta_E>0)
+    delta_S = S_i_1 - S_i
+    S_0 = S_i_1
+    if abs(delta_S) < 1e-14:
+        print('hello world')
+        return np.log(delta_E) + S_0
+    else:
+        return np.log(delta_E) + S_0 - np.log((np.exp(delta_S)- 1)/delta_S)
+
+    denominator = np.log((S_i - S_i_1) / (E_i - E_i_1))
     coefficient = (S_i*E_i - S_i_1*E_i_1) / (E_i - E_i_1)
     inside = np.log(
                     np.exp( E_i_1 * ((S_i - S_i_1) / (E_i - E_i_1)) )
