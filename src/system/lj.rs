@@ -374,6 +374,9 @@ impl ConfirmSystem for Lj {
             }
         }
     }
+    fn describe(&self) -> String {
+        format!("N = {} ", self.num_atoms())
+    }
 }
 
 impl MovableSystem for Lj {

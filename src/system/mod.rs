@@ -94,6 +94,8 @@ pub trait System: ::serde::Serialize + ::serde::de::DeserializeOwned {
 pub trait ConfirmSystem: System {
     /// Confirm the change, whatever it may have been.
     fn confirm(&mut self);
+    /// Print something descriptive about this system.
+    fn describe(&self) -> String { "".to_string() }
 }
 
 /// A system that can be moved.

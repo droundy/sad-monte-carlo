@@ -297,6 +297,9 @@ impl ConfirmSystem for Wca {
             }
         }
     }
+    fn describe(&self) -> String {
+        format!("N = {} ", self.num_atoms())
+    }
 }
 
 impl GrandSystem for Wca {
