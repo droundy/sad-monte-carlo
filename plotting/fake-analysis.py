@@ -33,9 +33,9 @@ def fn_entropy(S_i_1, E_i_1, E_i, lnw_i, S_i):
     delta_S = S_i_1 - S_i
     S_0 = S_i_1
     if abs(delta_S) < 1e-14:
-        return np.log(delta_E) + S_0
+        return np.log(delta_E) + S_0 - lnw_i
     else:
-        return np.log(delta_E) + S_0 - np.log((np.exp(delta_S)- 1)/delta_S)
+        return np.log(delta_E) + S_0 - np.log((np.exp(delta_S)- 1)/delta_S) - lnw_i
 
     denominator = np.log((S_i - S_i_1) / (E_i - E_i_1))
     coefficient = (S_i*E_i - S_i_1*E_i_1) / (E_i - E_i_1)
@@ -48,7 +48,21 @@ def optimize_bin_entropy(i, E_bounds, lnw, S_i):
     #i is the bin whose entropy we are calculating
     print('solving E_i_1', E_bounds[i-1], 'E_i', E_bounds[i], 'lnw_i', lnw[i], 'S_i', S_i)
     sol = optimize.root(fn_entropy, [0], args=(E_bounds[i-1], E_bounds[i], lnw[i], S_i))
+    # print('   goodness is', fn_entropy(sol.x[0], E_bounds[i-1], E_bounds[i], lnw[i], S_i),
+    #       'with entropy', sol.x[0])
+    # print('      delta S =', sol.x[0] - S_i, np.exp(sol.x[0] - S_i))
+    # print('      delta E =', E_bounds[i-1] - E_bounds[i])
+    # print('      S_0 =', S_i)
+    # print('      w =', np.exp(lnw[i]))
+    # print('      S estimate =', lnw[i] - np.log(E_bounds[i-1] - E_bounds[i]))
     
+    # plt.figure('debugging')
+    # xxx = np.linspace(-10,100, 10000)
+    # answer = np.zeros_like(xxx)
+    # for j in range(len(xxx)):
+    #     answer[j] = fn_entropy(xxx[j], E_bounds[i-1], E_bounds[i], lnw[i], S_i)
+    # plt.plot(xxx, answer)
+    # plt.show()
     return sol.x[0]
 def bisect_bin_entropy(i):
     #i is the bin whose entropy we are calculating
