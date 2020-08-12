@@ -64,6 +64,15 @@ def optimize_bin_entropy(i, E_bounds, lnw, S_i):
     # plt.plot(xxx, answer)
     # plt.show()
     return sol.x[0]
+
+def compute_entropy_given_Smin(Smin, energy_boundaries, lnw):
+    entropy_boundaries = np.zeros_like(energy_boundaries)
+    entropy_boundaries[-1] = Smin
+    for i in range(len(energy_boundaries)-1, 1, -1):
+        print('solving for i =', i)
+        entropy_boundaries[i-1] = optimize_bin_entropy(i, energy_boundaries, lnw, entropy_boundaries[i])
+    return entropy_boundaries    
+
 def bisect_bin_entropy(i):
     #i is the bin whose entropy we are calculating
     return
@@ -180,19 +189,13 @@ entropy_boundaries={}
 print('energy_boundaries', energy_boundaries)
 
 for key in data_loaded:
-    entropy_boundaries[key] = np.zeros_like(energy_boundaries[key])
     E_lo = energy_boundaries[key][-1]
     E = np.linspace(4*mean_energy[key][-1] - 3*E_lo, middle_mean_energy[key].max(), 10000)
     S = np.zeros_like(E)
     S_lo = lnw[key][-1] - np.log(E_lo - mean_energy[key][-1])
     S[E < E_lo] = (S_lo - (E_lo - E) / (E_lo - mean_energy[key][-1]))[E < E_lo]
-    entropy_boundaries[key][-1] = S_lo
     
-    for i in range(len(energy_boundaries[key])-1, 1, -1):
-        print('solving for i =', i)
-        entropy_boundaries[key][i-1] = optimize_bin_entropy(i, energy_boundaries[key], lnw[key], entropy_boundaries[key][i])
-    
-    print(entropy_boundaries)
+    entropy_boundaries[key] = compute_entropy_given_Smin(S_lo, energy_boundaries[key], lnw[key])
     
     plt.figure('entropy')
     plt.plot(E, S, label='new approximation')
