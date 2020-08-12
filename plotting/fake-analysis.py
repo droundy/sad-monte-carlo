@@ -190,24 +190,23 @@ print('energy_boundaries', energy_boundaries)
 
 for key in data_loaded:
     E_lo = energy_boundaries[key][-1]
-    E = np.linspace(4*mean_energy[key][-1] - 3*E_lo, middle_mean_energy[key].max(), 10000)
-    S = np.zeros_like(E)
+    E = np.linspace(4*mean_energy[key][-1] - 3*E_lo, energy_boundaries[key].max(), 10000)
     S_lo = lnw[key][-1] - np.log(E_lo - mean_energy[key][-1])
-    S[E < E_lo] = (S_lo - (E_lo - E) / (E_lo - mean_energy[key][-1]))[E < E_lo]
     
     entropy_boundaries[key] = compute_entropy_given_Smin(S_lo, energy_boundaries[key], lnw[key])
     
+    S = np.interp(E, energy_boundaries[key][::-1], entropy_boundaries[key][::-1])
+    S[E < E_lo] = (S_lo - (E_lo - E) / (E_lo - mean_energy[key][-1]))[E < E_lo]
+
     plt.figure('entropy')
-    plt.plot(E, S, label='new approximation')
-    plt.plot(energy_boundaries[key], entropy_boundaries[key], '.-',
+    plt.plot(E, S, '-',
              label=fname+' optimize_bin_entropy approx.')
     plt.plot(E, np.log(exact_density_of_states(E)), label=fname+' exact')
     plt.xlabel('$E$')
     plt.ylabel('$S$')
 
     plt.figure('density of states')
-    plt.plot(E, np.exp(S), label='new approximation')
-    plt.plot(energy_boundaries[key], np.exp(entropy_boundaries[key]), '.-',
+    plt.plot(E, np.exp(S), '-',
              label=fname+' optimize_bin_entropy approx.')
     plt.plot(E, exact_density_of_states(E), label=fname+' exact')
     plt.xlabel('$E$')
