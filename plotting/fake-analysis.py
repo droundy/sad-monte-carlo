@@ -73,6 +73,22 @@ def compute_entropy_given_Smin(Smin, energy_boundaries, lnw):
         entropy_boundaries[i-1] = optimize_bin_entropy(i, energy_boundaries, lnw, entropy_boundaries[i])
     return entropy_boundaries    
 
+def entropy_boundary_badness(Smin, energy_boundaries, lnw):
+    entropy_boundaries = compute_entropy_given_Smin(Smin, energy_boundaries, lnw)
+    badness = 0
+    for i in range(len(energy_boundaries)-2):
+        de1 = energy_boundaries[i+1] - energy_boundaries[i]
+        de2 = energy_boundaries[i+2] - energy_boundaries[i+1]
+        dS1 = entropy_boundaries[i+1] - entropy_boundaries[i]
+        dS2 = entropy_boundaries[i+2] - entropy_boundaries[i+1]
+        badness += abs((dS2/de2 - dS1/de1)/(de2+de1))
+    return badness
+
+def optimize_entropy(energy_boundaries, lnw):
+    res = optimize.minimize_scalar(entropy_boundary_badness, args=(energy_boundaries, lnw))
+    Smin = res.x
+    return compute_entropy_given_Smin(Smin, energy_boundaries, lnw)
+
 def bisect_bin_entropy(i):
     #i is the bin whose entropy we are calculating
     return
@@ -156,35 +172,6 @@ for key in data_loaded:
     #print('middle entropies are', middle_entropies_A)
 
 entropy_boundaries={}
-# #Plotting
-# plt.figure('average_energy')
-# plt.xlabel('Bin')
-# plt.ylabel('Average Energy')
-# bins = np.arange(len(middle_mean_energy)) #references bin no. or id eg bin 1, 2...
-# plt.plot(bins, middle_mean_energy, label=args.yaml)
-# plt.tight_layout()
-# plt.legend(loc='upper right')
-
-# plt.figure('bin_sizes')
-# plt.xlabel('Bin')
-# plt.ylabel('Bin Size')
-# bins = np.arange(len(energy_width)) #references bin no. or id eg bin 1, 2...
-# plt.plot(bins, energy_width, label=args.yaml)
-# plt.tight_layout()
-# plt.legend(loc='upper right')
-
-# plt.figure('bin_size v avg_temp')
-# plt.xlabel('Bin Size')
-# plt.ylabel('Average Energy')
-# bins = np.arange(len(middle_mean_energy)) #references bin no. or id eg bin 1, 2
-# plt.bar(bins, middle_mean_energy, width=energy_width, label=args.yaml)
-# plt.tight_layout()
-# plt.legend(loc='upper right')
-
-# plt.figure('entropy')
-# plt.xlabel('Average Energy in bin')
-# plt.ylabel('Entropy')
-# plt.plot(middle_mean_energy, middle_entropies_A, label=args.yaml)
 
 print('energy_boundaries', energy_boundaries)
 
@@ -192,26 +179,31 @@ for key in data_loaded:
     E_lo = energy_boundaries[key][-1]
     E = np.linspace(4*mean_energy[key][-1] - 3*E_lo, energy_boundaries[key].max(), 10000)
     S_lo = lnw[key][-1] - np.log(E_lo - mean_energy[key][-1])
+    min_T = E_lo - mean_energy[key][-1]
     
     entropy_boundaries[key] = compute_entropy_given_Smin(S_lo, energy_boundaries[key], lnw[key])
     
     S = np.interp(E, energy_boundaries[key][::-1], entropy_boundaries[key][::-1])
-    S[E < E_lo] = (S_lo - (E_lo - E) / (E_lo - mean_energy[key][-1]))[E < E_lo]
+    S[E < E_lo] = (S_lo - (E_lo - E)/min_T)[E < E_lo]
+
+    entropy_boundaries_best = optimize_entropy(energy_boundaries[key], lnw[key])
+    min_T = np.exp(lnw[key][-1] - entropy_boundaries_best[-1])
+    Sbest = np.interp(E, energy_boundaries[key][::-1], entropy_boundaries_best[::-1])
+    Sbest[E < E_lo] = (entropy_boundaries_best[-1] - (E_lo - E) /min_T)[E < E_lo]
 
     plt.figure('entropy')
-    plt.plot(E, S, '-',
-             label=fname+' optimize_bin_entropy approx.')
+    plt.plot(E, S, '-', label=fname+' optimize_bin_entropy approx.')
+    plt.plot(E, Sbest, '-', label=fname + 'smooth')
     plt.plot(E, np.log(exact_density_of_states(E)), label=fname+' exact')
     plt.xlabel('$E$')
     plt.ylabel('$S$')
 
     plt.figure('density of states')
-    plt.plot(E, np.exp(S), '-',
-             label=fname+' optimize_bin_entropy approx.')
+    plt.plot(E, np.exp(S), '-', label=fname+' optimize_bin_entropy approx.')
+    plt.plot(E, np.exp(Sbest), '-', label=fname+' smooth')
     plt.plot(E, exact_density_of_states(E), label=fname+' exact')
     plt.xlabel('$E$')
     plt.ylabel('$D(E)$')
-
     exact = exact_density_of_states(E)
     plt.ylim(0, 1.1*exact[exact == exact].max())
 
