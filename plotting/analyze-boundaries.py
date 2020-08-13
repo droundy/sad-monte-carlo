@@ -104,6 +104,11 @@ for base in args.base:
     mean_energy[base] = np.loadtxt(base+'-mean-energy.dat')
     lnw[base] = np.loadtxt(base+'-lnw.dat')
 
+    if energy_boundaries[base][0] < energy_boundaries[base][-1]:
+        energy_boundaries[base] = np.flip(energy_boundaries[base])
+        mean_energy[base] = np.flip(mean_energy[base])
+        lnw[base] = np.flip(lnw[base])
+
 entropy_boundaries={}
 
 print('energy_boundaries', energy_boundaries)
@@ -123,7 +128,11 @@ for key in lnw:
         exact_density_of_states = other_density_of_states
 
     E_lo = energy_boundaries[key][-1]
-    E = np.linspace(4*mean_energy[key][-1] - 3*E_lo, energy_boundaries[key].max(), 10000)
+    dE_lo = energy_boundaries[key][-2] - E_lo
+    if np.isnan(mean_energy[key][-1]):
+        E = np.linspace(E_lo - 3*dE_lo, energy_boundaries[key].max(), 10000)
+    else:
+        E = np.linspace(4*mean_energy[key][-1] - 3*E_lo, energy_boundaries[key].max(), 10000)
     S_lo = lnw[key][-1] - np.log(E_lo - mean_energy[key][-1])
     min_T = E_lo - mean_energy[key][-1]
     
@@ -137,21 +146,30 @@ for key in lnw:
     Sbest = np.interp(E, energy_boundaries[key][::-1], entropy_boundaries_best[::-1])
     Sbest[E < E_lo] = (entropy_boundaries_best[-1] - (E_lo - E) /min_T)[E < E_lo]
 
+    print(len(lnw[key]), len(energy_boundaries[key]))
+    middle_entropy = lnw[key][1:-1] - np.log(-np.diff(energy_boundaries[key]))
+    Smiddle = np.zeros_like(E)
+    for i in range(len(middle_entropy)):
+        Smiddle[E<=energy_boundaries[key][i]] = middle_entropy[i]
+
     plt.figure('entropy')
+    plt.plot(E, Smiddle, '-', label=key + 'simplest')
     plt.plot(E, S, '-', label=key+' optimize_bin_entropy approx.')
     plt.plot(E, Sbest, '-', label=key + 'smooth')
     plt.plot(E, np.log(exact_density_of_states(E)), label=key+' exact')
     plt.xlabel('$E$')
     plt.ylabel('$S$')
 
-    plt.figure('density of states')
-    plt.plot(E, np.exp(S), '-', label=key+' optimize_bin_entropy approx.')
-    plt.plot(E, np.exp(Sbest), '-', label=key+' smooth')
-    plt.plot(E, exact_density_of_states(E), label=key+' exact')
-    plt.xlabel('$E$')
-    plt.ylabel('$D(E)$')
-    exact = exact_density_of_states(E)
-    plt.ylim(0, 1.1*exact[exact == exact].max())
+    plot_dos = False
+    if plot_dos:
+        plt.figure('density of states')
+        plt.plot(E, np.exp(S), '-', label=key+' optimize_bin_entropy approx.')
+        plt.plot(E, np.exp(Sbest), '-', label=key+' smooth')
+        plt.plot(E, exact_density_of_states(E), label=key+' exact')
+        plt.xlabel('$E$')
+        plt.ylabel('$D(E)$')
+        exact = exact_density_of_states(E)
+        plt.ylim(0, 1.1*exact[exact == exact].max())
 
 
 plt.figure('entropy')
