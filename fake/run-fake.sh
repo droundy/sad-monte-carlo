@@ -4,7 +4,7 @@ set -ev
 
 cargo build --release --bin fake-transposed --bin fake-binning --bin erfinv-transposed
 
-ERFINV=(../target/release/erfinv-transposed --translation-scale 0.05 --movie-time "10^(1/4)" --mean-energy 0 --N 10)
+ERFINV=(../target/release/erfinv-transposed --translation-scale 0.05 --movie-time "10^(1/4)" --mean-energy 0 --N 10 --max-iter 1e10)
 
 RUN=(../target/release/fake-transposed --translation-scale 0.05 --movie-time "10^(1/4)" --max-iter 1e10)
 
