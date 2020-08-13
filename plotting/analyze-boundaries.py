@@ -5,7 +5,7 @@ import scipy.optimize as optimize
 import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description="fake energies analysis")
-parser.add_argument('fname', help = 'the yaml or cbor file')
+parser.add_argument('base', nargs='*', help = 'the yaml or cbor file')
 
 args = parser.parse_args()
 
@@ -94,88 +94,34 @@ def bisect_bin_entropy(i):
     return
 
 #Read Data
-data_loaded = {}
+energy_boundaries = {}
+mean_energy = {}
+lnw = {}
 #each file has different path (including extension) so concatenating is easy
-fname = args.fname
-print(fname)
-with open(fname,'rb') as stream:
-    if 'yaml' in fname:
-        try:
-            data_loaded[fname] = yaml.full_load(stream)
-        except IOError:
-            print('An error occurred trying to read the file.')
-    elif 'cbor' in fname:
-        try:
-            data_loaded[fname] = cbor.load(stream)
-        except IOError:
-            print('An error occurred trying to read the file.')
-    else:
-        print('What kind of file is this?!')
-        exit(1)
-
-total_energy={}
-histogram={}
-rel_bins={}
-bin_norm={}
-max_energy={}
-min_energy={}
-lnw={}
-for key in data_loaded:
-    total_energy[key] = np.array(data_loaded[key]['total_energy'])
-    histogram[key] = np.array(data_loaded[key]['histogram'])
-    rel_bins[key] = np.array(data_loaded[key]['rel_bins'])
-    bin_norm[key] = data_loaded[key]['bin_norm']
-    max_energy[key] = data_loaded[key]['max_energy']
-    min_energy[key] = data_loaded[key]['min_energy']
-    lnw[key] = np.array(data_loaded[key]['lnw'])
-    lnw[key] -= lnw[key].max()
-    lnw[key] -= np.log(np.sum(np.exp(lnw[key]))) # w = w / sum(w)
-
-#Analysis
-exact_density_of_states = linear_density_of_states
-if 'linear' in fname:
-    print('\n\n\nusing the linear_density_of_states\n\n\n')
-    exact_density_of_states = linear_density_of_states
-elif 'quadratic' in fname:
-    print('\n\n\nusing the quadratic_density_of_states\n\n\n')
-    exact_density_of_states = quadratic_density_of_states
-else:
-    print('\n\n\nusing the most bogus density of states\n\n\n')
-    exact_density_of_states = other_density_of_states
-
-energy_boundaries={}
-energy_per_rel_bin={}
-mean_energy={}
-middle_mean_energy={}
-energy_width={}
-middle_entropies_A={}
-
-for key in data_loaded:
-
-    energy_boundaries[key] = [max_energy[key]]
-    energy_per_rel_bin[key] = 1/bin_norm[key]*(max_energy[key]-min_energy[key])
-    for b in rel_bins[key]:
-        energy_boundaries[key].append( energy_boundaries[key][-1] - b*energy_per_rel_bin[key])
-    energy_boundaries[key] = np.array(energy_boundaries[key])
-    #print('energy boundarie3 are ', energy_boundaries[key])
-
-    mean_energy[key] = total_energy[key]/histogram[key] #includes unbounded extremes
-    #print('mean energies are', mean_energy[key])
-
-    middle_mean_energy[key] = mean_energy[key][1:-1] #excludes unbounded extremes
-    #print('middle mean energies are', middle_mean_energy[key])
-    
-    energy_width[key] = -np.diff(energy_boundaries[key])
-    #print('energy widths are', energy_width[key])
-    
-    middle_entropies_A[key] = lnw[key][1:-1] - np.log(energy_width[key])
-    #print('middle entropies are', middle_entropies_A)
+for base in args.base:
+    print(base)
+    energy_boundaries[base] = np.loadtxt(base+'-energy-boundaries.dat')
+    mean_energy[base] = np.loadtxt(base+'-mean-energy.dat')
+    lnw[base] = np.loadtxt(base+'-lnw.dat')
 
 entropy_boundaries={}
 
 print('energy_boundaries', energy_boundaries)
 
-for key in data_loaded:
+for key in lnw:
+    
+    #Analysis
+    exact_density_of_states = linear_density_of_states
+    if 'linear' in key:
+        print('\n\n\nusing the linear_density_of_states\n\n\n')
+        exact_density_of_states = linear_density_of_states
+    elif 'quadratic' in key:
+        print('\n\n\nusing the quadratic_density_of_states\n\n\n')
+        exact_density_of_states = quadratic_density_of_states
+    else:
+        print('\n\n\nusing the most bogus density of states\n\n\n')
+        exact_density_of_states = other_density_of_states
+
     E_lo = energy_boundaries[key][-1]
     E = np.linspace(4*mean_energy[key][-1] - 3*E_lo, energy_boundaries[key].max(), 10000)
     S_lo = lnw[key][-1] - np.log(E_lo - mean_energy[key][-1])
@@ -192,16 +138,16 @@ for key in data_loaded:
     Sbest[E < E_lo] = (entropy_boundaries_best[-1] - (E_lo - E) /min_T)[E < E_lo]
 
     plt.figure('entropy')
-    plt.plot(E, S, '-', label=fname+' optimize_bin_entropy approx.')
-    plt.plot(E, Sbest, '-', label=fname + 'smooth')
-    plt.plot(E, np.log(exact_density_of_states(E)), label=fname+' exact')
+    plt.plot(E, S, '-', label=key+' optimize_bin_entropy approx.')
+    plt.plot(E, Sbest, '-', label=key + 'smooth')
+    plt.plot(E, np.log(exact_density_of_states(E)), label=key+' exact')
     plt.xlabel('$E$')
     plt.ylabel('$S$')
 
     plt.figure('density of states')
-    plt.plot(E, np.exp(S), '-', label=fname+' optimize_bin_entropy approx.')
-    plt.plot(E, np.exp(Sbest), '-', label=fname+' smooth')
-    plt.plot(E, exact_density_of_states(E), label=fname+' exact')
+    plt.plot(E, np.exp(S), '-', label=key+' optimize_bin_entropy approx.')
+    plt.plot(E, np.exp(Sbest), '-', label=key+' smooth')
+    plt.plot(E, exact_density_of_states(E), label=key+' exact')
     plt.xlabel('$E$')
     plt.ylabel('$D(E)$')
     exact = exact_density_of_states(E)

@@ -16,3 +16,4 @@
 __pycache__
 Cargo.lock
 round-queue.log
+*.dat
