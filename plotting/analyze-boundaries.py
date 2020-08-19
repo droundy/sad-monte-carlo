@@ -93,6 +93,25 @@ def bisect_bin_entropy(i):
     #i is the bin whose entropy we are calculating
     return
 
+def fn_for_beta(x, meanE_over_deltaE):
+    if x < 1e-14:
+        return 0.5*x - x*meanE_over_deltaE
+    return x/(1-np.exp(-x)) - 1 - x*meanE_over_deltaE
+
+def find_beta_deltaE(meanE_over_deltaE):
+    # x = np.linspace(-100,100,10000)
+    # plt.plot(x, np.vectorize(fn_for_beta)(x, meanE_over_deltaE))
+    # plt.show()
+    sol = optimize.root_scalar(fn_for_beta, args=(meanE_over_deltaE), x0 = 2*meanE_over_deltaE, x1 = meanE_over_deltaE)
+    # print(sol)
+    return sol.root
+
+def find_entropy_from_beta_and_lnw(beta, lnw, deltaE):
+    if abs(beta*deltaE) < 1e-14:
+        return lnw - np.log(deltaE)
+    return lnw - np.log(deltaE) - np.log((np.exp(beta*deltaE)-1)/(beta*deltaE))
+
+
 #Read Data
 energy_boundaries = {}
 mean_energy = {}
@@ -130,41 +149,52 @@ for key in lnw:
     E_lo = energy_boundaries[key][-1]
     dE_lo = energy_boundaries[key][-2] - E_lo
     if np.isnan(mean_energy[key][-1]):
-        E = np.linspace(E_lo - 3*dE_lo, energy_boundaries[key].max(), 10000)
+        E = np.linspace(E_lo - 3*dE_lo, energy_boundaries[key].max(), 100000)
     else:
-        E = np.linspace(4*mean_energy[key][-1] - 3*E_lo, energy_boundaries[key].max(), 10000)
+        E = np.linspace(4*mean_energy[key][-1] - 3*E_lo, energy_boundaries[key].max(), 100000)
     S_lo = lnw[key][-1] - np.log(E_lo - mean_energy[key][-1])
     min_T = E_lo - mean_energy[key][-1]
     
-    entropy_boundaries[key] = compute_entropy_given_Smin(S_lo, energy_boundaries[key], lnw[key])
+    # entropy_boundaries[key] = compute_entropy_given_Smin(S_lo, energy_boundaries[key], lnw[key])
     
-    S = np.interp(E, energy_boundaries[key][::-1], entropy_boundaries[key][::-1])
-    S[E < E_lo] = (S_lo - (E_lo - E)/min_T)[E < E_lo]
+    # S = np.interp(E, energy_boundaries[key][::-1], entropy_boundaries[key][::-1])
+    # S[E < E_lo] = (S_lo - (E_lo - E)/min_T)[E < E_lo]
 
-    entropy_boundaries_best = optimize_entropy(energy_boundaries[key], lnw[key])
-    min_T = np.exp(lnw[key][-1] - entropy_boundaries_best[-1])
-    Sbest = np.interp(E, energy_boundaries[key][::-1], entropy_boundaries_best[::-1])
-    Sbest[E < E_lo] = (entropy_boundaries_best[-1] - (E_lo - E) /min_T)[E < E_lo]
+    # entropy_boundaries_best = optimize_entropy(energy_boundaries[key], lnw[key])
+    # min_T = np.exp(lnw[key][-1] - entropy_boundaries_best[-1])
+    # Sbest = np.interp(E, energy_boundaries[key][::-1], entropy_boundaries_best[::-1])
+    # Sbest[E < E_lo] = (entropy_boundaries_best[-1] - (E_lo - E) /min_T)[E < E_lo]
 
     print(len(lnw[key]), len(energy_boundaries[key]))
     middle_entropy = lnw[key][1:-1] - np.log(-np.diff(energy_boundaries[key]))
     Smiddle = np.zeros_like(E)
+    Ssloped = np.zeros_like(E)
     for i in range(len(middle_entropy)):
-        Smiddle[E<=energy_boundaries[key][i]] = middle_entropy[i]
+        print(key, 'working on', i, '/', len(middle_entropy))
+        here = E<=energy_boundaries[key][i]
+        Smiddle[here] = middle_entropy[i]
+
+        deltaE = energy_boundaries[key][i] - energy_boundaries[key][i+1]
+        meanE = mean_energy[key][i+1]
+        beta = find_beta_deltaE((meanE - energy_boundaries[key][i+1])/deltaE)/deltaE
+        S0 = find_entropy_from_beta_and_lnw(beta, lnw[key][i+1], deltaE)
+        # print('deltaE', deltaE, 'beta', beta, 'S0', S0, 'dimensionless mean', (meanE - energy_boundaries[key][i+1])/deltaE)
+        Ssloped[here] = S0 + beta*(E[here] - energy_boundaries[key][i+1])
 
     plt.figure('entropy')
     plt.plot(E, Smiddle, '-', label=key + 'simplest')
-    plt.plot(E, S, '-', label=key+' optimize_bin_entropy approx.')
-    plt.plot(E, Sbest, '-', label=key + 'smooth')
-    plt.plot(E, np.log(exact_density_of_states(E)), label=key+' exact')
+    plt.plot(E, Ssloped, '--', label=key + 'sloped')
+    # plt.plot(E, S, '-', label=key+' optimize_bin_entropy approx.')
+    # plt.plot(E, Sbest, '-', label=key + 'smooth')
+    # plt.plot(E, np.log(exact_density_of_states(E)), label=key+' exact')
     plt.xlabel('$E$')
     plt.ylabel('$S$')
 
     plot_dos = False
     if plot_dos:
         plt.figure('density of states')
-        plt.plot(E, np.exp(S), '-', label=key+' optimize_bin_entropy approx.')
-        plt.plot(E, np.exp(Sbest), '-', label=key+' smooth')
+        # plt.plot(E, np.exp(S), '-', label=key+' optimize_bin_entropy approx.')
+        # plt.plot(E, np.exp(Sbest), '-', label=key+' smooth')
         plt.plot(E, exact_density_of_states(E), label=key+' exact')
         plt.xlabel('$E$')
         plt.ylabel('$D(E)$')

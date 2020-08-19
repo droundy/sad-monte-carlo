@@ -24,7 +24,7 @@ for fname in args.fname:
 
     base = os.path.splitext(fname)[0]
 
-    total_energy = np.array(data_loaded['total_energy'])
+    total_energy = np.array(data_loaded['total_energy'], dtype=float)
     histogram = np.array(data_loaded['histogram'])
     rel_bins = np.array(data_loaded['rel_bins'])
     bin_norm = data_loaded['bin_norm']
