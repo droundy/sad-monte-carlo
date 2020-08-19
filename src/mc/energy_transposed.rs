@@ -140,15 +140,46 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         }
         self.rel_bins.len() + 1
     }
+    fn e_to_idx_and_boundaries(&self, energy: Energy) -> (usize, Option<Energy>, Option<Energy>) {
+        let mut e = self.max_energy;
+        let mut upper_bound = None;
+        let dedw = (self.max_energy - self.min_energy) / self.bin_norm;
+        for (i, w) in self.rel_bins.iter().cloned().enumerate() {
+            if energy > e {
+                return (i, Some(e), upper_bound);
+            }
+            upper_bound = Some(e);
+            e -= dedw * w;
+        }
+        if energy > e {
+            return (self.rel_bins.len(), Some(e), upper_bound);
+        }
+        (self.rel_bins.len() + 1, None, Some(e))
+    }
     /// Find out the lnw for a given energy
     pub fn e_to_lnw(&self, energy: Energy) -> f64 {
         self.lnw[self.e_to_idx(energy)]
     }
     /// This updates the lnw based on the actual method in use.
     fn update_weights(&mut self, energy: Energy) {
-        let i = self.e_to_idx(energy);
+        let (i, elo, ehi) = self.e_to_idx_and_boundaries(energy);
         self.histogram[i] += 1;
         self.total_energy[i] += energy;
+        let mean_here = self.total_energy[i] / self.histogram[i] as f64;
+        // If the mean is not within the bin at all, we just reset the histogram
+        // and total energy for this bin.
+        if let Some(elo) = elo {
+            if mean_here < elo {
+                self.histogram[i] = 1;
+                self.total_energy[i] = energy;
+            }
+        }
+        if let Some(ehi) = ehi {
+            if mean_here > ehi {
+                self.histogram[i] = 1;
+                self.total_energy[i] = energy;
+            }
+        }
         if i == 0 {
             // We are in the widthless arbitrarily high-energy bin.
             let de = (self.max_energy - self.min_energy) * self.gamma;
@@ -188,7 +219,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 //    below the upper value of that bin.  This means that the temperature in this
                 //    bin must be greater than the minimum temperature we are aiming for.
                 //
-                // 3. There must be now bins that are smaller than min_w, which is itself
+                // 3. There must be no bins that are smaller than min_w, which is itself
                 //    proportional to min_T.  If a smaller bin existed somewhere, then we
                 //    could conclude that the bins are not yet well equilibrated.
                 let my_w = -*(self.bin_norm * de / (self.max_energy - self.min_energy)).value()
@@ -206,8 +237,8 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     *h = false;
                 }
                 self.gamma = 0.25; // reset gamma since we have just discovered something potentially important.
-                // println!("opened up a new bin: current energy {}", energy.pretty());
-                // Logger.log(self, &self.system);
+                                   // println!("opened up a new bin: current energy {}", energy.pretty());
+                                   // Logger.log(self, &self.system);
             }
         } else {
             let w = self.rel_bins[i - 1];
@@ -409,8 +440,29 @@ impl<S: MovableSystem> Plugin<EnergyMC<S>> for Logger {
         //     mc.histogram[i + 1]
         // );
         println!(
-            "        {} [gamma = {:.2}]",
+            "        E_hi  = {:10.5} (mean {:8.3}): {}",
+            mc.max_energy.pretty(),
+            (mc.total_energy[0] / mc.histogram[0] as f64).pretty(),
+            crate::prettyfloat::PrettyFloat(mc.histogram[0] as f64),
+        );
+        let i_current = mc.e_to_idx(sys.energy());
+        println!(
+            "        E_now = {:10.5} (mean {:8.3}): {}",
+            sys.energy().pretty(),
+            (mc.total_energy[i_current] / mc.histogram[i_current] as f64).pretty(),
+            crate::prettyfloat::PrettyFloat(mc.histogram[i_current] as f64),
+        );
+        println!(
+            "        E_lo  = {:10.5} (mean {:8.3}): {}",
+            mc.min_energy.pretty(),
+            (mc.total_energy[mc.histogram.len() - 1] / mc.histogram[mc.histogram.len() - 1] as f64)
+                .pretty(),
+            crate::prettyfloat::PrettyFloat(mc.histogram[mc.histogram.len() - 1] as f64),
+        );
+        println!(
+            "        {} [n_bins = {}, gamma = {:.2}]",
             sys.describe(),
+            mc.rel_bins.len() + 2,
             crate::prettyfloat::PrettyFloat(mc.gamma)
         );
         // println!(
