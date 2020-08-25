@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import numpy as np
 import yaml, cbor, argparse, sys
 import scipy.constants as const
