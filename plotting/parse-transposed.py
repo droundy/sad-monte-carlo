@@ -35,8 +35,8 @@ for fname in args.fname:
     lnw = np.array(data_loaded['lnw'])
     lnw -= lnw.max()
     lnw -= np.log(np.sum(np.exp(lnw))) # w = w / sum(w) to normalize
-
-    possible_change = np.array(data_loaded['system']['possible_change'])
+    function = list(data_loaded['system']['function'])[0]
+    sigma = np.array(data_loaded['system']['function'][function]['sigma'])
 
     energy_boundaries = [max_energy]
     energy_per_rel_bin = 1/bin_norm*(max_energy-min_energy)
@@ -50,3 +50,5 @@ for fname in args.fname:
     np.savetxt(base+'-mean-energy.dat', mean_energy)
 
     np.savetxt(base+'-lnw.dat', lnw) #includes unbounded extremes
+
+    np.savetxt(base+'-sigma.dat', [sigma])
