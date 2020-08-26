@@ -50,7 +50,3 @@ for fname in args.fname:
     np.savetxt(base+'-mean-energy.dat', mean_energy)
 
     np.savetxt(base+'-lnw.dat', lnw) #includes unbounded extremes
-
-    system = open(base+'-system.txt','w')
-    system.write( str(data_loaded['system']) )
-    system.close()
