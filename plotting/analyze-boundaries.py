@@ -1,9 +1,5 @@
 #!/usr/bin/python3
 
-#TODO:  - re-implement eqn
-#       - think of way of getting the sigma to d(E) function
-#               *** change sigma prior to function call
-
 import numpy as np
 import yaml, cbor, argparse, sys
 import scipy.constants as const
