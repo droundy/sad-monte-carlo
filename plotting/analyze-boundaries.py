@@ -147,14 +147,15 @@ print('energy_boundaries', energy_boundaries)
 for key in lnw:
     
     #Analysis
+    function_type = list(system[key]['function'].keys())[0]
     exact_density_of_states = linear_density_of_states
-    if 'linear' in key:
+    if function_type == 'Linear':
         print('\n\n\nusing the linear_density_of_states\n\n\n')
         exact_density_of_states = linear_density_of_states
-    elif 'quadratic' in key:
+    elif function_type == 'Quadratic':
         print('\n\n\nusing the quadratic_density_of_states\n\n\n')
         exact_density_of_states = quadratic_density_of_states
-    elif 'gaussian' in key:
+    elif function_type == 'Gaussian':
         print('\n\n\nusing the quadratic_density_of_states\n\n\n')
         exact_density_of_states = gaussian_density_of_states
     else:
