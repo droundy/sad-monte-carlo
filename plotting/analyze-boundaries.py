@@ -205,7 +205,7 @@ for key in lnw:
     plt.xlabel('$E$')
     plt.ylabel('$S$')
 
-    plot_dos = True
+    plot_dos = False
     if plot_dos:
         plt.figure('density of states')
         # plt.plot(E, np.exp(S), '-', label=key+' optimize_bin_entropy approx.')
