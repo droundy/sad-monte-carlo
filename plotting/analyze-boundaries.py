@@ -121,12 +121,19 @@ def find_entropy_from_beta_and_lnw(beta, lnw, deltaE):
 energy_boundaries = {}
 mean_energy = {}
 lnw = {}
+system = {}
 #each file has different path (including extension) so concatenating is easy
 for base in args.base:
     print(base)
     energy_boundaries[base] = np.loadtxt(base+'-energy-boundaries.dat')
     mean_energy[base] = np.loadtxt(base+'-mean-energy.dat')
     lnw[base] = np.loadtxt(base+'-lnw.dat')
+
+    with open(base+'.yaml','rb') as stream:
+        try:
+            system[base] = yaml.full_load(stream)['system']
+        except IOError:
+            print('An error occurred trying to read the file.')
 
     if energy_boundaries[base][0] < energy_boundaries[base][-1]:
         energy_boundaries[base] = np.flip(energy_boundaries[base])
