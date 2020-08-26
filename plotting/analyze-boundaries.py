@@ -11,14 +11,14 @@ parser.add_argument('base', nargs='*', help = 'the yaml or cbor file')
 
 args = parser.parse_args()
 
-def linear_density_of_states(E):
+def linear_density_of_states(E, fname):
     return np.heaviside(E, 0.5)*np.heaviside(1-E, 0.5)
-def quadratic_density_of_states(E):
+def quadratic_density_of_states(E, fname):
     return 1.5*np.sqrt(E)*np.heaviside(E, 0)*np.heaviside(1-E, 0)
-def gaussian_density_of_states(E):
-    sigma = 1
+def gaussian_density_of_states(E, fname):
+    sigma = system[fname]['function']['Gaussian']['sigma']
     return np.pi()*(sigma**3)*np.sqrt(32*np.log(E)) / E
-def other_density_of_states(E):
+def other_density_of_states(E, fname):
     return np.zeros_like(E)
 
 #The function needs to be callable
@@ -202,7 +202,7 @@ for key in lnw:
     plt.plot(E, Ssloped, '--', label=key + 'sloped')
     # plt.plot(E, S, '-', label=key+' optimize_bin_entropy approx.')
     # plt.plot(E, Sbest, '-', label=key + 'smooth')
-    # plt.plot(E, np.log(exact_density_of_states(E)), label=key+' exact')
+    # plt.plot(E, np.log(exact_density_of_states(E, key)), label=key+' exact')
     plt.xlabel('$E$')
     plt.ylabel('$S$')
 
@@ -211,10 +211,10 @@ for key in lnw:
         plt.figure('density of states')
         # plt.plot(E, np.exp(S), '-', label=key+' optimize_bin_entropy approx.')
         # plt.plot(E, np.exp(Sbest), '-', label=key+' smooth')
-        plt.plot(E, exact_density_of_states(E), label=key+' exact')
+        plt.plot(E, exact_density_of_states(E, key), label=key+' exact')
         plt.xlabel('$E$')
         plt.ylabel('$D(E)$')
-        exact = exact_density_of_states(E)
+        exact = exact_density_of_states(E, key)
         plt.ylim(0, 1.1*exact[exact == exact].max())
 
 
