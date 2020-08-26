@@ -15,6 +15,9 @@ def linear_density_of_states(E):
     return np.heaviside(E, 0.5)*np.heaviside(1-E, 0.5)
 def quadratic_density_of_states(E):
     return 1.5*np.sqrt(E)*np.heaviside(E, 0)*np.heaviside(1-E, 0)
+def gaussian_density_of_states(E):
+    sigma = 1
+    return np.pi()*(sigma**3)*np.sqrt(32*np.log(E)) / E
 def other_density_of_states(E):
     return np.zeros_like(E)
 
@@ -144,6 +147,9 @@ for key in lnw:
     elif 'quadratic' in key:
         print('\n\n\nusing the quadratic_density_of_states\n\n\n')
         exact_density_of_states = quadratic_density_of_states
+    elif 'gaussian' in key:
+        print('\n\n\nusing the quadratic_density_of_states\n\n\n')
+        exact_density_of_states = gaussian_density_of_states
     else:
         print('\n\n\nusing the most bogus density of states\n\n\n')
         exact_density_of_states = other_density_of_states
