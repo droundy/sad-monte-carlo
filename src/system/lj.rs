@@ -16,8 +16,6 @@ pub struct LjParams {
     N: usize,
     /// The radius of the spherical box
     radius: Length,
-    /// The number of bins for the radial distribution
-    n_radial: Option<usize>,
 }
 
 /// The parameters needed to configure a lennard jones system for a grand computation.
@@ -26,8 +24,6 @@ pub struct LjParams {
 pub struct GrandLjParams {
     /// The radius of the spherical box
     radius: Length,
-    /// The number of bins for the radial distribution
-    n_radial: Option<usize>,
 }
 
 #[allow(non_snake_case)]
@@ -46,8 +42,6 @@ pub struct Lj {
     max_radius_squared: Area,
     /// The maximum radius permitted
     max_radius: Length,
-    /// Number of points in radial distribution
-    n_radial: Option<usize>,
 }
 
 /// This defines the energy/radial bins.
@@ -172,7 +166,6 @@ impl From<LjParams> for Lj {
                 positions,
                 max_radius_squared: params.radius * params.radius,
                 max_radius: params.radius,
-                n_radial: params.n_radial,
             };
             lj.E = lj.compute_energy();
             if lj.E < best_energy {
@@ -194,7 +187,6 @@ impl From<LjParams> for Lj {
             positions: best_positions,
             max_radius_squared: params.radius * params.radius,
             max_radius: params.radius,
-            n_radial: params.n_radial,
         };
         for attempt in 0..100000000 {
             if let Some(newe) = lj.plan_move(&mut rng, 0.03 * units::SIGMA) {
@@ -220,7 +212,6 @@ impl From<GrandLjParams> for Lj {
             positions: Vec::new(),
             max_radius_squared: params.radius * params.radius,
             max_radius: params.radius,
-            n_radial: params.n_radial,
         }
     }
 }
@@ -413,7 +404,6 @@ fn mk_lj(natoms: usize) -> Lj {
     Lj::from(LjParams {
         N: natoms,
         radius,
-        n_radial: None,
     })
 }
 

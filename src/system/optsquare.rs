@@ -20,7 +20,7 @@ pub struct SquareWellParams {
 
 #[allow(non_snake_case)]
 /// A square well fluid.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SquareWell {
     /// The energy of the system
     E: Energy,
@@ -239,6 +239,24 @@ impl GrandSystem for SquareWell {
     }
     fn num_atoms(&self) -> usize {
         self.cell.positions.len()
+    }
+}
+
+impl GrandReplicaSystem for SquareWell {
+    fn plan_swap_atom(&self, other: &Self, rng: &mut MyRng) -> Option<(usize, Energy, Energy)> {
+        let which = rng.sample(Uniform::new(0, self.num_atoms()));
+        // The following clones are lazy and inefficient.  If we're using this seriously, we should
+        // implement functions that don't mutate self to examine adding or removing an atom.
+        let e_self = self.clone().remove_atom_number(which);
+        let e_other = other.clone().add_atom_at(self.cell.positions[which]);
+        e_other.map(|e_other| (which, e_self, e_other))
+    }
+    fn swap_atom(&mut self, other: &mut Self, which: usize) {
+        let r = self.cell.positions[which];
+        self.remove_atom_number(which);
+        self.confirm();
+        other.add_atom_at(r);
+        other.confirm();
     }
 }
 

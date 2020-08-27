@@ -21,6 +21,35 @@ pub enum AnyParams {
     /// a square well system
     Sw(optsquare::SquareWellNParams),
 }
+/// The parameters needed to configure an AnyGrand model.
+///
+/// These parameters are normally set via command-line arguments.
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
+#[allow(non_snake_case)]
+pub enum AnyGrandParams {
+    /// a fake erfinv system
+    FakeErfinv(erfinv::Parameters),
+    /// a wca system
+    Wca(wca::WcaParams),
+    /// a lj system
+    Lj(lj::GrandLjParams),
+    /// a square well system
+    Sw(optsquare::SquareWellParams),
+}
+
+#[allow(non_snake_case)]
+/// An AnyGrand model which can be used with Grand MC.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum AnyGrand {
+    /// A fake erfinv system
+    FakeErfinv(erfinv::ErfInv),
+    /// A wca system
+    Wca(wca::Wca),
+    /// A lj system
+    Lj(lj::Lj),
+    /// a square well system
+    Sw(optsquare::SquareWell),
+}
 
 #[allow(non_snake_case)]
 /// An Any model.
@@ -94,5 +123,95 @@ impl ConfirmSystem for Any {
 impl MovableSystem for Any {
     fn plan_move(&mut self, rng: &mut MyRng, d: Length) -> Option<Energy> {
         self.movable_mut().plan_move(rng, d)
+    }
+}
+
+
+impl From<AnyGrandParams> for AnyGrand {
+    fn from(parameters: AnyGrandParams) -> AnyGrand {
+        match parameters {
+            AnyGrandParams::Wca(parameters) => AnyGrand::Wca(wca::Wca::from(parameters)),
+            AnyGrandParams::Lj(parameters) => AnyGrand::Lj(lj::Lj::from(parameters)),
+            AnyGrandParams::FakeErfinv(parameters) => AnyGrand::FakeErfinv(erfinv::ErfInv::from(parameters)),
+            AnyGrandParams::Sw(parameters) => AnyGrand::Sw(optsquare::SquareWell::from(parameters)),
+        }
+    }
+}
+
+impl AnyGrand {
+    fn grand(&self) -> &dyn GrandSystem {
+        match self {
+            AnyGrand::Wca(s) => s as &dyn GrandSystem,
+            AnyGrand::Lj(s) => s as &dyn GrandSystem,
+            AnyGrand::FakeErfinv(s) => s as &dyn GrandSystem,
+            AnyGrand::Sw(s) => s as &dyn GrandSystem,
+        }
+    }
+    fn grand_mut(&mut self) -> &mut dyn GrandSystem {
+        match self {
+            AnyGrand::Wca(s) => s as &mut dyn GrandSystem,
+            AnyGrand::Lj(s) => s as &mut dyn GrandSystem,
+            AnyGrand::FakeErfinv(s) => s as &mut dyn GrandSystem,
+            AnyGrand::Sw(s) => s as &mut dyn GrandSystem,
+        }
+    }
+}
+
+impl System for AnyGrand {
+    fn energy(&self) -> Energy {
+        self.grand().energy()
+    }
+    fn compute_energy(&self) -> Energy {
+        self.grand().compute_energy()
+    }
+}
+
+impl ConfirmSystem for AnyGrand {
+    fn confirm(&mut self) {
+        self.grand_mut().confirm()
+    }
+}
+
+impl MovableSystem for AnyGrand {
+    fn plan_move(&mut self, rng: &mut MyRng, d: Length) -> Option<Energy> {
+        self.grand_mut().plan_move(rng, d)
+    }
+}
+
+impl GrandSystem for AnyGrand {
+    fn plan_add(&mut self, rng: &mut MyRng) -> Option<Energy> {
+        self.grand_mut().plan_add(rng)
+    }
+
+    fn plan_remove(&mut self, rng: &mut MyRng) -> Energy {
+        self.grand_mut().plan_remove(rng)
+    }
+
+    fn num_atoms(&self) -> usize {
+        self.grand().num_atoms()
+    }
+}
+
+impl GrandReplicaSystem for AnyGrand {
+    fn plan_swap_atom(&self, other: &Self, rng: &mut MyRng) -> Option<(usize, Energy, Energy)> {
+        use AnyGrand::*;
+        match (self, other) {
+            (Wca(s), Wca(o)) => s.plan_swap_atom(o, rng),
+            (Lj(s), Lj(o)) => s.plan_swap_atom(o, rng),
+            (FakeErfinv(s), FakeErfinv(o)) => s.plan_swap_atom(o, rng),
+            (Sw(s), Sw(o)) => s.plan_swap_atom(o, rng),
+            _ => todo!(),
+        }
+    }
+
+    fn swap_atom(&mut self, other: &mut Self, which: usize) {
+        use AnyGrand::*;
+        match (self, other) {
+            (Wca(s), Wca(o)) => s.swap_atom(o, which),
+            (Lj(s), Lj(o)) => s.swap_atom(o, which),
+            (FakeErfinv(s), FakeErfinv(o)) => s.swap_atom(o, which),
+            (Sw(s), Sw(o)) => s.swap_atom(o, which),
+            _ => todo!(),
+        }
     }
 }
