@@ -2,18 +2,18 @@
 
 set -ev
 
-cargo build --release --bin wca-transposed --bin wca-binning-energy
+cargo build --release --bin transposed --bin binning
 
 echo default to run with two cores, a high upper bound on output file size, and as a restartable job
 RQ=(rq run --max-output 20 -R)
 
-GENERIC=(--N 32 --reduced-density 1.2 --min-T 0.1 --translation-scale 0.05 --movie-time "10^(1/4)" --save-time 1)
+GENERIC=(--wca-N 32 --wca-reduced-density 1.2 --translation-scale 0.05 --movie-time "10^(1/4)" --save-time 1)
 
-${RQ[@]} -J t-wca -- ../target/release/wca-transposed --save-as t-wca.yaml --f 0.5  ${GENERIC[@]}
+${RQ[@]} -J t-wca -- ../target/release/transposed --save-as t-wca.yaml --f 0.5 --min-T 0.1 ${GENERIC[@]}
 
-${RQ[@]} -J sad-wca -- ../target/release/wca-binning-energy --save-as sad-wca.cbor --max-allowed-energy 640 --histogram-bin 0.1 ${GENERIC[@]}
+${RQ[@]} -J sad-wca -- ../target/release/binning --save-as sad-wca.cbor --max-allowed-energy 640 --histogram-bin 0.1 --sad-min-T 0.1 ${GENERIC[@]}
 
 
-# sleep 5
+sleep 5
 
-# tail -f *.out
+tail -f *.out
