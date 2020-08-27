@@ -67,17 +67,21 @@ pub struct GrandMC<S> {
     /// The random number generator.
     pub random: crate::rng::MyRng,
 
-    #[serde(skip, default)]
-    next_output: std::cell::Cell<u64>,
-    /// This is when and where the simulation started.
-    #[serde(skip, default)]
-    start: std::cell::Cell<Option<(std::time::Instant, u64)>>,
     /// How frequently to save...
-    #[serde(default)]
-    save_time_seconds: Option<f64>,
+    #[serde(skip, default)]
+    save: plugin::Save,
 }
 
-impl<S: Clone + ConfirmSystem + GrandReplicaSystem + Sync + Send + serde::Serialize + serde::de::DeserializeOwned> GrandMC<S> {
+impl<
+        S: Clone
+            + ConfirmSystem
+            + GrandReplicaSystem
+            + Sync
+            + Send
+            + serde::Serialize
+            + serde::de::DeserializeOwned,
+    > GrandMC<S>
+{
     /// read from params
     pub fn from_params(_mc: GrandMCParams, _sys: S, save_as: std::path::PathBuf) -> Self {
         let mut random = crate::rng::MyRng::seed_from_u64(_mc._energy.seed.unwrap_or(0));
@@ -110,9 +114,7 @@ impl<S: Clone + ConfirmSystem + GrandReplicaSystem + Sync + Send + serde::Serial
             save_as: save_as.clone(),
             random,
 
-            next_output: std::cell::Cell::new(0),
-            start: std::cell::Cell::new(Some((std::time::Instant::now(), 0))),
-            save_time_seconds: Some(60.0 * 60.0), // 1 hour
+            save: plugin::Save::default(),
         }
     }
     /// Create a new simulation from command-line flags.
@@ -182,30 +184,7 @@ impl<S: Clone + ConfirmSystem + GrandReplicaSystem + Sync + Send + serde::Serial
             Some("cbor") => serde_cbor::to_writer(&f, self).expect("error writing checkpoint?!"),
             _ => panic!("I don't know how to create file {:?}", self.save_as),
         }
-    }
-    /// Save, if it is time.
-    fn save(&self) {
-        if self.next_output.get() <= self.moves {
-            self.checkpoint();
-            if let Some(period) = self.save_time_seconds {
-                match self.start.get() {
-                    Some((start_time, start_iter)) => {
-                        let moves = self.moves;
-                        let runtime = start_time.elapsed();
-                        let time_per_move = duration_to_secs(runtime) / (moves - start_iter) as f64;
-                        let moves_per_period = 1 + (period / time_per_move) as u64;
-                        self.next_output.set(moves + moves_per_period);
-                    }
-                    None => {
-                        self.start
-                            .set(Some((std::time::Instant::now(), self.moves)));
-                        self.next_output.set(self.moves + (1 << 20));
-                    }
-                }
-            } else {
-                self.next_output.set(self.next_output.get() * 2)
-            }
-        }
+        println!("({}) Saved to file {:?}", self.moves, self.save_as);
     }
     /// Run a simulation
     pub fn run_once(&mut self) {
@@ -226,37 +205,38 @@ impl<S: Clone + ConfirmSystem + GrandReplicaSystem + Sync + Send + serde::Serial
                 // Try swapping even ones.
                 self.mc[1..].chunks_exact_mut(2)
             };
-            self.accepted_swaps += iterator.map(|chunk| {
-            // for chunk in iterator {
-                if let [mc0, mc1] = chunk {
-                    assert_eq!(mc0.system.num_atoms() + 1, mc1.system.num_atoms());
-                    if let Some((which, e1, e0)) =
-                        mc1.system.plan_swap_atom(&mc0.system, &mut mc0.rng)
-                    {
-                        let old_lnw =
-                            mc1.e_to_lnw(mc1.system.energy()) + mc0.e_to_lnw(mc0.system.energy());
-                        let new_lnw = mc1.e_to_lnw(e0) + mc0.e_to_lnw(e1);
-                        if (old_lnw - new_lnw).exp() > mc0.rng.gen::<f64>() {
-                            // println!(
-                            //     "I am swapping an atom from {} to {}!",
-                            //     mc1.system.num_atoms(),
-                            //     mc0.system.num_atoms()
-                            // );
-                            mc1.system.swap_atom(&mut mc0.system, which);
-                            std::mem::swap(&mut mc0.system, &mut mc1.system);
-                            // self.accepted_swaps += 1;
-                            return 1; // one swap accepted!
+            self.accepted_swaps += iterator
+                .map(|chunk| {
+                    // for chunk in iterator {
+                    if let [mc0, mc1] = chunk {
+                        assert_eq!(mc0.system.num_atoms() + 1, mc1.system.num_atoms());
+                        if let Some((which, e1, e0)) =
+                            mc1.system.plan_swap_atom(&mc0.system, &mut mc0.rng)
+                        {
+                            let old_lnw = mc1.e_to_lnw(mc1.system.energy())
+                                + mc0.e_to_lnw(mc0.system.energy());
+                            let new_lnw = mc1.e_to_lnw(e0) + mc0.e_to_lnw(e1);
+                            if (old_lnw - new_lnw).exp() > mc0.rng.gen::<f64>() {
+                                // println!(
+                                //     "I am swapping an atom from {} to {}!",
+                                //     mc1.system.num_atoms(),
+                                //     mc0.system.num_atoms()
+                                // );
+                                mc1.system.swap_atom(&mut mc0.system, which);
+                                std::mem::swap(&mut mc0.system, &mut mc1.system);
+                                // self.accepted_swaps += 1;
+                                return 1; // one swap accepted!
+                            }
                         }
                     }
-                }
-                0
-            }).sum::<u64>();
+                    0
+                })
+                .sum::<u64>();
         }
         self.moves += 1;
-        self.save();
+        if self.save.shall_i_save(self.moves) {
+            self.checkpoint();
+        }
     }
 }
 
-fn duration_to_secs(t: std::time::Duration) -> f64 {
-    t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9
-}

@@ -282,7 +282,12 @@ pub struct SaveParams {
 
 impl Default for SaveParams {
     fn default() -> Self {
-        SaveParams { save_time: None }
+        SaveParams { save_time: Some(1.0) }
+    }
+}
+impl Default for Save {
+    fn default() -> Self {
+        Save::from(SaveParams::default())
     }
 }
 impl From<SaveParams> for Save {
@@ -300,6 +305,37 @@ impl Save {
     pub fn update_from(&mut self, params: SaveParams) {
         self.save_time_seconds = params.save_time.map(|h| 60. * 60. * h);
     }
+    /// Allows to use just the save plugin by itself without the rest of
+    /// the plugin infrastructure. Returns true if we should save now.
+    pub fn shall_i_save(&self, moves: u64) -> bool {
+        let save_please = moves > self.next_output.get();
+        if save_please {
+            // We are definitely saving now, and will also decide when to save next.
+            if let Some(period) = self.save_time_seconds {
+                match self.start.get() {
+                    Some((start_time, start_iter)) => {
+                        let runtime = start_time.elapsed();
+                        let time_per_move = duration_to_secs(runtime) / (moves - start_iter) as f64;
+                        let moves_per_period = 1 + (period / time_per_move) as u64;
+                        if moves_per_period < moves {
+                            self.next_output.set(moves + moves_per_period);
+                        } else if moves as f64 + 1.0 < 1.0/time_per_move {
+                            self.next_output.set((1.0/time_per_move) as u64);
+                        } else {
+                            self.next_output.set(moves*2);
+                        }
+                    }
+                    None => {
+                        self.start.set(Some((time::Instant::now(), moves)));
+                        self.next_output.set(moves + (1 << 20));
+                    }
+                }
+            } else {
+                self.next_output.set(self.next_output.get() * 2)
+            }
+        }
+        save_please
+    }
 }
 impl<MC: MonteCarlo> Plugin<MC> for Save {
     fn run(&self, mc: &MC, _sys: &MC::System) -> Action {
@@ -313,23 +349,7 @@ impl<MC: MonteCarlo> Plugin<MC> for Save {
         TimeToRun::TotalMoves(self.next_output.get())
     }
     fn save(&self, mc: &MC, _sys: &MC::System) {
-        if let Some(period) = self.save_time_seconds {
-            match self.start.get() {
-                Some((start_time, start_iter)) => {
-                    let moves = mc.num_moves();
-                    let runtime = start_time.elapsed();
-                    let time_per_move = duration_to_secs(runtime) / (moves - start_iter) as f64;
-                    let moves_per_period = 1 + (period / time_per_move) as u64;
-                    self.next_output.set(moves + moves_per_period);
-                }
-                None => {
-                    self.start.set(Some((time::Instant::now(), mc.num_moves())));
-                    self.next_output.set(mc.num_moves() + (1 << 20));
-                }
-            }
-        } else {
-            self.next_output.set(self.next_output.get() * 2)
-        }
+        self.shall_i_save(mc.num_moves());
     }
 }
 

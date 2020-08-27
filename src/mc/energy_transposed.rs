@@ -260,8 +260,9 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     *h = false;
                 }
                 self.histogram_since_adding_bin = vec![0; self.histogram.len()];
-                self.gamma *= 2.0; // make gamma a bit bigger to let us explore this new region of energy.
-
+                if self.gamma < 0.25 {
+                    self.gamma *= 2.0; // make gamma a bit bigger to let us explore this new region of energy.
+                }
                 // self.gamma = 0.25; // reset gamma since we have just discovered something potentially important.
                 //                    // println!("opened up a new bin: current energy {}", energy.pretty());
                 //                    // Logger.log(self, &self.system);
@@ -436,7 +437,9 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Logger;
-impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> Plugin<EnergyMC<S>> for Logger {
+impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> Plugin<EnergyMC<S>>
+    for Logger
+{
     fn log(&self, mc: &EnergyMC<S>, sys: &S) {
         // let print_am_here = |i| {
         //     if i == mc.e_to_idx(sys.energy()) {
@@ -484,7 +487,8 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> Plugin<E
             crate::prettyfloat::PrettyFloat(mc.histogram[i_current] as f64),
             crate::prettyfloat::PrettyFloat(mc.histogram_since_adding_bin[i_current] as f64),
         );
-        let de_po = (mc.max_energy-mc.min_energy)*mc.rel_bins[mc.rel_bins.len()-1]/mc.bin_norm;
+        let de_po =
+            (mc.max_energy - mc.min_energy) * mc.rel_bins[mc.rel_bins.len() - 1] / mc.bin_norm;
         println!(
             "  lo Delta E  = {:10.5} (mean {:8.3} from {:.3}): {:.3}",
             de_po.pretty(),
