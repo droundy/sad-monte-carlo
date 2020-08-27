@@ -74,7 +74,6 @@ impl From<FakeParams> for Fake {
 }
 
 impl System for Fake {
-    type CollectedData = ();
     fn energy(&self) -> Energy {
         let r = self.position.iter().map(|&x| x * x).sum::<f64>().sqrt();
         self.function.energy(r)

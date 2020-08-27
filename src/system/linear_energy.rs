@@ -37,7 +37,6 @@ impl From<LinearParams> for Linear {
 }
 
 impl System for Linear {
-    type CollectedData = ();
     fn energy(&self) -> Energy {
         self.x/Length::new(1.)*Energy::new(1.)
     }

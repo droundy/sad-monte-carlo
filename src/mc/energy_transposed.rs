@@ -313,7 +313,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
     }
 }
 
-impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
+impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCarlo for EnergyMC<S> {
     type Params = EnergyMCParams;
     type System = S;
     fn from_params(params: EnergyMCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
@@ -436,7 +436,7 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S> {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Logger;
-impl<S: MovableSystem> Plugin<EnergyMC<S>> for Logger {
+impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> Plugin<EnergyMC<S>> for Logger {
     fn log(&self, mc: &EnergyMC<S>, sys: &S) {
         // let print_am_here = |i| {
         //     if i == mc.e_to_idx(sys.energy()) {

@@ -77,7 +77,7 @@ pub struct GrandMC<S> {
     save_time_seconds: Option<f64>,
 }
 
-impl<S: Clone + ConfirmSystem + GrandReplicaSystem + Sync + Send> GrandMC<S> {
+impl<S: Clone + ConfirmSystem + GrandReplicaSystem + Sync + Send + serde::Serialize + serde::de::DeserializeOwned> GrandMC<S> {
     /// read from params
     pub fn from_params(_mc: GrandMCParams, _sys: S, save_as: std::path::PathBuf) -> Self {
         let mut random = crate::rng::MyRng::seed_from_u64(_mc._energy.seed.unwrap_or(0));

@@ -486,7 +486,7 @@ impl<S> NumberMC<S> {
     }
 }
 
-impl<S: GrandSystem> MonteCarlo for NumberMC<S> {
+impl<S: GrandSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCarlo for NumberMC<S> {
     type Params = NumberMCParams;
     type System = S;
     fn from_params(params: NumberMCParams, system: S, save_as: ::std::path::PathBuf) -> Self {
@@ -788,7 +788,7 @@ impl Movies {
         self.gamma_time.borrow_mut().push(t);
     }
 }
-impl<S: GrandSystem> Plugin<NumberMC<S>> for Movies {
+impl<S: GrandSystem + serde::Serialize + serde::de::DeserializeOwned> Plugin<NumberMC<S>> for Movies {
     fn run(&self, mc: &NumberMC<S>, sys: &S) -> plugin::Action {
         if let Some(movie_time) = self.movie_time {
             let moves = mc.num_moves();

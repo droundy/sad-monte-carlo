@@ -69,7 +69,6 @@ impl ErfInv {
 }
 
 impl System for ErfInv {
-    type CollectedData = ();
     fn energy(&self) -> Energy {
         self.find_energy(&self.position)
     }

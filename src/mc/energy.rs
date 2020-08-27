@@ -144,7 +144,7 @@ pub struct Bins {
 
 /// A square well fluid.
 #[derive(Serialize, Deserialize, Debug)]
-pub struct EnergyMC<S, C> {
+pub struct EnergyMC<S> {
     /// The system we are simulating.
     pub system: S,
     /// The method we use
@@ -178,8 +178,6 @@ pub struct EnergyMC<S, C> {
     // together in EnergyMC.
     /// The parameters describing the bins
     pub bins: Bins,
-    /// System-specific data that has been collected
-    pub collected: Vec<C>,
 
     /// Whether we have seen this since the last visit to maxentropy.
     have_visited_since_maxentropy: Vec<bool>,
@@ -348,7 +346,7 @@ impl Bins {
     }
 }
 
-impl<S: System> EnergyMC<S, S::CollectedData> {
+impl<S: System> EnergyMC<S> {
     /// Find the index corresponding to a given energy.  This should
     /// panic if the energy is less than `min`.
     pub fn state_to_index(&self, s: State) -> usize {
@@ -371,7 +369,6 @@ impl<S: System> EnergyMC<S, S::CollectedData> {
             self.have_visited_since_maxentropy.insert(0, true);
             self.round_trips.insert(0, 1);
             self.bins.min -= self.bins.width;
-            self.collected.insert(0, S::CollectedData::default());
         }
         while e >= self.bins.min + self.bins.width * (self.bins.lnw.len() as f64) {
             self.bins.lnw.push(Unitless::new(0.0));
@@ -379,12 +376,11 @@ impl<S: System> EnergyMC<S, S::CollectedData> {
             self.bins.t_found.push(0);
             self.have_visited_since_maxentropy.push(true);
             self.round_trips.push(1);
-            self.collected.push(S::CollectedData::default());
         }
     }
 }
 
-impl<S: System> EnergyMC<S, S::CollectedData> {
+impl<S: System> EnergyMC<S> {
     /// This decides whether to reject the move based on the actual
     /// method in use.
     fn reject_move(&mut self, e1: State, e2: State) -> bool {
@@ -736,7 +732,7 @@ impl<S: System> EnergyMC<S, S::CollectedData> {
     }
 }
 
-impl<S: System> EnergyMC<S, S::CollectedData> {
+impl<S: System> EnergyMC<S> {
     fn gamma(&self) -> f64 {
         match self.method {
             Method::Sad {
@@ -764,7 +760,7 @@ impl<S: System> EnergyMC<S, S::CollectedData> {
     }
 }
 
-impl<S: MovableSystem> MonteCarlo for EnergyMC<S, S::CollectedData> {
+impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCarlo for EnergyMC<S> {
     type Params = EnergyMCParams;
     type System = S;
     fn from_params(params: EnergyMCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
@@ -812,7 +808,6 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S, S::CollectedData> {
                 min: emin,
                 width: ewidth,
             },
-            collected: vec![S::CollectedData::default()],
 
             have_visited_since_maxentropy: vec![false],
             round_trips: vec![1],
@@ -871,7 +866,6 @@ impl<S: MovableSystem> MonteCarlo for EnergyMC<S, S::CollectedData> {
         }
         let energy = State::new(&self.system);
         let i = self.state_to_index(energy);
-        self.system.collect_data(&mut self.collected[i], self.moves);
 
         // track the time we found each energy.
         if self.bins.histogram[i] == 0 {
@@ -983,8 +977,8 @@ impl Movies {
         self.gamma_time.borrow_mut().push(t);
     }
 }
-impl<S: MovableSystem> Plugin<EnergyMC<S, S::CollectedData>> for Movies {
-    fn run(&self, mc: &EnergyMC<S, S::CollectedData>, _sys: &S) -> plugin::Action {
+impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> Plugin<EnergyMC<S>> for Movies {
+    fn run(&self, mc: &EnergyMC<S>, _sys: &S) -> plugin::Action {
         if let Some(movie_time) = self.movie_time {
             let moves = mc.num_moves();
             if plugin::TimeToRun::TotalMoves(moves) == self.period.get() {
@@ -1121,7 +1115,7 @@ impl<S: MovableSystem> Plugin<EnergyMC<S, S::CollectedData>> for Movies {
     /// This isn't really a movies thing, but there isn't a great
     /// reason to create yet another plugin for an EnergyMC-specific
     /// log message.
-    fn log(&self, mc: &EnergyMC<S, S::CollectedData>, sys: &S) {
+    fn log(&self, mc: &EnergyMC<S>, sys: &S) {
         let mut one_trip: Option<State> = None;
         let mut ten_trips: Option<State> = None;
         let mut hundred_trips: Option<State> = None;

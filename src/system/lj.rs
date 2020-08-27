@@ -3,7 +3,7 @@
 use super::*;
 
 use crate::prettyfloat::PrettyFloat;
-use dimensioned::{Abs, Dimensionless, Sqrt};
+use dimensioned::{Abs, Dimensionless};
 use rand::distributions::Uniform;
 use rand::{Rng, SeedableRng};
 use vector3d::Vector3d;
@@ -87,13 +87,6 @@ fn potential(r_squared: Area) -> Energy {
 }
 
 impl Lj {
-    fn cm(&self) -> Vector3d<Length> {
-        let mut cm = self.positions[0];
-        for x in self.positions.iter().skip(1) {
-            cm = cm + *x;
-        }
-        cm / self.positions.len() as f64
-    }
     /// Move a specified atom.  Returns the change in energy, or
     /// `None` if the atom could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
@@ -246,34 +239,6 @@ impl Lj {
 }
 
 impl System for Lj {
-    type CollectedData = Collected;
-    fn collect_data(&self, data: &mut Collected, iter: u64) {
-        if iter % ((self.positions.len() * self.positions.len()) as u64) == 0 {
-            if let Some(n) = self.n_radial {
-                if iter as usize % self.positions.len() == 0 {
-                    if data.from_center.len() != n {
-                        data.from_center = vec![0; n];
-                    }
-                    if data.from_cm.len() != n {
-                        data.from_cm = vec![0; n];
-                    }
-                    let cm = self.cm();
-                    let n = n as f64;
-                    for x in self.positions.iter().cloned() {
-                        let r = x.norm2().sqrt();
-                        let i_r = (*(r / self.max_radius).value() * n).floor() as usize;
-                        data.from_center[i_r] += 1;
-
-                        let r = (x - cm).norm2().sqrt();
-                        if r < self.max_radius {
-                            let i_r = (*(r / self.max_radius).value() * n).floor() as usize;
-                            data.from_cm[i_r] += 1;
-                        }
-                    }
-                }
-            }
-        }
-    }
     fn energy(&self) -> Energy {
         self.E
     }

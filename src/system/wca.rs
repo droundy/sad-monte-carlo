@@ -198,32 +198,7 @@ impl From<WcaParams> for Wca {
     }
 }
 
-/// This defines the pressure.
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
-pub struct Collected {
-    /// The sum of dE/dϵ where ϵ is the strain (or fractional
-    /// expansion) over all elements in the ensemble.
-    pub pexc_tot: f64,
-    /// The number times we have summed up the excess_pressure_total
-    /// above.  Divide by this (and by the volume) to get the excess
-    /// pressure.
-    pub count: u64,
-}
-
 impl System for Wca {
-    type CollectedData = Collected;
-    fn collect_data(&self, data: &mut Collected, iter: u64) {
-        if iter % ((self.num_atoms() * self.num_atoms()) as u64) == 0 {
-            data.count += 1;
-            let mut p: Energy = units::EPSILON * 0.0;
-            for (which, &r1) in self.cell.positions.iter().enumerate() {
-                for r2 in self.cell.maybe_interacting_atoms_excluding(r1, which) {
-                    p += potential_pressure((r1 - r2).norm2());
-                }
-            }
-            data.pexc_tot += *(p / units::EPSILON).value();
-        }
-    }
     fn data_to_collect(&self, iter: u64) -> Vec<(Interned, f64)> {
         if iter % ((self.num_atoms() * self.num_atoms()) as u64) == 0 {
             let mut p: Energy = units::EPSILON * 0.0;

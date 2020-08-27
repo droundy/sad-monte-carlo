@@ -53,7 +53,6 @@ impl From<IsingParams> for Ising {
 }
 
 impl System for Ising {
-    type CollectedData = ();
     fn energy(&self) -> Energy {
         self.E
     }

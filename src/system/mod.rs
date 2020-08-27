@@ -15,9 +15,11 @@ pub mod optsquare;
 pub mod square;
 pub mod wca;
 
-pub mod linear_energy;
-pub mod fake;
+pub mod any;
+
 pub mod erfinv;
+pub mod fake;
+pub mod linear_energy;
 
 pub use crate::mc::binning::Interned;
 
@@ -48,7 +50,7 @@ pub type Force = units::Force<f64>;
 
 /// A physical system, which has some energy, and to which we can make
 /// some changes.
-pub trait System: ::serde::Serialize + ::serde::de::DeserializeOwned {
+pub trait System {
     /// Returns the energy of the system, and is fast.  This should
     /// just access a cached variable.
     fn energy(&self) -> Energy;
@@ -78,11 +80,6 @@ pub trait System: ::serde::Serialize + ::serde::de::DeserializeOwned {
     fn update_caches(&mut self) {}
     /// Verify as well as we can that the energy is currently correct.
     fn verify_energy(&self) {}
-    /// The data type describing what we want to collect in terms of
-    /// statistics.
-    type CollectedData: Default + ::serde::Serialize + ::serde::de::DeserializeOwned;
-    /// Collect some data for the current state of the system
-    fn collect_data(&self, _data: &mut Self::CollectedData, _iter: u64) {}
     /// Collect some data for the current state of the system if we
     /// want to do so.
     fn data_to_collect(&self, _iter: u64) -> Vec<(Interned, f64)> {
@@ -95,7 +92,9 @@ pub trait ConfirmSystem: System {
     /// Confirm the change, whatever it may have been.
     fn confirm(&mut self);
     /// Print something descriptive about this system.
-    fn describe(&self) -> String { "".to_string() }
+    fn describe(&self) -> String {
+        "".to_string()
+    }
 }
 
 /// A system that can be moved.
