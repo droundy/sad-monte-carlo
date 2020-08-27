@@ -16,7 +16,7 @@ def linear_density_of_states(E):
 def quadratic_density_of_states(E):
     return 1.5*np.sqrt(E)*np.heaviside(E, 0)*np.heaviside(1-E, 0)
 def gaussian_density_of_states(E):
-    return np.pi*(sigma[-1]**3)*np.sqrt(32*np.log(-1/E)) / (-E)
+    return (np.pi*(sigma[-1]**3)*np.sqrt(32*np.log(-1/E))) / -E
 def other_density_of_states(E):
     return np.zeros_like(E)
 
@@ -139,7 +139,7 @@ print('energy_boundaries', energy_boundaries)
 
 for key in lnw:
 
-    sigma.append(np.loadtxt(key+'-sigma.dat'))  #use in D(E) calculation
+    sigma.append(np.loadtxt(key+'-sigma.dat'))  #used in D(E) calculation
 
     #Analysis
     exact_density_of_states = linear_density_of_states
