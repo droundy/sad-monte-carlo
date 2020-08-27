@@ -484,6 +484,17 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> Plugin<E
             crate::prettyfloat::PrettyFloat(mc.histogram[i_current] as f64),
             crate::prettyfloat::PrettyFloat(mc.histogram_since_adding_bin[i_current] as f64),
         );
+        let de_po = (mc.max_energy-mc.min_energy)*mc.rel_bins[mc.rel_bins.len()-1]/mc.bin_norm;
+        println!(
+            "  lo Delta E  = {:10.5} (mean {:8.3} from {:.3}): {:.3}",
+            de_po.pretty(),
+            (mc.total_energy[mc.histogram.len() - 2] / mc.histogram[mc.histogram.len() - 2] as f64)
+                .pretty(),
+            crate::prettyfloat::PrettyFloat(mc.histogram[mc.histogram.len() - 2] as f64),
+            crate::prettyfloat::PrettyFloat(
+                mc.histogram_since_adding_bin[mc.histogram.len() - 2] as f64
+            ),
+        );
         println!(
             "        E_lo  = {:10.5} (mean {:8.3} from {:.3}): {:.3}",
             mc.min_energy.pretty(),
