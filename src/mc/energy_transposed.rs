@@ -188,12 +188,22 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         }
         if i == 0 {
             // We are in the widthless arbitrarily high-energy bin.
-            let de = (self.max_energy - self.min_energy) * self.gamma;
-            self.max_energy += de * self.rel_bins[0] / self.bin_norm;
+            let w = self.rel_bins[0];
+            let wid = w * (self.max_energy - self.min_energy) / self.bin_norm;
+            self.max_energy += self.gamma * wid;
+            // We expand just the highest energy bounded bin.
+            let dw = 2.0 * self.gamma * w;
+            self.rel_bins[0] += dw;
+            self.bin_norm += dw;
         } else if i == self.rel_bins.len() + 1 {
             // We are in the low-energy bin.
-            let de = (self.max_energy - self.min_energy) * self.gamma;
-            self.min_energy -= de * self.rel_bins[self.rel_bins.len() - 1] / self.bin_norm;
+            let w = self.rel_bins[i-2];
+            let wid = w * (self.max_energy - self.min_energy) / self.bin_norm;
+            self.min_energy -= self.gamma * wid;
+            // We expand just the lowest energy bounded bin.
+            let dw = 2.0 * self.gamma * w;
+            self.rel_bins[i-2] += dw;
+            self.bin_norm += dw;
 
             // Now decide whether we want a new bin here.
             let min_de: Energy = -self.min_T * self.f.ln();
@@ -267,26 +277,39 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 //                    // println!("opened up a new bin: current energy {}", energy.pretty());
                 //                    // Logger.log(self, &self.system);
             }
+        } else if i == self.rel_bins.len() {
+            let w = self.rel_bins[i - 1];
+            let wid = self.rel_bins[i - 1] * (self.max_energy - self.min_energy) / self.bin_norm;
+            let dw = 2.0 * self.gamma * w;
+            self.rel_bins[i - 1] -= dw;
+            assert!(self.rel_bins[i - 1] > 0.0);
+            self.bin_norm -= dw;
+            self.min_energy += self.gamma * wid;
+        } else if i == 1 {
+            let w = self.rel_bins[i - 1];
+            let wid = self.rel_bins[i - 1] * (self.max_energy - self.min_energy) / self.bin_norm;
+            let dw = 2.0 * self.gamma * w;
+            self.rel_bins[i - 1] -= dw;
+            assert!(self.rel_bins[i - 1] > 0.0);
+            self.bin_norm -= dw;
+            self.max_energy -= self.gamma * wid;
         } else {
             let w = self.rel_bins[i - 1];
             let dw = self.gamma * w;
             self.rel_bins[i - 1] -= dw;
             assert!(self.rel_bins[i - 1] > 0.0);
             self.bin_norm -= dw;
-            if self.bin_norm <= 0.0 {
-                self.bin_norm = self.rel_bins.iter().cloned().sum::<f64>();
-                // Let's re-normalize the bin widths, since we must be close to
-                // underflow.
-                for w in self.rel_bins.iter_mut() {
-                    *w /= self.bin_norm;
-                }
-                // The following should be about 1, but due to roundoff error it is
-                // not, and we don't want any (unavoidable) errors in our binning.
-                self.bin_norm = self.rel_bins.iter().cloned().sum::<f64>();
+        }
+        if self.bin_norm <= 0.0 {
+            self.bin_norm = self.rel_bins.iter().cloned().sum::<f64>();
+            // Let's re-normalize the bin widths, since we must be close to
+            // underflow.
+            for w in self.rel_bins.iter_mut() {
+                *w /= self.bin_norm;
             }
-            let de = (self.max_energy - self.min_energy) * self.gamma / self.rel_bins.len() as f64;
-            self.max_energy -= de * self.rel_bins[0] / self.bin_norm;
-            self.min_energy += de * self.rel_bins[self.rel_bins.len() - 1] / self.bin_norm;
+            // The following should be about 1, but due to roundoff error it is
+            // not, and we don't want any (unavoidable) errors in our binning.
+            self.bin_norm = self.rel_bins.iter().cloned().sum::<f64>();
         }
 
         if !self.have_seen[i] {
