@@ -65,6 +65,10 @@ impl Default for EnergyMCParams {
     }
 }
 
+fn min_of(stuff: &[f64]) -> f64 {
+    stuff.iter().cloned().fold(0. / 0., f64::min)
+}
+
 /// A square well fluid.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EnergyMC<S> {
@@ -132,7 +136,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         let dedw = (self.max_energy - self.min_energy) / self.bin_norm;
         for (i, w) in self.rel_bins.iter().cloned().enumerate().rev() {
             if energy < e {
-                return i+2;
+                return i + 2;
             }
             e += dedw * w;
         }
@@ -147,7 +151,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         let dedw = (self.max_energy - self.min_energy) / self.bin_norm;
         for (i, w) in self.rel_bins.iter().cloned().enumerate().rev() {
             if energy < e {
-                return (i+2, lower_bound, Some(e));
+                return (i + 2, lower_bound, Some(e));
             }
             lower_bound = Some(e);
             e += dedw * w;
@@ -187,21 +191,23 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
             let w = self.rel_bins[0];
             let old_breadth = self.max_energy - self.min_energy;
             let wid = w * old_breadth / self.bin_norm;
-            let de = self.gamma*wid;
+            let de = self.gamma * wid;
             self.max_energy += de;
             // We expand just the highest energy bounded bin.
-            self.bin_norm *= *((self.max_energy - self.min_energy)/old_breadth).value();
-            self.rel_bins[0] = *((wid+de)/(self.max_energy - self.min_energy)).value()*self.bin_norm;
+            self.bin_norm *= *((self.max_energy - self.min_energy) / old_breadth).value();
+            self.rel_bins[0] =
+                *((wid + de) / (self.max_energy - self.min_energy)).value() * self.bin_norm;
         } else if i == self.rel_bins.len() + 1 {
             // We are in the low-energy bin.
-            let w = self.rel_bins[i-2];
+            let w = self.rel_bins[i - 2];
             let old_breadth = self.max_energy - self.min_energy;
             let wid = w * old_breadth / self.bin_norm;
-            let de = self.gamma*wid;
+            let de = self.gamma * wid;
             self.min_energy -= de;
             // We expand just the highest energy bounded bin.
-            self.bin_norm *= *((self.max_energy - self.min_energy)/old_breadth).value();
-            self.rel_bins[i-2] = *((wid+de)/(self.max_energy - self.min_energy)).value()*self.bin_norm;
+            self.bin_norm *= *((self.max_energy - self.min_energy) / old_breadth).value();
+            self.rel_bins[i - 2] =
+                *((wid + de) / (self.max_energy - self.min_energy)).value() * self.bin_norm;
 
             // Now decide whether we want a new bin here.
             let min_de: Energy = -self.min_T * self.f.ln();
@@ -230,7 +236,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     .min()
                     .unwrap()
                     > 0
-                && self.rel_bins[self.rel_bins.len() - 1] > min_w
+                && min_of(&self.rel_bins) > min_w
             {
                 // We add a new low energy bin under the following circumstances:
                 //
@@ -242,7 +248,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 //    This is important because otherwise we could end up adding way too many
                 //    bins if we start out at some insanely high energy.
                 //
-                // 3. The lowest energy bin must not be must be smaller than min_w, which is itself
+                // 3. The smallest energy bin must not be must be smaller than min_w, which is itself
                 //    proportional to min_T.
 
                 // Let us actually add several bins each time we realize we need more.
