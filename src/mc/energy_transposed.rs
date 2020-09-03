@@ -119,10 +119,6 @@ pub struct EnergyMC<S> {
     pub total_energy: Vec<Energy>,
 }
 
-fn min_of(stuff: &[f64]) -> f64 {
-    stuff.iter().cloned().fold(0. / 0., f64::min)
-}
-
 impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
     /// This decides whether to reject the move based on the actual
     /// method in use.
@@ -132,34 +128,34 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
     }
     fn e_to_idx(&self, energy: Energy) -> usize {
-        let mut e = self.max_energy;
+        let mut e = self.min_energy;
         let dedw = (self.max_energy - self.min_energy) / self.bin_norm;
-        for (i, w) in self.rel_bins.iter().cloned().enumerate() {
-            if energy > e {
-                return i;
+        for (i, w) in self.rel_bins.iter().cloned().enumerate().rev() {
+            if energy < e {
+                return i+2;
             }
-            e -= dedw * w;
+            e += dedw * w;
         }
-        if energy > e {
-            return self.rel_bins.len();
+        if energy < self.max_energy {
+            return 1;
         }
-        self.rel_bins.len() + 1
+        0
     }
     fn e_to_idx_and_boundaries(&self, energy: Energy) -> (usize, Option<Energy>, Option<Energy>) {
-        let mut e = self.max_energy;
-        let mut upper_bound = None;
+        let mut e = self.min_energy;
+        let mut lower_bound = None;
         let dedw = (self.max_energy - self.min_energy) / self.bin_norm;
-        for (i, w) in self.rel_bins.iter().cloned().enumerate() {
-            if energy > e {
-                return (i, Some(e), upper_bound);
+        for (i, w) in self.rel_bins.iter().cloned().enumerate().rev() {
+            if energy < e {
+                return (i+2, lower_bound, Some(e));
             }
-            upper_bound = Some(e);
-            e -= dedw * w;
+            lower_bound = Some(e);
+            e += dedw * w;
         }
-        if energy > e {
-            return (self.rel_bins.len(), Some(e), upper_bound);
+        if energy < self.max_energy {
+            return (1, lower_bound, Some(self.max_energy));
         }
-        (self.rel_bins.len() + 1, None, Some(e))
+        (0, Some(self.max_energy), None)
     }
     /// Find out the lnw for a given energy
     pub fn e_to_lnw(&self, energy: Energy) -> f64 {
@@ -192,7 +188,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
             let wid = w * (self.max_energy - self.min_energy) / self.bin_norm;
             self.max_energy += self.gamma * wid;
             // We expand just the highest energy bounded bin.
-            let dw = 2.0 * self.gamma * w;
+            let dw = self.gamma * w;
             self.rel_bins[0] += dw;
             self.bin_norm += dw;
         } else if i == self.rel_bins.len() + 1 {
@@ -201,7 +197,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
             let wid = w * (self.max_energy - self.min_energy) / self.bin_norm;
             self.min_energy -= self.gamma * wid;
             // We expand just the lowest energy bounded bin.
-            let dw = 2.0 * self.gamma * w;
+            let dw = self.gamma * w;
             self.rel_bins[i-2] += dw;
             self.bin_norm += dw;
 
@@ -232,7 +228,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     .min()
                     .unwrap()
                     > 0
-                && min_of(&self.rel_bins) > min_w
+                && self.rel_bins[self.rel_bins.len() - 1] > min_w
             {
                 // We add a new low energy bin under the following circumstances:
                 //
@@ -244,9 +240,8 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 //    This is important because otherwise we could end up adding way too many
                 //    bins if we start out at some insanely high energy.
                 //
-                // 3. There must be no bins that are smaller than min_w, which is itself
-                //    proportional to min_T.  If a smaller bin existed somewhere, then we
-                //    could conclude that the bins are not yet well equilibrated.
+                // 3. The lowest energy bin must not be must be smaller than min_w, which is itself
+                //    proportional to min_T.
 
                 // Let us actually add several bins each time we realize we need more.
                 // This should allow us to more rapidly explore lower energies.
@@ -504,11 +499,12 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> Plugin<E
         );
         let i_current = mc.e_to_idx(sys.energy());
         println!(
-            "        E_now = {:10.5} (mean {:8.3} from {:.3}): {:.3}",
+            "        E_now = {:10.5} (mean {:8.3} from {:.3}): {:.3} i = {}",
             sys.energy().pretty(),
             (mc.total_energy[i_current] / mc.histogram[i_current] as f64).pretty(),
             crate::prettyfloat::PrettyFloat(mc.histogram[i_current] as f64),
             crate::prettyfloat::PrettyFloat(mc.histogram_since_adding_bin[i_current] as f64),
+            i_current,
         );
         let de_po =
             (mc.max_energy - mc.min_energy) * mc.rel_bins[mc.rel_bins.len() - 1] / mc.bin_norm;
@@ -539,9 +535,10 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> Plugin<E
             crate::prettyfloat::PrettyFloat(mc.gamma)
         );
         // println!(
-        //     "        norm: {} vs. {}",
+        //     "        norm: {} vs. {} vs. {}",
         //     mc.bin_norm,
-        //     mc.rel_bins.iter().cloned().sum::<f64>()
+        //     mc.rel_bins.iter().cloned().sum::<f64>(),
+        //     mc.rel_bins.iter().cloned().rev().sum::<f64>(),
         // );
     }
 }
