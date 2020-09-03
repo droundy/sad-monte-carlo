@@ -185,21 +185,23 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         if i == 0 {
             // We are in the widthless arbitrarily high-energy bin.
             let w = self.rel_bins[0];
-            let wid = w * (self.max_energy - self.min_energy) / self.bin_norm;
-            self.max_energy += self.gamma * wid;
+            let old_breadth = self.max_energy - self.min_energy;
+            let wid = w * old_breadth / self.bin_norm;
+            let de = self.gamma*wid;
+            self.max_energy += de;
             // We expand just the highest energy bounded bin.
-            let dw = self.gamma * w;
-            self.rel_bins[0] += dw;
-            self.bin_norm += dw;
+            self.bin_norm *= *((self.max_energy - self.min_energy)/old_breadth).value();
+            self.rel_bins[0] = *((wid+de)/(self.max_energy - self.min_energy)).value()*self.bin_norm;
         } else if i == self.rel_bins.len() + 1 {
             // We are in the low-energy bin.
             let w = self.rel_bins[i-2];
-            let wid = w * (self.max_energy - self.min_energy) / self.bin_norm;
-            self.min_energy -= self.gamma * wid;
-            // We expand just the lowest energy bounded bin.
-            let dw = self.gamma * w;
-            self.rel_bins[i-2] += dw;
-            self.bin_norm += dw;
+            let old_breadth = self.max_energy - self.min_energy;
+            let wid = w * old_breadth / self.bin_norm;
+            let de = self.gamma*wid;
+            self.min_energy -= de;
+            // We expand just the highest energy bounded bin.
+            self.bin_norm *= *((self.max_energy - self.min_energy)/old_breadth).value();
+            self.rel_bins[i-2] = *((wid+de)/(self.max_energy - self.min_energy)).value()*self.bin_norm;
 
             // Now decide whether we want a new bin here.
             let min_de: Energy = -self.min_T * self.f.ln();
