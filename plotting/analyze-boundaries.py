@@ -160,10 +160,17 @@ for key in lnw:
 
     E_lo = energy_boundaries[key][-1]
     dE_lo = energy_boundaries[key][-2] - E_lo
+    Nplot = 100000
     if np.isnan(mean_energy[key][-1]):
-        E = np.linspace(E_lo - 3*dE_lo, energy_boundaries[key].max(), 100000)
+        E = np.linspace(E_lo - 3*dE_lo, energy_boundaries[key].max(), Nplot)
     else:
-        E = np.linspace(4*mean_energy[key][-1] - 3*E_lo, energy_boundaries[key].max(), 100000)
+        E = np.linspace(4*mean_energy[key][-1] - 3*E_lo, energy_boundaries[key].max(), Nplot)
+    if dE_lo < E[1] - E[0]:
+        # this means our resolution is too poor above
+        if np.isnan(mean_energy[key][-1]):
+            E = np.linspace(E_lo - 3*dE_lo, E_lo + Nplot*dE_lo/10, Nplot)
+        else:
+            E = np.linspace(4*mean_energy[key][-1] - 3*E_lo, E_lo + Nplot*dE_lo/10, Nplot)
     S_lo = lnw[key][-1] - np.log(E_lo - mean_energy[key][-1])
     min_T = E_lo - mean_energy[key][-1]
     
@@ -194,6 +201,7 @@ for key in lnw:
         Ssloped[here] = S0 + beta*(E[here] - energy_boundaries[key][i+1])
 
     plt.figure('entropy')
+
     plt.plot(E, Smiddle, '-', label=key + 'simplest')
     plt.plot(E, Ssloped, '--', label=key + 'sloped')
     # plt.plot(E, S, '-', label=key+' optimize_bin_entropy approx.')
@@ -202,7 +210,7 @@ for key in lnw:
     plt.xlabel('$E$')
     plt.ylabel('$S$')
 
-    plot_dos = True
+    plot_dos = False
     if plot_dos:
         plt.figure('density of states')
         plt.plot(E, np.exp(Smiddle), '-', label=key + 'simplest')
