@@ -16,7 +16,7 @@ def linear_density_of_states(E):
 def quadratic_density_of_states(E):
     return 1.5*np.sqrt(E)*np.heaviside(E, 0)*np.heaviside(1-E, 0)
 def gaussian_density_of_states(E):
-    return (np.pi*(sigma[-1]**3)*np.sqrt(32*np.log(-1/E))) / -E
+    return (np.pi*(sigma**3)*np.sqrt(32*np.log(-1/E))) / -E
 def other_density_of_states(E):
     return np.zeros_like(E)
 
@@ -120,12 +120,14 @@ def find_entropy_from_beta_and_lnw(beta, lnw, deltaE):
 energy_boundaries = {}
 mean_energy = {}
 lnw = {}
+systems = {}
 #each file has different path (including extension) so concatenating is easy
 for base in args.base:
     print(base)
     energy_boundaries[base] = np.loadtxt(base+'-energy-boundaries.dat')
     mean_energy[base] = np.loadtxt(base+'-mean-energy.dat')
     lnw[base] = np.loadtxt(base+'-lnw.dat')
+    systems[base] = yaml.safe_load(base+'-system.dat')
 
     if energy_boundaries[base][0] < energy_boundaries[base][-1]:
         energy_boundaries[base] = np.flip(energy_boundaries[base])
@@ -133,13 +135,13 @@ for base in args.base:
         lnw[base] = np.flip(lnw[base])
 
 entropy_boundaries={}
-sigma = []
+sigma = 1
 
 print('energy_boundaries', energy_boundaries)
 
 for key in lnw:
 
-    sigma.append(np.loadtxt(key+'-sigma.dat'))  #used in D(E) calculation
+    # sigma.append(np.loadtxt(key+'-sigma.dat'))  #used in D(E) calculation
 
     #Analysis
     exact_density_of_states = linear_density_of_states
@@ -200,9 +202,10 @@ for key in lnw:
     plt.xlabel('$E$')
     plt.ylabel('$S$')
 
-    plot_dos = False
+    plot_dos = True
     if plot_dos:
         plt.figure('density of states')
+        plt.plot(E, np.exp(Smiddle), '-', label=key + 'simplest')
         # plt.plot(E, np.exp(S), '-', label=key+' optimize_bin_entropy approx.')
         # plt.plot(E, np.exp(Sbest), '-', label=key+' smooth')
         plt.plot(E, exact_density_of_states(E), label=key+' exact')
@@ -210,6 +213,7 @@ for key in lnw:
         plt.ylabel('$D(E)$')
         exact = exact_density_of_states(E)
         plt.ylim(0, 1.1*exact[exact == exact].max())
+        plt.legend(loc='best')
 
 
 plt.figure('entropy')

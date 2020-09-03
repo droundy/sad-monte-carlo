@@ -3,6 +3,7 @@
 import yaml, sys, argparse, cbor, glob, itertools, os
 import numpy as np
 import scipy.constants as scipy
+import readsystem
 
 def latex_float(x):
     exp = int(np.log10(x*1.0))
@@ -122,6 +123,9 @@ class MC:
         s -= s.max()
         s -= np.log(np.sum(np.exp(s))) # normalize probability as best we can
         return np.array([np.NINF]+list(s)+[np.NINF]) # pad with zero density of states in the unbounded bins
+    @property
+    def system(self):
+        return readsystem.readsystem(self.data)
     def histogram(self):
         return self._bins.histogram()
     def excess_entropy(self):
@@ -154,3 +158,6 @@ for fname in args.yaml:
     np.savetxt(base+'-energy-boundaries.dat', mc.energy_boundaries)
     np.savetxt(base+'-mean-energy.dat', mc.mean_energy)
     np.savetxt(base+'-lnw.dat', mc.lnw) #includes unbounded extremes
+
+    with open(base+'-system.dat', 'w') as f:
+        yaml.safe_dump(mc.system, f)

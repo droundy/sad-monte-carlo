@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import numpy as np
-import yaml, cbor, argparse, sys, os
+import yaml, cbor, argparse, sys, os, readsystem
 
 parser = argparse.ArgumentParser(description="fake energies analysis")
 parser.add_argument('fname', nargs='*', help = 'the yaml or cbor file')
@@ -35,8 +35,7 @@ for fname in args.fname:
     lnw = np.array(data_loaded['lnw'])
     lnw -= lnw.max()
     lnw -= np.log(np.sum(np.exp(lnw))) # w = w / sum(w) to normalize
-    function = list(data_loaded['system']['function'])[0]
-    sigma = np.array(data_loaded['system']['function'][function]['sigma'])
+    system = readsystem.readsystem(data_loaded)
 
     energy_boundaries = [max_energy]
     energy_per_rel_bin = 1/bin_norm*(max_energy-min_energy)
@@ -51,4 +50,5 @@ for fname in args.fname:
 
     np.savetxt(base+'-lnw.dat', lnw) #includes unbounded extremes
 
-    np.savetxt(base+'-sigma.dat', [sigma])
+    with open(base+'-system.dat', 'w') as f:
+        yaml.safe_dump(system, f)
