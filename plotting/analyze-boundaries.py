@@ -11,6 +11,11 @@ parser.add_argument('base', nargs='*', help = 'the yaml or cbor file')
 
 args = parser.parse_args()
 
+
+prop_cycle = plt.rcParams['axes.prop_cycle']
+colors = list(prop_cycle.by_key()['color'])
+
+
 def linear_density_of_states(E):
     return np.heaviside(E, 0.5)*np.heaviside(1-E, 0.5)
 def quadratic_density_of_states(E):
@@ -139,7 +144,10 @@ sigma = 1
 
 print('energy_boundaries', energy_boundaries)
 
+which_color = 0
 for key in lnw:
+    color = colors[which_color]
+    which_color += 1
 
     # sigma.append(np.loadtxt(key+'-sigma.dat'))  #used in D(E) calculation
 
@@ -184,6 +192,15 @@ for key in lnw:
     # Sbest = np.interp(E, energy_boundaries[key][::-1], entropy_boundaries_best[::-1])
     # Sbest[E < E_lo] = (entropy_boundaries_best[-1] - (E_lo - E) /min_T)[E < E_lo]
 
+    step_entropy = []
+    step_energy = []
+    for i in range(len(energy_boundaries[key])-1):
+        step_energy.append(energy_boundaries[key][i])
+        step_energy.append(energy_boundaries[key][i+1])
+        Shere = lnw[key][i+1] - np.log(energy_boundaries[key][i] - energy_boundaries[key][i+1])
+        step_entropy.append(Shere)
+        step_entropy.append(Shere)
+
     print(len(lnw[key]), len(energy_boundaries[key]))
     middle_entropy = lnw[key][1:-1] - np.log(-np.diff(energy_boundaries[key]))
     Smiddle = np.zeros_like(E)
@@ -202,11 +219,11 @@ for key in lnw:
 
     plt.figure('entropy')
 
-    plt.plot(E, Smiddle, '-', label=key + 'simplest')
-    plt.plot(E, Ssloped, '--', label=key + 'sloped')
+    plt.plot(step_energy, step_entropy, '-', label=key + ' step', color=color)
+    plt.plot(E, Ssloped, '--', label=key + 'sloped', color=color)
     # plt.plot(E, S, '-', label=key+' optimize_bin_entropy approx.')
     # plt.plot(E, Sbest, '-', label=key + 'smooth')
-    plt.plot(E, np.log(exact_density_of_states(E)), label=key+' exact')
+    plt.plot(E, np.log(exact_density_of_states(E)), color='#aaaaaa')
     plt.xlabel('$E$')
     plt.ylabel('$S$')
 
@@ -216,7 +233,7 @@ for key in lnw:
         plt.plot(E, np.exp(Smiddle), '-', label=key + 'simplest')
         # plt.plot(E, np.exp(S), '-', label=key+' optimize_bin_entropy approx.')
         # plt.plot(E, np.exp(Sbest), '-', label=key+' smooth')
-        plt.plot(E, exact_density_of_states(E), label=key+' exact')
+        plt.plot(E, exact_density_of_states(E))
         plt.xlabel('$E$')
         plt.ylabel('$D(E)$')
         exact = exact_density_of_states(E)
