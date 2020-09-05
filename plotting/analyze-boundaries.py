@@ -113,7 +113,13 @@ def find_beta_deltaE(meanE_over_deltaE):
     # x = np.linspace(-100,100,10000)
     # plt.plot(x, np.vectorize(fn_for_beta)(x, meanE_over_deltaE))
     # plt.show()
-    sol = optimize.root_scalar(fn_for_beta, args=(meanE_over_deltaE), x0 = 2*meanE_over_deltaE, x1 = meanE_over_deltaE)
+    if meanE_over_deltaE == 0:
+        x0 = 1e-6
+        x1 = -1e-6
+    else:
+        x0 = 2*meanE_over_deltaE
+        x1 = meanE_over_deltaE
+    sol = optimize.root_scalar(fn_for_beta, args=(meanE_over_deltaE), x0 = x0, x1 = x1)
     # print(sol)
     return sol.root
 
