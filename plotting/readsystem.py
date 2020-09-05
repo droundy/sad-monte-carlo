@@ -1,5 +1,7 @@
 def readsystem(data):
-    system = {}
+    system = {
+        'kind': 'unknown',
+    }
     if 'Wca' in data['system']:
         system['kind'] = 'WCA'
         a = data['system']['Wca']['cell']['box_diagonal']
@@ -11,4 +13,8 @@ def readsystem(data):
         if 'Gaussian' in fake['function']:
             system['kind'] = 'Gaussian'
             system['sigma'] = fake['function']['Gaussian']['sigma']
+    elif 'FakeErfinv' in data['system']:
+        system['kind'] = 'Erfinv'
+        system['mean_energy'] = data['system']['FakeErfinv']['parameters']['mean_energy']
+        system['N'] = len(data['system']['FakeErfinv']['position'])
     return system

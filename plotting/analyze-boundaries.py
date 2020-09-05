@@ -24,6 +24,8 @@ def gaussian_density_of_states(E):
     return (np.pi*(sigma**3)*np.sqrt(32*np.log(-1/E))) / -E
 def other_density_of_states(E):
     return np.zeros_like(E)
+def erfinv_density_of_states(E):
+    return np.sqrt(np.pi/N)*np.exp(-(E - mean_erfinv_energy)**2/N)
 
 #The function needs to be callable
 
@@ -132,7 +134,8 @@ for base in args.base:
     energy_boundaries[base] = np.loadtxt(base+'-energy-boundaries.dat')
     mean_energy[base] = np.loadtxt(base+'-mean-energy.dat')
     lnw[base] = np.loadtxt(base+'-lnw.dat')
-    systems[base] = yaml.safe_load(base+'-system.dat')
+    with open(base+'-system.dat') as f:
+        systems[base] = yaml.safe_load(f)
 
     if energy_boundaries[base][0] < energy_boundaries[base][-1]:
         energy_boundaries[base] = np.flip(energy_boundaries[base])
@@ -159,11 +162,17 @@ for key in lnw:
     elif 'quadratic' in key:
         print('\n\n\nusing the quadratic_density_of_states\n\n\n')
         exact_density_of_states = quadratic_density_of_states
-    elif 'gaussian' in key:
+    elif systems[key] == 'Gaussian':
         print('\n\n\nusing the quadratic_density_of_states\n\n\n')
+        sigma = systems['key']['sigma']
         exact_density_of_states = gaussian_density_of_states
+    elif systems[key]['kind'] == 'Erfinv':
+        print('\n\n\nusing the erfinv\n\n\n')
+        mean_erfinv_energy = systems[key]['mean_energy']
+        N = systems[key]['N']
+        exact_density_of_states = erfinv_density_of_states
     else:
-        print('\n\n\nusing the most bogus density of states\n\n\n')
+        print('\n\n\nusing the most bogus density of states\n\n\n', systems[key]['kind'])
         exact_density_of_states = other_density_of_states
 
     E_lo = energy_boundaries[key][-1]
@@ -233,7 +242,7 @@ for key in lnw:
         plt.plot(E, np.exp(Smiddle), '-', label=key + 'simplest')
         # plt.plot(E, np.exp(S), '-', label=key+' optimize_bin_entropy approx.')
         # plt.plot(E, np.exp(Sbest), '-', label=key+' smooth')
-        plt.plot(E, exact_density_of_states(E))
+        plt.plot(E, exact_density_of_states(E), color='#aaaaaa')
         plt.xlabel('$E$')
         plt.ylabel('$D(E)$')
         exact = exact_density_of_states(E)
