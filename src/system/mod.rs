@@ -19,7 +19,6 @@ pub mod any;
 
 pub mod erfinv;
 pub mod fake;
-pub mod linear_energy;
 
 pub use crate::mc::binning::Interned;
 
@@ -54,6 +53,8 @@ pub trait System {
     /// Returns the energy of the system, and is fast.  This should
     /// just access a cached variable.
     fn energy(&self) -> Energy;
+    /// Completely randomizes the system
+    fn randomize(&mut self, _: &mut MyRng);
     /// Returns the energy of the system the hard way.  This is slow,
     /// and should only be used as a test that the changes of energy
     /// are being tracked properly.

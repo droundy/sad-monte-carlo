@@ -76,6 +76,11 @@ impl System for Ising {
     fn delta_energy(&self) -> Option<Energy> {
         Some(4. * units::EPSILON)
     }
+    fn randomize(&mut self, rng: &mut MyRng) {
+        for x in self.S.iter_mut() {
+            *x = (rng.next_u64() as i8 & 1) * 2 - 1;
+        }
+    }
 }
 
 impl ConfirmSystem for Ising {

@@ -300,6 +300,9 @@ impl System for SquareWell {
     fn lowest_possible_energy(&self) -> Option<Energy> {
         Some(-(self.positions.len() as f64) * (self.max_interaction() as f64) * units::EPSILON)
     }
+    fn randomize(&mut self, _: &mut MyRng) {
+        todo!()
+    }
 }
 
 impl ConfirmSystem for SquareWell {

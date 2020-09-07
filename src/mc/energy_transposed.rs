@@ -337,7 +337,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
 impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCarlo for EnergyMC<S> {
     type Params = EnergyMCParams;
     type System = S;
-    fn from_params(params: EnergyMCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
+    fn from_params(params: EnergyMCParams, system: S, save_as: ::std::path::PathBuf) -> Self {
         let rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
         let f = params.f;
         let min_T = params.min_T;

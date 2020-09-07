@@ -244,6 +244,20 @@ impl System for Wca {
             assert_eq!(egood, self.E);
         }
     }
+    fn randomize(&mut self, rng: &mut MyRng) {
+        let natoms = self.num_atoms();
+        for _ in 0..natoms {
+            self.cell.remove_atom(0);
+        }
+        for _ in 0..natoms {
+            let r = self.cell.put_in_cell(Vector3d::new(
+                Length::new(rng.sample(Uniform::new(0.0, self.cell.box_diagonal.x.value_unsafe))),
+                Length::new(rng.sample(Uniform::new(0.0, self.cell.box_diagonal.y.value_unsafe))),
+                Length::new(rng.sample(Uniform::new(0.0, self.cell.box_diagonal.z.value_unsafe))),
+            ));
+            self.add_atom_at(r);
+        }
+    }
 }
 
 impl ConfirmSystem for Wca {

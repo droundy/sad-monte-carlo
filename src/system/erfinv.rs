@@ -75,6 +75,11 @@ impl System for ErfInv {
     fn compute_energy(&self) -> Energy {
         self.energy()
     }
+    fn randomize(&mut self, rng: &mut MyRng) {
+        for x in self.position.iter_mut() {
+            *x = rng.gen_range(-1.0, 1.0);
+        }
+    }
 }
 
 impl ConfirmSystem for ErfInv {

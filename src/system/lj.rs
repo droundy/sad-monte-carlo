@@ -260,6 +260,22 @@ impl System for Lj {
             assert_eq!(egood, self.E);
         }
     }
+    fn randomize(&mut self, rng: &mut MyRng) {
+        for x in self.positions.iter_mut() {
+            let mut r;
+            loop {
+                r = Vector3d::new(
+                    rng.sample(Uniform::new(-1.0, 1.0)),
+                    rng.sample(Uniform::new(-1.0, 1.0)),
+                    rng.sample(Uniform::new(-1.0, 1.0)),
+                );
+                if r.norm2() < 1.0 {
+                    break;
+                }
+            }
+            *x = r*self.max_radius;
+        }
+    }
 }
 
 impl GrandSystem for Lj {

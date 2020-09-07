@@ -112,6 +112,9 @@ impl System for Any {
     fn compute_energy(&self) -> Energy {
         self.movable().compute_energy()
     }
+    fn randomize(&mut self, rng: &mut MyRng) {
+        self.movable_mut().randomize(rng)
+    }
 }
 
 impl ConfirmSystem for Any {
@@ -163,6 +166,9 @@ impl System for AnyGrand {
     }
     fn compute_energy(&self) -> Energy {
         self.grand().compute_energy()
+    }
+    fn randomize(&mut self, rng: &mut MyRng) {
+        self.grand_mut().randomize(rng)
     }
 }
 
