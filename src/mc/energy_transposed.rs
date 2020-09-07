@@ -303,10 +303,9 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
             assert!(self.rel_bins[i - 1] > 0.0);
             self.bin_norm -= dw;
         }
-        if self.bin_norm <= 0.0 {
+        if self.bin_norm <= 1e-8 {
             self.bin_norm = self.rel_bins.iter().cloned().sum::<f64>();
-            // Let's re-normalize the bin widths, since we must be close to
-            // underflow.
+            // Let's re-normalize the bin widths, since we are getting a bit small.
             for w in self.rel_bins.iter_mut() {
                 *w /= self.bin_norm;
             }
