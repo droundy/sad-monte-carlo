@@ -37,8 +37,6 @@ pub struct EnergyMCParams {
     min_gamma: Option<f64>,
     /// The seed for the random number generator.
     pub seed: Option<u64>,
-    /// The highest energy to allow.
-    max_allowed_energy: Option<Energy>,
     _moves: MoveParams,
     /// report input
     pub _report: plugin::ReportParams,
@@ -56,7 +54,6 @@ impl Default for EnergyMCParams {
             min_entropy_guess: None,
             f: 0.5,
             seed: None,
-            max_allowed_energy: None,
             _moves: MoveParams::TranslationScale(0.05 * units::SIGMA),
             _report: plugin::ReportParams::default(),
             _save: plugin::SaveParams::default(),
@@ -86,8 +83,6 @@ pub struct EnergyMC<S> {
     pub moves: u64,
     /// The number of moves that have been accepted.
     pub accepted_moves: u64,
-    /// The highest energy to allow.
-    max_allowed_energy: Option<Energy>,
     /// The move plan
     pub move_plan: MoveParams,
     /// The current translation scale
@@ -343,23 +338,7 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
     type Params = EnergyMCParams;
     type System = S;
     fn from_params(params: EnergyMCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
-        let mut rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
-        // Let's spend a little effort getting an energy that is
-        // within our range of interest.  We are only aiming downward,
-        // because it is unusual that we have trouble getting an
-        // energy that is high enough.
-        if let Some(maxe) = params.max_allowed_energy {
-            for _ in 0..1e8 as u64 {
-                if let Some(newe) = system.plan_move(&mut rng, 0.05 * units::SIGMA) {
-                    if newe < system.energy() {
-                        system.confirm();
-                    }
-                    if system.energy() < maxe {
-                        break;
-                    }
-                }
-            }
-        }
+        let rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
         let f = params.f;
         let min_T = params.min_T;
         let mut lnw = vec![(1. - f).ln(), (1. - f).ln() + f.ln()];
@@ -378,7 +357,6 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
             acceptance_rate: 0.5, // arbitrary starting guess.
             max_energy: system.energy(),
             min_energy: system.energy() - 2.0 * params.min_T,
-            max_allowed_energy: params.max_allowed_energy,
 
             rel_bins: vec![1.0; lnw.len() - 2],
             bin_norm: (lnw.len() - 2) as f64,
@@ -419,16 +397,10 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
         let recent_scale = (1.0 / self.moves as f64).sqrt();
         self.acceptance_rate *= 1. - recent_scale;
         if let Some(e2) = self.system.plan_move(&mut self.rng, self.translation_scale) {
-            let mut out_of_bounds = false;
-            if let Some(maxe) = self.max_allowed_energy {
-                out_of_bounds = e2 > maxe && e2 > e1;
-            }
-            if !out_of_bounds {
-                if !self.reject_move(e1, e2) {
-                    self.accepted_moves += 1;
-                    self.acceptance_rate += recent_scale;
-                    self.system.confirm();
-                }
+            if !self.reject_move(e1, e2) {
+                self.accepted_moves += 1;
+                self.acceptance_rate += recent_scale;
+                self.system.confirm();
             }
         }
         let energy = self.system.energy();
