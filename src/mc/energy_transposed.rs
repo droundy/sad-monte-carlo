@@ -268,12 +268,9 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     *h = false;
                 }
                 self.histogram_since_adding_bin = vec![0; self.histogram.len()];
-                if self.gamma < 0.25 {
+                if self.gamma < GAMMA_INIT {
                     self.gamma *= 2.0; // make gamma a bit bigger to let us explore this new region of energy.
                 }
-                // self.gamma = 0.25; // reset gamma since we have just discovered something potentially important.
-                //                    // println!("opened up a new bin: current energy {}", energy.pretty());
-                //                    // Logger.log(self, &self.system);
             }
         } else if i == self.rel_bins.len() {
             let w = self.rel_bins[i - 1];
@@ -334,6 +331,9 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
     }
 }
 
+const MAX_INIT: usize = 10;  // Looking for 10 initial quantiles requires maybe a dozen megabytes of memory.
+const GAMMA_INIT: f64 = 1.0/((1 << MAX_INIT) as f64);
+
 impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCarlo for EnergyMC<S> {
     type Params = EnergyMCParams;
     type System = S;
@@ -344,7 +344,6 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
 
         // First let's brute-force to find where a number of the quantiles are
         // We look for at most MAX_INIT quantiles.
-        const MAX_INIT: usize = 10;  // Looking for 10 quantiles requires maybe a dozen megabytes of memory.
         let mut energies = Vec::with_capacity(1 << (2*MAX_INIT));
         for _ in 0..1 << (2*MAX_INIT) {
             energies.push(system.randomize(&mut rng));
@@ -391,7 +390,7 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
 
             bin_norm: rel_bins.iter().cloned().sum::<f64>(),
             rel_bins,
-            gamma: 0.25,
+            gamma: GAMMA_INIT,
             histogram: vec![0; lnw.len()],
             histogram_since_adding_bin: vec![0; lnw.len()],
             have_seen: vec![false; lnw.len()],
