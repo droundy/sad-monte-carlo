@@ -365,7 +365,7 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
         let min_energy = energy_boundaries[energy_boundaries.len() - 1];
         let mut lnw = Vec::with_capacity(energy_boundaries.len() + 2);
         lnw.push((1.0 - f).ln());
-        for _ in 0..energy_boundaries.len() {
+        for _ in 0..energy_boundaries.len()-1 {
             lnw.push(lnw[lnw.len() - 1] + f.ln());
         }
         lnw.push(lnw[lnw.len() - 1] + (f / (1. - f)).ln());
@@ -378,6 +378,7 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
             );
         }
 
+        assert_eq!(rel_bins.len()+2, lnw.len());
         EnergyMC {
             min_gamma: params.min_gamma,
             moves: 0,
