@@ -244,7 +244,7 @@ impl System for Wca {
             assert_eq!(egood, self.E);
         }
     }
-    fn randomize(&mut self, rng: &mut MyRng) {
+    fn randomize(&mut self, rng: &mut MyRng) -> Energy {
         let natoms = self.num_atoms();
         for _ in 0..natoms {
             self.cell.remove_atom(0);
@@ -257,6 +257,8 @@ impl System for Wca {
             ));
             self.add_atom_at(r);
         }
+        self.E = self.compute_energy();
+        self.E
     }
 }
 

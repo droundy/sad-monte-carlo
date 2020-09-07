@@ -112,7 +112,7 @@ impl System for Any {
     fn compute_energy(&self) -> Energy {
         self.movable().compute_energy()
     }
-    fn randomize(&mut self, rng: &mut MyRng) {
+    fn randomize(&mut self, rng: &mut MyRng) -> Energy {
         self.movable_mut().randomize(rng)
     }
 }
@@ -167,7 +167,7 @@ impl System for AnyGrand {
     fn compute_energy(&self) -> Energy {
         self.grand().compute_energy()
     }
-    fn randomize(&mut self, rng: &mut MyRng) {
+    fn randomize(&mut self, rng: &mut MyRng) -> Energy {
         self.grand_mut().randomize(rng)
     }
 }

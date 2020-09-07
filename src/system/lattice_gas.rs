@@ -69,10 +69,12 @@ impl System for LatticeGas {
     fn delta_energy(&self) -> Option<Energy> {
         Some(units::EPSILON)
     }
-    fn randomize(&mut self, rng: &mut MyRng) {
+    fn randomize(&mut self, rng: &mut MyRng) -> Energy {
         for x in self.N.iter_mut() {
             *x = (rng.next_u64() & 1) as i8;
         }
+        self.E = self.compute_energy();
+        self.E
     }
 }
 

@@ -76,10 +76,12 @@ impl System for Ising {
     fn delta_energy(&self) -> Option<Energy> {
         Some(4. * units::EPSILON)
     }
-    fn randomize(&mut self, rng: &mut MyRng) {
+    fn randomize(&mut self, rng: &mut MyRng) -> Energy {
         for x in self.S.iter_mut() {
             *x = (rng.next_u64() as i8 & 1) * 2 - 1;
         }
+        self.E = self.compute_energy();
+        self.E
     }
 }
 

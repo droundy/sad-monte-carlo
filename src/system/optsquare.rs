@@ -199,7 +199,7 @@ impl System for SquareWell {
     fn verify_energy(&self) {
         assert_eq!(self.E, self.compute_energy_slowly());
     }
-    fn randomize(&mut self, _: &mut MyRng) {
+    fn randomize(&mut self, _: &mut MyRng) -> Energy {
         todo!()
     }
 }

@@ -231,7 +231,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     .min()
                     .unwrap()
                     > 0
-                && min_of(&self.rel_bins) > min_w
+                && self.rel_bins[self.rel_bins.len()-1] > min_w
             {
                 // We add a new low energy bin under the following circumstances:
                 //
@@ -337,17 +337,47 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
 impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCarlo for EnergyMC<S> {
     type Params = EnergyMCParams;
     type System = S;
-    fn from_params(params: EnergyMCParams, system: S, save_as: ::std::path::PathBuf) -> Self {
-        let rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
+    fn from_params(params: EnergyMCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
+        let mut rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
         let f = params.f;
         let min_T = params.min_T;
-        let mut lnw = vec![(1. - f).ln(), (1. - f).ln() + f.ln()];
-        if let Some(min_entropy) = params.min_entropy_guess {
-            while lnw[lnw.len() - 1] > min_entropy {
-                lnw.push(lnw[lnw.len() - 1] + f.ln());
+
+        // First let's brute-force to find where a number of the quantiles are
+        // We look for at most MAX_INIT quantiles.
+        const MAX_INIT: usize = 10;  // Looking for 10 quantiles requires maybe a dozen megabytes of memory.
+        let mut energies = Vec::with_capacity(1 << (2*MAX_INIT));
+        for _ in 0..1 << (2*MAX_INIT) {
+            energies.push(system.randomize(&mut rng));
+        }
+        energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let mut energy_boundaries = Vec::with_capacity(MAX_INIT);
+        energy_boundaries.push(energies[1 << MAX_INIT]);
+        for i in (0..MAX_INIT).rev() {
+            let here = energies[1 << i];
+            if *energy_boundaries.last().unwrap() > here + params.min_T {
+                energy_boundaries.push(here);
+            } else {
+                break;
             }
         }
+        std::mem::drop(energies); // Just to save on RAM...
+        let max_energy = energy_boundaries[0];
+        let min_energy = energy_boundaries[energy_boundaries.len() - 1];
+        let mut lnw = Vec::with_capacity(energy_boundaries.len() + 2);
+        lnw.push((1.0 - f).ln());
+        for _ in 0..energy_boundaries.len() {
+            lnw.push(lnw[lnw.len() - 1] + f.ln());
+        }
         lnw.push(lnw[lnw.len() - 1] + (f / (1. - f)).ln());
+
+        let mut rel_bins = Vec::with_capacity(lnw.len());
+        for i in 0..energy_boundaries.len() - 1 {
+            rel_bins.push(
+                *((energy_boundaries[i] - energy_boundaries[i + 1]) / (max_energy - min_energy))
+                    .value(),
+            );
+        }
+
         EnergyMC {
             min_gamma: params.min_gamma,
             moves: 0,
@@ -355,11 +385,11 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
             f,
             accepted_moves: 0,
             acceptance_rate: 0.5, // arbitrary starting guess.
-            max_energy: system.energy(),
-            min_energy: system.energy() - 2.0 * params.min_T,
+            max_energy,
+            min_energy,
 
-            rel_bins: vec![1.0; lnw.len() - 2],
-            bin_norm: (lnw.len() - 2) as f64,
+            bin_norm: rel_bins.iter().cloned().sum::<f64>(),
+            rel_bins,
             gamma: 0.25,
             histogram: vec![0; lnw.len()],
             histogram_since_adding_bin: vec![0; lnw.len()],

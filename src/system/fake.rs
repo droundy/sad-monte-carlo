@@ -81,10 +81,11 @@ impl System for Fake {
     fn compute_energy(&self) -> Energy {
         self.energy()
     }
-    fn randomize(&mut self, rng: &mut MyRng) {
+    fn randomize(&mut self, rng: &mut MyRng) -> Energy {
         for x in self.position.iter_mut() {
             *x = rng.gen_range(0.0, 1.0);
         }
+        self.energy()
     }
 }
 

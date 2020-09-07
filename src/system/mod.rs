@@ -54,7 +54,7 @@ pub trait System {
     /// just access a cached variable.
     fn energy(&self) -> Energy;
     /// Completely randomizes the system
-    fn randomize(&mut self, _: &mut MyRng);
+    fn randomize(&mut self, _: &mut MyRng) -> Energy;
     /// Returns the energy of the system the hard way.  This is slow,
     /// and should only be used as a test that the changes of energy
     /// are being tracked properly.

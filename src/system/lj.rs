@@ -242,7 +242,6 @@ impl System for Lj {
         }
         e
     }
-    fn update_caches(&mut self) {}
     fn lowest_possible_energy(&self) -> Option<Energy> {
         let n = self.positions.len() as f64;
         Some(-0.5 * n * (n - 1.0) * units::EPSILON)
@@ -260,7 +259,7 @@ impl System for Lj {
             assert_eq!(egood, self.E);
         }
     }
-    fn randomize(&mut self, rng: &mut MyRng) {
+    fn randomize(&mut self, rng: &mut MyRng) -> Energy {
         for x in self.positions.iter_mut() {
             let mut r;
             loop {
@@ -275,6 +274,8 @@ impl System for Lj {
             }
             *x = r*self.max_radius;
         }
+        self.E = self.compute_energy();
+        self.E
     }
 }
 
