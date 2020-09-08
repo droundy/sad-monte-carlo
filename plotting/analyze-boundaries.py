@@ -258,6 +258,6 @@ for key in lnw:
 
 plt.figure('entropy')
 plt.tight_layout()
-plt.legend(loc='upper right')
+plt.legend(loc='best')
     
 plt.show()
