@@ -168,9 +168,9 @@ for key in lnw:
     elif 'quadratic' in key:
         print('\n\n\nusing the quadratic_density_of_states\n\n\n')
         exact_density_of_states = quadratic_density_of_states
-    elif systems[key] == 'Gaussian':
-        print('\n\n\nusing the quadratic_density_of_states\n\n\n')
-        sigma = systems['key']['sigma']
+    elif systems[key]['kind'] == 'Gaussian':
+        print('\n\n\nusing the gaussian_density_of_states\n\n\n')
+        sigma = systems[key]['sigma']
         exact_density_of_states = gaussian_density_of_states
     elif systems[key]['kind'] == 'Erfinv':
         print('\n\n\nusing the erfinv\n\n\n')
