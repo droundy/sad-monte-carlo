@@ -353,7 +353,7 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
         energy_boundaries.push(energies[1 << MAX_INIT]);
         for i in (0..MAX_INIT).rev() {
             let here = energies[1 << i];
-            if *energy_boundaries.last().unwrap() > here + params.min_T {
+            if *energy_boundaries.last().unwrap() > here + params.min_T || energy_boundaries.len() < 3 {
                 energy_boundaries.push(here);
             } else {
                 break;
