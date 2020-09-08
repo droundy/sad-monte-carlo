@@ -21,7 +21,7 @@ def linear_density_of_states(E):
 def quadratic_density_of_states(E):
     return 1.5*np.sqrt(E)*np.heaviside(E, 0)*np.heaviside(1-E, 0)
 def gaussian_density_of_states(E):
-    return (np.pi*(sigma**3)*np.sqrt(32*np.log(-1/E))) / -E
+    return (np.pi*(sigma**3)*np.sqrt(32*np.log(-1/E))) / -E / (4*np.pi/3)
 def other_density_of_states(E):
     return np.zeros_like(E)
 def erfinv_density_of_states(E):
