@@ -13,7 +13,7 @@ use super::plugin::Plugin;
 use rand::{Rng, SeedableRng};
 use std::default::Default;
 
-use dimensioned::Dimensionless;
+use dimensioned::{Abs, Dimensionless};
 
 /// Parameters to configure the moves.
 #[derive(Serialize, Deserialize, Debug, AutoArgs, Clone)]
@@ -31,8 +31,6 @@ pub struct EnergyMCParams {
     pub f: f64,
     /// The lowest temperature of interest
     min_T: Energy,
-    /// An initial guess at the entropy of the smallest bin
-    min_entropy_guess: Option<f64>,
     /// After gamma drops to this value, begin a "production" run
     min_gamma: Option<f64>,
     /// The seed for the random number generator.
@@ -51,7 +49,6 @@ impl Default for EnergyMCParams {
         EnergyMCParams {
             min_gamma: None,
             min_T: 0.2 * units::EPSILON,
-            min_entropy_guess: None,
             f: 0.5,
             seed: None,
             _moves: MoveParams::TranslationScale(0.05 * units::SIGMA),
@@ -60,10 +57,6 @@ impl Default for EnergyMCParams {
             _movies: plugin::MovieParams::default(),
         }
     }
-}
-
-fn min_of(stuff: &[f64]) -> f64 {
-    stuff.iter().cloned().fold(0. / 0., f64::min)
 }
 
 /// A square well fluid.
@@ -116,6 +109,10 @@ pub struct EnergyMC<S> {
     pub have_seen: Vec<bool>,
     /// The total energy in each bin
     pub total_energy: Vec<Energy>,
+    /// The total energy in our average of the min_energy
+    pub min_energy_total: Energy,
+    /// The count of the min_energy average
+    pub min_energy_count: u64,
 }
 
 impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
@@ -124,6 +121,20 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
     fn reject_move(&mut self, e1: Energy, e2: Energy) -> bool {
         let lnw1 = self.lnw[self.e_to_idx(e1)];
         let lnw2 = self.lnw[self.e_to_idx(e2)];
+        if self.rel_bins[self.rel_bins.len() - 1] < 1e-10 * self.bin_norm {
+            println!(
+                "  We are in crazy land {} -> {}:\n  {:10} -> {:10}\n  {:10} -> {:10}\n  {:10} -> {:10}",
+                crate::prettyfloat::PrettyFloat(self.rel_bins[self.rel_bins.len() - 1] / self.bin_norm),
+                crate::prettyfloat::PrettyFloat((lnw1 - lnw2).exp()),
+                e1.pretty(),
+                e2.pretty(),
+                lnw1,
+                lnw2,
+                self.e_to_idx(e1),
+                self.e_to_idx(e2)
+            );
+            assert!(false);
+        }
         lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
     }
     fn e_to_idx(&self, energy: Energy) -> usize {
@@ -194,6 +205,19 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 *((wid + de) / (self.max_energy - self.min_energy)).value() * self.bin_norm;
         } else if i == self.rel_bins.len() + 1 {
             // We are in the low-energy bin.
+            self.min_energy_count += 1;
+            self.min_energy_total += self.min_energy;
+            let min_energy_mean = self.min_energy_total / self.min_energy_count as f64;
+            if (min_energy_mean - self.min_energy).abs() > self.min_T {
+                // The minimum energy has shifted a fair amount...
+                self.histogram_since_adding_bin
+                    .iter_mut()
+                    .map(|x| *x = 0)
+                    .count(); // reset histogram
+                self.min_energy_count = 1;
+                self.min_energy_total = self.min_energy;
+            }
+
             let w = self.rel_bins[i - 2];
             let old_breadth = self.max_energy - self.min_energy;
             let wid = w * old_breadth / self.bin_norm;
@@ -222,7 +246,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 println!("this gives min_w of {}", min_w);
                 assert!(false);
             }
-            let de = self.min_energy - mean_here;
+            let de = min_energy_mean - mean_here;
             if de > self.min_T
                 && self
                     .histogram_since_adding_bin
@@ -250,6 +274,12 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 // This should allow us to more rapidly explore lower energies.
                 let my_relw = -*(self.bin_norm * de / (self.max_energy - self.min_energy)).value()
                     * self.f.ln();
+                if true {
+                    // FIXME Set the above to false for less verbosity, when I finish debugging.
+                    println!("\nAdding new bin with width {}", de.pretty());
+                    self.log_me();
+                    println!("");
+                }
                 // remove the unbound bin
                 self.lnw.pop();
                 // for _ in 0..10 {
@@ -332,7 +362,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
 }
 
 const MAX_INIT: usize = 10;  // Looking for 10 initial quantiles requires maybe a dozen megabytes of memory.
-const GAMMA_INIT: f64 = 1.0/((1 << MAX_INIT) as f64);
+const GAMMA_INIT: f64 = 0.25;
 
 impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCarlo for EnergyMC<S> {
     type Params = EnergyMCParams;
@@ -410,6 +440,8 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
             save: plugin::Save::from(params._save),
             movies: plugin::Movie::from(params._movies),
             manager: plugin::PluginManager::new(),
+            min_energy_count: 1,
+            min_energy_total: min_energy,
         }
     }
     fn update_from_params(&mut self, params: Self::Params) {
@@ -462,92 +494,63 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
     }
 }
 
+impl<S: MovableSystem> EnergyMC<S> {
+    fn log_me(&self) {
+        println!(
+            "        E_hi  = {:10.5} (mean {:8.3} from {:.3}): {:.3}",
+            self.max_energy.pretty(),
+            (self.total_energy[0] / self.histogram[0] as f64).pretty(),
+            crate::prettyfloat::PrettyFloat(self.histogram[0] as f64),
+            crate::prettyfloat::PrettyFloat(self.histogram_since_adding_bin[0] as f64),
+        );
+        let i_current = self.e_to_idx(self.system.energy());
+        println!(
+            "        E_now = {:10.5} (mean {:8.3} from {:.3}): {:.3} i = {}",
+            self.system.energy().pretty(),
+            (self.total_energy[i_current] / self.histogram[i_current] as f64).pretty(),
+            crate::prettyfloat::PrettyFloat(self.histogram[i_current] as f64),
+            crate::prettyfloat::PrettyFloat(self.histogram_since_adding_bin[i_current] as f64),
+            i_current,
+        );
+        let de_po = (self.max_energy - self.min_energy) * self.rel_bins[self.rel_bins.len() - 1]
+            / self.bin_norm;
+        println!(
+            "  lo Delta E  = {:10.5} (mean {:8.3} from {:.3}): {:.3}",
+            de_po.pretty(),
+            (self.total_energy[self.histogram.len() - 2]
+                / self.histogram[self.histogram.len() - 2] as f64)
+                .pretty(),
+            crate::prettyfloat::PrettyFloat(self.histogram[self.histogram.len() - 2] as f64),
+            crate::prettyfloat::PrettyFloat(
+                self.histogram_since_adding_bin[self.histogram.len() - 2] as f64
+            ),
+        );
+        println!(
+            "        E_lo  = {:10.5} (mean {:8.3} from {:.3}): {:.3}",
+            self.min_energy.pretty(),
+            (self.total_energy[self.histogram.len() - 1]
+                / self.histogram[self.histogram.len() - 1] as f64)
+                .pretty(),
+            crate::prettyfloat::PrettyFloat(self.histogram[self.histogram.len() - 1] as f64),
+            crate::prettyfloat::PrettyFloat(
+                self.histogram_since_adding_bin[self.histogram.len() - 1] as f64
+            ),
+        );
+        println!(
+            "        {} [n_bins = {}, gamma = {:.2}]",
+            self.system.describe(),
+            self.rel_bins.len() + 2,
+            crate::prettyfloat::PrettyFloat(self.gamma)
+        );
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 struct Logger;
 impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> Plugin<EnergyMC<S>>
     for Logger
 {
-    fn log(&self, mc: &EnergyMC<S>, sys: &S) {
-        // let print_am_here = |i| {
-        //     if i == mc.e_to_idx(sys.energy()) {
-        //         print!(" >");
-        //     } else {
-        //         print!("  ");
-        //     }
-        // };
-        // let mut etop = mc.max_energy;
-        // let mut ebot;
-        // let mut i = 0;
-        // print_am_here(i);
-        // println!("  {:8.5} -> infty   : {}", etop.pretty(), mc.histogram[i]);
-        // let dedw = (mc.max_energy - mc.min_energy) / mc.bin_norm;
-        // while i < mc.rel_bins.len() {
-        //     ebot = etop - dedw * mc.rel_bins[i];
-        //     print_am_here(i + 1);
-        //     println!(
-        //         "  {:8.5} -> {:8.5}: {}",
-        //         ebot.pretty(),
-        //         etop.pretty(),
-        //         mc.histogram[i + 1]
-        //     );
-        //     i += 1;
-        //     etop = ebot;
-        // }
-        // print_am_here(i + 1);
-        // println!(
-        //     "  -infty   -> {:8.5}: {}",
-        //     etop.pretty(),
-        //     mc.histogram[i + 1]
-        // );
-        println!(
-            "        E_hi  = {:10.5} (mean {:8.3} from {:.3}): {:.3}",
-            mc.max_energy.pretty(),
-            (mc.total_energy[0] / mc.histogram[0] as f64).pretty(),
-            crate::prettyfloat::PrettyFloat(mc.histogram[0] as f64),
-            crate::prettyfloat::PrettyFloat(mc.histogram_since_adding_bin[0] as f64),
-        );
-        let i_current = mc.e_to_idx(sys.energy());
-        println!(
-            "        E_now = {:10.5} (mean {:8.3} from {:.3}): {:.3} i = {}",
-            sys.energy().pretty(),
-            (mc.total_energy[i_current] / mc.histogram[i_current] as f64).pretty(),
-            crate::prettyfloat::PrettyFloat(mc.histogram[i_current] as f64),
-            crate::prettyfloat::PrettyFloat(mc.histogram_since_adding_bin[i_current] as f64),
-            i_current,
-        );
-        let de_po =
-            (mc.max_energy - mc.min_energy) * mc.rel_bins[mc.rel_bins.len() - 1] / mc.bin_norm;
-        println!(
-            "  lo Delta E  = {:10.5} (mean {:8.3} from {:.3}): {:.3}",
-            de_po.pretty(),
-            (mc.total_energy[mc.histogram.len() - 2] / mc.histogram[mc.histogram.len() - 2] as f64)
-                .pretty(),
-            crate::prettyfloat::PrettyFloat(mc.histogram[mc.histogram.len() - 2] as f64),
-            crate::prettyfloat::PrettyFloat(
-                mc.histogram_since_adding_bin[mc.histogram.len() - 2] as f64
-            ),
-        );
-        println!(
-            "        E_lo  = {:10.5} (mean {:8.3} from {:.3}): {:.3}",
-            mc.min_energy.pretty(),
-            (mc.total_energy[mc.histogram.len() - 1] / mc.histogram[mc.histogram.len() - 1] as f64)
-                .pretty(),
-            crate::prettyfloat::PrettyFloat(mc.histogram[mc.histogram.len() - 1] as f64),
-            crate::prettyfloat::PrettyFloat(
-                mc.histogram_since_adding_bin[mc.histogram.len() - 1] as f64
-            ),
-        );
-        println!(
-            "        {} [n_bins = {}, gamma = {:.2}]",
-            sys.describe(),
-            mc.rel_bins.len() + 2,
-            crate::prettyfloat::PrettyFloat(mc.gamma)
-        );
-        // println!(
-        //     "        norm: {} vs. {} vs. {}",
-        //     mc.bin_norm,
-        //     mc.rel_bins.iter().cloned().sum::<f64>(),
-        //     mc.rel_bins.iter().cloned().rev().sum::<f64>(),
-        // );
+    fn log(&self, mc: &EnergyMC<S>, _sys: &S) {
+        mc.log_me();
     }
 }
