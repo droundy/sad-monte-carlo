@@ -16,7 +16,7 @@ pub struct IsingParams {
 
 #[allow(non_snake_case)]
 /// An Ising model.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Ising {
     /// The energy of the system
     E: Energy,

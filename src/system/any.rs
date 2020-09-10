@@ -53,7 +53,7 @@ pub enum AnyGrand {
 
 #[allow(non_snake_case)]
 /// An Any model.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Any {
     /// A fake system
     Fake(fake::Fake),

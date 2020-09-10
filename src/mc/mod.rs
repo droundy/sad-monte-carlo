@@ -5,6 +5,7 @@ pub mod energy;
 pub mod energy_binning;
 pub mod energy_number;
 pub mod energy_transposed;
+pub mod energy_replicas;
 pub mod grand_transposed;
 pub mod number;
 pub mod plugin;

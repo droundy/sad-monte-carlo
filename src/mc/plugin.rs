@@ -282,7 +282,9 @@ pub struct SaveParams {
 
 impl Default for SaveParams {
     fn default() -> Self {
-        SaveParams { save_time: Some(1.0) }
+        SaveParams {
+            save_time: Some(1.0),
+        }
     }
 }
 impl Default for Save {
@@ -319,10 +321,10 @@ impl Save {
                         let moves_per_period = 1 + (period / time_per_move) as u64;
                         if moves_per_period < moves {
                             self.next_output.set(moves + moves_per_period);
-                        } else if moves as f64 + 1.0 < 1.0/time_per_move {
-                            self.next_output.set((1.0/time_per_move) as u64);
+                        } else if moves as f64 + 1.0 < 1.0 / time_per_move {
+                            self.next_output.set((1.0 / time_per_move) as u64);
                         } else {
-                            self.next_output.set(moves*2);
+                            self.next_output.set(moves * 2);
                         }
                     }
                     None => {
@@ -386,12 +388,16 @@ impl From<MovieParams> for Movie {
         }
     }
 }
+impl Default for Movie {
+    fn default() -> Self {
+        Movie::from(MovieParams::default())
+    }
+}
 impl Movie {
     /// Save a frame of the movie.
-    pub fn save_frame<MC: MonteCarlo>(&self, mc: &MC) {
-        let dir = mc.save_as().with_extension("");
+    pub fn save_frame<MC: serde::Serialize>(&self, save_as: &std::path::Path, moves: u64, mc: &MC) {
+        let dir = save_as.with_extension("");
         let dir = std::path::Path::new(&dir);
-        let moves = mc.num_moves();
         let path = dir.join(format!("{:014}.cbor", moves));
         println!("Saving movie as {:?}", path);
 
@@ -399,15 +405,13 @@ impl Movie {
         let f = AtomicFile::create(&path).expect(&format!("error creating file {:?}", path));
         serde_cbor::to_writer(&f, mc).expect("error writing movie frame?!");
     }
-}
-impl<MC: MonteCarlo> Plugin<MC> for Movie {
-    fn run(&self, mc: &MC, _sys: &MC::System) -> Action {
+    /// Is it time for a movie?
+    ///
+    /// Allows to use just the save plugin by itself without the rest of
+    /// the plugin infrastructure. Returns true if we should save a movie frame now.
+    pub fn shall_i_save(&self, moves: u64) -> bool {
         if let Some(time) = self.movie_time {
-            let moves = mc.num_moves();
             if plugin::TimeToRun::TotalMoves(moves) == self.period.get() {
-                // Save movie now.
-                self.save_frame(mc);
-
                 // Now decide when we need the next frame to be.
                 let mut which_frame = self.which_frame.get() + 1;
                 let mut next_time = (time.powi(which_frame) + 0.5) as u64;
@@ -417,9 +421,18 @@ impl<MC: MonteCarlo> Plugin<MC> for Movie {
                 }
                 self.which_frame.set(which_frame);
                 self.period.set(plugin::TimeToRun::TotalMoves(next_time));
-
-                return plugin::Action::Save;
+                return true;
             }
+        }
+        false
+    }
+}
+impl<MC: MonteCarlo> Plugin<MC> for Movie {
+    fn run(&self, mc: &MC, _sys: &MC::System) -> Action {
+        if self.shall_i_save(mc.num_moves()) {
+            // Save movie now.
+            self.save_frame(&mc.save_as(), mc.num_moves(), mc);
+            return plugin::Action::Save;
         }
         plugin::Action::None
     }
