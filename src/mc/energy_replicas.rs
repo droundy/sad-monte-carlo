@@ -192,29 +192,32 @@ impl<
 
         // First let's brute-force to find where a number of the quantiles are
         // We look for at most MAX_INIT quantiles.
-        let mut energies = Vec::with_capacity(1 << (2 * MAX_INIT));
-        for _ in 0..1 << (2 * MAX_INIT) {
+        let mut energies = Vec::with_capacity(1 << MAX_INIT);
+        for _ in 0..1 << MAX_INIT {
             energies.push(system.randomize(&mut rng));
         }
         let mut high_system = system.clone();
         high_system.randomize(&mut rng);
-        while system.energy() > energies[1 << MAX_INIT] {
+        while system.energy() > energies[energies.len()/2] {
             system.randomize(&mut rng);
         }
         energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        for (i,e) in energies.iter().enumerate() {
+            println!("  {:3}: {}", i, e.pretty());
+        }
         let replicas = vec![
             Replica::new(
                 0,
                 Energy::new(std::f64::INFINITY),
-                energies[1 << MAX_INIT],
+                energies[energies.len()/2],
                 high_system,
                 HashSet::new(),
                 rng.clone(),
             ),
             Replica::new(
                 1,
-                energies[1 << MAX_INIT],
-                energies[1 << (MAX_INIT - 1)],
+                energies[energies.len()/2],
+                energies[energies.len()/4],
                 system,
                 HashSet::new(),
                 rng.clone(),
