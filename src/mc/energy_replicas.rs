@@ -188,36 +188,36 @@ impl<
         let mut rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
         let min_T = params.min_T;
 
-        const MAX_INIT: usize = 10; // Looking for 10 initial quantiles requires maybe a dozen megabytes of memory.
+        const MAX_INIT: usize = 1 << 15; // Number of energies to use in computing the first couple of quantiles.
 
         // First let's brute-force to find where a number of the quantiles are
         // We look for at most MAX_INIT quantiles.
-        let mut energies = Vec::with_capacity(1 << MAX_INIT);
-        for _ in 0..1 << MAX_INIT {
+        let mut energies = Vec::with_capacity(MAX_INIT);
+        for _ in 0..MAX_INIT {
             energies.push(system.randomize(&mut rng));
         }
         let mut high_system = system.clone();
         high_system.randomize(&mut rng);
-        while system.energy() > energies[energies.len()/2] {
+        while system.energy() > energies[energies.len() / 2] {
             system.randomize(&mut rng);
         }
         energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        for (i,e) in energies.iter().enumerate() {
+        for (i, e) in energies.iter().enumerate() {
             println!("  {:3}: {}", i, e.pretty());
         }
         let replicas = vec![
             Replica::new(
                 0,
                 Energy::new(std::f64::INFINITY),
-                energies[energies.len()/2],
+                energies[energies.len() / 2],
                 high_system,
                 HashSet::new(),
                 rng.clone(),
             ),
             Replica::new(
                 1,
-                energies[energies.len()/2],
-                energies[energies.len()/4],
+                energies[energies.len() / 2],
+                energies[energies.len() / 4],
                 system,
                 HashSet::new(),
                 rng.clone(),
@@ -299,8 +299,7 @@ impl<
         for r in self.replicas.iter() {
             let percent = r.above_count as f64 / (r.above_count as f64 + r.below_count as f64);
             println!(
-                "       {} < {:9.5} [{:.2}%, {:.3} independent]",
-                r.max_energy.pretty(),
+                "       < {:9.5} [{:.2}%, {:.3} independent]",
                 r.cutoff_energy.pretty(),
                 crate::prettyfloat::PrettyFloat(100.0 * percent),
                 crate::prettyfloat::PrettyFloat(r.independent_count as f64),
@@ -383,18 +382,20 @@ impl<
             self.replicas.push(r);
         }
 
-        self.moves += 1;
-        let movie_time = self.movie.shall_i_save(self.moves);
-        if movie_time {
-            self.movie.save_frame(&self.save_as, self.moves, &self);
-        }
-        if self.report.am_all_done(self.moves) {
-            self.checkpoint();
-            println!("All done!");
-            ::std::process::exit(0);
-        }
-        if self.save.shall_i_save(self.moves) || movie_time {
-            self.checkpoint();
+        for _ in 0..self.replicas.len() {
+            self.moves += 1;
+            let movie_time = self.movie.shall_i_save(self.moves);
+            if movie_time {
+                self.movie.save_frame(&self.save_as, self.moves, &self);
+            }
+            if self.report.am_all_done(self.moves) {
+                self.checkpoint();
+                println!("All done!");
+                ::std::process::exit(0);
+            }
+            if self.save.shall_i_save(self.moves) || movie_time {
+                self.checkpoint();
+            }
         }
     }
 }
