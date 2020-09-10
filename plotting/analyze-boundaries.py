@@ -5,6 +5,7 @@ import yaml, cbor, argparse, sys
 import scipy.constants as const
 import scipy.optimize as optimize
 import matplotlib.pyplot as plt
+import colorcet as cc
 
 parser = argparse.ArgumentParser(description="fake energies analysis")
 parser.add_argument('base', nargs='*', help = 'the yaml or cbor file')
@@ -13,7 +14,8 @@ args = parser.parse_args()
 
 
 prop_cycle = plt.rcParams['axes.prop_cycle']
-colors = list(prop_cycle.by_key()['color'])
+
+colors = cc.glasbey_dark
 
 
 def linear_density_of_states(E):
@@ -136,6 +138,8 @@ lnw = {}
 systems = {}
 #each file has different path (including extension) so concatenating is easy
 for base in args.base:
+    if '.cbor' in base or '.yaml' in base:
+        base = base[:-5]
     print(base)
     energy_boundaries[base] = np.loadtxt(base+'-energy-boundaries.dat')
     mean_energy[base] = np.loadtxt(base+'-mean-energy.dat')

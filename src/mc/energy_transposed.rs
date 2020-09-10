@@ -113,7 +113,12 @@ pub struct EnergyMC<S> {
     pub min_energy_total: Energy,
     /// The count of the min_energy average
     pub min_energy_count: u64,
+    /// The recent mean of the acceptance probability.  This is a
+    /// logarithmically waverage.
+    pub recent_acceptance_probability: f64,
 }
+
+const RECENT_ACCEPTANCE: f64 = 1.0/16.0;
 
 impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
     /// This decides whether to reject the move based on the actual
@@ -135,7 +140,13 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
             );
             assert!(false);
         }
-        lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp()
+        if lnw2 > lnw1 {
+            let prob = (lnw1 - lnw2).exp();
+            self.recent_acceptance_probability = self.recent_acceptance_probability*(1.0-RECENT_ACCEPTANCE) + prob*RECENT_ACCEPTANCE;
+            self.rng.gen::<f64>() > prob
+        } else {
+            false
+        }
     }
     fn e_to_idx(&self, energy: Energy) -> usize {
         let mut e = self.min_energy;
@@ -246,8 +257,18 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 println!("this gives min_w of {}", min_w);
                 assert!(false);
             }
+            if self.recent_acceptance_probability < self.gamma {
+                println!("\nWe are in crazy land already! Recent acceptance probability = {:.3}, while gamma = {:.3}, E = {}",
+                    crate::prettyfloat::PrettyFloat(self.recent_acceptance_probability),
+                    crate::prettyfloat::PrettyFloat(self.gamma),
+                    energy.pretty(),
+                );
+                // assert!(false);
+            }
+    
             let de = min_energy_mean - mean_here;
             if de > self.min_T
+                && self.recent_acceptance_probability > self.gamma.sqrt()
                 && self
                     .histogram_since_adding_bin
                     .iter()
@@ -298,8 +319,9 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     *h = false;
                 }
                 self.histogram_since_adding_bin = vec![0; self.histogram.len()];
-                if self.gamma < GAMMA_INIT {
-                    self.gamma *= 2.0; // make gamma a bit bigger to let us explore this new region of energy.
+                let newgamma = 4.0*self.gamma;
+                if newgamma <= GAMMA_INIT {
+                    self.gamma = newgamma; // make gamma a bit bigger to let us explore this new region of energy.
                 }
             }
         } else if i == self.rel_bins.len() {
@@ -442,6 +464,7 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
             manager: plugin::PluginManager::new(),
             min_energy_count: 1,
             min_energy_total: min_energy,
+            recent_acceptance_probability: 1.0,
         }
     }
     fn update_from_params(&mut self, params: Self::Params) {
@@ -537,10 +560,11 @@ impl<S: MovableSystem> EnergyMC<S> {
             ),
         );
         println!(
-            "        {} [n_bins = {}, gamma = {:.2}]",
+            "        {} [n_bins = {}, gamma = {:.2}, P_recent = {:.2}]",
             self.system.describe(),
             self.rel_bins.len() + 2,
-            crate::prettyfloat::PrettyFloat(self.gamma)
+            crate::prettyfloat::PrettyFloat(self.gamma),
+            crate::prettyfloat::PrettyFloat(self.recent_acceptance_probability),
         );
     }
 }
