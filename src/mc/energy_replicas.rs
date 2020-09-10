@@ -26,6 +26,8 @@ pub struct MCParams {
     pub _movies: plugin::MovieParams,
     /// report input
     pub _save: plugin::SaveParams,
+    /// report input
+    pub _report: plugin::ReportParams,
 }
 
 impl Default for MCParams {
@@ -35,6 +37,7 @@ impl Default for MCParams {
             seed: None,
             _save: plugin::SaveParams::default(),
             _movies: plugin::MovieParams::default(),
+            _report: plugin::ReportParams::default(),
         }
     }
 }
@@ -106,14 +109,22 @@ impl<S: MovableSystem> Replica<S> {
         }
     }
     fn run_once(&mut self) {
-        if let Some(e) = self.system.plan_move(&mut self.rng, Length::new(0.05)) {
-            if e < self.max_energy {
-                self.system.confirm();
+        if self.max_energy.value_unsafe.is_finite() {
+            if let Some(e) = self.system.plan_move(&mut self.rng, self.translation_scale) {
+                if e < self.max_energy {
+                    self.system.confirm();
+                } else {
+                    self.rejected_count += 1;
+                }
             } else {
                 self.rejected_count += 1;
             }
         } else {
-            self.rejected_count += 1;
+            // If there is no upper bound, we can just entirely randomize the system.
+            self.system.randomize(&mut self.rng);
+            self.system_visited = HashSet::new();
+            self.system_visited.insert(self.id);
+            self.independent_count += 1;
         }
         let e = self.system.energy();
         if e > self.cutoff_energy {
@@ -127,15 +138,15 @@ impl<S: MovableSystem> Replica<S> {
     fn occasional_update(&mut self) {
         let moves = self.above_count + self.below_count;
         let rejection_rate = self.rejected_count as f64 / moves as f64;
-        if (rejection_rate - 0.5).abs() > 0.1 {
+        if (rejection_rate - 0.5).abs() > 0.1 && self.max_energy.value_unsafe.is_finite() {
             let old_scale = self.translation_scale;
             self.translation_scale *= 0.5 / rejection_rate;
             println!(
-                "    ({:.5}) Updating translation scale from {:.2} -> {:.2} [rejection rate {:.2}",
+                "    ({:.5}) Updating translation scale from {:.2} -> {:.2} [{:.2}%]",
                 self.max_energy.pretty(),
                 old_scale.pretty(),
                 self.translation_scale.pretty(),
-                crate::prettyfloat::PrettyFloat(rejection_rate),
+                crate::prettyfloat::PrettyFloat(100.0 * rejection_rate),
             );
         }
     }
@@ -156,14 +167,12 @@ pub struct MC<S> {
     /// The relative sizes of the bins
     pub replicas: Vec<Replica<S>>,
     /// How frequently to save...
-    #[serde(skip, default)]
     save: plugin::Save,
     /// Movie state
-    #[serde(skip, default)]
     movie: plugin::Movie,
+    /// Movie state
+    report: plugin::Report,
 }
-
-const MAX_INIT: usize = 10; // Looking for 10 initial quantiles requires maybe a dozen megabytes of memory.
 
 impl<
         S: Clone
@@ -179,21 +188,38 @@ impl<
         let mut rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
         let min_T = params.min_T;
 
+        const MAX_INIT: usize = 10; // Looking for 10 initial quantiles requires maybe a dozen megabytes of memory.
+
         // First let's brute-force to find where a number of the quantiles are
         // We look for at most MAX_INIT quantiles.
         let mut energies = Vec::with_capacity(1 << (2 * MAX_INIT));
         for _ in 0..1 << (2 * MAX_INIT) {
             energies.push(system.randomize(&mut rng));
         }
+        let mut high_system = system.clone();
+        high_system.randomize(&mut rng);
+        while system.energy() > energies[1 << MAX_INIT] {
+            system.randomize(&mut rng);
+        }
         energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        let replicas = vec![Replica::new(
-            0,
-            energies[1 << MAX_INIT],
-            energies[1 << (MAX_INIT + 1)],
-            system,
-            HashSet::new(),
-            rng.clone(),
-        )];
+        let replicas = vec![
+            Replica::new(
+                0,
+                Energy::new(std::f64::INFINITY),
+                energies[1 << MAX_INIT],
+                high_system,
+                HashSet::new(),
+                rng.clone(),
+            ),
+            Replica::new(
+                1,
+                energies[1 << MAX_INIT],
+                energies[1 << (MAX_INIT - 1)],
+                system,
+                HashSet::new(),
+                rng.clone(),
+            ),
+        ];
         rng.jump();
         std::mem::drop(energies); // Just to save on RAM...
         MC {
@@ -205,6 +231,7 @@ impl<
             save_as: save_as,
             save: plugin::Save::from(params._save),
             movie: plugin::Movie::from(params._movies),
+            report: plugin::Report::from(params._report),
         }
     }
 
@@ -263,6 +290,24 @@ impl<
     }
     /// Create a simulation checkpoint.
     pub fn checkpoint(&mut self) {
+        self.report.print(self.moves);
+        println!("    [{} replicas]", self.replicas.len());
+
+        for r in self.replicas.iter() {
+            let percent = r.above_count as f64 / (r.above_count as f64 + r.below_count as f64);
+            println!(
+                "       {} < {:9.5} [{:.2}%, {:.3} independent]",
+                r.max_energy.pretty(),
+                r.cutoff_energy.pretty(),
+                crate::prettyfloat::PrettyFloat(100.0 * percent),
+                crate::prettyfloat::PrettyFloat(r.independent_count as f64),
+            );
+        }
+        if let Some(r) = self.replicas.last() {
+            let mean_below = r.below_total / r.below_count as f64;
+            println!("        mean_below: {:9.5}", mean_below.pretty());
+        };
+
         for r in self.replicas.iter_mut() {
             r.occasional_update();
         }
@@ -274,7 +319,6 @@ impl<
             Some("cbor") => serde_cbor::to_writer(&f, self).expect("error writing checkpoint?!"),
             _ => panic!("I don't know how to create file {:?}", self.save_as),
         }
-        println!("Saved to file {:?}", self.save_as);
     }
 
     /// Run a simulation
@@ -304,10 +348,47 @@ impl<
             }
         });
 
+        let new_replica = if let Some(r) = self.replicas.last() {
+            if r.independent_count >= 64 {
+                let mean_below = r.below_total / r.below_count as f64;
+                if mean_below + self.min_T < r.cutoff_energy && r.system.energy() < r.cutoff_energy
+                {
+                    let mut visited = HashSet::new();
+                    visited.insert(r.id);
+                    visited.insert(r.id + 1);
+                    let newr = Replica::new(
+                        r.id + 1,
+                        r.cutoff_energy,
+                        mean_below,
+                        r.system.clone(),
+                        visited,
+                        self.rng.clone(),
+                    );
+                    println!("New bin starting at {:5}", mean_below.pretty());
+                    self.rng.jump();
+                    Some(newr)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            unreachable!()
+        };
+        if let Some(r) = new_replica {
+            self.replicas.push(r);
+        }
+
         self.moves += 1;
         let movie_time = self.movie.shall_i_save(self.moves);
         if movie_time {
             self.movie.save_frame(&self.save_as, self.moves, &self);
+        }
+        if self.report.am_all_done(self.moves) {
+            self.checkpoint();
+            println!("All done!");
+            ::std::process::exit(0);
         }
         if self.save.shall_i_save(self.moves) || movie_time {
             self.checkpoint();

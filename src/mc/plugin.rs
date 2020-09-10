@@ -195,26 +195,14 @@ impl Report {
         self.max_iter = other.max_iter;
         self.quiet = other.quiet;
     }
-}
-impl<MC: MonteCarlo> Plugin<MC> for Report {
-    fn run(&self, mc: &MC, _sys: &MC::System) -> Action {
-        if let TimeToRun::TotalMoves(maxiter) = self.max_iter {
-            if mc.num_moves() >= maxiter {
-                return Action::Exit;
-            }
-        }
-        Action::None
-    }
-    fn run_period(&self) -> TimeToRun {
-        self.max_iter
-    }
-    fn log(&self, mc: &MC, _sys: &MC::System) {
+
+    /// Print a log message
+    pub fn print(&self, moves: u64) {
         if self.quiet {
             return;
         }
         match self.start.get() {
             Some((start_time, start_iter)) => {
-                let moves = mc.num_moves();
                 let runtime = start_time.elapsed();
                 let time_per_move = duration_to_secs(runtime) / (moves - start_iter) as f64;
                 if let TimeToRun::TotalMoves(max) = self.max_iter {
@@ -222,28 +210,50 @@ impl<MC: MonteCarlo> Plugin<MC> for Report {
                     let moves_left = if max >= moves { max - moves } else { 0 };
                     let time_left = (time_per_move * moves_left as f64) as u64;
                     println!(
-                        "[{}] {}% complete after {} ({} left, {:.1}us per move) E={}",
+                        "[{}] {}% complete after {} ({} left, {:.1}us per move)",
                         PrettyFloat(moves as f64),
                         (100. * frac_complete) as isize,
                         format_duration(runtime.as_secs()),
                         format_duration(time_left),
                         PrettyFloat(time_per_move * 1e6),
-                        _sys.energy().pretty(),
                     );
                 } else {
                     println!(
-                        "[{}] after {} ({:.1}us per move) E={}",
+                        "[{}] after {} ({:.1}us per move)",
                         PrettyFloat(moves as f64),
                         format_duration(runtime.as_secs()),
                         PrettyFloat(time_per_move * 1e6),
-                        _sys.energy().pretty(),
                     );
                 }
             }
             None => {
-                self.start.set(Some((time::Instant::now(), mc.num_moves())));
+                self.start.set(Some((time::Instant::now(), moves)));
             }
         }
+    }
+
+    /// Am all done?
+    pub fn am_all_done(&self, moves: u64) -> bool {
+        if let TimeToRun::TotalMoves(maxiter) = self.max_iter {
+            if moves >= maxiter {
+                return true;
+            }
+        }
+        false
+    }
+}
+impl<MC: MonteCarlo> Plugin<MC> for Report {
+    fn run(&self, mc: &MC, _sys: &MC::System) -> Action {
+        if self.am_all_done(mc.num_moves()) {
+            return Action::Exit;
+        }
+        Action::None
+    }
+    fn run_period(&self) -> TimeToRun {
+        self.max_iter
+    }
+    fn log(&self, mc: &MC, _sys: &MC::System) {
+        self.print(mc.num_moves());
     }
     fn save(&self, mc: &MC, _sys: &MC::System) {
         if self.quiet {
