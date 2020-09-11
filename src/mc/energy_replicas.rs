@@ -50,8 +50,10 @@ pub struct Replica<S> {
     pub max_energy: Energy,
     /// The cutoff energy
     pub cutoff_energy: Energy,
-    /// The number of rejected moves
+    /// The number of rejected moves since we adjusted the translation_scale.
     pub rejected_count: u64,
+    /// The number of accepted moves since we adjusted the translation_scale
+    pub accepted_count: u64,
     /// The counts above
     pub above_count: u64,
     /// The counts below
@@ -81,6 +83,7 @@ impl<S: MovableSystem> Replica<S> {
             above_count: 0,
             below_count: 0,
             rejected_count: 0,
+            accepted_count: 0,
             systems_seen_below: HashSet::new(),
             above_total: Energy::new(0.0),
             below_total: Energy::new(0.0),
@@ -96,6 +99,7 @@ impl<S: MovableSystem> Replica<S> {
             if let Some(e) = self.system.plan_move(&mut self.rng, self.translation_scale) {
                 if e < self.max_energy {
                     self.system.confirm();
+                    self.accepted_count += 1;
                 } else {
                     self.rejected_count += 1;
                 }
@@ -121,18 +125,34 @@ impl<S: MovableSystem> Replica<S> {
         }
     }
     fn occasional_update(&mut self) {
-        let moves = self.above_count + self.below_count;
-        let rejection_rate = self.rejected_count as f64 / moves as f64;
-        if (rejection_rate - 0.5).abs() > 0.1 && self.max_energy.value_unsafe.is_finite() {
+        if self.rejected_count > 128
+            && self.accepted_count > 128
+            && self.max_energy.value_unsafe.is_finite()
+        {
+            let scale = self.accepted_count as f64 / self.rejected_count as f64;
+            let scale = if scale > 2.0 {
+                2.0
+            } else if scale < 0.5 {
+                0.5
+            } else {
+                scale
+            };
             let old_scale = self.translation_scale;
-            self.translation_scale *= 0.5 / rejection_rate;
-            println!(
-                "    ({:.5}) Updating translation scale from {:.2} -> {:.2} [{:.2}%]",
-                self.max_energy.pretty(),
-                old_scale.pretty(),
-                self.translation_scale.pretty(),
-                crate::prettyfloat::PrettyFloat(100.0 * rejection_rate),
-            );
+            self.translation_scale *= scale;
+            // Reset the counts for the next time around.
+            if scale > 1.5 || scale < 0.75 {
+                println!(
+                    "      ({:.5}) Updating translation scale from {:.2} -> {:.2} [{:.1}]",
+                    self.max_energy.pretty(),
+                    old_scale.pretty(),
+                    self.translation_scale.pretty(),
+                    crate::prettyfloat::PrettyFloat(
+                        self.accepted_count as f64 / self.rejected_count as f64
+                    ),
+                );
+            }
+            self.accepted_count = 0;
+            self.rejected_count = 0;
         }
     }
 }
@@ -339,13 +359,14 @@ impl<
                 let mean_below = r.below_total / r.below_count as f64;
                 if mean_below + self.min_T < r.cutoff_energy && r.system.energy() < r.cutoff_energy
                 {
-                    let newr = Replica::new(
+                    let mut newr = Replica::new(
                         r.cutoff_energy,
                         mean_below,
                         r.system.clone(),
                         self.rng.clone(),
                     );
-                    println!("New bin starting at {:5}", mean_below.pretty());
+                    newr.translation_scale = r.translation_scale;
+                    println!("      New bin: {:5}", mean_below.pretty());
                     self.rng.jump();
                     Some(newr)
                 } else {
