@@ -46,8 +46,6 @@ impl Default for MCParams {
 /// divider.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Replica<S> {
-    /// A unique integer indicating which replica it is
-    pub id: usize,
     /// The maximum allowed energy
     pub max_energy: Energy,
     /// The cutoff energy
@@ -64,10 +62,10 @@ pub struct Replica<S> {
     pub below_total: Energy,
     /// The system itself
     pub system: S,
-    /// The set of regions visited by this system
-    pub system_visited: HashSet<usize>,
-    /// The number of independent systems seen
-    pub independent_count: u64,
+    /// The id of this system
+    pub system_id: Option<u64>,
+    /// The set of independent systems that have gone below here
+    pub systems_seen_below: HashSet<u64>,
     /// The random number generator.
     pub rng: crate::rng::MyRng,
 
@@ -76,36 +74,21 @@ pub struct Replica<S> {
 }
 
 impl<S: MovableSystem> Replica<S> {
-    fn new(
-        id: usize,
-        max_energy: Energy,
-        cutoff_energy: Energy,
-        system: S,
-        mut system_visited: HashSet<usize>,
-        rng: crate::rng::MyRng,
-    ) -> Self {
-        system_visited.insert(id);
+    fn new(max_energy: Energy, cutoff_energy: Energy, system: S, rng: crate::rng::MyRng) -> Self {
         Replica {
-            id,
             max_energy,
             cutoff_energy,
             above_count: 0,
             below_count: 0,
             rejected_count: 0,
-            independent_count: 1,
+            systems_seen_below: HashSet::new(),
             above_total: Energy::new(0.0),
             below_total: Energy::new(0.0),
             system,
-            system_visited,
+            system_id: None,
             rng,
 
             translation_scale: Length::new(0.05),
-        }
-    }
-    fn new_system(&mut self) {
-        if !self.system_visited.contains(&self.id) {
-            self.independent_count += 1;
-            self.system_visited.insert(self.id);
         }
     }
     fn run_once(&mut self) {
@@ -120,11 +103,11 @@ impl<S: MovableSystem> Replica<S> {
                 self.rejected_count += 1;
             }
         } else {
-            // If there is no upper bound, we can just entirely randomize the system.
+            // If there is no upper bound, we can just entirely randomize the
+            // system.
+            static NEXT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
             self.system.randomize(&mut self.rng);
-            self.system_visited = HashSet::new();
-            self.system_visited.insert(self.id);
-            self.independent_count += 1;
+            self.system_id = Some(NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
         }
         let e = self.system.energy();
         if e > self.cutoff_energy {
@@ -133,6 +116,8 @@ impl<S: MovableSystem> Replica<S> {
         } else {
             self.below_count += 1;
             self.below_total += e;
+            // Add this system_id to the set of ids we have seen below our cutoff:
+            self.system_id.map(|id| self.systems_seen_below.insert(id));
         }
     }
     fn occasional_update(&mut self) {
@@ -207,19 +192,15 @@ impl<
         }
         let replicas = vec![
             Replica::new(
-                0,
                 Energy::new(std::f64::INFINITY),
                 energies[energies.len() / 2],
                 high_system,
-                HashSet::new(),
                 rng.clone(),
             ),
             Replica::new(
-                1,
                 energies[energies.len() / 2],
                 energies[energies.len() / 4],
                 system,
-                HashSet::new(),
                 rng.clone(),
             ),
         ];
@@ -302,7 +283,7 @@ impl<
                 "       < {:9.5} [{:.2}%, {:.3} independent]",
                 r.cutoff_energy.pretty(),
                 crate::prettyfloat::PrettyFloat(100.0 * percent),
-                crate::prettyfloat::PrettyFloat(r.independent_count as f64),
+                crate::prettyfloat::PrettyFloat(r.systems_seen_below.len() as f64),
             );
         }
         if let Some(r) = self.replicas.last() {
@@ -341,29 +322,27 @@ impl<
         iterator.for_each(|chunk| {
             // for chunk in iterator {
             if let [r0, r1] = chunk {
-                if r0.system.energy() < r1.max_energy && r1.system.energy() < r0.max_energy {
+                assert_eq!(r0.cutoff_energy, r1.max_energy);
+                // We will swap them if both systems can go into the lower bin,
+                // the higher energy system is not a clone of some other
+                // We want the clones to all end up at the top where they can
+                // be annihilated, leaving us with independent replicas.
+                if r0.system_id.is_some() && r0.system.energy() < r1.max_energy {
                     std::mem::swap(&mut r0.system, &mut r1.system);
-                    std::mem::swap(&mut r0.system_visited, &mut r1.system_visited);
-                    r0.new_system();
-                    r1.new_system();
+                    std::mem::swap(&mut r0.system_id, &mut r1.system_id);
                 }
             }
         });
 
         let new_replica = if let Some(r) = self.replicas.last() {
-            if r.independent_count >= 64 {
+            if r.systems_seen_below.len() >= 16 {
                 let mean_below = r.below_total / r.below_count as f64;
                 if mean_below + self.min_T < r.cutoff_energy && r.system.energy() < r.cutoff_energy
                 {
-                    let mut visited = HashSet::new();
-                    visited.insert(r.id);
-                    visited.insert(r.id + 1);
                     let newr = Replica::new(
-                        r.id + 1,
                         r.cutoff_energy,
                         mean_below,
                         r.system.clone(),
-                        visited,
                         self.rng.clone(),
                     );
                     println!("New bin starting at {:5}", mean_below.pretty());
