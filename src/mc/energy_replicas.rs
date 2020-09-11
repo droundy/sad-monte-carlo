@@ -66,8 +66,6 @@ pub struct Replica<S> {
     pub system: S,
     /// The id of this system
     pub system_id: Option<u64>,
-    /// The set of independent systems that have gone below here
-    pub systems_seen_below: HashSet<u64>,
     /// The random number generator.
     pub rng: crate::rng::MyRng,
 
@@ -84,7 +82,6 @@ impl<S: MovableSystem> Replica<S> {
             below_count: 0,
             rejected_count: 0,
             accepted_count: 0,
-            systems_seen_below: HashSet::new(),
             above_total: Energy::new(0.0),
             below_total: Energy::new(0.0),
             system,
@@ -120,8 +117,6 @@ impl<S: MovableSystem> Replica<S> {
         } else {
             self.below_count += 1;
             self.below_total += e;
-            // Add this system_id to the set of ids we have seen below our cutoff:
-            self.system_id.map(|id| self.systems_seen_below.insert(id));
         }
     }
     fn occasional_update(&mut self) {
@@ -168,6 +163,9 @@ pub struct MC<S> {
     pub save_as: ::std::path::PathBuf,
     /// The number of MC moves we have done
     pub moves: u64,
+
+    /// The set of independent systems that have gone below the lowest cutoff
+    pub systems_seen_below: HashSet<u64>,
 
     /// The relative sizes of the bins
     pub replicas: Vec<Replica<S>>,
@@ -230,6 +228,7 @@ impl<
             min_T,
             replicas,
             moves: 0,
+            systems_seen_below: HashSet::new(),
 
             rng,
             save_as: save_as,
@@ -300,10 +299,9 @@ impl<
         for r in self.replicas.iter() {
             let percent = r.above_count as f64 / (r.above_count as f64 + r.below_count as f64);
             println!(
-                "       < {:9.5} [{:.2}%, {:.3} independent]",
+                "       < {:9.5} [{:.2}%]",
                 r.cutoff_energy.pretty(),
                 crate::prettyfloat::PrettyFloat(100.0 * percent),
-                crate::prettyfloat::PrettyFloat(r.systems_seen_below.len() as f64),
             );
         }
         if let Some(r) = self.replicas.last() {
@@ -353,9 +351,16 @@ impl<
                 }
             }
         });
-
+        let bottom_id = self.replicas.last().and_then(|r| {
+            if r.system.energy() < r.cutoff_energy {
+                r.system_id
+            } else {
+                None
+            }
+        });
+        bottom_id.map(|id| self.systems_seen_below.insert(id));
         let new_replica = if let Some(r) = self.replicas.last() {
-            if r.systems_seen_below.len() >= 16 {
+            if self.systems_seen_below.len() >= 16 {
                 let mean_below = r.below_total / r.below_count as f64;
                 if mean_below + self.min_T < r.cutoff_energy && r.system.energy() < r.cutoff_energy
                 {
@@ -380,6 +385,7 @@ impl<
         };
         if let Some(r) = new_replica {
             self.replicas.push(r);
+            self.systems_seen_below.clear();
         }
 
         for _ in 0..self.replicas.len() {
