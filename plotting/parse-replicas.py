@@ -38,9 +38,7 @@ for fname in args.fname:
     lnw = []
     remaining_entopy = 0
     for i in range(1,len(above_count)):
-        print('ratio', above_count[i]/count[i])
         lnw.append(remaining_entopy + np.log(above_count[i]/count[i]))
-        print(' lnw[{}] = {}'.format(i, lnw[-1]), remaining_entopy)
         remaining_entopy = remaining_entopy + np.log(below_count[i]/count[i])
         mean_energy.append(above_total[i]/above_count[i])
 
@@ -50,15 +48,11 @@ for fname in args.fname:
     lnw = np.array(lnw)
     mean_energy = np.array(mean_energy)
 
-    print('len(lnw)', len(lnw))
 
     energy_boundaries = []
     for i in range(1,len(above_count)):
         energy_boundaries.append(replicas[i]['cutoff_energy'])
     energy_boundaries = np.array(energy_boundaries)
-
-    print('len(energy_boundaries)', len(energy_boundaries))
-    print('len(mean_energy)', len(mean_energy))
 
     system = readsystem.readsystem(replicas[0])
 
