@@ -358,9 +358,12 @@ impl<
                 None
             }
         });
-        bottom_id.map(|id| self.systems_seen_below.insert(id));
+        const INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN: usize = 16;
+        if self.systems_seen_below.len() < INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN {
+            bottom_id.map(|id| self.systems_seen_below.insert(id));
+        }
         let new_replica = if let Some(r) = self.replicas.last() {
-            if self.systems_seen_below.len() >= 16 {
+            if self.systems_seen_below.len() >= INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN {
                 let mean_below = r.below_total / r.below_count as f64;
                 if mean_below + self.min_T < r.cutoff_energy && r.system.energy() < r.cutoff_energy
                 {
