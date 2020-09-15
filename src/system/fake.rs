@@ -7,7 +7,7 @@ use rand::prelude::*;
 /// The parameters needed to configure an fake model.
 ///
 /// These parameters are normally set via command-line arguments.
-#[derive(Serialize, Deserialize, Debug, AutoArgs, Clone)]
+#[derive(Serialize, Deserialize, Debug, AutoArgs, Clone, Copy)]
 #[allow(non_snake_case)]
 pub enum Function {
     /// linear
@@ -16,6 +16,17 @@ pub enum Function {
     Quadratic {
         /// number of dimensions
         dimensions: usize,
+    },
+    /// piecewise potential with two minima
+    Pieces {
+        /// length a
+        a: f64,
+        /// length b
+        b: f64,
+        /// e1
+        e1: Energy,
+        /// e2
+        e2: Energy,
     },
     /// Gaussian
     Gaussian {
@@ -30,13 +41,15 @@ impl Function {
             Function::Linear => 1,
             Function::Quadratic { dimensions } => *dimensions,
             Function::Gaussian { .. } => 3,
+            Function::Pieces { .. } => 3,
         }
     }
     fn energy(&self, r: f64) -> Energy {
-        match self {
+        match *self {
             Function::Linear => Energy::new(r),
             Function::Quadratic { .. } => Energy::new(r * r),
-            Function::Gaussian { sigma } => Energy::new(-(-r * r / (2.0 * *sigma * *sigma)).exp()),
+            Function::Gaussian { sigma } => Energy::new(-(-r * r / (2.0 * sigma * sigma)).exp()),
+            Function::Pieces { a, b, e1, e2 } => e1*r / a, // FIXME Nelson!
         }
     }
 }
