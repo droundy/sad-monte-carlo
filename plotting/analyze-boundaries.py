@@ -29,6 +29,22 @@ def other_density_of_states(E):
 def erfinv_density_of_states(E):
     return np.sqrt(np.pi/N)*np.exp(-(E - mean_erfinv_energy)**2/N)
 
+def piecewise_fn1_density_of_states(E, E_a):
+    return 1
+def piecewise_fn2_density_of_states(E, E_a):
+    E_b = 3 * E_a
+    if E < E_a :
+        return E_a**3 * np.sqrt(E+1) / 2*np.pi
+    if E >= E_a && E < E_b:
+        return 4*E_a**3 * (-E + 2*sqrt(-2*E) + 2) / sqrt(-2*E)
+    if E >= E_b:
+        return 4*E_a**3 * (E + 4*sqrt(2*E+2) + 9) / (sqrt(-2*E)-2)
+def piecewise_fn3_density_of_states(E, E_a):
+    if E < E_a:
+        return E_a**3 * sqrt(E+1) / 2*np.pi
+    if E >= E_a:
+        return 2*E_a**3 * np.sqrt(2*E + 1)
+
 #The function needs to be callable
 
 def fn_entropy(S_i_1, E_i_1, E_i, lnw_i, S_i):
