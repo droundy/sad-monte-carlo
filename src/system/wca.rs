@@ -256,6 +256,7 @@ impl System for Wca {
                 Length::new(rng.sample(Uniform::new(0.0, self.cell.box_diagonal.z.value_unsafe))),
             ));
             self.add_atom_at(r);
+            self.confirm();
         }
         self.E = self.compute_energy();
         self.E
