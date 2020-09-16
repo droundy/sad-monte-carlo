@@ -39,11 +39,12 @@ def piecewise_fn2_density_of_states(E, E_a):
         return 4*E_a**3 * (-E + 2*sqrt(-2*E) + 2) / sqrt(-2*E)
     if E >= E_b:
         return 4*E_a**3 * (E + 4*sqrt(2*E+2) + 9) / (sqrt(-2*E)-2)
-def piecewise_fn3_density_of_states(E, E_a):
+def piecewise_fn3_density_of_states(E, E_a, E_b, e1, e2):
     if E < E_a:
-        return E_a**3 * sqrt(E+1) / 2*np.pi
+        return E_a**3 * sqrt(E+e1) / 2
     if E >= E_a:
-        return 2*E_a**3 * np.sqrt(2*E + 1)
+        #FIXME: +/- sign in the denominator
+        return ((E_b-E_a)(sqrt(E/e2 + 1)+E_b))**2 / 2*e2*sqrt(E/e2+1)
 
 #The function needs to be callable
 

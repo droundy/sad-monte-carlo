@@ -44,12 +44,14 @@ impl Function {
             Function::Pieces { .. } => 3,
         }
     }
+    /// FIXME: How to make this piecewise with limits of r
+    /// FIXME: Convert Energy from struct to f64
     fn energy(&self, r: f64) -> Energy {
         match *self {
             Function::Linear => Energy::new(r),
             Function::Quadratic { .. } => Energy::new(r * r),
             Function::Gaussian { sigma } => Energy::new(-(-r * r / (2.0 * sigma * sigma)).exp()),
-            Function::Pieces { a, b, e1, e2 } => e1*r / a, // FIXME Nelson!
+            /// Function::Pieces { a, b, e1, e2 } => Energy::new((r * r) / (a * a) - e1),
         }
     }
 }
