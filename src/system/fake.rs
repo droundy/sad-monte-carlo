@@ -51,7 +51,7 @@ impl Function {
             Function::Linear => Energy::new(r),
             Function::Quadratic { .. } => Energy::new(r * r),
             Function::Gaussian { sigma } => Energy::new(-(-r * r / (2.0 * sigma * sigma)).exp()),
-            /// Function::Pieces { a, b, e1, e2 } => Energy::new((r * r) / (a * a) - e1),
+            Function::Pieces { a, b, e1, e2 } => (r * r) / (a * a)*e1 - e1,
         }
     }
 }
