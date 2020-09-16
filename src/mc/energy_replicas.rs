@@ -256,7 +256,7 @@ impl<
                 }
                 if let Some(ref save_as) = save_as {
                     if let Ok(f) = ::std::fs::File::open(save_as) {
-                        let s = match save_as.extension().and_then(|x| x.to_str()) {
+                        let mut s = match save_as.extension().and_then(|x| x.to_str()) {
                             Some("yaml") => serde_yaml::from_reader::<_, Self>(&f)
                                 .expect("error parsing save-as file"),
                             Some("json") => serde_json::from_reader::<_, Self>(&f)
@@ -266,6 +266,9 @@ impl<
                             _ => panic!("I don't know how to read file {:?}", f),
                         };
                         println!("Resuming from file {:?}", save_as);
+                        for r in s.replicas.iter_mut() {
+                            r.system.update_caches();
+                        }
                         return s;
                     } else {
                         return Self::from_params(_mc, _sys.into(), save_as.clone());
