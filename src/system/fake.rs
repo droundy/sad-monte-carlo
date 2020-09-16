@@ -56,6 +56,7 @@ impl Function {
                     ((r - b) / (b - a)) * ((r - b) / (b - a)) * e2 - e2
                 }
             }
+        }    
     }
 }
 
