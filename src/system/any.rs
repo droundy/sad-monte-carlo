@@ -115,6 +115,9 @@ impl System for Any {
     fn randomize(&mut self, rng: &mut MyRng) -> Energy {
         self.movable_mut().randomize(rng)
     }
+    fn update_caches(&mut self) {
+        self.movable_mut().update_caches();
+    }
 }
 
 impl ConfirmSystem for Any {
