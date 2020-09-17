@@ -51,7 +51,7 @@ impl Function {
             Function::Gaussian { sigma } => Energy::new(-(-r * r / (2.0 * sigma * sigma)).exp()),
             Function::Pieces { a, b, e1, e2 } => {
                 if r < a {
-                    (r * r) / (a * a) - e1
+                    (r * r) / (a * a)*e1 - e1
                 } else {
                     ((r - b) / (b - a)) * ((r - b) / (b - a)) * e2 - e2
                 }
