@@ -118,6 +118,9 @@ impl System for Any {
     fn update_caches(&mut self) {
         self.movable_mut().update_caches();
     }
+    fn min_moves_to_randomize(&self) -> u64 {
+        self.movable().min_moves_to_randomize()
+    }
 }
 
 impl ConfirmSystem for Any {
@@ -172,6 +175,9 @@ impl System for AnyGrand {
     }
     fn randomize(&mut self, rng: &mut MyRng) -> Energy {
         self.grand_mut().randomize(rng)
+    }
+    fn min_moves_to_randomize(&self) -> u64 {
+        self.grand().min_moves_to_randomize()
     }
 }
 

@@ -76,6 +76,9 @@ impl System for LatticeGas {
         self.E = self.compute_energy();
         self.E
     }
+    fn min_moves_to_randomize(&self) -> u64 {
+        (self.L*self.L) as u64
+    }
 }
 
 impl ConfirmSystem for LatticeGas {

@@ -86,6 +86,9 @@ pub trait System {
     fn data_to_collect(&self, _iter: u64) -> Vec<(Interned, f64)> {
         Vec::new()
     }
+    /// How many moves at the minimum could change all the coordinates of the
+    /// system
+    fn min_moves_to_randomize(&self) -> u64;
 }
 
 /// A system that can have a change confirmed.

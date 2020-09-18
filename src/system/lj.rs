@@ -277,6 +277,9 @@ impl System for Lj {
         self.E = self.compute_energy();
         self.E
     }
+    fn min_moves_to_randomize(&self) -> u64 {
+        self.positions.len() as u64
+    }
 }
 
 impl GrandSystem for Lj {

@@ -106,6 +106,9 @@ impl System for Fake {
         }
         self.energy()
     }
+    fn min_moves_to_randomize(&self) -> u64 {
+        self.position.len() as u64
+    }
 }
 
 impl ConfirmSystem for Fake {

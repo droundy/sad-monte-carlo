@@ -339,9 +339,12 @@ impl<
     /// Run a simulation
     pub fn run_once(&mut self) {
         let moves = self.moves;
+        let steps = self.replicas[0].system.min_moves_to_randomize();
         // First run a few steps of the simulation for each replica
         self.replicas.par_iter_mut().for_each(|r| {
-            r.run_once(moves);
+            for i in 0..steps {
+                r.run_once(moves + i);
+            }
         });
 
         // Now let us try swapping if we can.
@@ -406,8 +409,7 @@ impl<
             self.systems_seen_below.clear();
         }
 
-        for _ in 0..self.replicas.len() {
-            self.moves += 1;
+        for _ in 0..self.replicas.len() as u64 * steps {
             let movie_time = self.movie.shall_i_save(self.moves);
             if movie_time {
                 self.movie.save_frame(&self.save_as, self.moves, &self);
