@@ -42,6 +42,55 @@ impl Default for MCParams {
     }
 }
 
+/// An estimator for a median
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct MedianEstimator {
+    energies: Vec<Energy>,
+    step: usize,
+    skip: usize,
+}
+impl MedianEstimator {
+    fn new(e: Energy) -> Self {
+        let mut energies = Vec::with_capacity(1024);
+        energies.push(e);
+        MedianEstimator {
+            energies,
+            step: 0,
+            skip: 1,
+        }
+    }
+    fn reset(&mut self, e: Energy) {
+        self.energies.truncate(0);
+        self.energies.push(e);
+        self.step = 0;
+        self.skip = 1;
+    }
+    fn add_energy(&mut self, e: Energy) {
+        if self.step == 0 {
+            if self.energies.len() < 1024 {
+                self.energies.push(e);
+            } else {
+                for i in 0..self.energies.len() / 2 {
+                    self.energies[i] = self.energies[i * 2];
+                }
+                self.energies.truncate(self.energies.len() / 2);
+                self.skip *= 2;
+                self.energies[0] = e; // replace the very first bin when we expand, since otherwise it will never get "randomized"
+            }
+        }
+        self.step = (self.step + 1) % self.skip;
+    }
+    fn median(&mut self) -> Energy {
+        self.energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        if self.energies.len() & 1 == 0 {
+            self.energies[self.energies.len() / 2]
+        } else {
+            0.5 * (self.energies[self.energies.len() / 2]
+                + self.energies[self.energies.len() / 2 + 1])
+        }
+    }
+}
+
 /// A simple simulation, with a maximum energy, a single system, and an energy
 /// divider.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -177,6 +226,8 @@ pub struct MC<S> {
 
     /// The set of independent systems that have gone below the lowest cutoff
     pub systems_seen_below: HashSet<u64>,
+    /// An estimator for the median energy below the lowest bin
+    pub median: MedianEstimator,
 
     /// The relative sizes of the bins
     pub replicas: Vec<Replica<S>>,
@@ -234,12 +285,12 @@ impl<
             ),
         ];
         rng.jump();
-        std::mem::drop(energies); // Just to save on RAM...
         MC {
             min_T,
             replicas,
             moves: 0,
             systems_seen_below: HashSet::new(),
+            median: MedianEstimator::new(energies[energies.len() / 4]),
 
             rng,
             save_as: save_as,
@@ -369,6 +420,8 @@ impl<
                 }
             }
         });
+        self.median
+            .add_energy(self.replicas.last().unwrap().system.energy());
         let bottom_id = self.replicas.last().and_then(|r| {
             if r.system.energy() < r.cutoff_energy {
                 r.system_id
@@ -385,9 +438,11 @@ impl<
                 let mean_below = r.below_total / r.below_count as f64;
                 if mean_below + self.min_T < r.cutoff_energy && r.system.energy() < r.cutoff_energy
                 {
+                    let median_below = self.median.median();
+                    self.median.reset(r.system.energy());
                     let mut newr = Replica::new(
                         r.cutoff_energy,
-                        mean_below,
+                        median_below,
                         r.system.clone(),
                         self.rng.clone(),
                     );
@@ -410,6 +465,7 @@ impl<
         }
 
         for _ in 0..self.replicas.len() as u64 * steps {
+            self.moves += 1;
             let movie_time = self.movie.shall_i_save(self.moves);
             if movie_time {
                 self.movie.save_frame(&self.save_as, self.moves, &self);
