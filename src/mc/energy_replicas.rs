@@ -13,7 +13,7 @@ use rayon::prelude::*;
 use rand::{Rng, SeedableRng};
 use std::default::Default;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// The parameters needed to configure a simulation.
 #[derive(Debug, AutoArgs, Clone)]
@@ -62,6 +62,8 @@ pub struct Replica<S> {
     pub above_total: Energy,
     /// The total energy below (for computing the mean)
     pub below_total: Energy,
+    /// Any extra data we might want to collect, total and count
+    pub above_extra: HashMap<Interned, (f64, u64)>,
     /// The system itself
     pub system: S,
     /// The id of this system
@@ -84,6 +86,7 @@ impl<S: MovableSystem> Replica<S> {
             accepted_count: 0,
             above_total: Energy::new(0.0),
             below_total: Energy::new(0.0),
+            above_extra: HashMap::new(),
             system,
             system_id: None,
             rng,
@@ -91,7 +94,7 @@ impl<S: MovableSystem> Replica<S> {
             translation_scale: Length::new(0.05),
         }
     }
-    fn run_once(&mut self) {
+    fn run_once(&mut self, moves: u64) {
         if self.max_energy.value_unsafe.is_finite() {
             if let Some(e) = self.system.plan_move(&mut self.rng, self.translation_scale) {
                 if e < self.max_energy {
@@ -114,6 +117,14 @@ impl<S: MovableSystem> Replica<S> {
         if e > self.cutoff_energy {
             self.above_count += 1;
             self.above_total += e;
+            for (k, d) in self.system.data_to_collect(moves).into_iter() {
+                if let Some(p) = self.above_extra.get_mut(&k) {
+                    p.0 += d;
+                    p.1 += 1;
+                } else {
+                    self.above_extra.insert(k, (d, 1));
+                }
+            }
         } else {
             self.below_count += 1;
             self.below_total += e;
@@ -327,9 +338,10 @@ impl<
 
     /// Run a simulation
     pub fn run_once(&mut self) {
+        let moves = self.moves;
         // First run a few steps of the simulation for each replica
         self.replicas.par_iter_mut().for_each(|r| {
-            r.run_once();
+            r.run_once(moves);
         });
 
         // Now let us try swapping if we can.

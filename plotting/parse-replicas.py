@@ -29,7 +29,7 @@ for fname in args.fname:
 
     replicas = data_loaded['replicas']
 
-    above_total = np.array([r['above_total'] for r in replicas])
+    above_total = np.array([float(r['above_total']) for r in replicas])
     above_count = np.array([r['above_count'] for r in replicas])
     below_count = np.array([r['below_count'] for r in replicas])
     count = above_count+below_count
@@ -46,6 +46,7 @@ for fname in args.fname:
     mean_energy.append(replicas[-1]['below_total']/replicas[-1]['below_count'])
 
     lnw = np.array(lnw)
+    lnw -= np.log(np.sum(np.exp(lnw))) # w = w / sum(w) to normalize
     mean_energy = np.array(mean_energy)
 
 
