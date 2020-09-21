@@ -11,11 +11,13 @@ GENERIC=(--wca-N 32 --wca-reduced-density 1.2 --movie-time "10^(1/4)" --save-tim
 
 ${RQ[@]} -c all -J r-wca -- ../target/release/replicas --save-as r-wca.yaml --min-T 0.1 ${GENERIC[@]}
 
+sleep 1
+
 ${RQ[@]} -J t-wca -- ../target/release/transposed --save-as t-wca.yaml --f 0.5 --min-T 0.1 --translation-scale 0.05 ${GENERIC[@]}
 
 ${RQ[@]} -J sad-wca -- ../target/release/binning --save-as sad-wca.cbor --max-allowed-energy 640 --histogram-bin 0.1 --sad-min-T 0.1 --translation-scale 0.05 ${GENERIC[@]}
 
 
-sleep 5
+sleep 1
 
 tail -f *.out

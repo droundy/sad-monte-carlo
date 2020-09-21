@@ -13,7 +13,7 @@ use rayon::prelude::*;
 use rand::{Rng, SeedableRng};
 use std::default::Default;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap};
 
 /// The parameters needed to configure a simulation.
 #[derive(Debug, AutoArgs, Clone)]
@@ -49,9 +49,10 @@ pub struct MedianEstimator {
     step: usize,
     skip: usize,
 }
+const ESTIMATOR_SIZE: usize = 32;
 impl MedianEstimator {
     fn new(e: Energy) -> Self {
-        let mut energies = Vec::with_capacity(1024);
+        let mut energies = Vec::with_capacity(ESTIMATOR_SIZE);
         energies.push(e);
         MedianEstimator {
             energies,
@@ -67,15 +68,20 @@ impl MedianEstimator {
     }
     fn add_energy(&mut self, e: Energy) {
         if self.step == 0 {
-            if self.energies.len() < 1024 {
+            if self.energies.len() < ESTIMATOR_SIZE {
                 self.energies.push(e);
             } else {
-                for i in 0..self.energies.len() / 2 {
-                    self.energies[i] = self.energies[i * 2];
+                // Keep the middle 1/2 of our energies.
+                self.energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                {
+                    // Move the third quarter of the energies back into the
+                    // first quarter, to the middle half of energies will be
+                    // in the first half of the vec.
+                    let (left, right) = self.energies.split_at_mut(ESTIMATOR_SIZE / 2);
+                    left[0..ESTIMATOR_SIZE / 4].copy_from_slice(&right[0..ESTIMATOR_SIZE / 4]);
                 }
-                self.energies.truncate(self.energies.len() / 2);
+                self.energies.truncate(ESTIMATOR_SIZE / 2);
                 self.skip *= 2;
-                self.energies[0] = e; // replace the very first bin when we expand, since otherwise it will never get "randomized"
             }
         }
         self.step = (self.step + 1) % self.skip;
@@ -115,8 +121,11 @@ pub struct Replica<S> {
     pub above_extra: HashMap<Interned, (f64, u64)>,
     /// The system itself
     pub system: S,
-    /// The id of this system
-    pub system_id: Option<u64>,
+    /// The lowest `max_energy` that the system has visited
+    pub system_lowest_max_energy: Option<Energy>,
+    /// The number of completely and provably indepdendent systems that have
+    /// us
+    pub unique_visitors: u64,
     /// The random number generator.
     pub rng: crate::rng::MyRng,
 
@@ -137,7 +146,8 @@ impl<S: MovableSystem> Replica<S> {
             below_total: Energy::new(0.0),
             above_extra: HashMap::new(),
             system,
-            system_id: None,
+            system_lowest_max_energy: None,
+            unique_visitors: 0,
             rng,
 
             translation_scale: Length::new(0.05),
@@ -158,9 +168,8 @@ impl<S: MovableSystem> Replica<S> {
         } else {
             // If there is no upper bound, we can just entirely randomize the
             // system.
-            static NEXT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
             self.system.randomize(&mut self.rng);
-            self.system_id = Some(NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
+            self.system_lowest_max_energy = Some(self.max_energy);
         }
         let e = self.system.energy();
         if e > self.cutoff_energy {
@@ -224,8 +233,6 @@ pub struct MC<S> {
     /// The number of MC moves we have done
     pub moves: u64,
 
-    /// The set of independent systems that have gone below the lowest cutoff
-    pub systems_seen_below: HashSet<u64>,
     /// An estimator for the median energy below the lowest bin
     pub median: MedianEstimator,
 
@@ -289,7 +296,6 @@ impl<
             min_T,
             replicas,
             moves: 0,
-            systems_seen_below: HashSet::new(),
             median: MedianEstimator::new(energies[energies.len() / 4]),
 
             rng,
@@ -364,9 +370,10 @@ impl<
         for r in self.replicas.iter() {
             let percent = r.above_count as f64 / (r.above_count as f64 + r.below_count as f64);
             println!(
-                "       < {:9.5} [{:.2}%]",
+                "       < {:9.5} [{:.2}%] {:.2} unique",
                 r.cutoff_energy.pretty(),
                 crate::prettyfloat::PrettyFloat(100.0 * percent),
+                crate::prettyfloat::PrettyFloat(r.unique_visitors as f64),
             );
         }
         if let Some(r) = self.replicas.last() {
@@ -414,27 +421,28 @@ impl<
                 // the higher energy system is not a clone of some other
                 // We want the clones to all end up at the top where they can
                 // be annihilated, leaving us with independent replicas.
-                if r0.system_id.is_some() && r0.system.energy() < r1.max_energy {
+                if r0.system_lowest_max_energy.is_some() && r0.system.energy() < r1.max_energy {
                     std::mem::swap(&mut r0.system, &mut r1.system);
-                    std::mem::swap(&mut r0.system_id, &mut r1.system_id);
+                    std::mem::swap(&mut r0.system_lowest_max_energy, &mut r1.system_lowest_max_energy);
+                    if r1.system_lowest_max_energy.unwrap() > r1.max_energy {
+                        r1.unique_visitors += 1;
+                        r1.system_lowest_max_energy = Some(r1.max_energy);
+                    }
                 }
             }
         });
-        self.median
-            .add_energy(self.replicas.last().unwrap().system.energy());
-        let bottom_id = self.replicas.last().and_then(|r| {
-            if r.system.energy() < r.cutoff_energy {
-                r.system_id
-            } else {
-                None
+        const INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN: u64 = 8;
+        if let Some((cutoff, energy)) = self
+            .replicas
+            .last()
+            .and_then(|r| Some((r.cutoff_energy, r.system.energy())))
+        {
+            if energy < cutoff {
+                self.median.add_energy(energy);
             }
-        });
-        const INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN: usize = 16;
-        if self.systems_seen_below.len() < INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN {
-            bottom_id.map(|id| self.systems_seen_below.insert(id));
         }
         let new_replica = if let Some(r) = self.replicas.last() {
-            if self.systems_seen_below.len() >= INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN {
+            if r.unique_visitors >= INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN {
                 let mean_below = r.below_total / r.below_count as f64;
                 if mean_below + self.min_T < r.cutoff_energy && r.system.energy() < r.cutoff_energy
                 {
@@ -447,7 +455,12 @@ impl<
                         self.rng.clone(),
                     );
                     newr.translation_scale = r.translation_scale;
-                    println!("      New bin: {:5}", mean_below.pretty());
+                    println!(
+                        "      New bin: {:5} with mean {:5} and max {:.5}",
+                        median_below.pretty(),
+                        mean_below.pretty(),
+                        r.cutoff_energy.pretty()
+                    );
                     self.rng.jump();
                     Some(newr)
                 } else {
@@ -461,7 +474,6 @@ impl<
         };
         if let Some(r) = new_replica {
             self.replicas.push(r);
-            self.systems_seen_below.clear();
         }
 
         for _ in 0..self.replicas.len() as u64 * steps {
