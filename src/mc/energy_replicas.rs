@@ -13,7 +13,7 @@ use rayon::prelude::*;
 use rand::{Rng, SeedableRng};
 use std::default::Default;
 
-use std::collections::{HashMap};
+use std::collections::HashMap;
 
 /// The parameters needed to configure a simulation.
 #[derive(Debug, AutoArgs, Clone)]
@@ -193,30 +193,40 @@ impl<S: MovableSystem> Replica<S> {
             && self.accepted_count > 128
             && self.max_energy.value_unsafe.is_finite()
         {
-            let scale = self.accepted_count as f64 / self.rejected_count as f64;
-            let scale = if scale > 2.0 {
-                2.0
-            } else if scale < 0.5 {
-                0.5
-            } else {
-                scale
-            };
-            let old_scale = self.translation_scale;
-            self.translation_scale *= scale;
-            // Reset the counts for the next time around.
-            if scale > 1.5 || scale < 0.75 {
+            let acceptance_ratio = self.accepted_count as f64 / self.rejected_count as f64;
+            let max_acceptance_ratio = self.system.min_moves_to_randomize() as f64;
+            // We don't mess with the translation scale unless the acceptance
+            // is more than a factor of two away from our goal range of between
+            // 50% and 1/min_moves_to_randomize.  This gives us a pretty wide
+            // target range, and ensures that the translation scale does not
+            // too frequently.
+            if acceptance_ratio < 0.5 || acceptance_ratio > 2.0 * max_acceptance_ratio {
+                let old_translation_scale = self.translation_scale;
+                let mut adjustment = if acceptance_ratio < 0.5 {
+                    acceptance_ratio / max_acceptance_ratio.sqrt()
+                } else {
+                    acceptance_ratio * max_acceptance_ratio.sqrt()
+                };
+                if adjustment > 2.0 {
+                    adjustment = 2.0;
+                } else if adjustment < 0.5 {
+                    adjustment = 0.5;
+                }
+                self.translation_scale *= adjustment;
                 println!(
                     "      ({:.5}) Updating translation scale from {:.2} -> {:.2} [{:.1}]",
                     self.max_energy.pretty(),
-                    old_scale.pretty(),
+                    old_translation_scale.pretty(),
                     self.translation_scale.pretty(),
                     crate::prettyfloat::PrettyFloat(
                         self.accepted_count as f64 / self.rejected_count as f64
                     ),
                 );
+                // Reset the counts for the next time around only if we have
+                // made a change.
+                self.accepted_count = 0;
+                self.rejected_count = 0;
             }
-            self.accepted_count = 0;
-            self.rejected_count = 0;
         }
     }
 }
@@ -423,7 +433,10 @@ impl<
                 // be annihilated, leaving us with independent replicas.
                 if r0.system_lowest_max_energy.is_some() && r0.system.energy() < r1.max_energy {
                     std::mem::swap(&mut r0.system, &mut r1.system);
-                    std::mem::swap(&mut r0.system_lowest_max_energy, &mut r1.system_lowest_max_energy);
+                    std::mem::swap(
+                        &mut r0.system_lowest_max_energy,
+                        &mut r1.system_lowest_max_energy,
+                    );
                     if r1.system_lowest_max_energy.unwrap() > r1.max_energy {
                         r1.unique_visitors += 1;
                         r1.system_lowest_max_energy = Some(r1.max_energy);
