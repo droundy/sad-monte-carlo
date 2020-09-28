@@ -391,9 +391,6 @@ impl<
             println!("        mean_below: {:9.5}", mean_below.pretty());
         };
 
-        for r in self.replicas.iter_mut() {
-            r.occasional_update();
-        }
         let f = AtomicFile::create(&self.save_as)
             .expect(&format!("error creating file {:?}", self.save_as));
         match self.save_as.extension().and_then(|x| x.to_str()) {
@@ -489,8 +486,11 @@ impl<
             self.replicas.push(r);
         }
 
+        self.replicas.par_iter_mut().for_each(|r| r.occasional_update());
+
         for _ in 0..self.replicas.len() as u64 * steps {
             self.moves += 1;
+
             let movie_time = self.movie.shall_i_save(self.moves);
             if movie_time {
                 self.movie.save_frame(&self.save_as, self.moves, &self);
