@@ -9,6 +9,7 @@ import colorcet as cc
 
 parser = argparse.ArgumentParser(description="fake energies analysis")
 parser.add_argument('base', nargs='*', help = 'the yaml or cbor file')
+parser.add_argument('--intensive', action='store_true')
 
 args = parser.parse_args()
 
@@ -153,6 +154,7 @@ energy_boundaries = {}
 mean_energy = {}
 lnw = {}
 systems = {}
+print('base', args.base)
 #each file has different path (including extension) so concatenating is easy
 for base in args.base:
     if '.cbor' in base or '.yaml' in base:
@@ -255,13 +257,20 @@ for key in lnw:
 
     plt.figure('entropy')
 
-    plt.plot(step_energy, step_entropy, '-', label=key + ' step', color=color)
-    plt.plot(E, Ssloped, '--', label=key + 'sloped', color=color)
+    scale = 1
+    if args.intensive:
+        scale = 1/systems[key]['N']
+    print('scale is', scale)
+    plt.plot(scale*np.array(step_energy), scale*np.array(step_entropy), '-', label=key + ' step', color=color)
+    plt.plot(scale*E, scale*Ssloped, '--', label=key + 'sloped', color=color)
     # plt.plot(E, S, '-', label=key+' optimize_bin_entropy approx.')
     # plt.plot(E, Sbest, '-', label=key + 'smooth')
-    plt.plot(E, np.log(exact_density_of_states(E)), color='#aaaaaa')
+    plt.plot(scale*E, scale*np.log(exact_density_of_states(E)), color='#aaaaaa')
     plt.xlabel('$E$')
     plt.ylabel('$S$')
+    if args.intensive:
+        plt.xlabel('$E/N$')
+        plt.ylabel('$S/N$')
 
     plot_dos = False
     if plot_dos:
