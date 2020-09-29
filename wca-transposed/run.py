@@ -7,11 +7,10 @@ assert(not os.system('cargo build --release --bin binning --bin replicas'))
 # default to run with two cores, a high upper bound on output file size, and as a restartable job
 rq = 'rq run --max-output 20 -R'
 
-time_params = "--max-iter 1e10 --movie-time '10^(1/4)' --save-time 1"
+time_params = "--max-iter 5e10 --movie-time '10^(1/4)' --save-time 1"
 min_T = 0.1
 
 def wca(density, N, shift_N):
-    volume = N/density
     if shift_N != 0:
         Ncorrect = N + shift_N
         return f' --wca-N {Ncorrect} --wca-cell-volume "{N}/{density}"'

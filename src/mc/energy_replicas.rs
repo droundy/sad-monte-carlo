@@ -347,6 +347,8 @@ impl<
                         for r in s.replicas.iter_mut() {
                             r.system.update_caches();
                         }
+                        s.report.update_from(_mc._report);
+                        s.save.update_from(_mc._save);
                         return s;
                     } else {
                         return Self::from_params(_mc, _sys.into(), save_as.clone());
