@@ -198,8 +198,9 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
         self.moves += 1;
         self.rejected_moves += 1;
         let e1 = self.system.energy();
+        let i1 = self.e_to_idx(e1);
+        self.histogram[i1] += 1;
         if let Some(e2) = self.system.plan_move(&mut self.rng, Length::new(0.05)) {
-            let i1 = self.e_to_idx(e1);
             let i2 = self.e_to_idx(e2);
             let lnw1 = self.lnw[i1];
             let lnw2 = self.lnw[i2];
