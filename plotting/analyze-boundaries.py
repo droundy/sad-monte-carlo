@@ -30,22 +30,13 @@ def other_density_of_states(E):
 def erfinv_density_of_states(E):
     return np.sqrt(np.pi/N)*np.exp(-(E - mean_erfinv_energy)**2/N)
 
-def piecewise_fn1_density_of_states(E, E_a):
-    return 1
-def piecewise_fn2_density_of_states(E, E_a):
-    E_b = 3 * E_a
-    if E < E_a :
-        return E_a**3 * np.sqrt(E+1) / 2*np.pi
-    if E >= E_a and E < E_b:
-        return 4*E_a**3 * (-E + 2*np.sqrt(-2*E) + 2) / np.sqrt(-2*E)
-    if E >= E_b:
-        return 4*E_a**3 * (E + 4*np.sqrt(2*E+2) + 9) / (np.sqrt(-2*E)-2)
-def piecewise_fn3_density_of_states(E, E_a, E_b, e1, e2):
-    if E < E_a:
-        return E_a**3 * np.sqrt(E+e1) / 2
-    if E >= E_a:
-        #FIXME: +/- sign in the denominator
-        return ((E_b-E_a)(np.sqrt(E/e2 + 1)+E_b))**2 / 2*e2*np.sqrt(E/e2+1)
+def piecewise_density_of_states(E):
+    if E < -e2:
+        return a**3 * np.sqrt(E+e1) / 2
+    elif E > 0:
+        return (b + (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1))
+    return a**3 * np.sqrt(E+e1) / 2 + (b - (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1)) + (b + (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1))
+piecewise_density_of_states = np.vectorize(piecewise_density_of_states)
 
 #The function needs to be callable
 
@@ -200,6 +191,13 @@ for key in lnw:
         mean_erfinv_energy = systems[key]['mean_energy']
         N = systems[key]['N']
         exact_density_of_states = erfinv_density_of_states
+    elif systems[key]['kind'] == 'Pieces':
+        print('\n\n\nusing the pieces\n\n\n')
+        a = systems[key]['a']
+        b = systems[key]['b']
+        e1 = systems[key]['e1']
+        e2 = systems[key]['e2']
+        exact_density_of_states = piecewise_density_of_states
     else:
         print('\n\n\nusing the most bogus density of states\n\n\n', systems[key]['kind'])
         exact_density_of_states = other_density_of_states
