@@ -4,10 +4,10 @@ import numpy as np
 r = np.linspace(0, 1, 10000)
 
 a = 0.1
-b = 2*a
+b = 3*a
 
 e1 = 1
-e2 = 0.5
+e2 = 0.75
 
 E = np.zeros_like(r)
 
@@ -19,5 +19,7 @@ E = (r-b)**2/((b-a)**2)*e2 - e2
 E[r<a] = r[r<a]**2/a**2 - e1
 
 plt.plot(r, E)
+plt.xlabel('$r$')
+plt.ylabel('$V(r)$')
 
 plt.show()

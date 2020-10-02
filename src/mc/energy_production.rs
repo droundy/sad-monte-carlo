@@ -15,6 +15,8 @@ use std::default::Default;
 /// The parameters needed to configure a simulation.
 #[derive(Debug, AutoArgs, Clone)]
 pub struct MCParams {
+    /// The base filename for which we are running the production
+    pub base: Option<String>,
     /// The seed for the random number generator.
     pub seed: Option<u64>,
     /// report input
@@ -28,6 +30,7 @@ pub struct MCParams {
 impl Default for MCParams {
     fn default() -> Self {
         MCParams {
+            base: None,
             seed: None,
             _save: plugin::SaveParams::default(),
             _movies: plugin::MovieParams::default(),
@@ -42,7 +45,7 @@ pub struct MC<S> {
     /// The random number generator.
     pub rng: crate::rng::MyRng,
     /// Where to save the resume file.
-    pub save_as: ::std::path::PathBuf,
+    pub save_as: std::path::PathBuf,
     /// The number of MC moves we have done
     pub moves: u64,
     /// Number of rejected moves
@@ -86,7 +89,11 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
     fn from_params(params: MCParams, system: S, save_as: std::path::PathBuf) -> Self {
         let rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
 
-        let base = save_as.with_extension("").to_str().unwrap().to_string();
+        let base = if let Some(b) = params.base {
+            b
+        } else {
+            save_as.with_extension("").to_str().unwrap().to_string()
+        };
         let energy_boundaries = read_f64(format!("{}-energy-boundaries.dat", base)).unwrap();
         let energy_boundaries = energy_boundaries
             .iter()
@@ -166,6 +173,15 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
     /// Create a simulation checkpoint.
     pub fn checkpoint(&mut self) {
         self.report.print(self.moves);
+
+        let f = AtomicFile::create(&self.save_as)
+            .expect(&format!("error creating file {:?}", self.save_as));
+        match self.save_as.extension().and_then(|x| x.to_str()) {
+            Some("yaml") => serde_yaml::to_writer(&f, self).expect("error writing checkpoint?!"),
+            Some("json") => serde_json::to_writer(&f, self).expect("error writing checkpoint?!"),
+            Some("cbor") => serde_cbor::to_writer(&f, self).expect("error writing checkpoint?!"),
+            _ => panic!("I don't know how to create file {:?}", self.save_as),
+        }
     }
 
     fn e_to_idx(&self, energy: Energy) -> usize {
@@ -182,8 +198,9 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
         self.moves += 1;
         self.rejected_moves += 1;
         let e1 = self.system.energy();
+        let i1 = self.e_to_idx(e1);
+        self.histogram[i1] += 1;
         if let Some(e2) = self.system.plan_move(&mut self.rng, Length::new(0.05)) {
-            let i1 = self.e_to_idx(e1);
             let i2 = self.e_to_idx(e2);
             let lnw1 = self.lnw[i1];
             let lnw2 = self.lnw[i2];

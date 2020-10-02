@@ -1,0 +1,12 @@
+{
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/wca-transposed/**": true,
+        "**/wca/**": true,
+        "**/number/**": true,
+        "**/fake/**": true,
+        "**/grand-transposed/**": true,
+        "**/energy-number/**": true,
+    }
+}
