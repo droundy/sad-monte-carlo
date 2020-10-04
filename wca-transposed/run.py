@@ -31,9 +31,9 @@ def run_replicas(density, N, shift_N=0, job='run'):
     if job == 'production':
         os.system(f'{rq} -J p-{name} ../target/release/production --base {name} --save-as p-{name}.cbor {wca_params} {time_params}')
     elif job == 'parse':
-        os.system(f'{rq} -J parse-{name} ../plotting/parse-replicas.py {name}.cbor')
+        os.system(f'{rq} -J parse-{name} ../plotting/parse-replicas.py {name}.yaml')
     else:
-        os.system(f'{rq} -c all -J {name} ../target/release/replicas --save-as {name}.cbor {wca_params} --min-T {min_T} {time_params}')
+        os.system(f'{rq} -c all -J {name} ../target/release/replicas --save-as {name}.yaml {wca_params} --min-T {min_T} {time_params}')
 
 def run_sad(dE, density, N, shift_N=0, job='run'):
     name = name_wca('s', density, N, shift_N)
