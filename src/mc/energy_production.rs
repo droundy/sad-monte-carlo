@@ -217,7 +217,7 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
             let i2 = self.e_to_idx(e2);
             let lnw1 = self.lnw[i1];
             let lnw2 = self.lnw[i2];
-            if lnw2 <= lnw1 || self.rng.gen::<f64>() > (lnw1 - lnw2).exp() {
+            if lnw2 <= lnw1 || self.rng.gen::<f64>() < (lnw1 - lnw2).exp() {
                 self.system.confirm();
                 self.rejected_moves -= 1;
             }
