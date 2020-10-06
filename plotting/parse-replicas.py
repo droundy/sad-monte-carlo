@@ -55,7 +55,7 @@ for fname in args.fname:
         energy_boundaries.append(replicas[i]['cutoff_energy'])
     energy_boundaries = np.array(energy_boundaries)
 
-    system = readsystem.readsystem(replicas[0])
+    system = readsystem.readsystem(replicas[0]['sys'])
 
     np.savetxt(base+'-energy-boundaries.dat', energy_boundaries)
     np.savetxt(base+'-mean-energy.dat', mean_energy)
