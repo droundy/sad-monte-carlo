@@ -485,7 +485,18 @@ impl<
                         // Ensure that we always have a system in the
                         // high-energy unbounded bin.
                         r0.sys = r1.sys.clone();
-                        r0.sys.as_mut().unwrap().lowest_max_energy = Energy::new(std::f64::INFINITY);
+                        r0.sys.as_mut().unwrap().lowest_max_energy =
+                            Energy::new(std::f64::INFINITY);
+                    } else if r0.sys.is_none() {
+                        // Throw away our previous statistics, since we've
+                        // had some failure to obey detailed balance.
+                        r0.above_total = r0.above_total / r0.above_count as f64;
+                        r0.above_count = 1;
+                        r0.below_total = r0.below_total / r0.below_count as f64;
+                        r0.below_count = 1;
+                        for e in r0.above_extra.values_mut() {
+                            *e = (e.0 / e.1 as f64, 1);
+                        }
                     }
                 }
             }
