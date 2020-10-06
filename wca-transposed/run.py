@@ -52,4 +52,5 @@ for job in jobs:
         for N in [32, 108, 256]:
             for shift_N in [0,-1,1]:
                 run_replicas(density, N, shift_N, job=job)
+                time.sleep(1)
                 run_sad(min_T, density, N, shift_N, job=job)

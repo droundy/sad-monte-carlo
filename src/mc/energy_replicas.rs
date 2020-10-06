@@ -97,6 +97,15 @@ impl MedianEstimator {
     }
 }
 
+/// A system with its lowest max energy
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Sys<S> {
+    /// The system itself
+    system: S,
+    /// The lowest `max_energy` that the system has visited
+    lowest_max_energy: Energy,
+}
+
 /// A simple simulation, with a maximum energy, a single system, and an energy
 /// divider.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -119,10 +128,8 @@ pub struct Replica<S> {
     pub below_total: Energy,
     /// Any extra data we might want to collect, total and count
     pub above_extra: HashMap<Interned, (f64, u64)>,
-    /// The system itself
-    pub system: S,
-    /// The lowest `max_energy` that the system has visited
-    pub system_lowest_max_energy: Option<Energy>,
+    /// The system itself with its lowest max energy
+    pub sys: Option<Sys<S>>,
     /// The number of completely and provably indepdendent systems that have
     /// us
     pub unique_visitors: u64,
@@ -145,8 +152,28 @@ impl<S: MovableSystem> Replica<S> {
             above_total: Energy::new(0.0),
             below_total: Energy::new(0.0),
             above_extra: HashMap::new(),
-            system,
-            system_lowest_max_energy: None,
+            sys: Some(Sys {
+                system,
+                lowest_max_energy: Energy::new(std::f64::INFINITY),
+            }),
+            unique_visitors: 0,
+            rng,
+
+            translation_scale: Length::new(0.05),
+        }
+    }
+    fn empty(max_energy: Energy, cutoff_energy: Energy, rng: crate::rng::MyRng) -> Self {
+        Replica {
+            max_energy,
+            cutoff_energy,
+            above_count: 0,
+            below_count: 0,
+            rejected_count: 0,
+            accepted_count: 0,
+            above_total: Energy::new(0.0),
+            below_total: Energy::new(0.0),
+            above_extra: HashMap::new(),
+            sys: None,
             unique_visitors: 0,
             rng,
 
@@ -154,38 +181,40 @@ impl<S: MovableSystem> Replica<S> {
         }
     }
     fn run_once(&mut self, moves: u64) {
-        if self.max_energy.value_unsafe.is_finite() {
-            if let Some(e) = self.system.plan_move(&mut self.rng, self.translation_scale) {
-                if e < self.max_energy {
-                    self.system.confirm();
-                    self.accepted_count += 1;
+        if let Some(sys) = &mut self.sys {
+            if self.max_energy.value_unsafe.is_finite() {
+                if let Some(e) = sys.system.plan_move(&mut self.rng, self.translation_scale) {
+                    if e < self.max_energy {
+                        sys.system.confirm();
+                        self.accepted_count += 1;
+                    } else {
+                        self.rejected_count += 1;
+                    }
                 } else {
                     self.rejected_count += 1;
                 }
             } else {
-                self.rejected_count += 1;
+                // If there is no upper bound, we can just entirely randomize the
+                // system.
+                sys.system.randomize(&mut self.rng);
+                sys.lowest_max_energy = self.max_energy;
             }
-        } else {
-            // If there is no upper bound, we can just entirely randomize the
-            // system.
-            self.system.randomize(&mut self.rng);
-            self.system_lowest_max_energy = Some(self.max_energy);
-        }
-        let e = self.system.energy();
-        if e > self.cutoff_energy {
-            self.above_count += 1;
-            self.above_total += e;
-            for (k, d) in self.system.data_to_collect(moves).into_iter() {
-                if let Some(p) = self.above_extra.get_mut(&k) {
-                    p.0 += d;
-                    p.1 += 1;
-                } else {
-                    self.above_extra.insert(k, (d, 1));
+            let e = sys.system.energy();
+            if e > self.cutoff_energy {
+                self.above_count += 1;
+                self.above_total += e;
+                for (k, d) in sys.system.data_to_collect(moves).into_iter() {
+                    if let Some(p) = self.above_extra.get_mut(&k) {
+                        p.0 += d;
+                        p.1 += 1;
+                    } else {
+                        self.above_extra.insert(k, (d, 1));
+                    }
                 }
+            } else {
+                self.below_count += 1;
+                self.below_total += e;
             }
-        } else {
-            self.below_count += 1;
-            self.below_total += e;
         }
     }
     fn occasional_update(&mut self) {
@@ -193,39 +222,41 @@ impl<S: MovableSystem> Replica<S> {
             && self.accepted_count > 128
             && self.max_energy.value_unsafe.is_finite()
         {
-            let acceptance_ratio = self.accepted_count as f64 / self.rejected_count as f64;
-            let max_acceptance_ratio = self.system.min_moves_to_randomize() as f64;
-            // We don't mess with the translation scale unless the acceptance
-            // is more than a factor of two away from our goal range of between
-            // 50% and 1/min_moves_to_randomize.  This gives us a pretty wide
-            // target range, and ensures that the translation scale does not
-            // too frequently.
-            if acceptance_ratio < 0.5 || acceptance_ratio > 2.0 * max_acceptance_ratio {
-                let old_translation_scale = self.translation_scale;
-                let mut adjustment = if acceptance_ratio < 0.5 {
-                    acceptance_ratio / max_acceptance_ratio.sqrt()
-                } else {
-                    acceptance_ratio * max_acceptance_ratio.sqrt()
-                };
-                if adjustment > 2.0 {
-                    adjustment = 2.0;
-                } else if adjustment < 0.5 {
-                    adjustment = 0.5;
+            if let Some(sys) = &mut self.sys {
+                let acceptance_ratio = self.accepted_count as f64 / self.rejected_count as f64;
+                let max_acceptance_ratio = sys.system.min_moves_to_randomize() as f64;
+                // We don't mess with the translation scale unless the acceptance
+                // is more than a factor of two away from our goal range of between
+                // 50% and 1/min_moves_to_randomize.  This gives us a pretty wide
+                // target range, and ensures that the translation scale does not
+                // too frequently.
+                if acceptance_ratio < 0.5 || acceptance_ratio > 2.0 * max_acceptance_ratio {
+                    let old_translation_scale = self.translation_scale;
+                    let mut adjustment = if acceptance_ratio < 0.5 {
+                        acceptance_ratio / max_acceptance_ratio.sqrt()
+                    } else {
+                        acceptance_ratio * max_acceptance_ratio.sqrt()
+                    };
+                    if adjustment > 2.0 {
+                        adjustment = 2.0;
+                    } else if adjustment < 0.5 {
+                        adjustment = 0.5;
+                    }
+                    self.translation_scale *= adjustment;
+                    println!(
+                        "      ({:.5}) Updating translation scale from {:.2} -> {:.2} [{:.1}]",
+                        self.max_energy.pretty(),
+                        old_translation_scale.pretty(),
+                        self.translation_scale.pretty(),
+                        crate::prettyfloat::PrettyFloat(
+                            self.accepted_count as f64 / self.rejected_count as f64
+                        ),
+                    );
+                    // Reset the counts for the next time around only if we have
+                    // made a change.
+                    self.accepted_count = 0;
+                    self.rejected_count = 0;
                 }
-                self.translation_scale *= adjustment;
-                println!(
-                    "      ({:.5}) Updating translation scale from {:.2} -> {:.2} [{:.1}]",
-                    self.max_energy.pretty(),
-                    old_translation_scale.pretty(),
-                    self.translation_scale.pretty(),
-                    crate::prettyfloat::PrettyFloat(
-                        self.accepted_count as f64 / self.rejected_count as f64
-                    ),
-                );
-                // Reset the counts for the next time around only if we have
-                // made a change.
-                self.accepted_count = 0;
-                self.rejected_count = 0;
             }
         }
     }
@@ -345,7 +376,9 @@ impl<
                         };
                         println!("Resuming from file {:?}", save_as);
                         for r in s.replicas.iter_mut() {
-                            r.system.update_caches();
+                            if let Some(sys) = &mut r.sys {
+                                sys.system.update_caches();
+                            }
                         }
                         s.report.update_from(_mc._report);
                         s.save.update_from(_mc._save);
@@ -406,9 +439,21 @@ impl<
     /// Run a simulation
     pub fn run_once(&mut self) {
         let moves = self.moves;
-        let steps = self.replicas[0].system.min_moves_to_randomize();
+        let steps = self.replicas[0]
+            .sys
+            .as_ref()
+            .unwrap()
+            .system
+            .min_moves_to_randomize();
         // First run a few steps of the simulation for each replica
         self.replicas.par_iter_mut().for_each(|r| {
+            let steps = if r.sys.is_none() {
+                0
+            } else if r.max_energy.value_unsafe.is_finite() {
+                steps
+            } else {
+                1
+            };
             for i in 0..steps {
                 r.run_once(moves + i);
             }
@@ -430,42 +475,38 @@ impl<
                 // the higher energy system is not a clone of some other
                 // We want the clones to all end up at the top where they can
                 // be annihilated, leaving us with independent replicas.
-                if r0.system_lowest_max_energy.is_some() && r0.system.energy() < r1.max_energy {
-                    std::mem::swap(&mut r0.system, &mut r1.system);
-                    std::mem::swap(
-                        &mut r0.system_lowest_max_energy,
-                        &mut r1.system_lowest_max_energy,
-                    );
-                    if r1.system_lowest_max_energy.unwrap() > r1.max_energy {
+                if r0.sys.is_some() && r0.sys.as_ref().unwrap().system.energy() < r1.max_energy {
+                    std::mem::swap(&mut r0.sys, &mut r1.sys);
+                    if r1.sys.as_ref().unwrap().lowest_max_energy > r1.max_energy {
                         r1.unique_visitors += 1;
-                        r1.system_lowest_max_energy = Some(r1.max_energy);
+                        r1.sys.as_mut().unwrap().lowest_max_energy = r1.max_energy;
+                    }
+                    if r0.max_energy.value_unsafe.is_infinite() {
+                        // Ensure that we always have a system in the
+                        // high-energy unbounded bin.
+                        r0.sys = r1.sys.clone();
+                        r0.sys.as_mut().unwrap().lowest_max_energy = Energy::new(std::f64::INFINITY);
                     }
                 }
             }
         });
         const INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN: u64 = 8;
-        if let Some((cutoff, energy)) = self
-            .replicas
-            .last()
-            .and_then(|r| Some((r.cutoff_energy, r.system.energy())))
-        {
+        if let Some((cutoff, energy)) = self.replicas.last().and_then(|r| {
+            r.sys
+                .as_ref()
+                .and_then(|sys| Some((r.cutoff_energy, sys.system.energy())))
+        }) {
             if energy < cutoff {
                 self.median.add_energy(energy);
             }
         }
         let new_replica = if let Some(r) = self.replicas.last() {
-            if r.unique_visitors >= INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN {
+            if r.unique_visitors >= INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN && r.sys.is_some() {
                 let mean_below = r.below_total / r.below_count as f64;
-                if mean_below + self.min_T < r.cutoff_energy && r.system.energy() < r.cutoff_energy
-                {
+                if mean_below + self.min_T < r.cutoff_energy {
                     let median_below = self.median.median();
-                    self.median.reset(r.system.energy());
-                    let mut newr = Replica::new(
-                        r.cutoff_energy,
-                        median_below,
-                        r.system.clone(),
-                        self.rng.clone(),
-                    );
+                    self.median.reset(r.sys.as_ref().unwrap().system.energy());
+                    let mut newr = Replica::empty(r.cutoff_energy, median_below, self.rng.clone());
                     newr.translation_scale = r.translation_scale;
                     println!(
                         "      New bin: {:5} with mean {:5} and max {:.5}",
@@ -488,7 +529,9 @@ impl<
             self.replicas.push(r);
         }
 
-        self.replicas.par_iter_mut().for_each(|r| r.occasional_update());
+        self.replicas
+            .par_iter_mut()
+            .for_each(|r| r.occasional_update());
 
         for _ in 0..self.replicas.len() as u64 * steps {
             self.moves += 1;
