@@ -494,6 +494,7 @@ impl<
                         r0.above_count = 1;
                         r0.below_total = r0.below_total / r0.below_count as f64;
                         r0.below_count = 1;
+                        r0.unique_visitors = 0;
                         for e in r0.above_extra.values_mut() {
                             *e = (e.0 / e.1 as f64, 1);
                         }
