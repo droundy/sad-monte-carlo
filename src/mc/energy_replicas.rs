@@ -440,7 +440,6 @@ impl<
                 }
             }
         });
-        const INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN: u64 = 8;
         if let Some((cutoff, energy)) = self
             .replicas
             .last()
@@ -450,8 +449,20 @@ impl<
                 self.median.add_energy(energy);
             }
         }
+        const INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN: u64 = 8;
         let new_replica = if let Some(r) = self.replicas.last() {
-            if r.unique_visitors >= INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN {
+            // We will create a new bin if we have had
+            // INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN unique visitors at the lowest
+            // energy, and the current system at the lowest energy is *not* a
+            // of another system, to avoid having the same system cloned
+            // disproportionately many times.  Also, we need the mean energy
+            // below our lowest cutoff to be lower than min_T below that cutoff
+            // (so we aren't at lower microcanonical temperature than min_T),
+            // the system energy must be below the median so that we have a
+            // to put into our new bin.  Wow, that's a lot of ifs...
+            if r.unique_visitors >= INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN
+                && r.system_lowest_max_energy.is_some()
+            {
                 let mean_below = r.below_total / r.below_count as f64;
                 if mean_below + self.min_T < r.cutoff_energy && r.system.energy() < r.cutoff_energy
                 {
@@ -485,7 +496,9 @@ impl<
             self.replicas.push(r);
         }
 
-        self.replicas.par_iter_mut().for_each(|r| r.occasional_update());
+        self.replicas
+            .par_iter_mut()
+            .for_each(|r| r.occasional_update());
 
         for _ in 0..self.replicas.len() as u64 * steps {
             self.moves += 1;
