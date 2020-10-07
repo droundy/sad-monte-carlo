@@ -382,7 +382,7 @@ impl<
         for r in self.replicas.iter() {
             let percent = r.above_count as f64 / (r.above_count as f64 + r.below_count as f64);
             println!(
-                "      {:.2}% > {:9.5},{:.2} unique",
+                "      {:2.1}% > {:9.5} {:.2} unique",
                 crate::prettyfloat::PrettyFloat(100.0 * percent),
                 r.cutoff_energy.pretty(),
                 crate::prettyfloat::PrettyFloat(r.unique_visitors as f64),
