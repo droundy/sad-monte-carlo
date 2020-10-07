@@ -426,11 +426,8 @@ impl<
             // for chunk in iterator {
             if let [r0, r1] = chunk {
                 assert_eq!(r0.cutoff_energy, r1.max_energy);
-                // We will swap them if both systems can go into the lower bin,
-                // the higher energy system is not a clone of some other
-                // We want the clones to all end up at the top where they can
-                // be annihilated, leaving us with independent replicas.
-                if r0.system_lowest_max_energy.is_some() && r0.system.energy() < r1.max_energy {
+                // We will swap them if both systems can go into the lower bin.
+                if r0.system.energy() < r1.max_energy {
                     std::mem::swap(&mut r0.system, &mut r1.system);
                     std::mem::swap(
                         &mut r0.system_lowest_max_energy,
