@@ -433,9 +433,11 @@ impl<
                         &mut r0.system_lowest_max_energy,
                         &mut r1.system_lowest_max_energy,
                     );
-                    if r1.system_lowest_max_energy.unwrap() > r1.max_energy {
-                        r1.unique_visitors += 1;
-                        r1.system_lowest_max_energy = Some(r1.max_energy);
+                    if let Some(me) = r1.system_lowest_max_energy {
+                        if me > r1.max_energy {
+                            r1.unique_visitors += 1;
+                            r1.system_lowest_max_energy = Some(r1.max_energy);
+                        }
                     }
                 }
             }
