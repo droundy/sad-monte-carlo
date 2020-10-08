@@ -219,7 +219,7 @@ for f in frames:
 
         E_lo = final_energy_boundaries[-1]
         dE_lo = final_energy_boundaries[-2] - E_lo
-        Nplot = 1000000
+        Nplot = 200000
         if np.isnan(final_mean_energy[-1]):
             E = np.linspace(E_lo - 3*dE_lo, final_energy_boundaries.max(), Nplot)
         else:
@@ -272,7 +272,7 @@ for f in frames:
         plt.plot(scale*np.array(step_energy), scale*np.array(step_entropy), '-', label=key + ' step', color=color)
         plt.plot(scale*E, scale*Ssloped, '--', label=key + 'sloped', color=color)
         plt.plot(scale*E, scale*np.log(exact_density_of_states(E)), color='#aaaaaa')
-        plt.plot(scale*E, scale*final_Ssloped, '-', linewidth=2, alpha=0.2, color=color, label='final')
+        plt.plot(scale*E, scale*final_Ssloped, '-', linewidth=4, alpha=0.2, color=color, label='final')
         plt.legend(loc='best')
         plt.xlabel('$E$')
         plt.ylabel('$S$')
@@ -282,7 +282,7 @@ for f in frames:
             plt.ylabel('$S/N$')
         # this is an inset axes over the main axes
         a = plt.axes([.3, .2, .4, .5])
-        a.plot(scale*E, scale*final_Ssloped, '-', linewidth=2, alpha=0.2, color=color)
+        a.plot(scale*E, scale*final_Ssloped, '-', linewidth=4, alpha=0.2, color=color)
         a.plot(scale*E, scale*Ssloped, '--', color=color)
         # plt.xlim(E.min(), E.max())
 
