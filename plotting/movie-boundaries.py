@@ -31,6 +31,40 @@ def read_file(base):
         lnw = np.flip(lnw)
     return energy_boundaries, mean_energy, lnw, system
 
+def step_entropy(energy_boundaries, mean_energy, lnw):
+    step_entropy = []
+    step_energy = []
+    for i in range(len(energy_boundaries)-1):
+        step_energy.append(energy_boundaries[i])
+        step_energy.append(energy_boundaries[i+1])
+        Shere = lnw[i+1] - np.log(energy_boundaries[i] - energy_boundaries[i+1])
+        step_entropy.append(Shere)
+        step_entropy.append(Shere)
+    step_energy = np.array(step_energy)
+    step_entropy = np.array(step_entropy)
+    def entropy(E):
+        return np.interp(E, step_energy, step_entropy, left=0, right=0)
+    return entropy, step_energy, step_entropy
+
+def linear_entropy(energy_boundaries, mean_energy, lnw):
+    step_entropy = []
+    step_energy = []
+    for i in range(len(energy_boundaries)-1):
+        step_energy.append(energy_boundaries[i])
+        step_energy.append(energy_boundaries[i+1])
+
+        deltaE = energy_boundaries[i] - energy_boundaries[i+1]
+        meanE = mean_energy[i+1]
+        beta = find_beta_deltaE((meanE - energy_boundaries[i+1])/deltaE)/deltaE
+        S0 = find_entropy_from_beta_and_lnw(beta, lnw[i+1], deltaE)
+        step_entropy.append(S0+beta*deltaE)
+        step_entropy.append(S0)
+    step_energy = np.array(step_energy)
+    step_entropy = np.array(step_entropy)
+    def entropy(E):
+        return np.interp(E, step_energy, step_entropy, left=0, right=0)
+    return entropy, step_energy, step_entropy
+
 def linear_density_of_states(E):
     return np.heaviside(E, 0.5)*np.heaviside(1-E, 0.5)
 def quadratic_density_of_states(E):
@@ -235,46 +269,20 @@ for f in frames:
                 E = np.linspace(4*final_mean_energy[-1] - 3*E_lo, E_lo + Nplot*dE_lo/10, Nplot)
         print('E range', E[0], E[-1])
         
-        step_entropy = []
-        step_energy = []
-        for i in range(len(energy_boundaries)-1):
-            step_energy.append(energy_boundaries[i])
-            step_energy.append(energy_boundaries[i+1])
-            Shere = lnw[i+1] - np.log(energy_boundaries[i] - energy_boundaries[i+1])
-            step_entropy.append(Shere)
-            step_entropy.append(Shere)
+        s_function, s_energy, s_entropy = step_entropy(energy_boundaries, mean_energy, lnw)
+        l_function, l_energy, l_entropy = linear_entropy(energy_boundaries, mean_energy, lnw)
 
-        middle_entropy = lnw[1:-1] - np.log(-np.diff(energy_boundaries))
-        Ssloped = np.zeros_like(E)
-        for i in range(len(middle_entropy)):
-            print(key, 'working on', i, '/', len(middle_entropy))
-            here = E<=energy_boundaries[i]
-
-            deltaE = energy_boundaries[i] - energy_boundaries[i+1]
-            meanE = mean_energy[i+1]
-            beta = find_beta_deltaE((meanE - energy_boundaries[i+1])/deltaE)/deltaE
-            S0 = find_entropy_from_beta_and_lnw(beta, lnw[i+1], deltaE)
-            Ssloped[here] = S0 + beta*(E[here] - energy_boundaries[i+1])
-
-        final_Ssloped = np.zeros_like(E)
-        for i in range(len(final_energy_boundaries)-2):
-            here = E<=final_energy_boundaries[i]
-            
-            deltaE = final_energy_boundaries[i] - final_energy_boundaries[i+1]
-            meanE = final_mean_energy[i+1]
-            beta = find_beta_deltaE((meanE - final_energy_boundaries[i+1])/deltaE)/deltaE
-            S0 = find_entropy_from_beta_and_lnw(beta, final_lnw[i+1], deltaE)
-            final_Ssloped[here] = S0 + beta*(E[here] - final_energy_boundaries[i+1])
+        f_function, f_energy, f_entropy = linear_entropy(final_energy_boundaries, final_mean_energy, final_lnw)
 
         plt.figure('entropy')
         scale = 1
         if args.intensive:
             scale = 1/system['N']
         print('scale is', scale)
-        main_ax.plot(scale*np.array(step_energy), scale*np.array(step_entropy), '-', label=key + ' step', color=color)
-        main_ax.plot(scale*E, scale*Ssloped, '--', label=key + 'sloped', color=color)
+        main_ax.plot(scale*s_energy, scale*s_entropy, '-', label=key + ' step', color=color)
+        main_ax.plot(scale*l_energy, scale*l_entropy, '--', label=key + ' linear', color=color)
         main_ax.plot(scale*E, scale*np.log(exact_density_of_states(E)), color='#aaaaaa')
-        main_ax.plot(scale*E, scale*final_Ssloped, '-', linewidth=4, alpha=0.2, color=color, label='final')
+        main_ax.plot(scale*f_energy, scale*f_entropy, '-', linewidth=4, alpha=0.2, color=color, label='final')
         main_ax.legend(loc='best')
         plt.xlabel('$E$')
         plt.ylabel('$S$')
@@ -284,21 +292,9 @@ for f in frames:
             plt.ylabel('$S/N$')
         # this is an inset axes over the main axes
         a = plt.axes([.3, .2, .4, .5])
-        a.plot(scale*E, scale*final_Ssloped, '-', linewidth=4, alpha=0.2, color=color)
-        a.plot(scale*E, scale*Ssloped, '--', color=color)
-        # plt.xlim(E.min(), E.max())
-
-        plot_dos = False
-        if plot_dos:
-            plt.figure('density of states')
-            plt.plot(np.array(step_energy), np.exp(np.array(step_entropy)), '-', label=key + ' step', color=color)
-            plt.plot(E, exact_density_of_states(E), color='#aaaaaa')
-            plt.xlabel('$E$')
-            plt.ylabel('$D(E)$')
-            exact = exact_density_of_states(E)
-            plt.ylim(0, 1.1*exact[exact == exact].max())
-            plt.legend(loc='best')
-
+        a.plot(scale*f_energy, scale*f_entropy, '-', linewidth=4, alpha=0.2, color=color)
+        a.plot(scale*l_energy, scale*l_entropy, '--', color=color)
+        plt.xlim(0, 20)
 
     if which_color > 0:
         plt.pause(0.0001)
