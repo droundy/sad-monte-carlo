@@ -172,6 +172,9 @@ plt.ion()
 for f in frames:
     plt.figure('entropy')
     plt.clf()
+    plt.figure('entropy')
+    main_ax = plt.gca()
+
     which_color = 0
     for key in bases:
         final_energy_boundaries, final_mean_energy, final_lnw, final_system = read_file(key)
@@ -264,16 +267,15 @@ for f in frames:
             final_Ssloped[here] = S0 + beta*(E[here] - final_energy_boundaries[i+1])
 
         plt.figure('entropy')
-
         scale = 1
         if args.intensive:
             scale = 1/system['N']
         print('scale is', scale)
-        plt.plot(scale*np.array(step_energy), scale*np.array(step_entropy), '-', label=key + ' step', color=color)
-        plt.plot(scale*E, scale*Ssloped, '--', label=key + 'sloped', color=color)
-        plt.plot(scale*E, scale*np.log(exact_density_of_states(E)), color='#aaaaaa')
-        plt.plot(scale*E, scale*final_Ssloped, '-', linewidth=4, alpha=0.2, color=color, label='final')
-        plt.legend(loc='best')
+        main_ax.plot(scale*np.array(step_energy), scale*np.array(step_entropy), '-', label=key + ' step', color=color)
+        main_ax.plot(scale*E, scale*Ssloped, '--', label=key + 'sloped', color=color)
+        main_ax.plot(scale*E, scale*np.log(exact_density_of_states(E)), color='#aaaaaa')
+        main_ax.plot(scale*E, scale*final_Ssloped, '-', linewidth=4, alpha=0.2, color=color, label='final')
+        main_ax.legend(loc='best')
         plt.xlabel('$E$')
         plt.ylabel('$S$')
         plt.title(f.lstrip('0'))
