@@ -220,10 +220,17 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
     pub fn checkpoint(&mut self) {
         self.report.print(self.moves);
         println!(
-            "    Current energy {:.5} rejected {:.2} %",
+            "    Current energy {:.5} rejected {:.2}%",
             self.system.energy().pretty(),
             crate::prettyfloat::PrettyFloat(self.rejected_moves as f64 / self.moves as f64 * 100.0)
         );
+        let unexplored = self.histogram.iter().cloned().filter(|&h| h== 0).count();
+        if unexplored > 0 {
+            println!("    {:.4} bins remain unexplored", crate::prettyfloat::PrettyFloat(unexplored));
+        } else {
+            let minimum = self.histogram.iter().cloned().min().unwrap();
+            println!("    saw each bin at least {:.2} times", crate::prettyfloat::PrettyFloat(minimum as f64));
+        }
 
         let f = AtomicFile::create(&self.save_as)
             .expect(&format!("error creating file {:?}", self.save_as));
