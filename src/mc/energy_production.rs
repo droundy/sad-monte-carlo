@@ -196,12 +196,7 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
     }
 
     fn e_to_idx(&self, energy: Energy) -> usize {
-        for (i, e) in self.energy_boundaries.iter().cloned().enumerate() {
-            if energy > e {
-                return i;
-            }
-        }
-        self.energy_boundaries.len()
+        bisect(&self.energy_boundaries, energy)
     }
 
     /// Run a simulation
@@ -235,5 +230,37 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
         if self.save.shall_i_save(self.moves) || movie_time {
             self.checkpoint();
         }
+    }
+}
+
+fn bisect(b: &[Energy], v: Energy) -> usize {
+    match b.binary_search_by(|&x| if v < x { std::cmp::Ordering::Less } else { std::cmp::Ordering::Greater }) {
+        Err(i) => i,
+        Ok(_) => unreachable!(),
+    }
+}
+
+#[test]
+fn bisect_ok() {
+    let b = &[
+        Energy::new(5.0),
+        Energy::new(3.0),
+        Energy::new(1.0),
+        Energy::new(-1.0),
+        Energy::new(-2.0),
+    ];
+    assert_eq!(bisect(b, Energy::new(6.0)), 0);
+    assert_eq!(bisect(b, Energy::new(4.0)), 1);
+    assert_eq!(bisect(b, Energy::new(2.0)), 2);
+    assert_eq!(bisect(b, Energy::new(0.0)), 3);
+    assert_eq!(bisect(b, Energy::new(-1.1)), 4);
+    assert_eq!(bisect(b, Energy::new(-2.2)), 5);
+    let mut b = Vec::new();
+    for i in 0..138 {
+        b.push(Energy::new(-i as f64));
+    }
+    for i in 0..139 {
+        println!("looking for {}", i);
+        assert_eq!(bisect(&b, Energy::new(-(i as f64) + 0.5)), i);
     }
 }
