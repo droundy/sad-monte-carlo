@@ -162,7 +162,7 @@ def bisect_bin_entropy(i):
     return
 
 def fn_for_beta(x, meanE_over_deltaE):
-    if x < 1e-14:
+    if abs(x) < 1e-14:
         return 0.5*x - x*meanE_over_deltaE
     return x/(1-np.exp(-x)) - 1 - x*meanE_over_deltaE
 
