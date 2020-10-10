@@ -226,7 +226,7 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
         );
         let unexplored = self.histogram.iter().cloned().filter(|&h| h== 0).count();
         if unexplored > 0 {
-            println!("    {:.4} bins remain unexplored", crate::prettyfloat::PrettyFloat(unexplored));
+            println!("    {:.4} bins remain unexplored", crate::prettyfloat::PrettyFloat(unexplored as f64));
         } else {
             let minimum = self.histogram.iter().cloned().min().unwrap();
             println!("    saw each bin at least {:.2} times", crate::prettyfloat::PrettyFloat(minimum as f64));
