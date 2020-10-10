@@ -17,6 +17,8 @@ use std::default::Default;
 pub struct MCParams {
     /// The base filename for which we are running the production
     pub base: Option<String>,
+    /// Subdivide each bin by this much.
+    pub subdivide: Option<usize>,
     /// The seed for the random number generator.
     pub seed: Option<u64>,
     /// report input
@@ -32,6 +34,7 @@ impl Default for MCParams {
         MCParams {
             base: None,
             seed: None,
+            subdivide: None,
             _save: plugin::SaveParams::default(),
             _movies: plugin::MovieParams::default(),
             _report: plugin::ReportParams::default(),
@@ -85,6 +88,34 @@ fn read_f64(fname: String) -> Result<Vec<f64>, std::io::Error> {
         .collect())
 }
 
+fn divide_boundaries(bounds: &[f64], subdivide: usize) -> Vec<f64> {
+    let mut eb = Vec::new();
+    let de = (bounds[0] - bounds[1]) / subdivide as f64;
+    for i in (1..subdivide).rev() {
+        eb.push(bounds[0] + i as f64 * de);
+    }
+    for b in 0..bounds.len() - 1 {
+        let de = (bounds[b] - bounds[b + 1]) / subdivide as f64;
+        for i in 0..subdivide {
+            eb.push(bounds[b] - i as f64 * de);
+        }
+    }
+    let de = (bounds[bounds.len() - 2] - bounds[bounds.len() - 1]) / subdivide as f64;
+    for i in 0..subdivide {
+        eb.push(bounds[bounds.len() - 1] - i as f64 * de);
+    }
+    eb
+}
+
+#[test]
+fn bounds_subdivision() {
+    let bounds = &[1.0, 0.0];
+    let half = divide_boundaries(bounds, 2);
+    let quarter = divide_boundaries(bounds, 4);
+    assert_eq!(&half, &[1.5, 1.0, 0.5, 0.0, -0.5]);
+    assert_eq!(&quarter, &[1.75, 1.5, 1.25, 1.0, 0.75, 0.5, 0.25, 0.0, -0.25, -0.5, -0.75]);
+}
+
 impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::DeserializeOwned>
     MC<S>
 {
@@ -96,13 +127,22 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
         } else {
             save_as.with_extension("").to_str().unwrap().to_string()
         };
-        let energy_boundaries = read_f64(format!("{}-energy-boundaries.dat", base)).unwrap();
-        let energy_boundaries = energy_boundaries
+        let mut energy_boundaries = read_f64(format!("{}-energy-boundaries.dat", base)).unwrap();
+        let mut lnw = read_f64(format!("{}-lnw.dat", base)).unwrap();
+        if let Some(subdivide) = params.subdivide {
+            lnw = lnw
+                .iter()
+                .cloned()
+                .flat_map(|v| vec![v; subdivide])
+                .collect();
+            energy_boundaries = divide_boundaries(&energy_boundaries, subdivide);
+            assert_eq!(lnw.len(), energy_boundaries.len()+1);
+        }
+        let energy_boundaries: Vec<Energy> = energy_boundaries
             .iter()
             .cloned()
             .map(|x| Energy::new(x))
             .collect();
-        let lnw = read_f64(format!("{}-lnw.dat", base)).unwrap();
         MC {
             moves: 0,
             rejected_moves: 0,
@@ -234,7 +274,13 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
 }
 
 fn bisect(b: &[Energy], v: Energy) -> usize {
-    match b.binary_search_by(|&x| if v < x { std::cmp::Ordering::Less } else { std::cmp::Ordering::Greater }) {
+    match b.binary_search_by(|&x| {
+        if v < x {
+            std::cmp::Ordering::Less
+        } else {
+            std::cmp::Ordering::Greater
+        }
+    }) {
         Err(i) => i,
         Ok(_) => unreachable!(),
     }
