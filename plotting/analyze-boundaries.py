@@ -31,11 +31,12 @@ def erfinv_density_of_states(E):
     return np.sqrt(np.pi/N)*np.exp(-(E - mean_erfinv_energy)**2/N)
 
 def piecewise_density_of_states(E):
-    if E < -e2:
-        return a**3 * np.sqrt(E+e1) / 2
     elif E > 0:
         return (b + (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1))
-    return a**3 * np.sqrt(E+e1) / 2 + (b - (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1)) + (b + (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1))
+    if E > -e2:
+        return (a**3 * np.sqrt(E+e1) / 2) +
+        ( (b - (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1)) ) +
+        ( (b + (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1)) )
 piecewise_density_of_states = np.vectorize(piecewise_density_of_states)
 
 #The function needs to be callable
@@ -261,6 +262,11 @@ for key in lnw:
     print('scale is', scale)
     plt.plot(scale*np.array(step_energy), scale*np.array(step_entropy), '-', label=key + ' step', color=color)
     plt.plot(scale*E, scale*Ssloped, '--', label=key + 'sloped', color=color)
+    
+    plt.plot(E,
+            scale*np.log(exact_density_of_states(E)),
+            label='exact ' + key, color='#ffa500')
+   
     # plt.plot(E, S, '-', label=key+' optimize_bin_entropy approx.')
     # plt.plot(E, Sbest, '-', label=key + 'smooth')
     plt.plot(scale*E, scale*np.log(exact_density_of_states(E)), color='#aaaaaa')
