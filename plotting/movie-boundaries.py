@@ -317,8 +317,8 @@ for f in frames:
 
         my_s = scale*l_function(energies_to_compare/scale)
         my_s[np.isnan(my_s)] = 1
-        main_ax.plot(energies_to_compare, my_s, 'x', color=color)
-        main_ax.plot(energies_to_compare, energies_reference, '+', color='#999999')
+        #main_ax.plot(energies_to_compare, my_s, 'x', color=color)
+        #main_ax.plot(energies_to_compare, energies_reference, '+', color='#999999')
 
         main_ax.legend(loc='best')
         plt.xlabel('$E$')
