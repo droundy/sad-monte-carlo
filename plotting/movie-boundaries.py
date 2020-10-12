@@ -18,6 +18,11 @@ prop_cycle = plt.rcParams['axes.prop_cycle']
 
 colors = cc.glasbey_dark
 
+# plt.style.use('dark_background')
+# colors = cc.glasbey_light
+
+# prop_cycle = plt.rcParams['axes.prop_cycle']
+
 def read_file(base):
     energy_boundaries = np.loadtxt(base+'-energy-boundaries.dat')
     mean_energy = np.loadtxt(base+'-mean-energy.dat')
@@ -29,6 +34,8 @@ def read_file(base):
         energy_boundaries = np.flip(energy_boundaries)
         mean_energy = np.flip(mean_energy)
         lnw = np.flip(lnw)
+    lnw -= lnw.max()
+    lnw -= np.log(np.sum(np.exp(lnw)))
     return energy_boundaries, mean_energy, lnw, system
 
 def step_entropy(energy_boundaries, mean_energy, lnw):
@@ -40,11 +47,11 @@ def step_entropy(energy_boundaries, mean_energy, lnw):
         Shere = lnw[i+1] - np.log(energy_boundaries[i] - energy_boundaries[i+1])
         step_entropy.append(Shere)
         step_entropy.append(Shere)
-    step_energy = np.array(step_energy)
-    step_entropy = np.array(step_entropy)
+    step_energy = np.flip(np.array(step_energy))
+    step_entropy = np.flip(np.array(step_entropy))
     def entropy(E):
-        return np.interp(E, step_energy, step_entropy, left=0, right=0)
-    return entropy, step_energy, step_entropy
+        return np.interp(E, step_energy, step_entropy, left=step_entropy[0], right=step_entropy[-1])
+    return entropy, 1*step_energy, 1*step_entropy
 
 def linear_entropy(energy_boundaries, mean_energy, lnw):
     step_entropy = []
@@ -57,13 +64,26 @@ def linear_entropy(energy_boundaries, mean_energy, lnw):
         meanE = mean_energy[i+1]
         beta = find_beta_deltaE((meanE - energy_boundaries[i+1])/deltaE)/deltaE
         S0 = find_entropy_from_beta_and_lnw(beta, lnw[i+1], deltaE)
-        step_entropy.append(S0+beta*deltaE)
-        step_entropy.append(S0)
-    step_energy = np.array(step_energy)
-    step_entropy = np.array(step_entropy)
+        if np.isnan(beta+S0):
+            step_entropy.append(lnw[i+1]-np.log(deltaE))
+            step_entropy.append(lnw[i+1]-np.log(deltaE))
+        else:
+            step_entropy.append(S0+beta*deltaE)
+            step_entropy.append(S0)
+    
+    # this is the unbounded low-energy bin, assume exponential DOS
+    Tlow = energy_boundaries[-1] - mean_energy[-1]
+    Slo = lnw[-1] - np.log(Tlow)
+    step_energy.append(energy_boundaries[-1])
+    step_energy.append(energy_boundaries[-1] - 20*Tlow)
+    step_entropy.append(Slo)
+    step_entropy.append(Slo - 10)
+
+    step_energy = np.flip(step_energy)
+    step_entropy = np.flip(step_entropy)
     def entropy(E):
-        return np.interp(E, step_energy, step_entropy, left=0, right=0)
-    return entropy, step_energy, step_entropy
+        return np.interp(E, step_energy, step_entropy, left=step_entropy[0], right=step_entropy[-1])
+    return entropy, 1*step_energy, 1*step_entropy
 
 def linear_density_of_states(E):
     return np.heaviside(E, 0.5)*np.heaviside(1-E, 0.5)
@@ -198,15 +218,41 @@ for base in args.base:
         f = os.path.splitext(os.path.basename(f))[0]
         frames.add(f)
 
+best_energy_boundaries, best_mean_energy, best_lnw, best_system = read_file(args.base[0])
+unscaled_best_function, best_energy, best_entropy = linear_entropy(best_energy_boundaries, best_mean_energy, best_lnw)
+if args.intensive:
+    scale = 1/best_system['N']
+    best_energy = scale*best_energy
+    best_entropy = scale*best_entropy
+    best_function = lambda e: scale*unscaled_best_function(e/scale)
+else:
+    best_function = unscaled_best_function
+energies_to_compare = []
+for i in range(len(best_energy_boundaries)-2):
+    energies_to_compare.append(scale*0.5*(best_energy_boundaries[i]+best_energy_boundaries[i+1]))
+energies_to_compare = np.array(energies_to_compare)
+energies_reference = best_function(energies_to_compare)
+# Only compare energies below the energy with max entropy
+nhi = energies_reference.argmax()
+energies_to_compare = energies_to_compare[nhi:]
+energies_reference = energies_reference[nhi:]
+
 sigma = 1
 
 frames = sorted(list(frames))
 
+comparison_time = {}
+comparison_maxerror = {}
+for k in bases:
+    comparison_time[k] = []
+    comparison_maxerror[k] = []
+
 plt.ion()
 for f in frames:
-    plt.figure('entropy')
+    plt.figure('comparison')
     plt.clf()
     plt.figure('entropy')
+    plt.clf()
     main_ax = plt.gca()
 
     which_color = 0
@@ -253,21 +299,6 @@ for f in frames:
         else:
             print('\n\n\nusing the most bogus density of states\n\n\n', system['kind'])
             exact_density_of_states = other_density_of_states
-
-        E_lo = final_energy_boundaries[-1]
-        dE_lo = final_energy_boundaries[-2] - E_lo
-        Nplot = 200000
-        if np.isnan(final_mean_energy[-1]):
-            E = np.linspace(E_lo - 3*dE_lo, final_energy_boundaries.max(), Nplot)
-        else:
-            E = np.linspace(4*final_mean_energy[-1] - 3*E_lo, final_energy_boundaries.max(), Nplot)
-        if dE_lo < E[1] - E[0]:
-            # this means our resolution is too poor above
-            if np.isnan(final_mean_energy[-1]):
-                E = np.linspace(E_lo - 3*dE_lo, E_lo + Nplot*dE_lo/10, Nplot)
-            else:
-                E = np.linspace(4*final_mean_energy[-1] - 3*E_lo, E_lo + Nplot*dE_lo/10, Nplot)
-        print('E range', E[0], E[-1])
         
         s_function, s_energy, s_entropy = step_entropy(energy_boundaries, mean_energy, lnw)
         l_function, l_energy, l_entropy = linear_entropy(energy_boundaries, mean_energy, lnw)
@@ -281,8 +312,14 @@ for f in frames:
         print('scale is', scale)
         main_ax.plot(scale*s_energy, scale*s_entropy, '-', label=key + ' step', color=color)
         main_ax.plot(scale*l_energy, scale*l_entropy, '--', label=key + ' linear', color=color)
-        main_ax.plot(scale*E, scale*np.log(exact_density_of_states(E)), color='#aaaaaa')
+        main_ax.plot(energies_to_compare, scale*np.log(exact_density_of_states(energies_to_compare/scale)), color='#aaaaaa')
         main_ax.plot(scale*f_energy, scale*f_entropy, '-', linewidth=4, alpha=0.2, color=color, label='final')
+
+        my_s = scale*l_function(energies_to_compare/scale)
+        my_s[np.isnan(my_s)] = 1
+        main_ax.plot(energies_to_compare, my_s, 'x', color=color)
+        main_ax.plot(energies_to_compare, energies_reference, '+', color='#999999')
+
         main_ax.legend(loc='best')
         plt.xlabel('$E$')
         plt.ylabel('$S$')
@@ -294,7 +331,27 @@ for f in frames:
         a = plt.axes([.3, .2, .4, .5])
         a.plot(scale*f_energy, scale*f_entropy, '-', linewidth=4, alpha=0.2, color=color)
         a.plot(scale*l_energy, scale*l_entropy, '--', color=color)
+        #a.plot(energies_to_compare, my_s, 'x', color=color)
+        #a.plot(energies_to_compare, energies_reference, '+', color='#999999')
         plt.xlim(0, 20)
+
+        comparison_time[key].append(float(f))
+        me = abs(my_s - energies_reference).max()
+        for i in range(len(energies_to_compare)):
+            print(energies_to_compare[i], my_s[i])
+
+        comparison_maxerror[key].append(me)
+
+    c = 0
+    for key in bases:
+        color = colors[c]
+        c += 1
+        plt.figure('comparison')
+        print('max entropy errors', key, comparison_maxerror[key])
+        plt.loglog(comparison_time[key], comparison_maxerror[key], '.-', color=color, label=key)
+        plt.xlabel('$t$')
+        plt.ylabel('max error in $S$')
+        plt.legend(loc='best')
 
     if which_color > 0:
         plt.pause(0.0001)
