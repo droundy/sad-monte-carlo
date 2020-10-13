@@ -502,19 +502,21 @@ impl<
             .par_iter_mut()
             .for_each(|r| r.occasional_update());
 
+        let mut moves = self.moves;
+        self.moves += self.replicas.len() as u64 * steps;
         for _ in 0..self.replicas.len() as u64 * steps {
-            self.moves += 1;
+            moves += 1;
 
-            let movie_time = self.movie.shall_i_save(self.moves);
+            let movie_time = self.movie.shall_i_save(moves);
             if movie_time {
-                self.movie.save_frame(&self.save_as, self.moves, &self);
+                self.movie.save_frame(&self.save_as, moves, &self);
             }
-            if self.report.am_all_done(self.moves) {
+            if self.report.am_all_done(moves) {
                 self.checkpoint();
                 println!("All done!");
                 ::std::process::exit(0);
             }
-            if self.save.shall_i_save(self.moves) || movie_time {
+            if self.save.shall_i_save(moves) || movie_time {
                 self.checkpoint();
             }
         }

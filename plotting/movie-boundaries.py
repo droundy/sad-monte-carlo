@@ -216,7 +216,8 @@ for base in args.base:
     bases.append(base)
     for f in glob.glob(base+'/*.cbor'):
         f = os.path.splitext(os.path.basename(f))[0]
-        frames.add(f)
+        if float(f) > 1e7:
+            frames.add(f)
 
 best_energy_boundaries, best_mean_energy, best_lnw, best_system = read_file(args.base[0])
 unscaled_best_function, best_energy, best_entropy = linear_entropy(best_energy_boundaries, best_mean_energy, best_lnw)
@@ -234,8 +235,8 @@ energies_to_compare = np.array(energies_to_compare)
 energies_reference = best_function(energies_to_compare)
 # Only compare energies below the energy with max entropy
 nhi = energies_reference.argmax()
-energies_to_compare = energies_to_compare[nhi:]
-energies_reference = energies_reference[nhi:]
+energies_to_compare = energies_to_compare[nhi:-1]
+energies_reference = energies_reference[nhi:-1]
 
 sigma = 1
 
@@ -329,11 +330,12 @@ for f in frames:
             plt.ylabel('$S/N$')
         # this is an inset axes over the main axes
         a = plt.axes([.3, .2, .4, .5])
-        a.plot(scale*f_energy, scale*f_entropy, '-', linewidth=4, alpha=0.2, color=color)
-        a.plot(scale*l_energy, scale*l_entropy, '--', color=color)
-        #a.plot(energies_to_compare, my_s, 'x', color=color)
+        # a.plot(scale*f_energy, scale*f_entropy, '-', linewidth=4, alpha=0.2, color=color)
+        # a.plot(scale*l_energy, scale*l_entropy, '--', color=color)
+        # plt.xlim(0, 20)
+
+        a.plot(energies_to_compare, my_s-energies_reference, '-', color=color)
         #a.plot(energies_to_compare, energies_reference, '+', color='#999999')
-        plt.xlim(0, 20)
 
         comparison_time[key].append(float(f))
         me = abs(my_s - energies_reference).max()

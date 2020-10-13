@@ -30,6 +30,7 @@ def run_replicas(density, N, shift_N=0, job='run'):
     wca_params = wca(density, N, shift_N)
     if job == 'production':
         os.system(f'{rq} -J p-{name} ../target/release/production --base {name} --subdivide 16 --save-as p-{name}.cbor {wca_params} {time_params}')
+        os.system(f'{rq} -J P-{name} ../target/release/production --base {name} --seed 2 --save-as P-{name}.cbor {wca_params} {time_params}')
     elif job == 'parse':
         os.system(f'{rq} -c all -J parse-{name} ../plotting/parse-replicas.py {name}.cbor')
     else:
