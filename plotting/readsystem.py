@@ -13,14 +13,14 @@ def readsystem(data):
         if 'Gaussian' in fake['function']:
             system['kind'] = 'Gaussian'
             system['sigma'] = fake['function']['Gaussian']['sigma']
+        elif 'Pieces' in fake['function']:
+            system['kind'] = 'Pieces'
+            system['a'] = fake['function']['Pieces']['a']
+            system['b'] = fake['function']['Pieces']['b']
+            system['e1'] = fake['function']['Pieces']['e1']
+            system['e2'] = fake['function']['Pieces']['e2']
     elif 'FakeErfinv' in data['system']:
         system['kind'] = 'Erfinv'
         system['mean_energy'] = data['system']['FakeErfinv']['parameters']['mean_energy']
         system['N'] = len(data['system']['FakeErfinv']['position'])
-    elif 'Pieces' in data['system']:
-        system['kind'] = 'Pieces'
-        system['a'] = data['system']['Pieces']['a']
-        system['b'] = data['system']['Pieces']['b']
-        system['e1'] = data['system']['Pieces']['e1']
-        system['e2'] = data['system']['Pieces']['e2']
     return system
