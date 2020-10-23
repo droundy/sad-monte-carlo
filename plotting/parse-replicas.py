@@ -43,7 +43,10 @@ for fname in args.fname:
         mean_energy.append(above_total[i]/above_count[i])
 
     lnw.append(remaining_entopy)
-    mean_energy.append(replicas[-1]['below_total']/replicas[-1]['below_count'])
+    if replicas[-1]['below_count'] > 0:
+        mean_energy.append(replicas[-1]['below_total']/replicas[-1]['below_count'])
+    else:
+        mean_energy.append(np.NaN)
 
     lnw = np.array(lnw)
     lnw -= np.log(np.sum(np.exp(lnw))) # w = w / sum(w) to normalize

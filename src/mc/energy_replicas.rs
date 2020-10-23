@@ -382,9 +382,9 @@ impl<
         for r in self.replicas.iter() {
             let percent = r.above_count as f64 / (r.above_count as f64 + r.below_count as f64);
             println!(
-                "       < {:9.5} [{:.2}%] {:.2} unique",
-                r.cutoff_energy.pretty(),
+                "      {:2.1}% > {:9.5} {:.2} unique",
                 crate::prettyfloat::PrettyFloat(100.0 * percent),
+                r.cutoff_energy.pretty(),
                 crate::prettyfloat::PrettyFloat(r.unique_visitors as f64),
             );
         }
@@ -426,24 +426,22 @@ impl<
             // for chunk in iterator {
             if let [r0, r1] = chunk {
                 assert_eq!(r0.cutoff_energy, r1.max_energy);
-                // We will swap them if both systems can go into the lower bin,
-                // the higher energy system is not a clone of some other
-                // We want the clones to all end up at the top where they can
-                // be annihilated, leaving us with independent replicas.
-                if r0.system_lowest_max_energy.is_some() && r0.system.energy() < r1.max_energy {
+                // We will swap them if both systems can go into the lower bin.
+                if r0.system.energy() < r1.max_energy {
                     std::mem::swap(&mut r0.system, &mut r1.system);
                     std::mem::swap(
                         &mut r0.system_lowest_max_energy,
                         &mut r1.system_lowest_max_energy,
                     );
-                    if r1.system_lowest_max_energy.unwrap() > r1.max_energy {
-                        r1.unique_visitors += 1;
-                        r1.system_lowest_max_energy = Some(r1.max_energy);
+                    if let Some(me) = r1.system_lowest_max_energy {
+                        if me > r1.max_energy {
+                            r1.unique_visitors += 1;
+                            r1.system_lowest_max_energy = Some(r1.max_energy);
+                        }
                     }
                 }
             }
         });
-        const INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN: u64 = 8;
         if let Some((cutoff, energy)) = self
             .replicas
             .last()
@@ -453,8 +451,20 @@ impl<
                 self.median.add_energy(energy);
             }
         }
+        const INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN: u64 = 8;
         let new_replica = if let Some(r) = self.replicas.last() {
-            if r.unique_visitors >= INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN {
+            // We will create a new bin if we have had
+            // INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN unique visitors at the lowest
+            // energy, and the current system at the lowest energy is *not* a
+            // of another system, to avoid having the same system cloned
+            // disproportionately many times.  Also, we need the mean energy
+            // below our lowest cutoff to be lower than min_T below that cutoff
+            // (so we aren't at lower microcanonical temperature than min_T),
+            // the system energy must be below the median so that we have a
+            // to put into our new bin.  Wow, that's a lot of ifs...
+            if r.unique_visitors >= INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN
+                && r.system_lowest_max_energy.is_some()
+            {
                 let mean_below = r.below_total / r.below_count as f64;
                 if mean_below + self.min_T < r.cutoff_energy && r.system.energy() < r.cutoff_energy
                 {
@@ -488,21 +498,25 @@ impl<
             self.replicas.push(r);
         }
 
-        self.replicas.par_iter_mut().for_each(|r| r.occasional_update());
+        self.replicas
+            .par_iter_mut()
+            .for_each(|r| r.occasional_update());
 
+        let mut moves = self.moves;
+        self.moves += self.replicas.len() as u64 * steps;
         for _ in 0..self.replicas.len() as u64 * steps {
-            self.moves += 1;
+            moves += 1;
 
-            let movie_time = self.movie.shall_i_save(self.moves);
+            let movie_time = self.movie.shall_i_save(moves);
             if movie_time {
-                self.movie.save_frame(&self.save_as, self.moves, &self);
+                self.movie.save_frame(&self.save_as, moves, &self);
             }
-            if self.report.am_all_done(self.moves) {
+            if self.report.am_all_done(moves) {
                 self.checkpoint();
                 println!("All done!");
                 ::std::process::exit(0);
             }
-            if self.save.shall_i_save(self.moves) || movie_time {
+            if self.save.shall_i_save(moves) || movie_time {
                 self.checkpoint();
             }
         }

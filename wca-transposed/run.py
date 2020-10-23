@@ -29,9 +29,10 @@ def run_replicas(density, N, shift_N=0, job='run'):
     name = name_wca('r', density, N, shift_N)
     wca_params = wca(density, N, shift_N)
     if job == 'production':
-        os.system(f'{rq} -J p-{name} ../target/release/production --base {name} --save-as p-{name}.cbor {wca_params} {time_params}')
+        os.system(f'{rq} -J p-{name} ../target/release/production --base {name} --subdivide 16 --save-as p-{name}.cbor {wca_params} {time_params}')
+        os.system(f'{rq} -J P-{name} ../target/release/production --base {name} --seed 2 --save-as P-{name}.cbor {wca_params} {time_params}')
     elif job == 'parse':
-        os.system(f'{rq} -J parse-{name} ../plotting/parse-replicas.py {name}.cbor')
+        os.system(f'{rq} -c all -J parse-{name} ../plotting/parse-replicas.py {name}.cbor')
     else:
         os.system(f'{rq} -c all -J {name} ../target/release/replicas --save-as {name}.cbor {wca_params} --min-T {min_T} {time_params}')
 
@@ -40,16 +41,20 @@ def run_sad(dE, density, N, shift_N=0, job='run'):
     wca_params = wca(density, N, shift_N)
     max_energy = N*20
     if job == 'production':
-        os.system(f'{rq} -J p-{name} ../target/release/production --base {name} --save-as p-{name}.cbor {wca_params} {time_params}')
+        pass
+        # No point running a production run after sad, since it'll get stuck at
+        # high energies!
+        # os.system(f'{rq} -J p-{name} ../target/release/production --base {name} --subdivide 16 --save-as p-{name}.cbor {wca_params} {time_params}')
     elif job == 'parse':
-        os.system(f'{rq} -J parse-{name} ../plotting/parse-binning.py {name}.cbor')
+        pass
+        # os.system(f'{rq} -J parse-{name} ../plotting/parse-binning.py {name}.cbor')
     else:
         os.system(f'{rq} -J {name} ../target/release/binning --save-as {name}.cbor {wca_params} --sad-min-T {min_T} --max-allowed-energy {max_energy} --translation-scale 0.005 --histogram-bin {dE} {time_params}')
 
 jobs = ['run', 'parse', 'production']
-for job in jobs:
-    for density in [1.2]:
-        for N in [32, 108, 256]:
-            for shift_N in [0,-1,1]:
+for density in [1.2]:
+    for N in [32, 108, 256]:
+        for shift_N in [0]: # [0,-1,1]:
+            for job in jobs:
                 run_replicas(density, N, shift_N, job=job)
                 run_sad(min_T, density, N, shift_N, job=job)

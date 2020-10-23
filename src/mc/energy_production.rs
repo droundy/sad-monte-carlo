@@ -17,6 +17,8 @@ use std::default::Default;
 pub struct MCParams {
     /// The base filename for which we are running the production
     pub base: Option<String>,
+    /// Subdivide each bin by this much.
+    pub subdivide: Option<usize>,
     /// The seed for the random number generator.
     pub seed: Option<u64>,
     /// report input
@@ -32,6 +34,7 @@ impl Default for MCParams {
         MCParams {
             base: None,
             seed: None,
+            subdivide: None,
             _save: plugin::SaveParams::default(),
             _movies: plugin::MovieParams::default(),
             _report: plugin::ReportParams::default(),
@@ -61,6 +64,8 @@ pub struct MC<S> {
 
     /// The histogram
     pub histogram: Vec<u64>,
+    /// The total energy in each bin
+    pub total_energy: Vec<Energy>,
 
     /// How frequently to save...
     save: plugin::Save,
@@ -83,6 +88,34 @@ fn read_f64(fname: String) -> Result<Vec<f64>, std::io::Error> {
         .collect())
 }
 
+fn divide_boundaries(bounds: &[f64], subdivide: usize) -> Vec<f64> {
+    let mut eb = Vec::new();
+    let de = (bounds[0] - bounds[1]) / subdivide as f64;
+    for i in (1..subdivide).rev() {
+        eb.push(bounds[0] + i as f64 * de);
+    }
+    for b in 0..bounds.len() - 1 {
+        let de = (bounds[b] - bounds[b + 1]) / subdivide as f64;
+        for i in 0..subdivide {
+            eb.push(bounds[b] - i as f64 * de);
+        }
+    }
+    let de = (bounds[bounds.len() - 2] - bounds[bounds.len() - 1]) / subdivide as f64;
+    for i in 0..subdivide {
+        eb.push(bounds[bounds.len() - 1] - i as f64 * de);
+    }
+    eb
+}
+
+#[test]
+fn bounds_subdivision() {
+    let bounds = &[1.0, 0.0];
+    let half = divide_boundaries(bounds, 2);
+    let quarter = divide_boundaries(bounds, 4);
+    assert_eq!(&half, &[1.5, 1.0, 0.5, 0.0, -0.5]);
+    assert_eq!(&quarter, &[1.75, 1.5, 1.25, 1.0, 0.75, 0.5, 0.25, 0.0, -0.25, -0.5, -0.75]);
+}
+
 impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::DeserializeOwned>
     MC<S>
 {
@@ -94,13 +127,22 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
         } else {
             save_as.with_extension("").to_str().unwrap().to_string()
         };
-        let energy_boundaries = read_f64(format!("{}-energy-boundaries.dat", base)).unwrap();
-        let energy_boundaries = energy_boundaries
+        let mut energy_boundaries = read_f64(format!("{}-energy-boundaries.dat", base)).unwrap();
+        let mut lnw = read_f64(format!("{}-lnw.dat", base)).unwrap();
+        if let Some(subdivide) = params.subdivide {
+            lnw = lnw
+                .iter()
+                .cloned()
+                .flat_map(|v| vec![v; subdivide])
+                .collect();
+            energy_boundaries = divide_boundaries(&energy_boundaries, subdivide);
+            assert_eq!(lnw.len(), energy_boundaries.len()+1);
+        }
+        let energy_boundaries: Vec<Energy> = energy_boundaries
             .iter()
             .cloned()
             .map(|x| Energy::new(x))
             .collect();
-        let lnw = read_f64(format!("{}-lnw.dat", base)).unwrap();
         MC {
             moves: 0,
             rejected_moves: 0,
@@ -108,6 +150,7 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
             system,
             rng,
             histogram: vec![0; lnw.len()],
+            total_energy: vec![Energy::new(0.0); lnw.len()],
             energy_boundaries,
             lnw,
             save_as: save_as,
@@ -135,7 +178,7 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
                 }
                 if let Some(ref save_as) = save_as {
                     if let Ok(f) = ::std::fs::File::open(save_as) {
-                        let s = match save_as.extension().and_then(|x| x.to_str()) {
+                        let mut s = match save_as.extension().and_then(|x| x.to_str()) {
                             Some("yaml") => serde_yaml::from_reader::<_, Self>(&f)
                                 .expect("error parsing save-as file"),
                             Some("json") => serde_json::from_reader::<_, Self>(&f)
@@ -145,6 +188,9 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
                             _ => panic!("I don't know how to read file {:?}", f),
                         };
                         println!("Resuming from file {:?}", save_as);
+                        s.system.update_caches();
+                        s.report.update_from(_mc._report);
+                        s.save.update_from(_mc._save);
                         return s;
                     } else {
                         return Self::from_params(_mc, _sys.into(), save_as.clone());
@@ -173,6 +219,18 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
     /// Create a simulation checkpoint.
     pub fn checkpoint(&mut self) {
         self.report.print(self.moves);
+        println!(
+            "    Current energy {:.5} rejected {:.2}%",
+            self.system.energy().pretty(),
+            crate::prettyfloat::PrettyFloat(self.rejected_moves as f64 / self.moves as f64 * 100.0)
+        );
+        let unexplored = self.histogram.iter().cloned().filter(|&h| h== 0).count();
+        if unexplored > 0 {
+            println!("    {:.4} bins remain unexplored", crate::prettyfloat::PrettyFloat(unexplored as f64));
+        } else {
+            let minimum = self.histogram.iter().cloned().min().unwrap();
+            println!("    saw each bin at least {:.2} times", crate::prettyfloat::PrettyFloat(minimum as f64));
+        }
 
         let f = AtomicFile::create(&self.save_as)
             .expect(&format!("error creating file {:?}", self.save_as));
@@ -185,12 +243,7 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
     }
 
     fn e_to_idx(&self, energy: Energy) -> usize {
-        for (i, e) in self.energy_boundaries.iter().cloned().enumerate() {
-            if energy > e {
-                return i;
-            }
-        }
-        self.energy_boundaries.len()
+        bisect(&self.energy_boundaries, energy)
     }
 
     /// Run a simulation
@@ -200,11 +253,13 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
         let e1 = self.system.energy();
         let i1 = self.e_to_idx(e1);
         self.histogram[i1] += 1;
-        if let Some(e2) = self.system.plan_move(&mut self.rng, Length::new(0.05)) {
+        self.total_energy[i1] += e1;
+        let distance = self.system.max_size() * self.rng.gen_range(-10.0, 0.0f64).exp();
+        if let Some(e2) = self.system.plan_move(&mut self.rng, distance) {
             let i2 = self.e_to_idx(e2);
             let lnw1 = self.lnw[i1];
             let lnw2 = self.lnw[i2];
-            if lnw2 > lnw1 && self.rng.gen::<f64>() > (lnw1 - lnw2).exp() {
+            if lnw2 <= lnw1 || self.rng.gen::<f64>() < (lnw1 - lnw2).exp() {
                 self.system.confirm();
                 self.rejected_moves -= 1;
             }
@@ -222,5 +277,43 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
         if self.save.shall_i_save(self.moves) || movie_time {
             self.checkpoint();
         }
+    }
+}
+
+fn bisect(b: &[Energy], v: Energy) -> usize {
+    match b.binary_search_by(|&x| {
+        if v < x {
+            std::cmp::Ordering::Less
+        } else {
+            std::cmp::Ordering::Greater
+        }
+    }) {
+        Err(i) => i,
+        Ok(_) => unreachable!(),
+    }
+}
+
+#[test]
+fn bisect_ok() {
+    let b = &[
+        Energy::new(5.0),
+        Energy::new(3.0),
+        Energy::new(1.0),
+        Energy::new(-1.0),
+        Energy::new(-2.0),
+    ];
+    assert_eq!(bisect(b, Energy::new(6.0)), 0);
+    assert_eq!(bisect(b, Energy::new(4.0)), 1);
+    assert_eq!(bisect(b, Energy::new(2.0)), 2);
+    assert_eq!(bisect(b, Energy::new(0.0)), 3);
+    assert_eq!(bisect(b, Energy::new(-1.1)), 4);
+    assert_eq!(bisect(b, Energy::new(-2.2)), 5);
+    let mut b = Vec::new();
+    for i in 0..138 {
+        b.push(Energy::new(-i as f64));
+    }
+    for i in 0..139 {
+        println!("looking for {}", i);
+        assert_eq!(bisect(&b, Energy::new(-(i as f64) + 0.5)), i);
     }
 }
