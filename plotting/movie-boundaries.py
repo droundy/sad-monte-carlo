@@ -228,15 +228,12 @@ if args.intensive:
     best_function = lambda e: scale*unscaled_best_function(e/scale)
 else:
     best_function = unscaled_best_function
-energies_to_compare = []
-for i in range(len(best_energy_boundaries)-2):
-    energies_to_compare.append(scale*0.5*(best_energy_boundaries[i]+best_energy_boundaries[i+1]))
-energies_to_compare = np.array(energies_to_compare)
+energies_to_compare = np.array(best_mean_energy)
 energies_reference = best_function(energies_to_compare)
 # Only compare energies below the energy with max entropy
-nhi = energies_reference.argmax()
-energies_to_compare = energies_to_compare[nhi:-1]
-energies_reference = energies_reference[nhi:-1]
+# nhi = energies_reference.argmax()
+# energies_to_compare = energies_to_compare[nhi:-1]
+# energies_reference = energies_reference[nhi:-1]
 
 sigma = 1
 
@@ -258,21 +255,19 @@ for f in frames:
 
     which_color = 0
     for key in bases:
+        color = colors[which_color]
+        which_color += 1
+
         final_energy_boundaries, final_mean_energy, final_lnw, final_system = read_file(key)
 
-        base = f'{key}/{f}'
-        print(base)
+        frame_filename = f'{key}/{f}' # same as '{}/{}'.format(key, f) or same as '%s/%s' % (key, f)
+        print(frame_filename)
         try:
-            energy_boundaries, mean_energy, lnw, system = read_file(base)
+            energy_boundaries, mean_energy, lnw, system = read_file(frame_filename)
         except:
             print('There were no boundaries')
             continue
         
-        color = colors[which_color]
-        which_color += 1
-
-        # sigma.append(np.loadtxt(key+'-sigma.dat'))  #used in D(E) calculation
-
         #Analysis
         exact_density_of_states = linear_density_of_states
         if 'linear' in key:
@@ -334,8 +329,9 @@ for f in frames:
         # a.plot(scale*l_energy, scale*l_entropy, '--', color=color)
         # plt.xlim(0, 20)
 
-        a.plot(energies_to_compare, my_s-energies_reference, '-', color=color)
+        a.plot(energies_to_compare[1:-1], (my_s-energies_reference)[1:-1], '-', color=color)
         #a.plot(energies_to_compare, energies_reference, '+', color='#999999')
+        a.set_ylabel('error in entropy')
 
         comparison_time[key].append(float(f))
         me = abs(my_s - energies_reference).max()
