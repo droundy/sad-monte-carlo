@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import numpy as np
-import yaml, cbor, argparse, sys
+import yaml, cbor, argparse, sys, os, glob
 import scipy.constants as const
 import scipy.optimize as optimize
 import matplotlib.pyplot as plt
@@ -21,22 +21,6 @@ colors = cc.glasbey_dark
 print('''
 Changes to do:
 
-- Probably take several "base" files as input (so we can compare convergence):
-
-
-    frames = set()
-    bases = []
-    print('base', args.base)
-    #each file has different path (including extension) so concatenating is easy
-    for base in args.base:
-        if '.cbor' in base or '.yaml' in base:
-            base = base[:-5]
-        print(base)
-        bases.append(base)
-        for f in glob.glob(base+'/*.cbor'):
-            f = os.path.splitext(os.path.basename(f))[0]
-            frames.add(f)
-
 - Loop over all the movie files (so we can see the convergence process)
 
 - Compare the entropy with the exact entropy (ln of exact DOS) and find the
@@ -47,6 +31,8 @@ Changes to do:
 
 - (optionally) Create a movie showing how the entropy evolves over time.
 
+        exact_entropy = np.log(linear_density_of_states) #for convergence analysis
+        #select energies evenly; exclusively
 ''')
 
 def linear_density_of_states(E):
@@ -169,16 +155,26 @@ def find_entropy_from_beta_and_lnw(beta, lnw, deltaE):
 
 
 #Read Data
-energy_boundaries = {}
-mean_energy = {}
-lnw = {}
-systems = {}
+frames = set()
+bases = []
 print('base', args.base)
 #each file has different path (including extension) so concatenating is easy
 for base in args.base:
     if '.cbor' in base or '.yaml' in base:
         base = base[:-5]
     print(base)
+    bases.append(base)
+    for f in glob.glob(base+'/*.cbor'):
+        f = os.path.splitext(os.path.basename(f))[0]
+        frames.add(f)
+
+energy_boundaries = {}
+mean_energy = {}
+lnw = {}
+systems = {}
+#each file has different path (including extension) so concatenating is easy
+for base in bases:
+    print(bases)
     energy_boundaries[base] = np.loadtxt(base+'-energy-boundaries.dat')
     mean_energy[base] = np.loadtxt(base+'-mean-energy.dat')
     lnw[base] = np.loadtxt(base+'-lnw.dat')
@@ -195,6 +191,7 @@ sigma = 1
 
 print('energy_boundaries', energy_boundaries)
 
+'''
 which_color = 0
 for key in lnw:
     color = colors[which_color]
@@ -320,3 +317,4 @@ plt.tight_layout()
 plt.legend(loc='best')
     
 plt.show()
+'''
