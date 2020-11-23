@@ -155,18 +155,16 @@ def find_entropy_from_beta_and_lnw(beta, lnw, deltaE):
 
 
 #Read Data
-frames = set()
+frames = {}
 bases = []
-print('base', args.base)
-#each file has different path (including extension) so concatenating is easy
 for base in args.base:
     if '.cbor' in base or '.yaml' in base:
         base = base[:-5]
-    print(base)
     bases.append(base)
+    frames[base] = set()
     for f in glob.glob(base+'/*.cbor'):
         f = os.path.splitext(os.path.basename(f))[0]
-        frames.add(f)
+        frames[base].add(f)
 
 energy_boundaries = {}
 mean_energy = {}
@@ -191,7 +189,6 @@ sigma = 1
 
 print('energy_boundaries', energy_boundaries)
 
-'''
 which_color = 0
 for key in lnw:
     color = colors[which_color]
@@ -226,95 +223,3 @@ for key in lnw:
     else:
         print('\n\n\nusing the most bogus density of states\n\n\n', systems[key]['kind'])
         exact_density_of_states = other_density_of_states
-
-    E_lo = energy_boundaries[key][-1]
-    dE_lo = energy_boundaries[key][-2] - E_lo
-    Nplot = 100000
-    if np.isnan(mean_energy[key][-1]):
-        E = np.linspace(E_lo - 3*dE_lo, energy_boundaries[key].max(), Nplot)
-    else:
-        E = np.linspace(4*mean_energy[key][-1] - 3*E_lo, energy_boundaries[key].max(), Nplot)
-    if dE_lo < E[1] - E[0]:
-        # this means our resolution is too poor above
-        if np.isnan(mean_energy[key][-1]):
-            E = np.linspace(E_lo - 3*dE_lo, E_lo + Nplot*dE_lo/10, Nplot)
-        else:
-            E = np.linspace(4*mean_energy[key][-1] - 3*E_lo, E_lo + Nplot*dE_lo/10, Nplot)
-    S_lo = lnw[key][-1] - np.log(E_lo - mean_energy[key][-1])
-    min_T = E_lo - mean_energy[key][-1]
-    
-    # entropy_boundaries[key] = compute_entropy_given_Smin(S_lo, energy_boundaries[key], lnw[key])
-    
-    # S = np.interp(E, energy_boundaries[key][::-1], entropy_boundaries[key][::-1])
-    # S[E < E_lo] = (S_lo - (E_lo - E)/min_T)[E < E_lo]
-
-    # entropy_boundaries_best = optimize_entropy(energy_boundaries[key], lnw[key])
-    # min_T = np.exp(lnw[key][-1] - entropy_boundaries_best[-1])
-    # Sbest = np.interp(E, energy_boundaries[key][::-1], entropy_boundaries_best[::-1])
-    # Sbest[E < E_lo] = (entropy_boundaries_best[-1] - (E_lo - E) /min_T)[E < E_lo]
-
-    step_entropy = []
-    step_energy = []
-    for i in range(len(energy_boundaries[key])-1):
-        step_energy.append(energy_boundaries[key][i])
-        step_energy.append(energy_boundaries[key][i+1])
-        Shere = lnw[key][i+1] - np.log(energy_boundaries[key][i] - energy_boundaries[key][i+1])
-        step_entropy.append(Shere)
-        step_entropy.append(Shere)
-
-    print(len(lnw[key]), len(energy_boundaries[key]))
-    middle_entropy = lnw[key][1:-1] - np.log(-np.diff(energy_boundaries[key]))
-    Smiddle = np.zeros_like(E)
-    Ssloped = np.zeros_like(E)
-    for i in range(len(middle_entropy)):
-        print(key, 'working on', i, '/', len(middle_entropy))
-        here = E<=energy_boundaries[key][i]
-        Smiddle[here] = middle_entropy[i]
-
-        deltaE = energy_boundaries[key][i] - energy_boundaries[key][i+1]
-        meanE = mean_energy[key][i+1]
-        beta = find_beta_deltaE((meanE - energy_boundaries[key][i+1])/deltaE)/deltaE
-        S0 = find_entropy_from_beta_and_lnw(beta, lnw[key][i+1], deltaE)
-        # print('deltaE', deltaE, 'beta', beta, 'S0', S0, 'dimensionless mean', (meanE - energy_boundaries[key][i+1])/deltaE)
-        Ssloped[here] = S0 + beta*(E[here] - energy_boundaries[key][i+1])
-
-    plt.figure('entropy')
-
-    scale = 1
-    if args.intensive:
-        scale = 1/systems[key]['N']
-    print('scale is', scale)
-    plt.plot(scale*np.array(step_energy), scale*np.array(step_entropy), '-', label=key + ' step', color=color)
-    plt.plot(scale*E, scale*Ssloped, '--', label=key + 'sloped', color=color)
-    plt.plot(scale*np.array(step_energy), np.log(exact_density_of_states(scale*np.array(step_energy))), ':', label='exact ' + key, color=color)
-    #plt.plot(scale*E, np.log(exact_density_of_states(scale*E)), ':', label='exact ' + key, color=color)
-   
-    # plt.plot(E, S, '-', label=key+' optimize_bin_entropy approx.')
-    # plt.plot(E, Sbest, '-', label=key + 'smooth')
-    #plt.plot(scale*E, scale*np.log(exact_density_of_states(E)), color='#aaaaaa')
-    plt.xlabel('$E$')
-    plt.ylabel('$S$')
-    if args.intensive:
-        plt.xlabel('$E/N$')
-        plt.ylabel('$S/N$')
-
-    plot_dos = False
-    if plot_dos:
-        plt.figure('density of states')
-        plt.plot(E, np.exp(Smiddle), '-', label=key + 'simplest')
-        # plt.plot(E, np.exp(S), '-', label=key+' optimize_bin_entropy approx.')
-        # plt.plot(E, np.exp(Sbest), '-', label=key+' smooth')
-        plt.plot(E, exact_density_of_states(E), color='#aaaaaa')
-        plt.xlabel('$E$')
-        plt.ylabel('$D(E)$')
-        exact = exact_density_of_states(E)
-        plt.ylim(0, 1.1*exact[exact == exact].max())
-        plt.legend(loc='best')
-
-
-plt.figure('entropy')
-plt.tight_layout()
-plt.legend(loc='best')
-    
-plt.show()
-'''
