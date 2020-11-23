@@ -19,6 +19,12 @@ prop_cycle = plt.rcParams['axes.prop_cycle']
 colors = cc.glasbey_dark
 
 print('''
+Questions:
+
+- How to show movie? which files
+
+- What are the moves?
+
 Changes to do:
 
 - Loop over all the movie files (so we can see the convergence process)
@@ -160,19 +166,20 @@ bases = []
 for base in args.base:
     if '.cbor' in base or '.yaml' in base:
         base = base[:-5]
-    bases.append(base)
     frames[base] = set()
+    bases.append(base)
     for f in glob.glob(base+'/*.cbor'):
         f = os.path.splitext(os.path.basename(f))[0]
         frames[base].add(f)
+print(bases)
 
 energy_boundaries = {}
+entropy_boundaries = {}
 mean_energy = {}
 lnw = {}
 systems = {}
 #each file has different path (including extension) so concatenating is easy
 for base in bases:
-    print(bases)
     energy_boundaries[base] = np.loadtxt(base+'-energy-boundaries.dat')
     mean_energy[base] = np.loadtxt(base+'-mean-energy.dat')
     lnw[base] = np.loadtxt(base+'-lnw.dat')
@@ -184,42 +191,61 @@ for base in bases:
         mean_energy[base] = np.flip(mean_energy[base])
         lnw[base] = np.flip(lnw[base])
 
-entropy_boundaries={}
+    entropy_boundaries[base] = optimize_entropy(energy_boundaries[base], lnw[base])
+
 sigma = 1
 
 print('energy_boundaries', energy_boundaries)
+print('lnw', lnw)
+print('entropy_boundaries', entropy_boundaries)
+print('frames', frames)
 
+exact_entropy_boundaries={}
 which_color = 0
-for key in lnw:
+for base in bases:
     color = colors[which_color]
     which_color += 1
 
-    # sigma.append(np.loadtxt(key+'-sigma.dat'))  #used in D(E) calculation
+    # sigma.append(np.loadtxt(base+'-sigma.dat'))  #used in D(E) calculation
 
     #Analysis
     exact_density_of_states = linear_density_of_states
-    if 'linear' in key:
+    if 'linear' in base:
         print('\n\n\nusing the linear_density_of_states\n\n\n')
         exact_density_of_states = linear_density_of_states
-    elif 'quadratic' in key:
+    elif 'quadratic' in base:
         print('\n\n\nusing the quadratic_density_of_states\n\n\n')
         exact_density_of_states = quadratic_density_of_states
-    elif systems[key]['kind'] == 'Gaussian':
+    elif systems[base]['kind'] == 'Gaussian':
         print('\n\n\nusing the gaussian_density_of_states\n\n\n')
-        sigma = systems[key]['sigma']
+        sigma = systems[base]['sigma']
         exact_density_of_states = gaussian_density_of_states
-    elif systems[key]['kind'] == 'Erfinv':
+    elif systems[base]['kind'] == 'Erfinv':
         print('\n\n\nusing the erfinv\n\n\n')
-        mean_erfinv_energy = systems[key]['mean_energy']
-        N = systems[key]['N']
+        mean_erfinv_energy = systems[base]['mean_energy']
+        N = systems[base]['N']
         exact_density_of_states = erfinv_density_of_states
-    elif systems[key]['kind'] == 'Pieces':
+    elif systems[base]['kind'] == 'Pieces':
         print('\n\n\nusing the pieces\n\n\n')
-        a = systems[key]['a']
-        b = systems[key]['b']
-        e1 = systems[key]['e1']
-        e2 = systems[key]['e2']
+        a = systems[base]['a']
+        b = systems[base]['b']
+        e1 = systems[base]['e1']
+        e2 = systems[base]['e2']
         exact_density_of_states = piecewise_density_of_states
     else:
-        print('\n\n\nusing the most bogus density of states\n\n\n', systems[key]['kind'])
+        print('\n\n\nusing the most bogus density of states\n\n\n', systems[base]['kind'])
         exact_density_of_states = other_density_of_states
+    
+    exact_entropy_boundaries[base] = np.log(exact_density_of_states(energy_boundaries[base]))
+print(exact_entropy_boundaries)
+
+#Plotting
+plt.figure('convergence')
+for base in bases:
+    plt.title('Convergence')
+    plt.xlabel('energy_boundaries; should be moves')
+    plt.ylabel('entropy - exact entropy')
+    plt.legend(loc='best')
+    plt.plot(energy_boundaries[base], entropy_boundaries[base]-exact_entropy_boundaries[base], label=base)
+plt.tight_layout()
+plt.show()
