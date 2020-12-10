@@ -1,4 +1,4 @@
-//! This module provides the Cell type, which describes a box of atom positions.
+//! This module provides the Cell type, which describes a box of atom positions with periodic boundary conditions.
 
 use super::*;
 

@@ -1,8 +1,4 @@
-//! An implementation of SAD (Statistical Association, Dynamical version).
-//!
-//! This version using a [Binning]() approach so that we can use
-//! something nicer than a histogram.  The idea is also to use this
-//! for a 2D histogram, which will be even fancier.
+//! An implementation of a new algorithm, with no decent name.
 
 #![allow(non_snake_case)]
 
