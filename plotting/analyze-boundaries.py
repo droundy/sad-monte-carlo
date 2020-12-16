@@ -31,11 +31,14 @@ def erfinv_density_of_states(E):
     return np.sqrt(np.pi/N)*np.exp(-(E - mean_erfinv_energy)**2/N)
 def piecewise_density_of_states(E):
     if E > 0:
-        return (b + (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1))
+        o = (b-a) * (b + (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1))
     elif E > -e2:
-        return (a**3 * np.sqrt(E+e1) / 2) + ( (b - (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1)) ) + ( (b + (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1)) )
-piecewise_density_of_states = np.vectorize(piecewise_density_of_states)
+        o = (a**3 * np.sqrt(E+e1) / 2) + ( (b-a)*(b - (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1)) ) + ( (b-a) * (b + (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1)) )
+    else:
+        o= (a**3 * np.sqrt(E+e1) / 2)
+    return 3 * o
 
+piecewise_density_of_states = np.vectorize(piecewise_density_of_states)
 #The function needs to be callable
 
 def fn_entropy(S_i_1, E_i_1, E_i, lnw_i, S_i):
