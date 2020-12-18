@@ -7,6 +7,8 @@ import scipy.optimize as optimize
 import matplotlib.pyplot as plt
 import colorcet as cc
 
+import compute
+
 parser = argparse.ArgumentParser(description="fake energies analysis")
 parser.add_argument('base', nargs='*', help = 'the yaml or cbor files')
 parser.add_argument('--intensive', action='store_true')
@@ -161,16 +163,8 @@ def find_entropy_from_beta_and_lnw(beta, lnw, deltaE):
 
 
 #Read Data
-frames = {}
+moves = {}
 bases = []
-for base in args.base:
-    if '.cbor' in base or '.yaml' in base:
-        base = base[:-5]
-    frames[base] = set()
-    bases.append(base)
-    for f in glob.glob(base+'/*.cbor'):
-        f = os.path.splitext(os.path.basename(f))[0]
-        frames[base].add(f)
 print('bases', bases)
 
 energy_boundaries = {}
@@ -188,14 +182,7 @@ for base in bases:
 
     #FIXME: thought of adding an element to the ndarray if it only has 1 value
     if energy_boundaries[base].ndim == 0: #in case a single value
-        print('energy_boundaries', energy_boundaries[base])
         energy_boundaries[base] = np.array([energy_boundaries[base].item()])
-        #mean_energy[base] = [mean_energy[base].item(), np.NAN]
-        #lnw[base] = [lnw[base].item(), np.NAN]
-        #np.insert(energy_boundaries[base], 1, np.NAN, axis=0)
-        #np.insert(mean_energy[base], 1, np.NAN, axis=0)
-        #np.insert(lnw[base], 1, np.NAN, axis=0)
-        print('energy_boundaries', energy_boundaries[base])
 
     if energy_boundaries[base][0] < energy_boundaries[base][-1]:
         energy_boundaries[base] = np.flip(energy_boundaries[base])
@@ -209,7 +196,8 @@ sigma = 1
 print('energy_boundaries', energy_boundaries)
 print('lnw', lnw)
 print('entropy_boundaries', entropy_boundaries)
-print('frames', frames)
+
+E = np.linspace(0, 1, 1000)[1:-1] # FIXME make this depend on which system we have
 
 exact_entropy_boundaries={}
 which_color = 0
@@ -246,11 +234,37 @@ for base in bases:
     else:
         print('\n\n\nusing the most bogus density of states\n\n\n', systems[base]['kind'])
         exact_density_of_states = other_density_of_states
-    
-    #Exact Entropy
-    E = np.linspace(0, 1, len(entropy_boundaries[base]))
-    exact_entropy_boundaries[base] = np.log(exact_density_of_states(E))
-print(exact_entropy_boundaries)
+
+    # We can compute the exact entropy now, at our energies E
+    exact_entropy = np.log(exact_density_of_states(E))
+
+    moves[base] = []
+    for f in glob.glob(base+'/*.cbor'):
+        f = os.path.splitext(f)[0]
+        mymove = float(os.path.basename(f))
+        moves[base].append(mymove)
+        print(f'working on {base} with moves {mymove} which is {f}')
+
+
+        energy_b = np.loadtxt(f+'-energy-boundaries.dat')
+        mean_e = np.loadtxt(f+'-mean-energy.dat')
+        my_lnw = np.loadtxt(f+'-lnw.dat')
+        
+        #FIXME: thought of adding an element to the ndarray if it only has 1 value
+        if energy_b.ndim == 0: #in case a single value
+            energy_b = np.array([energy_b.item()])
+
+        if energy_b[0] < energy_b[-1]:
+            energy_b = np.flip(energy_b)
+            mean_e = np.flip(mean_e)
+            my_lnw = np.flip(my_lnw)
+
+        # Create a function for the entropy based on this number of moves:
+        l_function, _, _ = compute.linear_entropy(energy_b, mean_e, my_lnw)
+        
+        entropy_here = l_function(E)
+        max_error = np.max(np.abs(entropy_here - exact_entropy))
+        # FIXME Need to store the entropy errors, so we can plot them later
 
 #Plotting
 plt.figure('convergence')

@@ -7,6 +7,8 @@ import scipy.optimize as optimize
 import matplotlib.pyplot as plt
 import colorcet as cc
 
+import compute
+
 parser = argparse.ArgumentParser(description="fake energies analysis")
 parser.add_argument('base', nargs='*', help = 'the yaml or cbor file')
 parser.add_argument('--intensive', action='store_true')
@@ -22,68 +24,6 @@ colors = cc.glasbey_dark
 # colors = cc.glasbey_light
 
 # prop_cycle = plt.rcParams['axes.prop_cycle']
-
-def read_file(base):
-    energy_boundaries = np.loadtxt(base+'-energy-boundaries.dat')
-    mean_energy = np.loadtxt(base+'-mean-energy.dat')
-    lnw = np.loadtxt(base+'-lnw.dat')
-    with open(base+'-system.dat') as f:
-        system = yaml.safe_load(f)
-
-    if energy_boundaries[0] < energy_boundaries[-1]:
-        energy_boundaries = np.flip(energy_boundaries)
-        mean_energy = np.flip(mean_energy)
-        lnw = np.flip(lnw)
-    lnw -= lnw.max()
-    lnw -= np.log(np.sum(np.exp(lnw)))
-    return energy_boundaries, mean_energy, lnw, system
-
-def step_entropy(energy_boundaries, mean_energy, lnw):
-    step_entropy = []
-    step_energy = []
-    for i in range(len(energy_boundaries)-1):
-        step_energy.append(energy_boundaries[i])
-        step_energy.append(energy_boundaries[i+1])
-        Shere = lnw[i+1] - np.log(energy_boundaries[i] - energy_boundaries[i+1])
-        step_entropy.append(Shere)
-        step_entropy.append(Shere)
-    step_energy = np.flip(np.array(step_energy))
-    step_entropy = np.flip(np.array(step_entropy))
-    def entropy(E):
-        return np.interp(E, step_energy, step_entropy, left=step_entropy[0], right=step_entropy[-1])
-    return entropy, 1*step_energy, 1*step_entropy
-
-def linear_entropy(energy_boundaries, mean_energy, lnw):
-    step_entropy = []
-    step_energy = []
-    for i in range(len(energy_boundaries)-1):
-        step_energy.append(energy_boundaries[i])
-        step_energy.append(energy_boundaries[i+1])
-
-        deltaE = energy_boundaries[i] - energy_boundaries[i+1]
-        meanE = mean_energy[i+1]
-        beta = find_beta_deltaE((meanE - energy_boundaries[i+1])/deltaE)/deltaE
-        S0 = find_entropy_from_beta_and_lnw(beta, lnw[i+1], deltaE)
-        if np.isnan(beta+S0):
-            step_entropy.append(lnw[i+1]-np.log(deltaE))
-            step_entropy.append(lnw[i+1]-np.log(deltaE))
-        else:
-            step_entropy.append(S0+beta*deltaE)
-            step_entropy.append(S0)
-    
-    # this is the unbounded low-energy bin, assume exponential DOS
-    Tlow = energy_boundaries[-1] - mean_energy[-1]
-    Slo = lnw[-1] - np.log(Tlow)
-    step_energy.append(energy_boundaries[-1])
-    step_energy.append(energy_boundaries[-1] - 20*Tlow)
-    step_entropy.append(Slo)
-    step_entropy.append(Slo - 10)
-
-    step_energy = np.flip(step_energy)
-    step_entropy = np.flip(step_entropy)
-    def entropy(E):
-        return np.interp(E, step_energy, step_entropy, left=step_entropy[0], right=step_entropy[-1])
-    return entropy, 1*step_energy, 1*step_entropy
 
 def linear_density_of_states(E):
     return np.heaviside(E, 0.5)*np.heaviside(1-E, 0.5)
@@ -219,8 +159,8 @@ for base in args.base:
         if float(f) > 1e7:
             frames.add(f)
 
-best_energy_boundaries, best_mean_energy, best_lnw, best_system = read_file(args.base[0])
-unscaled_best_function, best_energy, best_entropy = linear_entropy(best_energy_boundaries, best_mean_energy, best_lnw)
+best_energy_boundaries, best_mean_energy, best_lnw, best_system = compute.read_file(args.base[0])
+unscaled_best_function, best_energy, best_entropy = compute.linear_entropy(best_energy_boundaries, best_mean_energy, best_lnw)
 if args.intensive:
     scale = 1/best_system['N']
     best_energy = scale*best_energy
@@ -258,12 +198,12 @@ for f in frames:
         color = colors[which_color]
         which_color += 1
 
-        final_energy_boundaries, final_mean_energy, final_lnw, final_system = read_file(key)
+        final_energy_boundaries, final_mean_energy, final_lnw, final_system = compute.read_file(key)
 
         frame_filename = f'{key}/{f}' # same as '{}/{}'.format(key, f) or same as '%s/%s' % (key, f)
         print(frame_filename)
         try:
-            energy_boundaries, mean_energy, lnw, system = read_file(frame_filename)
+            energy_boundaries, mean_energy, lnw, system = compute.read_file(frame_filename)
         except:
             print('There were no boundaries')
             continue
@@ -296,10 +236,10 @@ for f in frames:
             print('\n\n\nusing the most bogus density of states\n\n\n', system['kind'])
             exact_density_of_states = other_density_of_states
         
-        s_function, s_energy, s_entropy = step_entropy(energy_boundaries, mean_energy, lnw)
-        l_function, l_energy, l_entropy = linear_entropy(energy_boundaries, mean_energy, lnw)
+        s_function, s_energy, s_entropy = compute.step_entropy(energy_boundaries, mean_energy, lnw)
+        l_function, l_energy, l_entropy = compute.linear_entropy(energy_boundaries, mean_energy, lnw)
 
-        f_function, f_energy, f_entropy = linear_entropy(final_energy_boundaries, final_mean_energy, final_lnw)
+        f_function, f_energy, f_entropy = compute.linear_entropy(final_energy_boundaries, final_mean_energy, final_lnw)
 
         plt.figure('entropy')
         scale = 1

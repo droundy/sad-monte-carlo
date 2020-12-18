@@ -1,0 +1,63 @@
+import numpy as np
+
+def read_file(base):
+    energy_boundaries = np.loadtxt(base+'-energy-boundaries.dat')
+    mean_energy = np.loadtxt(base+'-mean-energy.dat')
+    lnw = np.loadtxt(base+'-lnw.dat')
+    with open(base+'-system.dat') as f:
+        system = yaml.safe_load(f)
+
+    if energy_boundaries[0] < energy_boundaries[-1]:
+        energy_boundaries = np.flip(energy_boundaries)
+        mean_energy = np.flip(mean_energy)
+        lnw = np.flip(lnw)
+    lnw -= lnw.max()
+    lnw -= np.log(np.sum(np.exp(lnw)))
+    return energy_boundaries, mean_energy, lnw, system
+
+def step_entropy(energy_boundaries, mean_energy, lnw):
+    step_entropy = []
+    step_energy = []
+    for i in range(len(energy_boundaries)-1):
+        step_energy.append(energy_boundaries[i])
+        step_energy.append(energy_boundaries[i+1])
+        Shere = lnw[i+1] - np.log(energy_boundaries[i] - energy_boundaries[i+1])
+        step_entropy.append(Shere)
+        step_entropy.append(Shere)
+    step_energy = np.flip(np.array(step_energy))
+    step_entropy = np.flip(np.array(step_entropy))
+    def entropy(E):
+        return np.interp(E, step_energy, step_entropy, left=step_entropy[0], right=step_entropy[-1])
+    return entropy, 1*step_energy, 1*step_entropy
+
+def linear_entropy(energy_boundaries, mean_energy, lnw):
+    step_entropy = []
+    step_energy = []
+    for i in range(len(energy_boundaries)-1):
+        step_energy.append(energy_boundaries[i])
+        step_energy.append(energy_boundaries[i+1])
+
+        deltaE = energy_boundaries[i] - energy_boundaries[i+1]
+        meanE = mean_energy[i+1]
+        beta = find_beta_deltaE((meanE - energy_boundaries[i+1])/deltaE)/deltaE
+        S0 = find_entropy_from_beta_and_lnw(beta, lnw[i+1], deltaE)
+        if np.isnan(beta+S0):
+            step_entropy.append(lnw[i+1]-np.log(deltaE))
+            step_entropy.append(lnw[i+1]-np.log(deltaE))
+        else:
+            step_entropy.append(S0+beta*deltaE)
+            step_entropy.append(S0)
+    
+    # this is the unbounded low-energy bin, assume exponential DOS
+    Tlow = energy_boundaries[-1] - mean_energy[-1]
+    Slo = lnw[-1] - np.log(Tlow)
+    step_energy.append(energy_boundaries[-1])
+    step_energy.append(energy_boundaries[-1] - 20*Tlow)
+    step_entropy.append(Slo)
+    step_entropy.append(Slo - 10)
+
+    step_energy = np.flip(step_energy)
+    step_entropy = np.flip(step_entropy)
+    def entropy(E):
+        return np.interp(E, step_energy, step_entropy, left=step_entropy[0], right=step_entropy[-1])
+    return entropy, 1*step_energy, 1*step_entropy
