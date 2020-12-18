@@ -88,7 +88,7 @@ def fn_entropy(S_i_1, E_i_1, E_i, lnw_i, S_i):
     return coefficient + inside - denominator - lnw_i
 def optimize_bin_entropy(i, E_bounds, lnw, S_i):
     #i is the bin whose entropy we are calculating
-    print('solving E_i_1', E_bounds[i-1], 'E_i', E_bounds[i], 'lnw_i', lnw[i], 'S_i', S_i)
+    #print('solving E_i_1', E_bounds[i-1], 'E_i', E_bounds[i], 'lnw_i', lnw[i], 'S_i', S_i)
     sol = optimize.root(fn_entropy, [0], args=(E_bounds[i-1], E_bounds[i], lnw[i], S_i))
     # print('   goodness is', fn_entropy(sol.x[0], E_bounds[i-1], E_bounds[i], lnw[i], S_i),
     #       'with entropy', sol.x[0])
@@ -111,7 +111,7 @@ def compute_entropy_given_Smin(Smin, energy_boundaries, lnw):
     entropy_boundaries = np.zeros_like(energy_boundaries)
     entropy_boundaries[-1] = Smin
     for i in range(len(energy_boundaries)-1, 1, -1):
-        print('solving for i =', i)
+        #print('solving for i =', i)
         entropy_boundaries[i-1] = optimize_bin_entropy(i, energy_boundaries, lnw, entropy_boundaries[i])
     return entropy_boundaries    
 
@@ -171,7 +171,7 @@ for base in args.base:
     for f in glob.glob(base+'/*.cbor'):
         f = os.path.splitext(os.path.basename(f))[0]
         frames[base].add(f)
-print(bases)
+print('bases', bases)
 
 energy_boundaries = {}
 entropy_boundaries = {}
@@ -185,6 +185,17 @@ for base in bases:
     lnw[base] = np.loadtxt(base+'-lnw.dat')
     with open(base+'-system.dat') as f:
         systems[base] = yaml.safe_load(f)
+
+    #FIXME: thought of adding an element to the ndarray if it only has 1 value
+    if energy_boundaries[base].ndim == 0: #in case a single value
+        print('energy_boundaries', energy_boundaries[base])
+        #energy_boundaries[base] = [energy_boundaries[base].item(), np.NAN]
+        #mean_energy[base] = [mean_energy[base].item(), np.NAN]
+        #lnw[base] = [lnw[base].item(), np.NAN]
+        #np.insert(energy_boundaries[base], 1, np.NAN, axis=0)
+        #np.insert(mean_energy[base], 1, np.NAN, axis=0)
+        #np.insert(lnw[base], 1, np.NAN, axis=0)
+        print('energy_boundaries', energy_boundaries[base])
 
     if energy_boundaries[base][0] < energy_boundaries[base][-1]:
         energy_boundaries[base] = np.flip(energy_boundaries[base])
@@ -236,14 +247,16 @@ for base in bases:
         print('\n\n\nusing the most bogus density of states\n\n\n', systems[base]['kind'])
         exact_density_of_states = other_density_of_states
     
-    exact_entropy_boundaries[base] = np.log(exact_density_of_states(energy_boundaries[base]))
+    #Exact Entropy
+    E = np.linspace(0, 1, len(entropy_boundaries[base]))
+    exact_entropy_boundaries[base] = np.log(exact_density_of_states(E))
 print(exact_entropy_boundaries)
 
 #Plotting
 plt.figure('convergence')
 for base in bases:
-    plt.title('Convergence')
-    plt.xlabel('energy_boundaries; should be moves')
+    plt.title('move: ' + moves[base])
+    plt.xlabel('moves')
     plt.ylabel('entropy - exact entropy')
     plt.legend(loc='best')
     plt.plot(energy_boundaries[base], entropy_boundaries[base]-exact_entropy_boundaries[base], label=base)
