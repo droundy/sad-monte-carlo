@@ -11,6 +11,7 @@ pub mod units;
 pub mod ising;
 pub mod lattice_gas;
 pub mod lj;
+pub mod water;
 pub mod optsquare;
 pub mod square;
 pub mod wca;

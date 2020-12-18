@@ -16,6 +16,8 @@ pub enum AnyParams {
     Wca(wca::WcaNParams),
     /// a lj system
     Lj(lj::LjParams),
+    /// a water system
+    Water(water::WaterParams),
     /// an Ising system
     Ising(ising::IsingParams),
     /// a square well system
@@ -63,6 +65,8 @@ pub enum Any {
     Wca(wca::Wca),
     /// A lj system
     Lj(lj::Lj),
+    /// A water system
+    Water(water::Water),
     /// An Ising system
     Ising(ising::Ising),
     /// a square well system
@@ -78,6 +82,7 @@ impl From<AnyParams> for Any {
             AnyParams::Ising(parameters) => Any::Ising(ising::Ising::from(parameters)),
             AnyParams::FakeErfinv(parameters) => Any::FakeErfinv(erfinv::ErfInv::from(parameters)),
             AnyParams::Sw(parameters) => Any::Sw(optsquare::SquareWell::from(parameters)),
+            AnyParams::Water(parameters) => Any::Water(water::Water::from(parameters)),
         }
     }
 }
@@ -91,6 +96,7 @@ impl Any {
             Any::Ising(s) => s as &dyn MovableSystem,
             Any::FakeErfinv(s) => s as &dyn MovableSystem,
             Any::Sw(s) => s as &dyn MovableSystem,
+            Any::Water(s) => s as &dyn MovableSystem,
         }
     }
     fn movable_mut(&mut self) -> &mut dyn MovableSystem {
@@ -101,6 +107,7 @@ impl Any {
             Any::Ising(s) => s as &mut dyn MovableSystem,
             Any::FakeErfinv(s) => s as &mut dyn MovableSystem,
             Any::Sw(s) => s as &mut dyn MovableSystem,
+            Any::Water(s) => s as &mut dyn MovableSystem,
         }
     }
 }
