@@ -189,7 +189,7 @@ for base in bases:
     #FIXME: thought of adding an element to the ndarray if it only has 1 value
     if energy_boundaries[base].ndim == 0: #in case a single value
         print('energy_boundaries', energy_boundaries[base])
-        #energy_boundaries[base] = [energy_boundaries[base].item(), np.NAN]
+        energy_boundaries[base] = np.array([energy_boundaries[base].item()])
         #mean_energy[base] = [mean_energy[base].item(), np.NAN]
         #lnw[base] = [lnw[base].item(), np.NAN]
         #np.insert(energy_boundaries[base], 1, np.NAN, axis=0)
