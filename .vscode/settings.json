@@ -2,6 +2,7 @@
     "files.watcherExclude": {
         "**/.git/objects/**": true,
         "**/.git/subtree-cache/**": true,
+        "**/target/**": true,
         "**/wca-transposed/**": true,
         "**/wca/**": true,
         "**/number/**": true,
