@@ -53,6 +53,15 @@ fn gen_energy_sad(n_atoms: usize) -> EnergyMC<optsquare::SquareWell> {
 
 fn criterion_benchmark(c: &mut Criterion) {
     let mut rng = sadmc::rng::MyRng::seed_from_u64(0);
+    c.bench_function("sin(x)", move |b| b.iter(|| rng.gen::<f64>().sin()));
+    let mut rng = sadmc::rng::MyRng::seed_from_u64(0);
+    c.bench_function("log(x)", move |b| b.iter(|| rng.gen::<f64>().ln()));
+    let mut rng = sadmc::rng::MyRng::seed_from_u64(0);
+    c.bench_function("exp(x)", move |b| b.iter(|| rng.gen::<f64>().exp()));
+    let mut rng = sadmc::rng::MyRng::seed_from_u64(0);
+    c.bench_function("sqrt(x)", move |b| b.iter(|| rng.gen::<f64>().sqrt()));
+    
+    let mut rng = sadmc::rng::MyRng::seed_from_u64(0);
     c.bench_function("MyRng.gen<u64>", move |b| b.iter(|| rng.gen::<u64>()));
     let mut rng = sadmc::rng::MyRng::seed_from_u64(0);
     c.bench_function("MyRng.gen<f64>", move |b| b.iter(|| rng.gen::<f64>()));

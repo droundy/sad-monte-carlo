@@ -51,6 +51,7 @@ pub struct Water {
 /// A single water.
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 struct WaterMolecule {
+    // Maybe Vec<Vector3d<Length>>?  :(
     /// The position of the oxygen.
     position: Vector3d<Length>,
     /// The vector from the oxygen to the first hydrogen.
@@ -81,7 +82,7 @@ enum Change {
     None,
 }
 
-/// Compute the energy between two molecules.
+/// Compute the energy between two molecules. SPC/E
 fn potential(a: WaterMolecule, b: WaterMolecule) -> Energy {
     let mut potential: Energy = 0.0 * units::EPSILON;
     potential += electric_potential(a.position, b.position, CHARGE_O * CHARGE_O);
@@ -241,7 +242,7 @@ impl MovableSystem for Water {
     }
 }
 
-/// Generate a random number uniformly in `[a, b)`.
+/// Generate a random number uniformly in `[a, b)`. FIXME eliminate
 fn rand_uniform(rng: &mut MyRng, a: f64, b: f64) -> f64 {
     rng.sample(Uniform::new(a, b))
 }
@@ -250,7 +251,7 @@ fn rand_uniform(rng: &mut MyRng, a: f64, b: f64) -> f64 {
 fn rand_unit_ball(rng: &mut MyRng) -> Vector3d<f64> {
     loop {
         let r = Vector3d::new(
-            rand_uniform(rng, -1.0, 1.0),
+            rng.gen_range(-1.0, 1.0),
             rand_uniform(rng, -1.0, 1.0),
             rand_uniform(rng, -1.0, 1.0),
         );
@@ -260,9 +261,10 @@ fn rand_unit_ball(rng: &mut MyRng) -> Vector3d<f64> {
     }
 }
 
-/// Generate a random 3D rotation.
+/// Generate a random 3D rotation.  FIXME move to the rotation module as a
+/// constructor method
 fn rand_rotation(rng: &mut MyRng) -> Rotation {
-    let (x1, y1) = rand_uniform(rng, 0.0, std::f64::consts::TAU).sin_cos();
+    let (x1, y1) = rand_uniform(rng, 0.0, 2.0*std::f64::consts::PI).sin_cos();
     let (x2, y2) = rand_uniform(rng, 0.0, std::f64::consts::TAU).sin_cos();
     let u = rand_uniform(rng, 0.0, 1.0);
     let u1 = u.sqrt();
@@ -276,7 +278,7 @@ fn rand_rotation(rng: &mut MyRng) -> Rotation {
     Rotation { q }
 }
 
-/// Generate a random molecule position and orientation.
+/// Generate a random molecule position and orientation. FIXME method WaterMolecule::random(&mut rng)
 fn rand_molecule(rng: &mut MyRng, radius: Length) -> WaterMolecule {
     // Distance between oxygen and hydrogen
     let r_oh: Length = 0.315856 * units::SIGMA;
