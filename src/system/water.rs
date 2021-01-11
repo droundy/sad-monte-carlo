@@ -248,12 +248,28 @@ fn rand_uniform(rng: &mut MyRng, a: f64, b: f64) -> f64 {
 }
 
 /// Generate a random vector uniformly in the unit ball.
-fn rand_unit_ball(rng: &mut MyRng) -> Vector3d<f64> {
+pub fn rand_unit_ball(rng: &mut MyRng) -> Vector3d<f64> {
+    loop {
+        let r = Vector3d::new(
+            //rng.gen_range(-1.0, 1.0),
+            //rng.gen_range(-1.0, 1.0),
+            rand_uniform(rng, -1.0, 1.0),
+            rand_uniform(rng, -1.0, 1.0),
+            rand_uniform(rng, -1.0, 1.0),
+        );
+        if r.norm2() < 1.0 {
+            return r;
+        }
+    }
+}
+
+/// Generate a random vector uniformly in the unit ball.
+pub fn rand_unit_ball_2(rng: &mut MyRng) -> Vector3d<f64> {
     loop {
         let r = Vector3d::new(
             rng.gen_range(-1.0, 1.0),
-            rand_uniform(rng, -1.0, 1.0),
-            rand_uniform(rng, -1.0, 1.0),
+            rng.gen_range(-1.0, 1.0),
+            rng.gen_range(-1.0, 1.0),
         );
         if r.norm2() < 1.0 {
             return r;
