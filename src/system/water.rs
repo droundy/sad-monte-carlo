@@ -1,14 +1,26 @@
-//! A water.
+//! A bunch of water.
 
 use super::*;
 
 use crate::prettyfloat::PrettyFloat;
-use dimensioned::{Abs, Dimensionless};
+use crate::rotation::Rotation;
+use crate::unit_quaternion::UnitQuaternion;
+use dimensioned::{Abs, Dimensionless, Sqrt};
 use rand::distributions::Uniform;
 use rand::{Rng, SeedableRng};
 use vector3d::Vector3d;
 
-/// The parameters needed to configure a lennard jones  system.
+// sigma = 3.166 Å
+// epsilon = 6.737 meV
+
+/// Angle of water molecule
+const ANGLE_HOH: f64 = 1.911; // units of radians
+/// Charge of oxygen
+const CHARGE_O: f64 = -0.8476; // units of elementary charges
+/// Charge of hydrogen
+const CHARGE_H: f64 = -CHARGE_O / 2.0; // units of elementary charges
+
+/// The parameters needed to configure a water system.
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, AutoArgs)]
 pub struct WaterParams {
@@ -18,8 +30,8 @@ pub struct WaterParams {
     radius: Length,
 }
 
+/// Some water.
 #[allow(non_snake_case)]
-/// A lennard jones fluid.
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Water {
     /// The energy of the system
@@ -28,74 +40,106 @@ pub struct Water {
     error: Energy,
     /// The last change we made (and might want to undo).
     possible_change: Change,
-    /// The locations of the atoms
-    positions: Vec<Vector3d<Length>>,
+    /// The molecules
+    molecules: Vec<WaterMolecule>,
     /// The square of the maximum radius permitted
     max_radius_squared: Area,
     /// The maximum radius permitted
     max_radius: Length,
 }
 
+/// A single water.
+#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
+struct WaterMolecule {
+    /// The position of the oxygen.
+    position: Vector3d<Length>,
+    /// The vector from the oxygen to the first hydrogen.
+    h1: Vector3d<Length>,
+    /// The vector from the oxygen to the second hydrogen.
+    h2: Vector3d<Length>,
+}
+
 /// This defines the energy/radial bins.
-#[derive(Serialize, Deserialize, Debug, Default,Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Collected {
     /// The number of atoms for each radial bin from center of sphere.
     pub from_center: Vec<u64>,
-    /// The number of atoms for each radial bin from center of masse.
+    /// The number of atoms for each radial bin from center of mass.
     pub from_cm: Vec<u64>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 /// Define the types of changes that can be made to the system
 enum Change {
-    /// Move an atom already in the system
+    /// Move and rotate a particle already in the system
     Move {
         which: usize,
-        to: Vector3d<Length>,
+        new: WaterMolecule,
         e: Energy,
     },
     /// Make no changes to the system
     None,
 }
 
-/// Define the WCA interaction potential and criteria
-fn potential(r_squared: Area) -> Energy {
-    let sig_sqr = units::SIGMA * units::SIGMA;
-    4.0 * units::EPSILON * ((sig_sqr / r_squared).powi(6) - (sig_sqr / r_squared).powi(3))
+/// Compute the energy between two molecules.
+fn potential(a: WaterMolecule, b: WaterMolecule) -> Energy {
+    let mut potential: Energy = 0.0 * units::EPSILON;
+    potential += electric_potential(a.position, b.position, CHARGE_O * CHARGE_O);
+    potential += electric_potential(a.position, b.h1, CHARGE_O * CHARGE_H);
+    potential += electric_potential(a.position, b.h2, CHARGE_O * CHARGE_H);
+    potential += electric_potential(a.h1, b.position, CHARGE_H * CHARGE_O);
+    potential += electric_potential(a.h1, b.h1, CHARGE_H * CHARGE_H);
+    potential += electric_potential(a.h1, b.h2, CHARGE_H * CHARGE_H);
+    potential += electric_potential(a.h2, b.position, CHARGE_H * CHARGE_O);
+    potential += electric_potential(a.h2, b.h1, CHARGE_H * CHARGE_H);
+    potential += electric_potential(a.h2, b.h2, CHARGE_H * CHARGE_H);
+    let sigma_over_r_2 = units::SIGMA * units::SIGMA / (a.position - b.position).norm2();
+    let sigma_over_r_6 = sigma_over_r_2 * sigma_over_r_2 * sigma_over_r_2;
+    let sigma_over_r_12 = sigma_over_r_6 * sigma_over_r_6;
+    potential += 4.0 * units::EPSILON * (sigma_over_r_12 - sigma_over_r_6);
+    potential
+}
+
+/// Compute electric potential energy between two point charges.
+fn electric_potential(a: Vector3d<Length>, b: Vector3d<Length>, qq: f64) -> Energy {
+    let coulomb_constant = 675.109691 * units::EPSILON * units::SIGMA;
+    return coulomb_constant * qq / (a - b).norm2().sqrt();
 }
 
 impl Water {
-    /// Move a specified atom.  Returns the change in energy, or
-    /// `None` if the atom could not be placed there.
+    /// Change the position of a specified particle.  Returns the change in energy, or
+    /// `None` if the particle could not be placed there.
     pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
-        let previous_rsqr = self.positions[which].norm2();
+        let old = self.molecules[which];
+        let previous_rsqr = old.position.norm2();
         if r.norm2() > self.max_radius_squared && r.norm2() > previous_rsqr {
             return None;
         }
         let mut e = self.E;
-        let from = self.positions[which];
-        for r1 in self
-            .positions
+        let new = WaterMolecule { position: r, ..old };
+        for molecule in self
+            .molecules
             .iter()
             .cloned()
             .enumerate()
             .filter(|&(i, _)| i != which)
             .map(|(_, x)| x)
         {
-            e += potential((r1 - r).norm2()) - potential((r1 - from).norm2());
+            e += potential(molecule, new) - potential(molecule, old);
         }
-        self.possible_change = Change::Move { which, to: r, e };
+        self.possible_change = Change::Move { which, new, e };
         Some(e)
     }
     fn expected_accuracy(&self, newe: Energy) -> Energy {
-        newe.abs() * 1e-14 * (self.positions.len() as f64) * (self.positions.len() as f64)
+        // TODO: where does this formula come from
+        newe.abs() * 1e-14 * (self.molecules.len() as f64) * (self.molecules.len() as f64)
     }
-
     fn set_energy(&mut self, new_e: Energy) {
+        // TODO: what is this
         let new_error = if new_e.abs() > self.E.abs() {
-            new_e.abs() * 1e-15 * (self.positions.len() as f64)
+            new_e.abs() * 1e-15 * (self.molecules.len() as f64)
         } else {
-            self.E.abs() * 1e-15 * (self.positions.len() as f64)
+            self.E.abs() * 1e-15 * (self.molecules.len() as f64)
         };
         self.error = new_error + self.error;
         if self.error > self.expected_accuracy(new_e) {
@@ -110,80 +154,17 @@ impl Water {
 impl From<WaterParams> for Water {
     fn from(params: WaterParams) -> Water {
         let mut rng = crate::rng::MyRng::seed_from_u64(0);
-        let mut best_energy = 1e80 * units::EPSILON;
-        let mut best_positions = Vec::new();
-        println!("I am creating a LJ system with {} atoms!", params.N);
-        for attempt in 0..10000000 {
-            let mut positions = Vec::new();
-            for _ in 0..params.N {
-                let mut r;
-                loop {
-                    r = Vector3d::new(
-                        rng.sample(Uniform::new(-1.0, 1.0)),
-                        rng.sample(Uniform::new(-1.0, 1.0)),
-                        rng.sample(Uniform::new(-1.0, 1.0)),
-                    );
-                    if r.norm2() < 1.0 {
-                        break;
-                    }
-                }
-                positions.push(r * params.radius);
-            }
-            let mut cm = positions[0];
-            for x in positions.iter().skip(1) {
-                cm = cm + *x;
-            }
-            cm = cm / params.N as f64;
-            for x in positions.iter_mut() {
-                *x = *x - cm;
-            }
-            if positions
-                .iter()
-                .any(|x| x.norm2() > params.radius * params.radius)
-            {
-                continue;
-            }
-            let mut water = Water {
-                E: 0.0 * units::EPSILON,
-                error: 0.0 * units::EPSILON,
-                possible_change: Change::None,
-                positions,
-                max_radius_squared: params.radius * params.radius,
-                max_radius: params.radius,
-            };
-            water.E = water.compute_energy();
-            if water.E < best_energy {
-                best_energy = water.E;
-                best_positions = water.positions.clone();
-                println!(
-                    "found a new best energy{:?} after {} attempts",
-                    water.E, attempt
-                );
-            }
-            if water.E < 0.0 * units::EPSILON {
-                return water;
-            }
-        }
+        let zero_vector = Vector3d::new(0.0, 0.0, 0.0) * units::SIGMA;
+        let zero_molecule = WaterMolecule { position: zero_vector, h1: zero_vector, h2: zero_vector };
         let mut water = Water {
-            E: best_energy,
+            E: 0.0 * units::EPSILON,
             error: 0.0 * units::EPSILON,
             possible_change: Change::None,
-            positions: best_positions,
+            molecules: vec![zero_molecule; params.N],
             max_radius_squared: params.radius * params.radius,
             max_radius: params.radius,
         };
-        for attempt in 0..100000000 {
-            if let Some(newe) = water.plan_move(&mut rng, 0.03 * units::SIGMA) {
-                if newe < water.E {
-                    println!("reduced energy to {:?} after {} attempts", newe, attempt);
-                    water.confirm();
-                }
-                if water.E < 0.0 * units::EPSILON {
-                    return water;
-                }
-            }
-        }
-        println!("after some relaxing energy {}", water.E);
+        water.randomize(&mut rng);
         water
     }
 }
@@ -194,17 +175,18 @@ impl System for Water {
     }
     fn compute_energy(&self) -> Energy {
         let mut e: Energy = units::EPSILON * 0.0;
-        for (which, &r1) in self.positions.iter().enumerate() {
-            for r2 in self.positions.iter().take(which).cloned() {
-                e += potential((r1 - r2).norm2());
+        for (which, &m1) in self.molecules.iter().enumerate() {
+            for m2 in self.molecules.iter().take(which).cloned() {
+                e += potential(m1, m2);
             }
         }
         e
     }
-    fn lowest_possible_energy(&self) -> Option<Energy> {
-        let n = self.positions.len() as f64;
-        Some(-0.5 * n * (n - 1.0) * units::EPSILON)
-    }
+    // fn lowest_possible_energy(&self) -> Option<Energy> {
+    //     // TODO: where does this formula come from
+    //     let n = self.molecules.len() as f64;
+    //     Some(-0.5 * n * (n - 1.0) * units::EPSILON)
+    // }
     fn verify_energy(&self) {
         let egood = self.compute_energy();
         let expected = self.expected_accuracy(self.E);
@@ -219,25 +201,14 @@ impl System for Water {
         }
     }
     fn randomize(&mut self, rng: &mut MyRng) -> Energy {
-        for x in self.positions.iter_mut() {
-            let mut r;
-            loop {
-                r = Vector3d::new(
-                    rng.sample(Uniform::new(-1.0, 1.0)),
-                    rng.sample(Uniform::new(-1.0, 1.0)),
-                    rng.sample(Uniform::new(-1.0, 1.0)),
-                );
-                if r.norm2() < 1.0 {
-                    break;
-                }
-            }
-            *x = r*self.max_radius;
+        for x in self.molecules.iter_mut() {
+            *x = rand_molecule(rng, self.max_radius);
         }
         self.E = self.compute_energy();
         self.E
     }
     fn min_moves_to_randomize(&self) -> u64 {
-        self.positions.len() as u64
+        self.molecules.len() as u64
     }
 }
 
@@ -245,29 +216,75 @@ impl ConfirmSystem for Water {
     fn confirm(&mut self) {
         match self.possible_change {
             Change::None => (),
-            Change::Move { which, to, e } => {
-                self.positions[which] = to;
+            Change::Move { which, new, e } => {
+                self.molecules[which] = new;
                 self.possible_change = Change::None;
                 self.set_energy(e);
             }
         }
     }
     fn describe(&self) -> String {
-        format!("N = {} ", self.positions.len())
+        format!("N = {} ", self.molecules.len())
     }
 }
 
 impl MovableSystem for Water {
     fn plan_move(&mut self, rng: &mut MyRng, mean_distance: Length) -> Option<Energy> {
         use crate::rng::vector;
-        if self.positions.len() > 0 {
-            let which = rng.sample(Uniform::new(0, self.positions.len()));
-            let to = unsafe { *self.positions.get_unchecked(which) } + vector(rng) * mean_distance;
+        if self.molecules.len() > 0 {
+            let which = rng.sample(Uniform::new(0, self.molecules.len()));
+            let to = unsafe { *self.molecules.get_unchecked(which) }.position + vector(rng) * mean_distance;
             self.move_atom(which, to)
         } else {
             None
         }
     }
+}
+
+/// Generate a random number uniformly in `[a, b)`.
+fn rand_uniform(rng: &mut MyRng, a: f64, b: f64) -> f64 {
+    rng.sample(Uniform::new(a, b))
+}
+
+/// Generate a random vector uniformly in the unit ball.
+fn rand_unit_ball(rng: &mut MyRng) -> Vector3d<f64> {
+    loop {
+        let r = Vector3d::new(
+            rand_uniform(rng, -1.0, 1.0),
+            rand_uniform(rng, -1.0, 1.0),
+            rand_uniform(rng, -1.0, 1.0),
+        );
+        if r.norm2() < 1.0 {
+            return r;
+        }
+    }
+}
+
+/// Generate a random 3D rotation.
+fn rand_rotation(rng: &mut MyRng) -> Rotation {
+    let (x1, y1) = rand_uniform(rng, 0.0, std::f64::consts::TAU).sin_cos();
+    let (x2, y2) = rand_uniform(rng, 0.0, std::f64::consts::TAU).sin_cos();
+    let u = rand_uniform(rng, 0.0, 1.0);
+    let u1 = u.sqrt();
+    let u2 = (1.0 - u).sqrt();
+    let q = UnitQuaternion {
+        x: u1 * x1,
+        y: u1 * y1,
+        z: u2 * x2,
+        w: u2 * y2,
+    };
+    Rotation { q }
+}
+
+/// Generate a random molecule position and orientation.
+fn rand_molecule(rng: &mut MyRng, radius: Length) -> WaterMolecule {
+    // Distance between oxygen and hydrogen
+    let r_oh: Length = 0.315856 * units::SIGMA;
+    let position = rand_unit_ball(rng) * radius;
+    let rotation = rand_rotation(rng);
+    let h1 = rotation * Vector3d::new(1.0, 0.0, 0.0) * r_oh;
+    let h2 = rotation * Vector3d::new(ANGLE_HOH.cos(), ANGLE_HOH.sin(), 0.0) * r_oh;
+    WaterMolecule { position, h1, h2 }
 }
 
 #[test]

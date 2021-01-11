@@ -12,4 +12,6 @@ pub mod atomicfile;
 pub mod mc;
 pub mod prettyfloat;
 pub mod rng;
+pub mod rotation;
 pub mod system;
+pub mod unit_quaternion;
