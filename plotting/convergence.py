@@ -258,6 +258,10 @@ for base in bases:
         l_function, _, _ = compute.linear_entropy(energy_b, mean_e, my_lnw)
         
         entropy_here = l_function(E)
+        plt.plot(E, entropy_here, label=f)
+        plt.plot(E, exact_entropy, label='exact')
+        plt.legend(loc='best')
+        plt.show()
         max_error = np.max(np.abs(entropy_here - exact_entropy))
         error[base].append(max_error)
 
