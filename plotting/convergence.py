@@ -236,7 +236,7 @@ for base in bases:
 
     moves[base] = []
     error[base] = []
-    for f in glob.glob(base+'/*.cbor'):
+    for f in sorted(glob.glob(base+'/*.cbor')):
         f = os.path.splitext(f)[0]
         mymove = float(os.path.basename(f))
         moves[base].append(mymove)
