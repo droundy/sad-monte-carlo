@@ -257,6 +257,7 @@ for base in bases:
         # Create a function for the entropy based on this number of moves:
         l_function, _, _ = compute.linear_entropy(energy_b, mean_e, my_lnw)
         
+        entropy_here = l_function(E)
         max_error = np.max(np.abs(entropy_here - exact_entropy))
         error[base].append(max_error)
 
