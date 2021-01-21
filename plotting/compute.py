@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.optimize as optimize
+import yaml
 
 def read_file(base):
     energy_boundaries = np.loadtxt(base+'-energy-boundaries.dat')
