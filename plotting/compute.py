@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.optimize as optimize
 
 def read_file(base):
     energy_boundaries = np.loadtxt(base+'-energy-boundaries.dat')
@@ -29,6 +30,30 @@ def step_entropy(energy_boundaries, mean_energy, lnw):
     def entropy(E):
         return np.interp(E, step_energy, step_entropy, left=step_entropy[0], right=step_entropy[-1])
     return entropy, 1*step_energy, 1*step_entropy
+
+def fn_for_beta(x, meanE_over_deltaE):
+    if x < 1e-14:
+        return 0.5*x - x*meanE_over_deltaE
+    return x/(1-np.exp(-x)) - 1 - x*meanE_over_deltaE
+    
+def find_beta_deltaE(meanE_over_deltaE):
+    # x = np.linspace(-100,100,10000)
+    # plt.plot(x, np.vectorize(fn_for_beta)(x, meanE_over_deltaE))
+    # plt.show()
+    if meanE_over_deltaE == 0:
+        x0 = 1e-6
+        x1 = -1e-6
+    else:
+        x0 = 2*meanE_over_deltaE
+        x1 = meanE_over_deltaE
+    sol = optimize.root_scalar(fn_for_beta, args=(meanE_over_deltaE), x0 = x0, x1 = x1)
+    # print(sol)
+    return sol.root
+
+def find_entropy_from_beta_and_lnw(beta, lnw, deltaE):
+    if abs(beta*deltaE) < 1e-14:
+        return lnw - np.log(deltaE)
+    return lnw - np.log(deltaE) - np.log((np.exp(beta*deltaE)-1)/(beta*deltaE))
 
 def linear_entropy(energy_boundaries, mean_energy, lnw):
     step_entropy = []

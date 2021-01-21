@@ -21,26 +21,14 @@ prop_cycle = plt.rcParams['axes.prop_cycle']
 colors = cc.glasbey_dark
 
 print('''
-Questions:
-
-- How to show movie? which files
-
-- What are the moves?
-
 Changes to do:
 
 - Loop over all the movie files (so we can see the convergence process)
-
-- Compare the entropy with the exact entropy (ln of exact DOS) and find the
-  biggest error by comparing at a regular set of energies.  Store that biggest
-  error for each number of moves.
 
 - Plot error versus number of moves, on a log-log plot.
 
 - (optionally) Create a movie showing how the entropy evolves over time.
 
-        exact_entropy = np.log(linear_density_of_states) #for convergence analysis
-        #select energies evenly; exclusively
 ''')
 
 def linear_density_of_states(E):
@@ -115,7 +103,7 @@ def compute_entropy_given_Smin(Smin, energy_boundaries, lnw):
     for i in range(len(energy_boundaries)-1, 1, -1):
         #print('solving for i =', i)
         entropy_boundaries[i-1] = optimize_bin_entropy(i, energy_boundaries, lnw, entropy_boundaries[i])
-    return entropy_boundaries    
+    return entropy_boundaries
 
 def entropy_boundary_badness(Smin, energy_boundaries, lnw):
     entropy_boundaries = compute_entropy_given_Smin(Smin, energy_boundaries, lnw)
@@ -161,11 +149,11 @@ def find_entropy_from_beta_and_lnw(beta, lnw, deltaE):
         return lnw - np.log(deltaE)
     return lnw - np.log(deltaE) - np.log((np.exp(beta*deltaE)-1)/(beta*deltaE))
 
-
 #Read Data
 moves = {}
+error = {} #store the max error in each move
 bases = []
-print('bases', bases)
+print('base', args.base)
 
 energy_boundaries = {}
 entropy_boundaries = {}
@@ -173,15 +161,23 @@ mean_energy = {}
 lnw = {}
 systems = {}
 #each file has different path (including extension) so concatenating is easy
+for base in args.base:
+    #change base to have the cbor files. currently has the directory
+    if '.cbor' in base or '.yaml' in base:
+        base = base[:-5]
+    bases.append(base)
+
 for base in bases:
     energy_boundaries[base] = np.loadtxt(base+'-energy-boundaries.dat')
     mean_energy[base] = np.loadtxt(base+'-mean-energy.dat')
     lnw[base] = np.loadtxt(base+'-lnw.dat')
+    print('energy_boundaries', energy_boundaries)
+    print('lnw', lnw)
+    print('entropy_boundaries', entropy_boundaries)
     with open(base+'-system.dat') as f:
         systems[base] = yaml.safe_load(f)
 
-    #FIXME: thought of adding an element to the ndarray if it only has 1 value
-    if energy_boundaries[base].ndim == 0: #in case a single value
+    if energy_boundaries[base].ndim == 0: #in case of a single value
         energy_boundaries[base] = np.array([energy_boundaries[base].item()])
 
     if energy_boundaries[base][0] < energy_boundaries[base][-1]:
@@ -239,19 +235,18 @@ for base in bases:
     exact_entropy = np.log(exact_density_of_states(E))
 
     moves[base] = []
+    error[base] = []
     for f in glob.glob(base+'/*.cbor'):
         f = os.path.splitext(f)[0]
         mymove = float(os.path.basename(f))
         moves[base].append(mymove)
         print(f'working on {base} with moves {mymove} which is {f}')
 
-
         energy_b = np.loadtxt(f+'-energy-boundaries.dat')
         mean_e = np.loadtxt(f+'-mean-energy.dat')
         my_lnw = np.loadtxt(f+'-lnw.dat')
         
-        #FIXME: thought of adding an element to the ndarray if it only has 1 value
-        if energy_b.ndim == 0: #in case a single value
+        if energy_b.ndim == 0: #in case of a single value
             energy_b = np.array([energy_b.item()])
 
         if energy_b[0] < energy_b[-1]:
@@ -264,15 +259,16 @@ for base in bases:
         
         entropy_here = l_function(E)
         max_error = np.max(np.abs(entropy_here - exact_entropy))
-        # FIXME Need to store the entropy errors, so we can plot them later
+        error[base].append(max_error)
 
 #Plotting
-plt.figure('convergence')
 for base in bases:
-    plt.title('move: ' + moves[base])
-    plt.xlabel('moves')
-    plt.ylabel('entropy - exact entropy')
+    plt.figure('convergence of '+base)
+    plt.xlabel(r'Energy ($\epsilon$)')
+    plt.ylabel('Error (S - S$_{exact}$)')
     plt.legend(loc='best')
-    plt.plot(energy_boundaries[base], entropy_boundaries[base]-exact_entropy_boundaries[base], label=base)
-plt.tight_layout()
-plt.show()
+    plt.tight_layout()
+
+    plt.title('base: ' + base)
+    plt.plot(moves[base], error[base], label=str(base))
+    plt.show()
