@@ -255,7 +255,8 @@ for base in bases:
             my_lnw = np.flip(my_lnw)
 
         # Create a function for the entropy based on this number of moves:
-        l_function, _, _ = compute.linear_entropy(energy_b, mean_e, my_lnw)
+        # l_function, _, _ = compute.linear_entropy(energy_b, mean_e, my_lnw)
+        l_function, _, _ = compute.step_entropy(energy_b, mean_e, my_lnw)
         
         entropy_here = l_function(E)
         plt.plot(E, np.exp(entropy_here), label=f)
@@ -264,6 +265,7 @@ for base in bases:
         plt.xlabel('E')
         plt.ylim(bottom=0)
         plt.legend(loc='best')
+        print('norm is now', np.sum(np.exp(my_lnw)))
         plt.show()
         max_error = np.max(np.abs(entropy_here - exact_entropy))
         error[base].append(max_error)

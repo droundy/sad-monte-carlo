@@ -50,6 +50,7 @@ for fname in args.fname:
 
     lnw = np.array(lnw)
     lnw -= np.log(np.sum(np.exp(lnw))) # w = w / sum(w) to normalize
+    print('norm', np.sum(np.exp(lnw)))
     mean_energy = np.array(mean_energy)
 
 

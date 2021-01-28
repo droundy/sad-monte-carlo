@@ -122,7 +122,9 @@ class MC:
         s = self.excess_entropy()
         s -= s.max()
         s -= np.log(np.sum(np.exp(s))) # normalize probability as best we can
-        return np.array([np.NINF]+list(s)+[np.NINF]) # pad with zero density of states in the unbounded bins
+        lnw = np.array([np.NINF]+list(s)+[np.NINF]) # pad with zero density of states in the unbounded bins
+        print('norm', np.sum(np.exp(lnw)))
+        return lnw
     @property
     def system(self):
         return readsystem.readsystem(self.data)

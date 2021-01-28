@@ -29,7 +29,10 @@ def step_entropy(energy_boundaries, mean_energy, lnw):
     step_energy = np.flip(np.array(step_energy))
     step_entropy = np.flip(np.array(step_entropy))
     def entropy(E):
-        return np.interp(E, step_energy, step_entropy, left=step_entropy[0], right=step_entropy[-1])
+        if len(step_energy) < 3:
+            return np.zeros_like(E)
+        # return np.interp(E, step_energy, step_entropy, left=step_entropy[0], right=step_entropy[-1])
+        return np.interp(E, step_energy, step_entropy, left=-30, right=-30)
     return entropy, 1*step_energy, 1*step_entropy
 
 def fn_for_beta(x, meanE_over_deltaE):
