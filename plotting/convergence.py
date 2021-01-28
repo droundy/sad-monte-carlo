@@ -15,7 +15,6 @@ parser.add_argument('--intensive', action='store_true')
 
 args = parser.parse_args()
 
-
 prop_cycle = plt.rcParams['axes.prop_cycle']
 
 colors = cc.glasbey_dark
@@ -23,11 +22,13 @@ colors = cc.glasbey_dark
 print('''
 Changes to do:
 
-- Loop over all the movie files (so we can see the convergence process)
+- Find the error in the analysis of the error
 
-- Plot error versus number of moves, on a log-log plot.
-
-- (optionally) Create a movie showing how the entropy evolves over time.
+- Known issues:
+    1. parse-replicas does not output .dat files to main directory
+        as such the script doesn't read the data from replicas
+    2. parse-replicas doesn't handle specific fake simulations
+        like parse-binning. Might this be the issue?
 
 ''')
 
@@ -258,15 +259,16 @@ for base in bases:
         l_function, _, _ = compute.linear_entropy(energy_b, mean_e, my_lnw)
         
         entropy_here = l_function(E)
-        plt.plot(E, np.exp(entropy_here), label=f)
+        '''plt.plot(E, np.exp(entropy_here), label=f)
         plt.plot(E, np.exp(exact_entropy), label='exact')
         plt.ylabel('density of states')
         plt.xlabel('E')
         plt.ylim(bottom=0)
         plt.legend(loc='best')
-        plt.show()
+        plt.show()'''
         max_error = np.max(np.abs(entropy_here - exact_entropy))
         error[base].append(max_error)
+        #FIXME: the error is off by factor of 2
 
 #Plotting
 for base in bases:
