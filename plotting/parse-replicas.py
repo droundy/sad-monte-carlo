@@ -37,7 +37,7 @@ for fname in args.fname:
     mean_energy = []
     lnw = []
     remaining_entopy = 0
-    for i in range(1,len(above_count)):
+    for i in range(0,len(above_count)):
         lnw.append(remaining_entopy + np.log(above_count[i]/count[i]))
         remaining_entopy = remaining_entopy + np.log(below_count[i]/count[i])
         mean_energy.append(above_total[i]/above_count[i])
@@ -55,7 +55,7 @@ for fname in args.fname:
 
 
     energy_boundaries = []
-    for i in range(1,len(above_count)):
+    for i in range(0,len(above_count)):
         energy_boundaries.append(replicas[i]['cutoff_energy'])
     energy_boundaries = np.array(energy_boundaries)
 
