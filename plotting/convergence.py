@@ -255,12 +255,12 @@ for base in bases:
             my_lnw = np.flip(my_lnw)
 
         # Create a function for the entropy based on this number of moves:
-        # l_function, _, _ = compute.linear_entropy(energy_b, mean_e, my_lnw)
-        l_function, _, _ = compute.step_entropy(energy_b, mean_e, my_lnw)
+        l_function, _, _ = compute.linear_entropy(energy_b, mean_e, my_lnw)
+        # l_function, _, _ = compute.step_entropy(energy_b, mean_e, my_lnw)
         
         entropy_here = l_function(E)
         plt.plot(E, np.exp(entropy_here), label=f)
-        plt.plot(E, np.exp(exact_entropy), label='exact')
+        plt.plot(E, np.exp(exact_entropy), '--', label='exact')
         plt.ylabel('density of states')
         plt.xlabel('E')
         plt.ylim(bottom=0)
