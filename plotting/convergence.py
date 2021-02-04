@@ -193,8 +193,7 @@ print('energy_boundaries', energy_boundaries)
 print('lnw', lnw)
 print('entropy_boundaries', entropy_boundaries)
 
-E = np.linspace(0, 1, 1000)[1:-1] # FIXME make this depend on which system we have
-
+E = np.linspace(0.02, 0.4, 1000) # FIXME make this depend on which system we have
 exact_entropy_boundaries={}
 which_color = 0
 for base in bases:
@@ -263,21 +262,20 @@ for base in bases:
         plt.plot(E, np.exp(exact_entropy), '--', label='exact')
         plt.ylabel('density of states')
         plt.xlabel('E')
-        plt.ylim(bottom=0)
+        # plt.ylim(bottom=0)
         plt.legend(loc='best')
-        print('norm is now', np.sum(np.exp(my_lnw)))
-        plt.show()
+        plt.draw_if_interactive()
+        plt.pause(0.1)
+        plt.clf()
         max_error = np.max(np.abs(entropy_here - exact_entropy))
         error[base].append(max_error)
 
 #Plotting
 for base in bases:
-    plt.figure('convergence of '+base)
-    plt.xlabel('Moves')
-    plt.ylabel('Error (S - S$_{exact}$)')
-    plt.legend(loc='best')
-    plt.tight_layout()
-
-    plt.title('base: ' + base)
     plt.loglog(moves[base], error[base], label=str(base))
-    plt.show()
+
+plt.xlabel('Moves')
+plt.ylabel('Error (S - S$_{exact}$)')
+plt.legend(loc='best')
+plt.tight_layout()
+plt.show()

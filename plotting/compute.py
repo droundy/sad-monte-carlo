@@ -64,12 +64,12 @@ def linear_entropy(energy_boundaries, mean_energy, lnw):
     step_energy = []
     total_energy_delta = 2*(energy_boundaries[0] - energy_boundaries[-1])
     # First we include the unbounded high-energy case
-    step_energy.append(energy_boundaries[0] + total_energy_delta)
-    step_energy.append(energy_boundaries[0])
-    kT = mean_energy[0] - energy_boundaries[0]
-    S0 = lnw[0] - np.log(kT)
-    step_entropy.append(S0-total_energy_delta/kT)
-    step_entropy.append(S0)
+    # step_energy.append(energy_boundaries[0] + total_energy_delta)
+    # step_energy.append(energy_boundaries[0])
+    sigup = (mean_energy[0] - energy_boundaries[0])*np.sqrt(np.pi/2)
+    Sup = lnw[0] - np.log(sigup*np.sqrt(np.pi/2))
+    # step_entropy.append(S0-total_energy_delta/kT)
+    # step_entropy.append(S0)
 
     # Now consider all the middle cases
     for i in range(len(energy_boundaries)-1):
@@ -87,26 +87,20 @@ def linear_entropy(energy_boundaries, mean_energy, lnw):
             step_entropy.append(S0+beta*deltaE)
             step_entropy.append(S0)
     # Now let's do the low-energy unbounded bin
-    step_energy.append(energy_boundaries[-1])
-    step_energy.append(energy_boundaries[-1] - total_energy_delta)
     kT = energy_boundaries[-1] - mean_energy[-1]
-    if np.isnan(kT):
-        # This happens if we have no statistics for the mean energy down here.
-        kT = total_energy_delta/2
     S0 = lnw[-1] - np.log(kT)
-    step_entropy.append(S0)
-    step_entropy.append(S0-total_energy_delta/kT)
-    
-    # this is the unbounded low-energy bin, assume exponential DOS
-    Tlow = energy_boundaries[-1] - mean_energy[-1]
-    Slo = lnw[-1] - np.log(Tlow)
-    step_energy.append(energy_boundaries[-1])
-    step_energy.append(energy_boundaries[-1] - 20*Tlow)
-    step_entropy.append(Slo)
-    step_entropy.append(Slo - 10)
+    if not np.isnan(kT) and not np.isnan(S0):
+        step_entropy.append(S0)
+        step_entropy.append(S0-total_energy_delta/kT)
+        step_energy.append(energy_boundaries[-1])
+        step_energy.append(energy_boundaries[-1] - total_energy_delta)
 
     step_energy = np.flip(step_energy)
     step_entropy = np.flip(step_entropy)
     def entropy(E):
-        return np.interp(E, step_energy, step_entropy, left=step_entropy[0], right=step_entropy[-1])
+        if np.isnan(Sup) or np.isnan(sigup):
+            return np.interp(E, step_energy, step_entropy, left=step_entropy[0], right=-30)
+        else:
+            return np.interp(E, step_energy, step_entropy, left=step_entropy[0], right=0) \
+                + np.heaviside(E-energy_boundaries[0], 0)*(Sup-(E-energy_boundaries[0])**2/(2*sigup**2))
     return entropy, 1*step_energy, 1*step_entropy
