@@ -62,7 +62,7 @@ def find_entropy_from_beta_and_lnw(beta, lnw, deltaE):
 def linear_entropy(energy_boundaries, mean_energy, lnw):
     step_entropy = []
     step_energy = []
-    total_energy_delta = energy_boundaries[0] - energy_boundaries[-1]
+    total_energy_delta = 2*(energy_boundaries[0] - energy_boundaries[-1])
     # First we include the unbounded high-energy case
     step_energy.append(energy_boundaries[0] + total_energy_delta)
     step_energy.append(energy_boundaries[0])
