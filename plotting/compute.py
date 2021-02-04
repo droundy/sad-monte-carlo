@@ -86,6 +86,16 @@ def linear_entropy(energy_boundaries, mean_energy, lnw):
         else:
             step_entropy.append(S0+beta*deltaE)
             step_entropy.append(S0)
+    # Now let's do the low-energy unbounded bin
+    step_energy.append(energy_boundaries[-1])
+    step_energy.append(energy_boundaries[-1] - total_energy_delta)
+    kT = energy_boundaries[-1] - mean_energy[-1]
+    if np.isnan(kT):
+        # This happens if we have no statistics for the mean energy down here.
+        kT = total_energy_delta/2
+    S0 = lnw[-1] - np.log(kT)
+    step_entropy.append(S0)
+    step_entropy.append(S0-total_energy_delta/kT)
     
     # this is the unbounded low-energy bin, assume exponential DOS
     Tlow = energy_boundaries[-1] - mean_energy[-1]
