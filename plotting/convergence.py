@@ -194,8 +194,7 @@ print('energy_boundaries', energy_boundaries)
 print('lnw', lnw)
 print('entropy_boundaries', entropy_boundaries)
 
-E = np.linspace(0, 1, 1000)[1:-1] # FIXME make this depend on which system we have
-
+E = np.linspace(0.02, 0.4, 1000) # FIXME make this depend on which system we have
 exact_entropy_boundaries={}
 which_color = 0
 for base in bases:
@@ -257,27 +256,29 @@ for base in bases:
 
         # Create a function for the entropy based on this number of moves:
         l_function, _, _ = compute.linear_entropy(energy_b, mean_e, my_lnw)
+        # l_function, _, _ = compute.step_entropy(energy_b, mean_e, my_lnw)
         
         entropy_here = l_function(E)
-        '''plt.plot(E, np.exp(entropy_here), label=f)
-        plt.plot(E, np.exp(exact_entropy), label='exact')
+        plt.plot(E, np.exp(entropy_here), label=f)
+        plt.plot(E, np.exp(exact_entropy), '--', label='exact')
         plt.ylabel('density of states')
         plt.xlabel('E')
-        plt.ylim(bottom=0)
+        # plt.ylim(bottom=0)
         plt.legend(loc='best')
         plt.show()'''
+        plt.draw_if_interactive()
+        plt.pause(0.1)
+        plt.clf()
         max_error = np.max(np.abs(entropy_here - exact_entropy))
         error[base].append(max_error)
         #FIXME: the error is off by factor of 2
 
 #Plotting
 for base in bases:
-    plt.figure('convergence of '+base)
-    plt.xlabel('Moves')
-    plt.ylabel('Error (S - S$_{exact}$)')
-    plt.legend(loc='best')
-    plt.tight_layout()
-
-    plt.title('base: ' + base)
     plt.loglog(moves[base], error[base], label=str(base))
-    plt.show()
+
+plt.xlabel('Moves')
+plt.ylabel('Error (S - S$_{exact}$)')
+plt.legend(loc='best')
+plt.tight_layout()
+plt.show()
