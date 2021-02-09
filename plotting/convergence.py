@@ -193,7 +193,7 @@ print('energy_boundaries', energy_boundaries)
 print('lnw', lnw)
 print('entropy_boundaries', entropy_boundaries)
 
-E = np.linspace(0.02, 0.4, 1000) # FIXME make this depend on which system we have
+E = np.linspace(0.02, 1.9, 1000) # FIXME make this depend on which system we have
 exact_entropy_boundaries={}
 which_color = 0
 for base in bases:
