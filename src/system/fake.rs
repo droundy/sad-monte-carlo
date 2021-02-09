@@ -107,7 +107,7 @@ impl System for Fake {
                 *x = rng.gen_range(0.0, 1.0);
             }
             r = self
-                .possible_change
+                .position
                 .iter()
                 .map(|&x| x * x)
                 .sum::<f64>()
