@@ -40,12 +40,19 @@ def gaussian_density_of_states(E):
 def other_density_of_states(E):
     return np.zeros_like(E)
 def erfinv_density_of_states(E):
-    return np.sqrt(np.pi/N)*np.exp(-(E - mean_erfinv_energy)**2/N)
+    return np.sqrt(1/(np.pi*N))*np.exp(-(E - mean_erfinv_energy)**2/N)
+def erfinv_E_from_T(T):
+    return -(N/2)/T
 def piecewise_density_of_states(E):
+    # D = np.zeros_like(E)
+    # D[E>-e2] = (a**3 * np.sqrt(E[E>-e2]+e1) / 2) + ( (b - (b - a)*np.sqrt(E[E>-e2]/e2 + 1))**2 / (2*e2*np.sqrt(E[E>-e2]/e2+1)) ) + ( (b + (b - a)*np.sqrt(E[E>-e2]/e2 + 1))**2 / (2*e2*np.sqrt(E[E>-e2]/e2+1)) )
+    # D[E>0] = (b + (b - a)*np.sqrt(E[E>0]/e2 + 1))**2 / (2*e2*np.sqrt(E[E>0]/e2+1))
+    # return D
     if E > 0:
         return (b + (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1))
     elif E > -e2:
         return (a**3 * np.sqrt(E+e1) / 2) + ( (b - (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1)) ) + ( (b + (b - a)*np.sqrt(E/e2 + 1))**2 / (2*e2*np.sqrt(E/e2+1)) )
+    return 0
 piecewise_density_of_states = np.vectorize(piecewise_density_of_states)
 
 #The function needs to be callable
@@ -168,32 +175,21 @@ for base in args.base:
     bases.append(base)
 
 for base in bases:
-    energy_boundaries[base] = np.loadtxt(base+'-energy-boundaries.dat')
-    mean_energy[base] = np.loadtxt(base+'-mean-energy.dat')
-    lnw[base] = np.loadtxt(base+'-lnw.dat')
-    print('energy_boundaries', energy_boundaries)
-    print('lnw', lnw)
-    print('entropy_boundaries', entropy_boundaries)
+    print('reading', base)
     with open(base+'-system.dat') as f:
         systems[base] = yaml.safe_load(f)
 
-    if energy_boundaries[base].ndim == 0: #in case of a single value
-        energy_boundaries[base] = np.array([energy_boundaries[base].item()])
 
-    if energy_boundaries[base][0] < energy_boundaries[base][-1]:
-        energy_boundaries[base] = np.flip(energy_boundaries[base])
-        mean_energy[base] = np.flip(mean_energy[base])
-        lnw[base] = np.flip(lnw[base])
-
-    entropy_boundaries[base] = optimize_entropy(energy_boundaries[base], lnw[base])
-
+print('done reading bases')
 sigma = 1
 
-print('energy_boundaries', energy_boundaries)
-print('lnw', lnw)
-print('entropy_boundaries', entropy_boundaries)
+E = np.linspace(0.01, 0.4, 1000) # FIXME make this depend on which system we have
+if 'pieces' in bases[0]:
+    E = np.linspace(-systems[bases[0]]['e2']+0.02, 31, 1000)
+elif 'erfinv' in bases[0]:
+    N = 3
+    E = np.linspace(erfinv_E_from_T(0.1), 0, 1000)
 
-E = np.linspace(0.02, 1.9, 1000) # FIXME make this depend on which system we have
 exact_entropy_boundaries={}
 which_color = 0
 for base in bases:
@@ -231,7 +227,12 @@ for base in bases:
         exact_density_of_states = other_density_of_states
 
     # We can compute the exact entropy now, at our energies E
+    print('computing exact density of states')
     exact_entropy = np.log(exact_density_of_states(E))
+    if 'pieces' in base:
+        # FIXME we should properly normalize piecewise_density_of_states
+        exact_entropy -= np.log(sum(exact_density_of_states(E))*(E[1]-E[0]))
+    print('done computing exact density of states')
 
     moves[base] = []
     error[base] = []
@@ -258,19 +259,25 @@ for base in bases:
         # l_function, _, _ = compute.step_entropy(energy_b, mean_e, my_lnw)
         
         entropy_here = l_function(E)
-        plt.plot(E, np.exp(entropy_here), label=f)
-        plt.plot(E, np.exp(exact_entropy), '--', label='exact')
-        plt.ylabel('density of states')
+        plt.clf()
+        if 'erfinv' in base:
+            plt.plot(E, entropy_here, label=f)
+            plt.plot(E, exact_entropy, '--', label='exact')
+            plt.ylabel('$S(E)$')
+        else:
+            plt.plot(E, np.exp(entropy_here), label=f)
+            plt.plot(E, np.exp(exact_entropy), '--', label='exact')
+            plt.ylabel('density of states')
         plt.xlabel('E')
         # plt.ylim(bottom=0)
         plt.legend(loc='best')
         plt.draw_if_interactive()
         plt.pause(0.1)
-        plt.clf()
         max_error = np.max(np.abs(entropy_here - exact_entropy))
         error[base].append(max_error)
 
 #Plotting
+plt.figure()
 for base in bases:
     plt.loglog(moves[base], error[base], label=str(base))
 

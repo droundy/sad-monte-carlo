@@ -15,7 +15,7 @@ SAD=(../target/release/binning --translation-scale 0.05 --movie-time "10^(1/4)" 
 
 PIECES=( --fake-pieces-a 0.1 --fake-pieces-b 0.2 --fake-pieces-e1 1.0 --fake-pieces-e2 0.5)
 
-#rq run -c all --max-output=30 -R -J r-erfinv -- ${REP[@]//} --save-as r-erfinv.yaml --min-T 0.01 --fake-erfinv-mean-energy 0 --fake-erfinv-N 10
+rq run -c all --max-output=30 -R -J r-erfinv -- ${REP[@]//} --save-as r-erfinv.yaml --min-T 0.05 --fake-erfinv-mean-energy 0 --fake-erfinv-N 3
 
 #rq run -c all --max-output=30 -R -J r-gaussian -- ${REP[@]//} --save-as r-gaussian.yaml --min-T 0.001 --fake-gaussian-sigma 0.1
 
@@ -33,6 +33,8 @@ rq run -c all --max-output=30 -R -J r-pieces -- ${REP[@]//} --save-as r-pieces.y
 
 for de in 0.001 0.01 0.1; do
   #rq run -R -J sad-gaussian-$de -- ${SAD[@]//} --histogram-bin $de --fake-gaussian-sigma 0.1 --save-as sad-gaussian-$de.yaml --sad-min-T 0.001
+
+  rq run -R -J sad-linear-$de --  ${SAD[@]//} --histogram-bin $de --fake-erfinv-mean-energy 0  --fake-erfinv-N 3 --save-as sad-erfinv-$de.yaml --sad-min-T 0.05
 
   rq run -R -J sad-linear-$de --  ${SAD[@]//} --histogram-bin $de --fake-linear --save-as sad-linear-$de.yaml --sad-min-T 0.001
 
