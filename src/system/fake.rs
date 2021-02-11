@@ -51,12 +51,12 @@ impl Function {
             Function::Gaussian { sigma } => Energy::new(-(-r * r / (2.0 * sigma * sigma)).exp()),
             Function::Pieces { a, b, e1, e2 } => {
                 if r < a {
-                    (r * r) / (a * a)*e1 - e1
+                    (r * r) / (a * a) * e1 - e1
                 } else {
                     ((r - b) / (b - a)) * ((r - b) / (b - a)) * e2 - e2
                 }
             }
-        }    
+        }
     }
 }
 
@@ -101,8 +101,17 @@ impl System for Fake {
         self.energy()
     }
     fn randomize(&mut self, rng: &mut MyRng) -> Energy {
-        for x in self.position.iter_mut() {
-            *x = rng.gen_range(0.0, 1.0);
+        let mut r = 5.0;
+        while r >= 1.0 {
+            for x in self.position.iter_mut() {
+                *x = rng.gen_range(0.0, 1.0);
+            }
+            r = self
+                .position
+                .iter()
+                .map(|&x| x * x)
+                .sum::<f64>()
+                .sqrt();
         }
         self.energy()
     }
