@@ -31,10 +31,12 @@ rq run -c all --max-output=30 -R -J r-pieces -- ${REP[@]//} --save-as r-pieces.y
   #rq run -R -J sad-erfinv-$de -- ${SAD[@]//} --histogram-bin $de --fake-erfinv-mean-energy 0 --fake-erfinv-N 10 --save-as sad-erfinv-$de.yaml --sad-min-T 0.01
 #done
 
+for de in 0.01 0.1 1 10; do
+  rq run -R -J sad-erfinv-$de --  ${SAD[@]//} --histogram-bin $de --fake-erfinv-mean-energy 0  --fake-erfinv-N 3 --save-as sad-erfinv-$de.yaml --sad-min-T 0.05
+done
+
 for de in 0.001 0.01 0.1; do
   #rq run -R -J sad-gaussian-$de -- ${SAD[@]//} --histogram-bin $de --fake-gaussian-sigma 0.1 --save-as sad-gaussian-$de.yaml --sad-min-T 0.001
-
-  rq run -R -J sad-linear-$de --  ${SAD[@]//} --histogram-bin $de --fake-erfinv-mean-energy 0  --fake-erfinv-N 3 --save-as sad-erfinv-$de.yaml --sad-min-T 0.05
 
   rq run -R -J sad-linear-$de --  ${SAD[@]//} --histogram-bin $de --fake-linear --save-as sad-linear-$de.yaml --sad-min-T 0.001
 
