@@ -272,7 +272,6 @@ for base in bases:
         plt.xlabel('E')
         # plt.ylim(bottom=0)
         plt.legend(loc='best')
-        plt.show()'''
         plt.draw_if_interactive()
         plt.pause(0.1)
         max_error = np.max(np.abs(entropy_here - exact_entropy))
