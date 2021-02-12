@@ -36,7 +36,7 @@ pub enum MethodParams {
         min_gamma: Option<f64>,
     },
     /// Use the 1/t-Wang-Landau algorithm
-    inv_t_WL,
+    inv_t_wl,
 }
 
 /// Parameters to configure the moves.
@@ -165,7 +165,7 @@ impl Method {
                 inv_t: false,
                 min_gamma,
             },
-            MethodParams::inv_t_WL => Method::WL {
+            MethodParams::inv_t_wl => Method::WL {
                 gamma: 1.0,
                 inv_t: true,
                 min_gamma: None,
