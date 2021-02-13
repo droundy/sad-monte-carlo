@@ -375,14 +375,19 @@ impl<
         self.report.print(self.moves);
         println!("    [{} replicas]", self.replicas.len());
 
-        for r in self.replicas.iter() {
-            let percent = r.above_count as f64 / (r.above_count as f64 + r.below_count as f64);
-            println!(
-                "      {:2.1}% > {:9.5} {:.2} unique",
-                crate::prettyfloat::PrettyFloat(100.0 * percent),
-                r.cutoff_energy.pretty(),
-                crate::prettyfloat::PrettyFloat(r.unique_visitors as f64),
-            );
+        let num_replicas = self.replicas.len();
+        for (which, r) in self.replicas.iter().enumerate() {
+            if which < 6 || which + 6 >= num_replicas {
+                let percent = r.above_count as f64 / (r.above_count as f64 + r.below_count as f64);
+                println!(
+                    "      {:2.1}% > {:9.5} {:.2} unique",
+                    crate::prettyfloat::PrettyFloat(100.0 * percent),
+                    r.cutoff_energy.pretty(),
+                    crate::prettyfloat::PrettyFloat(r.unique_visitors as f64),
+                );
+            } else if which == 6 {
+                println!("      ...");
+            }
         }
         if let Some(r) = self.replicas.last() {
             let mean_below = r.below_total / r.below_count as f64;
