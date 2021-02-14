@@ -2,8 +2,7 @@
 
 set -ev
 
-#python3 ../plotting/parse-binning.py sad*.yaml && python3 ../plotting/parse-replicas.py r-pieces.yaml && python3 ../plotting/analyze-boundaries.py ./r-pieces ./sad-pieces-0.001 ./sad-pieces-0.01 ./sad-pieces-0.1
-
 #Parse the Data Files
-#python3 ../plotting/parse-binning.py sad*.yaml
-python3 ../plotting/parse-replicas.py r-pieces.yaml
+python3 ../plotting/parse-replicas.py r-*.yaml r-*/*.cbor
+
+python3 ../plotting/parse-binning.py sad-*1.yaml sad-*1/*.cbor *wl*1.yaml *wl*1/*.cbor
