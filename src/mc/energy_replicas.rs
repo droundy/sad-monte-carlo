@@ -377,7 +377,7 @@ impl<
 
         let num_replicas = self.replicas.len();
         for (which, r) in self.replicas.iter().enumerate() {
-            if which < 6 || which + 6 >= num_replicas {
+            if which < 5 || which + 5 >= num_replicas {
                 let percent = r.above_count as f64 / (r.above_count as f64 + r.below_count as f64);
                 println!(
                     "      {:2.1}% > {:9.5} {:.2} unique",
@@ -385,7 +385,7 @@ impl<
                     r.cutoff_energy.pretty(),
                     crate::prettyfloat::PrettyFloat(r.unique_visitors as f64),
                 );
-            } else if which == 6 {
+            } else if which == 5 {
                 println!("      ...");
             }
         }
