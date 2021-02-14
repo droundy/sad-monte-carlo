@@ -281,7 +281,7 @@ pub fn rand_unit_ball_2(rng: &mut MyRng) -> Vector3d<f64> {
 /// constructor method
 fn rand_rotation(rng: &mut MyRng) -> Rotation {
     let (x1, y1) = rand_uniform(rng, 0.0, 2.0*std::f64::consts::PI).sin_cos();
-    let (x2, y2) = rand_uniform(rng, 0.0, std::f64::consts::TAU).sin_cos();
+    let (x2, y2) = rand_uniform(rng, 0.0, 2.0*std::f64::consts::PI).sin_cos();
     let u = rand_uniform(rng, 0.0, 1.0);
     let u1 = u.sqrt();
     let u2 = (1.0 - u).sqrt();
