@@ -222,7 +222,7 @@ impl GrandReplicaSystem for AnyGrand {
             (Lj(s), Lj(o)) => s.plan_swap_atom(o, rng),
             (FakeErfinv(s), FakeErfinv(o)) => s.plan_swap_atom(o, rng),
             (Sw(s), Sw(o)) => s.plan_swap_atom(o, rng),
-            _ => todo!(),
+            _ => unreachable!(),
         }
     }
 
@@ -233,7 +233,7 @@ impl GrandReplicaSystem for AnyGrand {
             (Lj(s), Lj(o)) => s.swap_atom(o, which),
             (FakeErfinv(s), FakeErfinv(o)) => s.swap_atom(o, which),
             (Sw(s), Sw(o)) => s.swap_atom(o, which),
-            _ => todo!(),
+            _ => unreachable!(),
         }
     }
 }
