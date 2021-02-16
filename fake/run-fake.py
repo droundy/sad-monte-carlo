@@ -21,34 +21,34 @@ def run_replicas(name, max_iter='1e11', min_T=0.001):
         + f'--max-iter {max_iter} --min-T {min_T}'.split(),
        cpus='all')
 
-def binning_histogram(name, de, translation_scale=0.05):
+def binning_histogram(name, de, translation_scale):
     return f'../target/release/binning --save-time 0.5 --histogram-bin {de} --translation-scale {translation_scale}'.split()+movie_args+systems[name]
 
-def run_sad(name, de, max_iter='1e11', min_T=0.001):
+def run_sad(name, de, max_iter='1e11', min_T=0.001, translation_scale=0.05):
     de = str(de)
     save = 'sad-'+name+'-'+de
     rq(name=save,
-       cmd=binning_histogram(name, de)
+       cmd=binning_histogram(name, de, translation_scale=translation_scale)
         + f'--save-as {save}.yaml'.split()
         + f'--max-iter {max_iter} --sad-min-T {min_T}'.split(),
        cpus='1')
 
 
-def run_wl(name, de, min_E, max_E, max_iter='1e11'):
+def run_wl(name, de, min_E, max_E, max_iter='1e11', translation_scale=0.05):
     de = str(de)
     save = 'wl-'+name+'-'+de
     rq(name=save,
-       cmd=binning_histogram(name, de)
+       cmd=binning_histogram(name, de, translation_scale=translation_scale)
         + f'--save-as {save}.yaml'.split()
         + f'--max-iter {max_iter} --wl --min-allowed-energy {min_E} --max-allowed-energy {max_E}'.split(),
        cpus='1')
 
 
-def run_inv_t_wl(name, de, min_E, max_E, max_iter='1e11'):
+def run_inv_t_wl(name, de, min_E, max_E, max_iter='1e11', translation_scale=0.05):
     de = str(de)
     save = 'itwl-'+name+'-'+de
     rq(name=save,
-       cmd=binning_histogram(name, de)
+       cmd=binning_histogram(name, de, translation_scale=translation_scale)
         + f'--save-as {save}.yaml'.split()
         + f'--max-iter {max_iter} --inv-t-wl --min-allowed-energy {min_E} --max-allowed-energy {max_E}'.split(),
        cpus='1')
@@ -67,9 +67,9 @@ run_replicas(name='quadratic')
 run_replicas(name='pieces')
 
 for de in [0.1, 1, 10]:
-    run_sad('erfinv', de=de, min_T=0.05)
-    run_wl('erfinv', de=de, min_E=-15, max_E=5)
-    run_inv_t_wl('erfinv', de=de, min_E=-15, max_E=5)
+    run_sad('erfinv', de=de, min_T=0.05, translation_scale=0.01)
+    run_wl('erfinv', de=de, min_E=-15, max_E=5, translation_scale=0.01)
+    run_inv_t_wl('erfinv', de=de, min_E=-15, max_E=5, translation_scale=0.01)
 
 for de in [0.001, 0.01, 0.1]:
     run_sad('linear', de=de)
