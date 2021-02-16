@@ -30,7 +30,6 @@ def run_sad(name, de, max_iter='1e11', min_T=0.001):
     rq(name=save,
        cmd=binning_histogram(name, de)
         + f'--save-as {save}.yaml'.split()
-        + f'--translation-scale 0.05'.split()
         + f'--max-iter {max_iter} --sad-min-T {min_T}'.split(),
        cpus='1')
 
@@ -41,7 +40,6 @@ def run_wl(name, de, min_E, max_E, max_iter='1e11'):
     rq(name=save,
        cmd=binning_histogram(name, de)
         + f'--save-as {save}.yaml'.split()
-        + f'--translation-scale 0.05'.split()
         + f'--max-iter {max_iter} --wl --min-allowed-energy {min_E} --max-allowed-energy {max_E}'.split(),
        cpus='1')
 
@@ -52,7 +50,6 @@ def run_inv_t_wl(name, de, min_E, max_E, max_iter='1e11'):
     rq(name=save,
        cmd=binning_histogram(name, de)
         + f'--save-as {save}.yaml'.split()
-        + f'--translation-scale 0.05'.split()
         + f'--max-iter {max_iter} --inv-t-wl --min-allowed-energy {min_E} --max-allowed-energy {max_E}'.split(),
        cpus='1')
 
@@ -69,7 +66,7 @@ run_replicas(name='linear')
 run_replicas(name='quadratic')
 run_replicas(name='pieces')
 
-for de in [0.01, 1, 10]:
+for de in [0.1, 1, 10]:
     run_sad('erfinv', de=de, min_T=0.05)
     run_wl('erfinv', de=de, min_E=-15, max_E=5)
     run_inv_t_wl('erfinv', de=de, min_E=-15, max_E=5)
