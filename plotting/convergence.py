@@ -22,14 +22,6 @@ colors = cc.glasbey_dark
 print('''
 Changes to do:
 
-- Find the error in the analysis of the error
-
-- Known issues:
-    1. parse-replicas does not output .dat files to main directory
-        as such the script doesn't read the data from replicas
-    2. parse-replicas doesn't handle specific fake simulations
-        like parse-binning. Might this be the issue?
-
 ''')
 
 def linear_density_of_states(E):
@@ -258,7 +250,6 @@ for base in bases:
         # Create a function for the entropy based on this number of moves:
         l_function, _, _ = compute.linear_entropy(energy_b, mean_e, my_lnw)
         # l_function, _, _ = compute.step_entropy(energy_b, mean_e, my_lnw)
-        
         entropy_here = l_function(E)
         plt.clf()
         if 'erfinv' in base:
@@ -279,10 +270,22 @@ for base in bases:
         #FIXME: the error is off by factor of 2
 
 #Plotting
+mins = 1e10
+maxs = -1e10
+mint = 10
+maxt = 0
 plt.figure()
 for base in bases:
+    mins = min(error[base]+ [mins])
+    maxs = max([e for e in error[base] if e < 100]+ [maxs])
+    maxt = max([maxt]+ moves[base])
     plt.loglog(moves[base], error[base], label=str(base))
+t = np.linspace(mint, maxt, 3)
+for t0 in 10.0**np.arange(-3, 14, 2.0):
+    plt.loglog(t, np.sqrt(t0/t), color='xkcd:gray', alpha=0.2)
 
+plt.ylim(mins, maxs)
+plt.xlim(mint, maxt)
 plt.xlabel('Moves')
 plt.ylabel('Error (S - S$_{exact}$)')
 plt.legend(loc='best')

@@ -17,12 +17,12 @@ def run_replicas(name, max_iter='1e11', min_T=0.001):
     save = 'r-'+name
     rq(name=save,
        cmd=['../target/release/replicas']+systems[name]+movie_args
-        + f'--save-as {save}.yaml'.split()
+        + f' --save-time 0.5 --save-as {save}.yaml'.split()
         + f'--max-iter {max_iter} --min-T {min_T}'.split(),
        cpus='all')
 
 def binning_histogram(name, de, translation_scale=0.05):
-    return f'../target/release/binning --histogram-bin {de} --translation-scale {translation_scale}'.split()+movie_args+systems[name]
+    return f'../target/release/binning --save-time 0.5 --histogram-bin {de} --translation-scale {translation_scale}'.split()+movie_args+systems[name]
 
 def run_sad(name, de, max_iter='1e11', min_T=0.001):
     de = str(de)
