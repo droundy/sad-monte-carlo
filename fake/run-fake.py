@@ -5,7 +5,7 @@ from subprocess import run
 run(['cargo', 'build', '--release', '--bin',
      'replicas', '--bin', 'binning'], check=True)
 
-max_iter_default = 1e10
+max_iter_default = 1e11
 
 def rq(name, cmd, cpus):
     run(f'rq run -c {cpus} --max-output=30 -R -J'.split() +
@@ -63,14 +63,15 @@ systems = {
 }
 
 run_replicas(name='erfinv', min_T=0.1)
-run_replicas(name='linear')
-run_replicas(name='quadratic')
-run_replicas(name='pieces')
 
 for de in [0.1, 1, 10]:
     run_sad('erfinv', de=de, min_T=0.1, translation_scale=1e-3)
     run_wl('erfinv', de=de, min_E=-14, max_E=5, translation_scale=1e-3)
     run_inv_t_wl('erfinv', de=de, min_E=-14, max_E=5, translation_scale=1e-3)
+
+run_replicas(name='linear')
+run_replicas(name='quadratic')
+run_replicas(name='pieces')
 
 for de in [0.001, 0.01, 0.1]:
     run_sad('linear', de=de)
