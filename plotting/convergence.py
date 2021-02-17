@@ -181,43 +181,41 @@ if 'pieces' in bases[0]:
     E = np.linspace(-systems[bases[0]]['e2']+0.02, 31, 1000)
 elif 'erfinv' in bases[0]:
     N = 3
-    E = np.linspace(erfinv_E_from_T(0.1), 0, 1000)
+    E = np.linspace(erfinv_E_from_T(0.11), 0, 1000)
+
+#Analysis
+exact_density_of_states = linear_density_of_states
+if 'linear' in bases[0]:
+    print('\n\n\nusing the linear_density_of_states\n\n\n')
+    exact_density_of_states = linear_density_of_states
+elif 'quadratic' in bases[0]:
+    print('\n\n\nusing the quadratic_density_of_states\n\n\n')
+    exact_density_of_states = quadratic_density_of_states
+elif systems[bases[0]]['kind'] == 'Gaussian':
+    print('\n\n\nusing the gaussian_density_of_states\n\n\n')
+    sigma = systems[bases[0]]['sigma']
+    exact_density_of_states = gaussian_density_of_states
+elif systems[bases[0]]['kind'] == 'Erfinv':
+    print('\n\n\nusing the erfinv\n\n\n')
+    mean_erfinv_energy = systems[bases[0]]['mean_energy']
+    N = systems[bases[0]]['N']
+    exact_density_of_states = erfinv_density_of_states
+elif systems[bases[0]]['kind'] == 'Pieces':
+    print('\n\n\nusing the pieces\n\n\n')
+    a = systems[bases[0]]['a']
+    b = systems[bases[0]]['b']
+    e1 = systems[bases[0]]['e1']
+    e2 = systems[bases[0]]['e2']
+    exact_density_of_states = piecewise_density_of_states
+else:
+    print('\n\n\nusing the most bogus density of states\n\n\n', systems[bases[0]]['kind'])
+    exact_density_of_states = other_density_of_states
 
 exact_entropy_boundaries={}
 which_color = 0
 for base in bases:
     color = colors[which_color]
     which_color += 1
-
-    # sigma.append(np.loadtxt(base+'-sigma.dat'))  #used in D(E) calculation
-
-    #Analysis
-    exact_density_of_states = linear_density_of_states
-    if 'linear' in base:
-        print('\n\n\nusing the linear_density_of_states\n\n\n')
-        exact_density_of_states = linear_density_of_states
-    elif 'quadratic' in base:
-        print('\n\n\nusing the quadratic_density_of_states\n\n\n')
-        exact_density_of_states = quadratic_density_of_states
-    elif systems[base]['kind'] == 'Gaussian':
-        print('\n\n\nusing the gaussian_density_of_states\n\n\n')
-        sigma = systems[base]['sigma']
-        exact_density_of_states = gaussian_density_of_states
-    elif systems[base]['kind'] == 'Erfinv':
-        print('\n\n\nusing the erfinv\n\n\n')
-        mean_erfinv_energy = systems[base]['mean_energy']
-        N = systems[base]['N']
-        exact_density_of_states = erfinv_density_of_states
-    elif systems[base]['kind'] == 'Pieces':
-        print('\n\n\nusing the pieces\n\n\n')
-        a = systems[base]['a']
-        b = systems[base]['b']
-        e1 = systems[base]['e1']
-        e2 = systems[base]['e2']
-        exact_density_of_states = piecewise_density_of_states
-    else:
-        print('\n\n\nusing the most bogus density of states\n\n\n', systems[base]['kind'])
-        exact_density_of_states = other_density_of_states
 
     # We can compute the exact entropy now, at our energies E
     print('computing exact density of states')
