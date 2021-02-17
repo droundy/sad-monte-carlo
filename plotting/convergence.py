@@ -212,23 +212,29 @@ else:
     exact_density_of_states = other_density_of_states
 
 exact_entropy_boundaries={}
-which_color = 0
-for base in bases:
-    color = colors[which_color]
-    which_color += 1
+for frame in range(10000):
+    plt.clf()
+    which_color = 0
+    plotted_something = False
+    for base in bases:
+        color = colors[which_color]
+        which_color += 1
 
-    # We can compute the exact entropy now, at our energies E
-    print('computing exact density of states')
-    exact_entropy = np.log(exact_density_of_states(E))
-    if 'pieces' in base:
-        # FIXME we should properly normalize piecewise_density_of_states
-        exact_entropy -= np.log(sum(exact_density_of_states(E))*(E[1]-E[0]))
-    print('done computing exact density of states')
+        # We can compute the exact entropy now, at our energies E
+        print('computing exact density of states')
+        exact_entropy = np.log(exact_density_of_states(E))
+        if 'pieces' in base:
+            # FIXME we should properly normalize piecewise_density_of_states
+            exact_entropy -= np.log(sum(exact_density_of_states(E))*(E[1]-E[0]))
+        print('done computing exact density of states')
 
-    moves[base] = []
-    error[base] = []
-    for f in sorted(glob.glob(base+'/*.cbor')):
-        f = os.path.splitext(f)[0]
+        if base not in moves:
+            moves[base] = []
+            error[base] = []
+        frames = sorted(glob.glob(base+'/*.cbor'))
+        if frame >= len(frames):
+            continue
+        f = os.path.splitext(frames[frame])[0]
         mymove = float(os.path.basename(f))
         moves[base].append(mymove)
         print(f'working on {base} with moves {mymove} which is {f}')
@@ -249,7 +255,6 @@ for base in bases:
         l_function, _, _ = compute.linear_entropy(energy_b, mean_e, my_lnw)
         # l_function, _, _ = compute.step_entropy(energy_b, mean_e, my_lnw)
         entropy_here = l_function(E)
-        plt.clf()
         if 'erfinv' in base:
             plt.plot(E, entropy_here, label=f)
             plt.plot(E, exact_entropy, '--', label='exact')
@@ -258,21 +263,22 @@ for base in bases:
             plt.plot(E, np.exp(entropy_here), label=f)
             plt.plot(E, np.exp(exact_entropy), '--', label='exact')
             plt.ylabel('density of states')
-        plt.xlabel('E')
         # plt.ylim(bottom=0)
-        plt.legend(loc='best')
-        plt.draw_if_interactive()
-        plt.pause(0.1)
         max_error = np.max(np.abs(entropy_here - exact_entropy))
         error[base].append(max_error)
-        #FIXME: the error is off by factor of 2
+        plotted_something = True
+    if not plotted_something:
+        break
+    plt.xlabel('E')
+    plt.legend()
+    plt.draw_if_interactive()
+    plt.pause(0.1)
 
 #Plotting
 mins = 1e10
 maxs = -1e10
 mint = 10
 maxt = 0
-plt.figure()
 for base in bases:
     mins = min(error[base]+ [mins])
     maxs = max([e for e in error[base] if e < 100]+ [maxs])

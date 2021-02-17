@@ -5,6 +5,7 @@ from subprocess import run
 run(['cargo', 'build', '--release', '--bin',
      'replicas', '--bin', 'binning'], check=True)
 
+max_iter_default = 1e10
 
 def rq(name, cmd, cpus):
     run(f'rq run -c {cpus} --max-output=30 -R -J'.split() +
@@ -13,7 +14,7 @@ def rq(name, cmd, cpus):
 
 movie_args = '--movie-time 10^(1/4)'.split()
 
-def run_replicas(name, max_iter='1e11', min_T=0.001):
+def run_replicas(name, max_iter=max_iter_default, min_T=0.001):
     save = 'r-'+name
     rq(name=save,
        cmd=['../target/release/replicas']+systems[name]+movie_args
@@ -24,7 +25,7 @@ def run_replicas(name, max_iter='1e11', min_T=0.001):
 def binning_histogram(name, de, translation_scale):
     return f'../target/release/binning --save-time 0.5 --histogram-bin {de} --translation-scale {translation_scale}'.split()+movie_args+systems[name]
 
-def run_sad(name, de, max_iter='1e11', min_T=0.001, translation_scale=0.05):
+def run_sad(name, de, max_iter=max_iter_default, min_T=0.001, translation_scale=0.05):
     de = str(de)
     save = 'sad-'+name+'-'+de
     rq(name=save,
@@ -34,7 +35,7 @@ def run_sad(name, de, max_iter='1e11', min_T=0.001, translation_scale=0.05):
        cpus='1')
 
 
-def run_wl(name, de, min_E, max_E, max_iter='1e11', translation_scale=0.05):
+def run_wl(name, de, min_E, max_E, max_iter=max_iter_default, translation_scale=0.05):
     de = str(de)
     save = 'wl-'+name+'-'+de
     rq(name=save,
@@ -44,7 +45,7 @@ def run_wl(name, de, min_E, max_E, max_iter='1e11', translation_scale=0.05):
        cpus='1')
 
 
-def run_inv_t_wl(name, de, min_E, max_E, max_iter='1e11', translation_scale=0.05):
+def run_inv_t_wl(name, de, min_E, max_E, max_iter=max_iter_default, translation_scale=0.05):
     de = str(de)
     save = 'itwl-'+name+'-'+de
     rq(name=save,
