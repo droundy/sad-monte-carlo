@@ -211,22 +211,28 @@ else:
     print('\n\n\nusing the most bogus density of states\n\n\n', systems[bases[0]]['kind'])
     exact_density_of_states = other_density_of_states
 
-exact_entropy_boundaries={}
+# We can compute the exact entropy now, at our energies E
+print('computing exact density of states')
+exact_entropy = np.log(exact_density_of_states(E))
+if 'pieces' in base:
+    # FIXME we should properly normalize piecewise_density_of_states
+    exact_entropy -= np.log(sum(exact_density_of_states(E))*(E[1]-E[0]))
+print('done computing exact density of states')
+
 for frame in range(10000):
     plt.clf()
     which_color = 0
     plotted_something = False
+    if 'erfinv' in base:
+        plt.plot(E, exact_entropy, '--', label='exact')
+        plt.ylabel('$S(E)$')
+    else:
+        plt.plot(E, np.exp(exact_entropy), '--', label='exact')
+        plt.ylabel('density of states')
+
     for base in bases:
         color = colors[which_color]
         which_color += 1
-
-        # We can compute the exact entropy now, at our energies E
-        print('computing exact density of states')
-        exact_entropy = np.log(exact_density_of_states(E))
-        if 'pieces' in base:
-            # FIXME we should properly normalize piecewise_density_of_states
-            exact_entropy -= np.log(sum(exact_density_of_states(E))*(E[1]-E[0]))
-        print('done computing exact density of states')
 
         if base not in moves:
             moves[base] = []
@@ -257,13 +263,8 @@ for frame in range(10000):
         entropy_here = l_function(E)
         if 'erfinv' in base:
             plt.plot(E, entropy_here, label=f)
-            plt.plot(E, exact_entropy, '--', label='exact')
-            plt.ylabel('$S(E)$')
         else:
             plt.plot(E, np.exp(entropy_here), label=f)
-            plt.plot(E, np.exp(exact_entropy), '--', label='exact')
-            plt.ylabel('density of states')
-        # plt.ylim(bottom=0)
         max_error = np.max(np.abs(entropy_here - exact_entropy))
         error[base].append(max_error)
         plotted_something = True
