@@ -226,6 +226,7 @@ for frame in range(10000):
     if 'erfinv' in base:
         plt.plot(E, exact_entropy, '--', label='exact')
         plt.ylabel('$S(E)$')
+        plt.ylim(exact_entropy.min()*1.1 - exact_entropy.max()*0.1, -exact_entropy.min()*0.1 + exact_entropy.max()*1.1)
     else:
         plt.plot(E, np.exp(exact_entropy), '--', label='exact')
         plt.ylabel('density of states')
