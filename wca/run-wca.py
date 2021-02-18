@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from subprocess import run
+import numpy as np
 
 run(['cargo', 'build', '--release', '--bin',
      'replicas', '--bin', 'binning'], check=True)
