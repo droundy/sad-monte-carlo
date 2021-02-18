@@ -67,5 +67,5 @@ min_T = 0.5
 
 for d in densities:
     name = f'wca-32-{d}'
-    systems[name] = f'--wca-reduced-density {d} --wca-N 32'
+    systems[name] = f'--wca-reduced-density {d} --wca-N 32'.split()
     run_replicas(name=name, min_T = min_T)
