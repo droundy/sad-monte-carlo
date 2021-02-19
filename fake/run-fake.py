@@ -64,7 +64,7 @@ systems = {
 
 run_replicas(name='erfinv', min_T=0.1)
 
-for de in [0.1, 1, 10]:
+for de in [0.125, 0.25, 1]:
     run_sad('erfinv', de=de, min_T=0.1, translation_scale=1e-3)
     run_wl('erfinv', de=de, min_E=-14, max_E=5, translation_scale=1e-3)
     run_inv_t_wl('erfinv', de=de, min_E=-14, max_E=5, translation_scale=1e-3)
