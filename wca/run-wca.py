@@ -8,7 +8,13 @@ run(['cargo', 'build', '--release', '--bin',
 
 max_iter_default = 1e11
 
+def escape(s):
+    if any(c in s for c in '"()&'):
+        return f"'{s}'"
+    return s
+
 def rq(name, cmd, cpus):
+    print('command: ', ' '.join(map(escape, cmd)))
     run(f'rq run -c {cpus} --max-output=30 -R -J'.split() +
         [name, '--']+cmd, check=True)
 

@@ -131,6 +131,9 @@ impl System for Any {
     fn dimensionality(&self) -> u64 {
         self.movable().dimensionality()
     }
+    fn data_to_collect(&self, iter: u64) -> Vec<(Interned, f64)> {
+        self.movable().data_to_collect(iter)
+    }
 }
 
 impl ConfirmSystem for Any {
