@@ -141,12 +141,13 @@ impl<S: MovableSystem> Replica<S> {
             above_total: Energy::new(0.0),
             below_total: Energy::new(0.0),
             above_extra: HashMap::new(),
+
+            translation_scale: system.max_size(),
+
             system,
             system_lowest_max_energy: None,
             unique_visitors: 0,
             rng,
-
-            translation_scale: Length::new(0.05),
         }
     }
     fn run_once(&mut self, moves: u64) {
@@ -477,7 +478,8 @@ impl<
                         r.system.clone(),
                         self.rng.clone(),
                     );
-                    newr.translation_scale = r.translation_scale;
+                    newr.translation_scale =
+                        r.translation_scale * 0.5f64.powf(1.0 / r.system.dimensionality() as f64);
                     println!(
                         "      New bin: {:5} with mean {:5} and max {:.5}",
                         median_below.pretty(),

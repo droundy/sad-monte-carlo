@@ -84,6 +84,9 @@ impl System for ErfInv {
     fn min_moves_to_randomize(&self) -> u64 {
         self.position.len() as u64
     }
+    fn dimensionality(&self) -> u64 {
+        self.min_moves_to_randomize()*3
+    }
 }
 
 impl ConfirmSystem for ErfInv {
@@ -102,6 +105,9 @@ impl MovableSystem for ErfInv {
             return None;
         }
         Some(self.find_energy(&self.possible_change))
+    }
+    fn max_size(&self) -> Length {
+        Length::new(0.5)
     }
 }
 

@@ -156,7 +156,11 @@ impl From<WaterParams> for Water {
     fn from(params: WaterParams) -> Water {
         let mut rng = crate::rng::MyRng::seed_from_u64(0);
         let zero_vector = Vector3d::new(0.0, 0.0, 0.0) * units::SIGMA;
-        let zero_molecule = WaterMolecule { position: zero_vector, h1: zero_vector, h2: zero_vector };
+        let zero_molecule = WaterMolecule {
+            position: zero_vector,
+            h1: zero_vector,
+            h2: zero_vector,
+        };
         let mut water = Water {
             E: 0.0 * units::EPSILON,
             error: 0.0 * units::EPSILON,
@@ -211,6 +215,9 @@ impl System for Water {
     fn min_moves_to_randomize(&self) -> u64 {
         self.molecules.len() as u64
     }
+    fn dimensionality(&self) -> u64 {
+        self.min_moves_to_randomize() * 3
+    }
 }
 
 impl ConfirmSystem for Water {
@@ -234,11 +241,15 @@ impl MovableSystem for Water {
         use crate::rng::vector;
         if self.molecules.len() > 0 {
             let which = rng.sample(Uniform::new(0, self.molecules.len()));
-            let to = unsafe { *self.molecules.get_unchecked(which) }.position + vector(rng) * mean_distance;
+            let to = unsafe { *self.molecules.get_unchecked(which) }.position
+                + vector(rng) * mean_distance;
             self.move_atom(which, to)
         } else {
             None
         }
+    }
+    fn max_size(&self) -> Length {
+        self.max_radius
     }
 }
 
@@ -280,8 +291,8 @@ pub fn rand_unit_ball_2(rng: &mut MyRng) -> Vector3d<f64> {
 /// Generate a random 3D rotation.  FIXME move to the rotation module as a
 /// constructor method
 fn rand_rotation(rng: &mut MyRng) -> Rotation {
-    let (x1, y1) = rand_uniform(rng, 0.0, 2.0*std::f64::consts::PI).sin_cos();
-    let (x2, y2) = rand_uniform(rng, 0.0, 2.0*std::f64::consts::PI).sin_cos();
+    let (x1, y1) = rand_uniform(rng, 0.0, 2.0 * std::f64::consts::PI).sin_cos();
+    let (x2, y2) = rand_uniform(rng, 0.0, 2.0 * std::f64::consts::PI).sin_cos();
     let u = rand_uniform(rng, 0.0, 1.0);
     let u1 = u.sqrt();
     let u2 = (1.0 - u).sqrt();
@@ -358,14 +369,10 @@ fn energy_is_right(natoms: usize) {
 fn mk_water(natoms: usize) -> Water {
     let radius = 2.0 * (natoms as f64).powf(1.0 / 3.0) * units::SIGMA;
     let radius = 5.0 * radius;
-    Water::from(WaterParams {
-        N: natoms,
-        radius,
-    })
+    Water::from(WaterParams { N: natoms, radius })
 }
 
 #[test]
 fn init_water() {
     mk_water(50);
 }
-

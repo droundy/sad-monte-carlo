@@ -84,7 +84,10 @@ impl System for Ising {
         self.E
     }
     fn min_moves_to_randomize(&self) -> u64 {
-        (self.N*self.N) as u64
+        (self.N * self.N) as u64
+    }
+    fn dimensionality(&self) -> u64 {
+        self.min_moves_to_randomize()
     }
 }
 
@@ -113,6 +116,9 @@ impl MovableSystem for Ising {
         let e = self.E - neighbor_tot as f64 * self.S[i + j * self.N] as f64 * Energy::new(2.0);
         self.possible_change = Some((i + j * self.N, e));
         Some(e)
+    }
+    fn max_size(&self) -> Length {
+        Length::new(0.5)
     }
 }
 

@@ -106,17 +106,15 @@ impl System for Fake {
             for x in self.position.iter_mut() {
                 *x = rng.gen_range(0.0, 1.0);
             }
-            r = self
-                .position
-                .iter()
-                .map(|&x| x * x)
-                .sum::<f64>()
-                .sqrt();
+            r = self.position.iter().map(|&x| x * x).sum::<f64>().sqrt();
         }
         self.energy()
     }
     fn min_moves_to_randomize(&self) -> u64 {
         self.position.len() as u64
+    }
+    fn dimensionality(&self) -> u64 {
+        self.min_moves_to_randomize()
     }
 }
 
@@ -143,5 +141,8 @@ impl MovableSystem for Fake {
         } else {
             Some(self.function.energy(r))
         }
+    }
+    fn max_size(&self) -> Length {
+        Length::new(0.5)
     }
 }

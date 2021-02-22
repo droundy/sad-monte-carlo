@@ -45,7 +45,7 @@ pub struct Lj {
 }
 
 /// This defines the energy/radial bins.
-#[derive(Serialize, Deserialize, Debug, Default,Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Collected {
     /// The number of atoms for each radial bin from center of sphere.
     pub from_center: Vec<u64>,
@@ -272,13 +272,16 @@ impl System for Lj {
                     break;
                 }
             }
-            *x = r*self.max_radius;
+            *x = r * self.max_radius;
         }
         self.E = self.compute_energy();
         self.E
     }
     fn min_moves_to_randomize(&self) -> u64 {
         self.positions.len() as u64
+    }
+    fn dimensionality(&self) -> u64 {
+        self.min_moves_to_randomize() * 3
     }
 }
 
@@ -366,6 +369,9 @@ impl MovableSystem for Lj {
             None
         }
     }
+    fn max_size(&self) -> Length {
+        self.max_radius
+    }
 }
 
 #[test]
@@ -421,10 +427,7 @@ fn energy_is_right(natoms: usize) {
 fn mk_lj(natoms: usize) -> Lj {
     let radius = 2.0 * (natoms as f64).powf(1.0 / 3.0) * units::SIGMA;
     let radius = 5.0 * radius;
-    Lj::from(LjParams {
-        N: natoms,
-        radius,
-    })
+    Lj::from(LjParams { N: natoms, radius })
 }
 
 #[test]

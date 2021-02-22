@@ -77,7 +77,10 @@ impl System for LatticeGas {
         self.E
     }
     fn min_moves_to_randomize(&self) -> u64 {
-        (self.L*self.L) as u64
+        (self.L * self.L) as u64
+    }
+    fn dimensionality(&self) -> u64 {
+        self.min_moves_to_randomize()
     }
 }
 
@@ -98,6 +101,9 @@ impl ConfirmSystem for LatticeGas {
 impl MovableSystem for LatticeGas {
     fn plan_move(&mut self, _: &mut MyRng, _: Length) -> Option<Energy> {
         None
+    }
+    fn max_size(&self) -> Length {
+        Length::new(0.5)
     }
 }
 

@@ -306,6 +306,9 @@ impl System for SquareWell {
     fn min_moves_to_randomize(&self) -> u64 {
         self.num_atoms() as u64
     }
+    fn dimensionality(&self) -> u64 {
+        self.min_moves_to_randomize() * 3
+    }
 }
 
 impl ConfirmSystem for SquareWell {
@@ -359,6 +362,10 @@ impl MovableSystem for SquareWell {
         } else {
             None
         }
+    }
+    fn max_size(&self) -> Length {
+        use dimensioned::Sqrt;
+        0.5*self.box_diagonal.norm2().sqrt()
     }
 }
 

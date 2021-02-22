@@ -90,6 +90,8 @@ pub trait System {
     /// How many moves at the minimum could change all the coordinates of the
     /// system
     fn min_moves_to_randomize(&self) -> u64;
+    /// Dimensions of the configuration space
+    fn dimensionality(&self) -> u64;
 }
 
 /// A system that can have a change confirmed.
@@ -110,10 +112,8 @@ pub trait MovableSystem: ConfirmSystem {
     /// the system.  The atom is not actually moved until the change
     /// is confirmed.
     fn plan_move(&mut self, _: &mut MyRng, mean_distance: Length) -> Option<Energy>;
-    /// A maximum reasonable value for mean_distance.
-    fn max_size(&self) -> Length {
-        Length::new(1.0)
-    }
+    /// A maximum reasonable value for mean_distance, i.e. the size of the configuration space.
+    fn max_size(&self) -> Length;
 }
 
 /// A system that can gain or lose atoms?

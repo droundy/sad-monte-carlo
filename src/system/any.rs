@@ -128,6 +128,9 @@ impl System for Any {
     fn min_moves_to_randomize(&self) -> u64 {
         self.movable().min_moves_to_randomize()
     }
+    fn dimensionality(&self) -> u64 {
+        self.movable().dimensionality()
+    }
 }
 
 impl ConfirmSystem for Any {
@@ -140,15 +143,19 @@ impl MovableSystem for Any {
     fn plan_move(&mut self, rng: &mut MyRng, d: Length) -> Option<Energy> {
         self.movable_mut().plan_move(rng, d)
     }
+    fn max_size(&self) -> Length {
+        self.movable().max_size()
+    }
 }
-
 
 impl From<AnyGrandParams> for AnyGrand {
     fn from(parameters: AnyGrandParams) -> AnyGrand {
         match parameters {
             AnyGrandParams::Wca(parameters) => AnyGrand::Wca(wca::Wca::from(parameters)),
             AnyGrandParams::Lj(parameters) => AnyGrand::Lj(lj::Lj::from(parameters)),
-            AnyGrandParams::FakeErfinv(parameters) => AnyGrand::FakeErfinv(erfinv::ErfInv::from(parameters)),
+            AnyGrandParams::FakeErfinv(parameters) => {
+                AnyGrand::FakeErfinv(erfinv::ErfInv::from(parameters))
+            }
             AnyGrandParams::Sw(parameters) => AnyGrand::Sw(optsquare::SquareWell::from(parameters)),
         }
     }
@@ -186,6 +193,9 @@ impl System for AnyGrand {
     fn min_moves_to_randomize(&self) -> u64 {
         self.grand().min_moves_to_randomize()
     }
+    fn dimensionality(&self) -> u64 {
+        self.grand().dimensionality()
+    }
 }
 
 impl ConfirmSystem for AnyGrand {
@@ -197,6 +207,9 @@ impl ConfirmSystem for AnyGrand {
 impl MovableSystem for AnyGrand {
     fn plan_move(&mut self, rng: &mut MyRng, d: Length) -> Option<Energy> {
         self.grand_mut().plan_move(rng, d)
+    }
+    fn max_size(&self) -> Length {
+        self.grand().max_size()
     }
 }
 
