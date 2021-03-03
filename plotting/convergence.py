@@ -22,11 +22,17 @@ colors = cc.glasbey_dark
 def beautiful_name(base):
     name = ''
     if 'r-' == base[:2]:
-        name += 'ZMC '
+        name += "Zeno's "
         base = base[2:]
     elif 'wl-' == base[:3]:
         name += 'WL '
         base = base[3:]
+    elif 'sad-' == base[:4]:
+        name += 'SAD '
+        base = base[4:]
+    elif 'itwl-' == base[:5]:
+        name += r'$t^{-1}$-WL '
+        base = base[5:]
     if base == 'erfinv':
         name += ''
         base = ''
