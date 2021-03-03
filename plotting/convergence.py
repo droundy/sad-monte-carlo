@@ -19,6 +19,23 @@ prop_cycle = plt.rcParams['axes.prop_cycle']
 
 colors = cc.glasbey_dark
 
+def beautiful_name(base):
+    name = ''
+    if 'r-' == base[:2]:
+        name += 'ZMC '
+        base = base[2:]
+    elif 'wl-' == base[:3]:
+        name += 'WL '
+        base = base[3:]
+    if base == 'erfinv':
+        name += ''
+        base = ''
+    elif base[:7] == 'erfinv-':
+        base = base[7:]
+        name += rf' $\Delta E = {base}$'
+        base = ''
+    return name + base
+
 print('''
 Changes to do:
 
@@ -263,9 +280,9 @@ for frame in range(10000):
         # l_function, _, _ = compute.step_entropy(energy_b, mean_e, my_lnw)
         entropy_here = l_function(E)
         if 'erfinv' in base:
-            plt.plot(E, entropy_here, label=f)
+            plt.plot(E, entropy_here, label=beautiful_name(f))
         else:
-            plt.plot(E, np.exp(entropy_here), label=f)
+            plt.plot(E, np.exp(entropy_here), label=beautiful_name(f))
         max_error = np.max(np.abs(entropy_here - exact_entropy))
         error[base].append(max_error)
         plotted_something = True
@@ -281,11 +298,12 @@ mins = 1e10
 maxs = -1e10
 mint = 10
 maxt = 0
+plt.figure('convergence')
 for base in bases:
     mins = min(error[base]+ [mins])
     maxs = max([e for e in error[base] if e < 100]+ [maxs])
     maxt = max([maxt]+ moves[base])
-    plt.loglog(moves[base], error[base], label=str(base))
+    plt.loglog(moves[base], error[base], label=beautiful_name(base))
 t = np.linspace(mint, maxt, 3)
 for t0 in 10.0**np.arange(-3, 14, 2.0):
     plt.loglog(t, np.sqrt(t0/t), color='xkcd:gray', alpha=0.2)
@@ -296,4 +314,5 @@ plt.xlabel('Moves')
 plt.ylabel('Error (S - S$_{exact}$)')
 plt.legend(loc='best')
 plt.tight_layout()
+plt.savefig('convergence.pdf')
 plt.show()
