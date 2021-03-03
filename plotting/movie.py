@@ -1,269 +1,131 @@
 #!/usr/bin/python3
 
-import yaml, sys
 import numpy as np
+import yaml, cbor, argparse, sys, os, glob
+import scipy.constants as const
+import scipy.optimize as optimize
 import matplotlib.pyplot as plt
+import colorcet as cc
 
-def latex_float(x):
-    exp = int(np.log10(x*1.0))
-    if abs(exp) > 2:
-        x /= 10.0**exp
-        if ('%.1g' % x) == '1':
-            return r'10^{%.0f}' % (exp)
-        return r'%.1g\times10^{%.0f}' % (x, exp)
-    else:
-        return '%g' % x
+import compute
 
-allcolors = list(reversed(['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple',
-                           'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan',
-                           'xkcd:lightblue', 'xkcd:puke', 'xkcd:puce', 'xkcd:turquoise']))
+parser = argparse.ArgumentParser(description="fake energies analysis")
+parser.add_argument('base', nargs='*', help = 'the yaml or cbor files')
+parser.add_argument('--intensive', action='store_true')
 
-my_energy = {}
-my_histogram = {}
-my_entropy = {}
-my_time = {}
-my_color = {}
-max_iter = 0
-my_gamma = {}
-my_gamma_t = {}
-Smin = None
-minT = 1.1
-fnames = sys.argv[1:]
-for fname in fnames:
-    print(fname)
-    with open(fname) as f:
-        yaml_data = f.read()
-    data = yaml.load(yaml_data)
-    print('Done loading yaml')
-    data['bins']['histogram'] = np.array(data['bins']['histogram'])
-    data['bins']['lnw'] = np.array(data['bins']['lnw'])
-    my_color[fname] = allcolors.pop()
-    my_energy[fname] = np.array(data['movies']['energy'])
-    my_time[fname] = np.array(data['movies']['time'])
-    if len(my_time[fname]) > max_iter:
-        max_iter = len(my_time[fname])
-    my_entropy[fname] = np.array(data['movies']['entropy'])
-    my_histogram[fname] = np.array(data['movies']['histogram'])
-    my_gamma[fname] = np.array(data['movies']['gamma'])
-    my_gamma_t[fname] = np.array(data['movies']['gamma_time'])
-    if 'Sad' in data['method']:
-        minT = data['method']['Sad']['min_T']
-    if Smin is None:
-        Ebest = my_energy[fname];
-        print(my_entropy[fname])
-        for x in my_entropy[fname]:
-            print(len(x))
-        Sbest = my_entropy[fname][-1,:]
-        Smin = Sbest[Sbest!=0].min() - Sbest.max()
+args = parser.parse_args()
 
-EmaxS = Ebest[np.argmax(Sbest)]
-EminT = Ebest[np.argmax(Sbest*minT - Ebest)]
-ind_minT = np.argwhere(Ebest == EminT)[0][0]
-ind_maxS = np.argwhere(Ebest == EmaxS)[0][0]
-print('energies:', Ebest[ind_minT], 'at temperature', minT, 'and max entropy', Ebest[ind_maxS])
-Sbest_interesting = Sbest[np.argwhere(Ebest == EminT)[0][0]:np.argwhere(Ebest == EmaxS)[0][0]+1]
-Ebest_interesting = Ebest[np.argwhere(Ebest == EminT)[0][0]:np.argwhere(Ebest == EmaxS)[0][0]+1]
+prop_cycle = plt.rcParams['axes.prop_cycle']
 
-plt.ion()
+colors = cc.glasbey_dark
 
-plt.figure('gamma')
-for fname in fnames:
-        plt.loglog(my_gamma_t[fname], my_gamma[fname], color=my_color[fname], label=fname)
-plt.legend(loc='best')
-plt.xlabel('$t$')
-plt.ylabel(r'$\gamma$')
-# plt.ylim(1e-12, 1.1)
+def beautiful_name(base):
+    name = ''
+    if 'r-' == base[:2]:
+        name += "Zeno's "
+        base = base[2:]
+    elif 'wl-' == base[:3]:
+        name += 'WL '
+        base = base[3:]
+    elif 'sad-' == base[:4]:
+        name += 'SAD '
+        base = base[4:]
+    elif 'itwl-' == base[:5]:
+        name += r'$t^{-1}$-WL '
+        base = base[5:]
+    if base == 'erfinv' or base == 'quadratic':
+        name += ''
+        base = ''
+    elif base[:7] == 'erfinv-':
+        base = base[7:]
+        name += rf' $\Delta E = {base}$'
+        base = ''
+    elif base[:10] == 'quadratic-':
+        base = base[10:]
+        name += rf' $\Delta E = {base}$'
+        base = ''
+    return name + base
 
-def convex_hull(S):
-    convexS = np.zeros_like(S)
-    if len(convexS) > 1000:
-        convexS[:] = S
-        return convexS
-    for i in range(len(S)):
-        if S[i] > 0 and S[i] >= convexS[i]:
-            for j in range(i+1,len(S)):
-                if S[j] > 0 and S[j] >= convexS[j]:
-                    for k in range(i, j+1):
-                        convexS[k] = max(convexS[k], (S[i]*(j-k) + S[j]*(k-i))/(j-i))
-    return convexS
-def convex_hull_T(E, S):
-    convexS = convex_hull(S)
-    T = np.zeros_like(S)
-    if convexS[1] > convexS[0]:
-        T[0] = (E[1]-E[0])/(convexS[1]-convexS[0])
-    if convexS[-1] > convexS[-2]:
-        T[-1] = (E[-1]-E[-2])/(convexS[-1]-convexS[-2])
-    for i in range(1,len(T)-1):
-        if convexS[i+1] > convexS[i-1]:
-            T[i] = (E[i+1]-E[i-1])/(convexS[i+1]-convexS[i-1])
-    return T
+#Read Data
+moves = {}
+error = {} #store the max error in each move
+bases = []
+print('base', args.base)
 
-def heat_capacity(T, E, S):
-    C = np.zeros_like(T)
-    for i in range(len(T)):
-        boltz_arg = S - E/T[i]
-        P = np.exp(boltz_arg - boltz_arg.max())
-        P = P/P.sum()
-        U = (E*P).sum()
-        C[i] = ((E-U)**2*P).sum()/T[i]**2
-    return C
+energy_boundaries = {}
+entropy_boundaries = {}
+mean_energy = {}
+lnw = {}
+systems = {}
+#each file has different path (including extension) so concatenating is easy
+for base in args.base:
+    #change base to have the cbor files. currently has the directory
+    if '.cbor' in base or '.yaml' in base:
+        base = base[:-5]
+    bases.append(base)
 
-# Tbest_interesting = convex_hull_T(Ebest_interesting, Sbest_interesting)
-# plt.figure('temperature-comparison')
-# for fname in my_energy.keys():
-#     if my_energy[fname][0] <= EminT:
-#         errors = np.zeros(len(my_time[fname]))
-#         ind_minT = np.argwhere(my_energy[fname] == EminT)[0][0]
-#         ind_maxS = np.argwhere(my_energy[fname] == EmaxS)[0][0]
-#         E_interesting = my_energy[fname][ind_minT:ind_maxS+1]
-#         for i in range(len(my_time[fname])):
-#             S_interesting = my_entropy[fname][i,ind_minT:ind_maxS+1]
-#             T_interesting = convex_hull_T(E_interesting, S_interesting)
-#             e = (T_interesting - Tbest_interesting)/Tbest_interesting
-#             errors[i] = np.sqrt((e**2).mean())
-#         plt.loglog(my_time[fname], errors, color=my_color[fname], label=fname)
-# plt.legend(loc='best')
-# plt.xlabel('$t$')
-# plt.ylabel(r'rms relative error in $T$')
+for base in bases:
+    print('reading', base)
+    with open(base+'-system.dat') as f:
+        systems[base] = yaml.safe_load(f)
 
-plt.figure('comparison')
-for fname in fnames:
-    if my_energy[fname][0] <= EminT:
-        errors = np.zeros(len(my_time[fname]))
-        ind_minT = np.argwhere(my_energy[fname] == EminT)[0][0]
-        ind_maxS = np.argwhere(my_energy[fname] == EmaxS)[0][0]
-        for i in range(len(my_time[fname])):
-            S_interesting = my_entropy[fname][i,ind_minT:ind_maxS+1]
-            e = S_interesting - Sbest_interesting
-            e -= e[Sbest_interesting!=0.0].mean()
-            errors[i] = np.sqrt((e[Sbest_interesting!=0.0]**2).mean())
-        plt.loglog(my_time[fname], errors, color=my_color[fname], label=fname)
-    else:
-        print("We cannot compare with", fname, "because it doesn't have all the energies")
-        print("  ", EminT,"<", my_energy[fname][0])
-plt.legend(loc='best')
-plt.xlabel('$t$')
-plt.ylabel(r'rms entropy error')
+    de = abs(np.diff(np.loadtxt(base+'-energy-boundaries.dat')))
+    lnw = np.loadtxt(base+'-lnw.dat')[1:-1]
+    mean_e = np.loadtxt(base+'-mean-energy.dat')[:-1]
+    s_estimate = lnw - np.log(de)
+    peak_e = mean_e[np.argmax(s_estimate)]
 
-all_figures = set()
-keep_going = True
-while keep_going:
-    keep_going = False
-    for i in range(max_iter):
-        for fig in all_figures:
-            fig.clf()
-        all_figures.add(plt.figure('Heat capacity'))
-        plt.axvline(minT, linestyle=':', color='#ffaaaa')
-        all_figures.add(plt.figure('Histogram'))
-        plt.axvline(EminT, linestyle=':', color='#ffaaaa')
+print('done reading bases')
+sigma = 1
 
-        all_figures.add(plt.figure('Normed entropy'))
-        for E0 in np.linspace(2*Ebest.min() - Ebest.max(), Ebest.max(), 20):
-            plt.plot(Ebest, Smin + (Ebest - E0)/minT, ':', color='#ffeedd')
-        plt.axvline(EminT, linestyle=':', color='#ffaaaa')
-        plt.plot(Ebest, Sbest - Sbest.max(), ':', color='#aaaaaa')
-        # all_figures.add(plt.figure('Temperature'))
-        # plt.semilogy(Ebest_interesting,
-        #              convex_hull_T(Ebest_interesting, Sbest_interesting), ':', color='#aaaaaa')
-        for fname in fnames:
-            if i < len(my_time[fname]):
-                t = my_time[fname][i]
-                j = i
-            else:
-                j = -1
-            #if fname == fnames[0]:
-            #    print('frame', i, 'with', t, 'iterations')
+E = np.linspace(mean_e.min(), peak_e, 1000)
 
-            # all_figures.add(plt.figure('Entropy'))
-            # if j > 0:
-            #     plt.plot(my_energy[fname], my_entropy[fname][j-1,:], my_color[fname],
-            #              alpha=0.2)
-            # if j == -1:
-            #     plt.plot(my_energy[fname], my_entropy[fname][j,:], my_color[fname],
-            #              label=fname+' '+latex_float(len(my_entropy[fname])),
-            #              alpha=0.2)
-            # else:
-            #     plt.plot(my_energy[fname], my_entropy[fname][j,:], my_color[fname],
-            #              label=fname)
-            # plt.title('$t=%s/%s$' % (latex_float(t),
-            #                          latex_float(my_time[fname][-1])))
-            # plt.ylabel('$S$')
-            # plt.legend(loc='best')
+for frame in range(len(glob.glob(bases[0]+'/*-lnw.dat'))):
+    plt.clf()
+    which_color = 0
+    plotted_something = False
+    plt.ylabel('$S(E)$')
 
-            all_figures.add(plt.figure('Normed entropy'))
-            if j > 0:
-                plt.plot(my_energy[fname],
-                         my_entropy[fname][i-1,:]-my_entropy[fname][j-1,:].max(),
-                         my_color[fname],
-                         alpha=0.2)
-            if j == -1:
-                plt.plot(my_energy[fname],
-                         my_entropy[fname][j,:]-my_entropy[fname][j,:].max(),
-                         my_color[fname],
-                         label=fname+' '+latex_float(len(my_entropy[fname])),
-                         alpha=0.2)
-            else:
-                plt.plot(my_energy[fname],
-                         my_entropy[fname][j,:]-my_entropy[fname][j,:].max(),
-                         my_color[fname],
-                         label=fname)
-                # plt.plot(my_energy[fname],
-                #          convex_hull(my_entropy[fname][j,:])-my_entropy[fname][j,:].max(),
-                #          ':',
-                #          color=my_color[fname],
-                #          label=fname)
-            plt.title('$t=%s/%s$' % (latex_float(t),
-                                     latex_float(my_time[fname][-1])))
-            plt.ylabel('$S$')
-            plt.legend(loc='best')
-            plt.ylim(Smin, 0)
+    for base in bases:
+        color = colors[which_color]
+        which_color += 1
 
-            # all_figures.add(plt.figure('Temperature'))
-            # T = convex_hull_T(my_energy[fname], my_entropy[fname][j,:])
-            # if len(T[T>0]) > 1:
-            #     if j == -1:
-            #         plt.semilogy(my_energy[fname][T>0],
-            #                      T[T>0],
-            #                      color=my_color[fname],
-            #                      label=fname+' '+latex_float(len(my_entropy[fname])),
-            #                      alpha=0.5)
-            #     else:
-            #         plt.semilogy(my_energy[fname][T>0],
-            #                      T[T>0],
-            #                      color=my_color[fname],
-            #                      label=fname)
-            # plt.title('$t=%s/%s$' % (latex_float(t),
-            #                          latex_float(my_time[fname][-1])))
-            # plt.ylabel('$T$')
-            # plt.legend(loc='best')
-            # # plt.ylim(Tbest_interesting.min(), Tbest_interesting.max())
+        if base not in moves:
+            moves[base] = []
+            error[base] = []
+        frames = sorted(glob.glob(base+'/*.cbor'))
+        if frame >= len(frames):
+            continue
+        f = os.path.splitext(frames[frame])[0]
+        mymove = float(os.path.basename(f))
+        moves[base].append(mymove)
+        print(f'working on {base} with moves {mymove} which is {f}')
 
-            all_figures.add(plt.figure('Histogram'))
-            plt.title('$t=%s/%s$' % (latex_float(t),
-                                     latex_float(my_time[fname][-1])))
-            plt.ylabel('histogram')
-            if j > 0:
-                plt.plot(my_energy[fname], my_histogram[fname][j-1,:], my_color[fname],
-                         alpha=0.2)
-            if j == -1:
-                plt.plot(my_energy[fname], my_histogram[fname][j,:], my_color[fname],
-                         label=fname+' '+latex_float(len(my_entropy[fname])),
-                         alpha=0.2)
-            else:
-                plt.plot(my_energy[fname], my_histogram[fname][j,:], my_color[fname],
-                         label=fname)
-            plt.legend(loc='best')
+        energy_b = np.loadtxt(f+'-energy-boundaries.dat')
+        mean_e = np.loadtxt(f+'-mean-energy.dat')
+        my_lnw = np.loadtxt(f+'-lnw.dat')
+        
+        if energy_b.ndim == 0: #in case of a single value
+            energy_b = np.array([energy_b.item()])
 
-            all_figures.add(plt.figure('Heat capacity'))
-            T = np.linspace(minT,1,1000)
-            plt.title('$t=%s/%s$' % (latex_float(t),
-                                     latex_float(my_time[fname][-1])))
-            plt.ylabel('heat capacity')
-            plt.xlabel('temperature')
-            plt.plot(T, heat_capacity(T, my_energy[fname], my_entropy[fname][j,:]), my_color[fname],
-                     label=fname)
-            plt.legend(loc='best')
-        plt.pause(0.000001)
+        if energy_b[0] < energy_b[-1]:
+            energy_b = np.flip(energy_b)
+            mean_e = np.flip(mean_e)
+            my_lnw = np.flip(my_lnw)
+
+        # Create a function for the entropy based on this number of moves:
+        l_function, _, _ = compute.linear_entropy(energy_b, mean_e, my_lnw)
+        # l_function, _, _ = compute.step_entropy(energy_b, mean_e, my_lnw)
+        entropy_here = l_function(E)
+        plt.plot(E, entropy_here, label=beautiful_name(f))
+        plotted_something = True
+    if not plotted_something:
+        print('nothing left to plot')
+        break
+    plt.xlabel('E')
+    plt.legend()
+    plt.draw_if_interactive()
+    plt.pause(0.1)
 
 plt.ioff()
 plt.show()
