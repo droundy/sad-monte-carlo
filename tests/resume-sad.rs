@@ -18,7 +18,7 @@ fn test_resume_with(total_iters: u64, first_iters: u64) {
         root.pop();
     }
     println!("root and dir are {:?} and {:?}", root, dir);
-    let mut cmd = Command::new(root.join("energy-mc"));
+    let mut cmd = Command::new(root.join("histogram"));
     cmd.env("RUST_BACKTRACE", "1");
     cmd.current_dir(dir.path()).args(&["--help"]);
     let out = cmd.output().expect("command failed to run");
@@ -27,15 +27,15 @@ fn test_resume_with(total_iters: u64, first_iters: u64) {
     assert!(out.status.success());
 
     let common_flags = &[
-        "--N=100",
-        "--filling-fraction=0.3",
-        "--well-width=1.3",
+        "--sw-N=100",
+        "--sw-filling-fraction=0.3",
+        "--sw-well-width=1.3",
         "--sad-min-T=0.5",
         "--acceptance-rate=0.5",
     ];
 
     println!("About to start the big guy for {} moves", total_iters);
-    let mut cmd = Command::new(root.join("energy-mc"));
+    let mut cmd = Command::new(root.join("histogram"));
     let total_max_iter = format!("--max-iter={}", total_iters);
     let first_max_iter = format!("--max-iter={}", first_iters);
     cmd.env("RUST_BACKTRACE", "1");
@@ -49,7 +49,7 @@ fn test_resume_with(total_iters: u64, first_iters: u64) {
     println!("FINISHED BIG SIMULATION\n\n\n");
 
     println!("About to start the small guy ifrst");
-    let mut cmd = Command::new(root.join("energy-mc"));
+    let mut cmd = Command::new(root.join("histogram"));
     cmd.current_dir(dir.path())
         .args(common_flags)
         .args(&[&first_max_iter, "--save-as=small-guy.yaml"]);
@@ -60,7 +60,7 @@ fn test_resume_with(total_iters: u64, first_iters: u64) {
     println!("FINISHED SHORT SIMULATION\n\n\n");
 
     println!("About to start the small guy");
-    let mut cmd = Command::new(root.join("energy-mc"));
+    let mut cmd = Command::new(root.join("histogram"));
     cmd.current_dir(dir.path())
         .args(common_flags)
         .args(&[&total_max_iter, "--save-as=small-guy.yaml"]);

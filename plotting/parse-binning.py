@@ -47,7 +47,6 @@ class Bins:
             assert(len(self._lnw) == len(self._hist))
         else:
             self._kind = 'Histogram'
-            print('bins has', data.keys())
             self._min = data['min']
             self._width = data['width']
             self._width = data['width']
@@ -108,7 +107,6 @@ class MC:
             else:
                 print('What kind of file is this?!')
 
-            print('found', self.data.keys())
             self._bins = Bins(self.data['bins'])
             if 'high_resolution' in self.data and self.data['high_resolution'] is not None:
                 self._high_resolution = Bins(self.data['high_resolution'])
