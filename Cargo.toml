@@ -36,6 +36,9 @@ rayon = "1.4"
 criterion = "0.3"
 difference = "2.0"
 
+# [profile.release]
+# debug = true
+
 [features]
 # Treat warnings as a build error.
 strict = []
