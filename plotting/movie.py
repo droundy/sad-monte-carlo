@@ -23,25 +23,25 @@ def beautiful_name(base):
     name = ''
     if 'r-' == base[:2]:
         name += "Zeno's "
-        base = base[2:]
+        base = base[2:].split('/')[0]
     elif 'wl-' == base[:3]:
         name += 'WL '
-        base = base[3:]
+        base = base[3:].split('/')[0]
     elif 'sad-' == base[:4]:
         name += 'SAD '
-        base = base[4:]
+        base = base[4:].split('/')[0]
     elif 'itwl-' == base[:5]:
         name += r'$t^{-1}$-WL '
-        base = base[5:]
+        base = base[5:].split('/')[0]
     if base == 'erfinv' or base == 'quadratic':
         name += ''
         base = ''
     elif base[:7] == 'erfinv-':
-        base = base[7:]
+        base = base[7:].split('/')[0]
         name += rf' $\Delta E = {base}$'
         base = ''
     elif base[:10] == 'quadratic-':
-        base = base[10:]
+        base = base[10:].split('/')[0]
         name += rf' $\Delta E = {base}$'
         base = ''
     return name + base
@@ -78,6 +78,17 @@ for base in bases:
 print('done reading bases')
 sigma = 1
 
+def parse_moves(name):
+    return float(os.path.basename(os.path.splitext(name)[0]))
+def latex_number(x):
+    if x > 10000:
+        s = '%.3e' % x
+        mantissa, exponent = s.split('e+')
+        if mantissa == '1' or mantissa == '1.000':
+            return rf'10^{{{exponent}}}'
+        else:
+            return rf'{mantissa}\times 10^{{{exponent}}}'
+    return '%.3g' % x
 
 E = np.linspace(mean_e[1:-1].min(), peak_e, 10000)
 
@@ -94,11 +105,11 @@ for frame in range(len(glob.glob(bases[0]+'/*-lnw.dat'))):
         if base not in moves:
             moves[base] = []
             error[base] = []
-        frames = sorted(glob.glob(base+'/*.cbor'))
+        frames = sorted(filter(lambda f: parse_moves(f) >= 1e10, glob.glob(base+'/*.cbor')))
         if frame >= len(frames):
             continue
         f = os.path.splitext(frames[frame])[0]
-        mymove = float(os.path.basename(f))
+        mymove = parse_moves(f)
         moves[base].append(mymove)
         print(f'working on {base} with moves {mymove} which is {f}')
 
@@ -119,6 +130,7 @@ for frame in range(len(glob.glob(bases[0]+'/*-lnw.dat'))):
         # l_function, _, _ = compute.step_entropy(energy_b, mean_e, my_lnw)
         entropy_here = l_function(E)
         plt.plot(E, entropy_here, label=beautiful_name(f))
+        plt.title('$t=%s$' % latex_number(mymove))
         plotted_something = True
     if not plotted_something:
         print('nothing left to plot')
@@ -126,7 +138,7 @@ for frame in range(len(glob.glob(bases[0]+'/*-lnw.dat'))):
     plt.xlabel('E')
     plt.legend()
     plt.draw_if_interactive()
-    plt.pause(0.1)
+    plt.pause(0.01)
 
 plt.ioff()
 plt.show()
