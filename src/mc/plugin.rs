@@ -455,15 +455,15 @@ fn format_duration(secs: u64) -> String {
     let mins = secs / 60;
     let hours = mins / 60;
     let mins = mins % 60;
-    if hours > 50 {
+    if hours > 19 {
         format!("{} hours", hours)
-    } else if mins < 1 {
+    } else if hours == 0 && mins == 0 {
         format!("{} seconds", secs)
-    } else if mins == 1 {
+    } else if hours == 0 && mins == 1 {
         format!("1 minute {} seconds", secs % 60)
-    } else if hours < 1 {
+    } else if hours == 0 {
         format!("{} minutes", mins)
-    } else if hours < 2 {
+    } else if hours == 1 {
         format!("1 hour, {} minutes", mins)
     } else {
         format!("{} hours, {} minutes", hours, mins)
