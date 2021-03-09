@@ -31,6 +31,8 @@ class Bins:
             self._lnw = np.array(data['Histogram']['lnw']['total'])
             self._hist = np.array(data['Histogram']['lnw']['count'])
             self._extra = data['Histogram']['extra']
+            m = list(self.mean_extra('energy'))
+            self._mean_energy = np.array([np.nan]+list(m)+[np.nan]) # pad with undefined energy in the unbounded bins
             assert(len(self._lnw) == len(self._hist))
         elif 'Linear' in data:
             self._kind = 'Linear'
@@ -40,15 +42,20 @@ class Bins:
             self._lnw = np.array(data['Linear']['lnw']['total'])
             self._hist = np.array(data['Linear']['lnw']['count'])
             self._extra = data['Linear']['extra']
+            m = list(self.mean_extra('energy'))
+            self._mean_energy = np.array([np.nan]+list(m)+[np.nan]) # pad with undefined energy in the unbounded bins
             assert(len(self._lnw) == len(self._hist))
         else:
             self._kind = 'Histogram'
+            print('bins has', data.keys())
             self._min = data['min']
             self._width = data['width']
             self._width = data['width']
-            self._lnw = np.array(data['lnw']['total'])
-            self._hist = np.array(data['lnw']['count'])
-            self._extra = data['extra']
+            self._lnw = np.array(data['lnw'])
+            self._hist = np.array(data['histogram'])
+            self._extra = {}
+            m = list(np.array(data['energy_total'])/np.array(data['histogram']))
+            self._mean_energy = np.array([np.nan]+list(m)+[np.nan]) # pad with undefined energy in the unbounded bins
             assert(len(self._lnw) == len(self._hist))
         self._energy = np.arange(self._min + 0.5*self._width,
                                  self._min + len(self._lnw)*self._width,
@@ -101,6 +108,7 @@ class MC:
             else:
                 print('What kind of file is this?!')
 
+            print('found', self.data.keys())
             self._bins = Bins(self.data['bins'])
             if 'high_resolution' in self.data and self.data['high_resolution'] is not None:
                 self._high_resolution = Bins(self.data['high_resolution'])
@@ -115,8 +123,7 @@ class MC:
         return self._bins.energy_boundaries()
     @property
     def mean_energy(self):
-        m = list(self._bins.mean_extra('energy'))
-        return np.array([np.nan]+list(m)+[np.nan]) # pad with undefined energy in the unbounded bins
+        return self._bins._mean_energy
     @property
     def lnw(self):
         s = self.excess_entropy()

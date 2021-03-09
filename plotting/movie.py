@@ -78,7 +78,8 @@ for base in bases:
 print('done reading bases')
 sigma = 1
 
-E = np.linspace(mean_e.min(), peak_e, 1000)
+
+E = np.linspace(mean_e[1:-1].min(), peak_e, 10000)
 
 for frame in range(len(glob.glob(bases[0]+'/*-lnw.dat'))):
     plt.clf()
