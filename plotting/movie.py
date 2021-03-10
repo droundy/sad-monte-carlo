@@ -92,7 +92,8 @@ def latex_number(x):
 
 E = np.linspace(mean_e[1:-1].min(), peak_e, 10000)
 
-for frame in range(len(glob.glob(bases[0]+'/*-lnw.dat'))):
+starting_moves = 1e10
+for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(bases[0]+'/*.cbor'))))):
     plt.clf()
     which_color = 0
     plotted_something = False
@@ -105,7 +106,7 @@ for frame in range(len(glob.glob(bases[0]+'/*-lnw.dat'))):
         if base not in moves:
             moves[base] = []
             error[base] = []
-        frames = sorted(filter(lambda f: parse_moves(f) >= 1e10, glob.glob(base+'/*.cbor')))
+        frames = sorted(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(base+'/*.cbor')))
         if frame >= len(frames):
             continue
         f = os.path.splitext(frames[frame])[0]
