@@ -455,20 +455,74 @@ fn format_duration(secs: u64) -> String {
     let mins = secs / 60;
     let hours = mins / 60;
     let mins = mins % 60;
-    if hours > 19 {
+    let days = hours / 24;
+    if days > 15 {
+        format!("{} days", (hours / 12 + 1) / 2) // round to nearest day
+    } else if days >= 2 {
+        match hours % 24 {
+            0 => format!("{} days", days),
+            1 => format!("{} days 1 hour", days),
+            hours => format!("{} days {} hours", days, hours),
+        }
+    } else if hours > 19 {
         format!("{} hours", hours)
     } else if hours == 0 && mins == 0 {
         format!("{} seconds", secs)
+    } else if hours == 0 && mins == 1 && secs == 61 {
+        format!("1 minute {} second", secs % 60)
     } else if hours == 0 && mins == 1 {
         format!("1 minute {} seconds", secs % 60)
     } else if hours == 0 {
         format!("{} minutes", mins)
+    } else if hours == 1 && mins == 0 {
+        format!("1 hour")
     } else if hours == 1 {
-        format!("1 hour, {} minutes", mins)
+        format!("1 hour {} minutes", mins)
+    } else if mins == 0 {
+        format!("{} hours", hours)
+    } else if mins == 1 {
+        format!("{} hours 1 minute", hours)
     } else {
-        format!("{} hours, {} minutes", hours, mins)
+        format!("{} hours {} minutes", hours, mins)
     }
 }
 fn duration_to_secs(t: time::Duration) -> f64 {
     t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9
+}
+
+#[test]
+fn test_format_duration() {
+    assert_eq!("5 seconds", format_duration(5).as_str());
+    assert_eq!("1 minute 1 second", format_duration(61).as_str());
+    assert_eq!("1 minute 2 seconds", format_duration(62).as_str());
+    assert_eq!("1 hour", format_duration(60 * 60).as_str());
+    assert_eq!("2 hours", format_duration(60 * 60 * 2).as_str());
+    assert_eq!(
+        "2 hours 1 minute",
+        format_duration(60 * 60 * 2 + 1 * 60 + 4).as_str()
+    );
+    assert_eq!(
+        "2 hours 5 minutes",
+        format_duration(60 * 60 * 2 + 5 * 60 + 6).as_str()
+    );
+    assert_eq!("20 hours", format_duration(60 * 60 * 20 + 5 * 60).as_str());
+    assert_eq!("24 hours", format_duration(60 * 60 * 24 + 5 * 60).as_str());
+    assert_eq!("25 hours", format_duration(60 * 60 * 25 + 5 * 60).as_str());
+    assert_eq!("2 days", format_duration(60 * 60 * 48 + 5 * 60).as_str());
+    assert_eq!(
+        "2 days 1 hour",
+        format_duration(60 * 60 * 49 + 5 * 60).as_str()
+    );
+    assert_eq!(
+        "2 days 2 hours",
+        format_duration(60 * 60 * (24 * 2 + 2) + 5 * 60).as_str()
+    );
+    assert_eq!(
+        "20 days",
+        format_duration(60 * 60 * (24 * 20 + 2) + 5 * 60).as_str()
+    );
+    assert_eq!(
+        "21 days",
+        format_duration(60 * 60 * (24 * 20 + 13) + 5 * 60).as_str()
+    );
 }
