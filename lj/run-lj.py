@@ -5,7 +5,7 @@ from subprocess import run
 run(['cargo', 'build', '--release', '--bin',
      'replicas', '--bin', 'histogram'], check=True)
 
-max_iter_default = 1e11
+max_iter_default = 1e13
 
 def rq(name, cmd, cpus):
     run(f'rq run -c {cpus} --max-output=30 -R -J'.split() +
