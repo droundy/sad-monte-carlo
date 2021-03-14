@@ -52,11 +52,6 @@ error = {} #store the max error in each move
 bases = []
 print('base', args.base)
 
-energy_boundaries = {}
-entropy_boundaries = {}
-mean_energy = {}
-lnw = {}
-systems = {}
 #each file has different path (including extension) so concatenating is easy
 for base in args.base:
     #change base to have the cbor files. currently has the directory
@@ -66,8 +61,6 @@ for base in args.base:
 
 for base in bases:
     print('reading', base)
-    with open(base+'-system.dat') as f:
-        systems[base] = yaml.safe_load(f)
 
     de = abs(np.diff(np.loadtxt(base+'-energy-boundaries.dat')))
     lnw = np.loadtxt(base+'-lnw.dat')[1:-1]
@@ -91,6 +84,7 @@ def latex_number(x):
     return '%.3g' % x
 
 E = np.linspace(mean_e[1:-1].min(), peak_e, 10000)
+E = np.linspace(-133.3, -133.0, 10000)
 
 starting_moves = 1e10
 for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(bases[0]+'/*.cbor'))))):
@@ -126,11 +120,16 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
             mean_e = np.flip(mean_e)
             my_lnw = np.flip(my_lnw)
 
+        for me, be in zip(mean_e[-8:], energy_b[-8:]):
+            print('energies:', me, be)
         # Create a function for the entropy based on this number of moves:
-        l_function, _, _ = compute.linear_entropy(energy_b, mean_e, my_lnw)
+        l_function, eee, sss = compute.linear_entropy(energy_b, mean_e, my_lnw)
         # l_function, _, _ = compute.step_entropy(energy_b, mean_e, my_lnw)
         entropy_here = l_function(E)
-        plt.plot(E, entropy_here, label=beautiful_name(f))
+        # plt.plot(E, entropy_here, label=beautiful_name(f))
+        plt.plot(eee, sss, '.-', label=beautiful_name(f))
+        plt.xlim(E.min(), E.max())
+        plt.ylim(entropy_here.min(), entropy_here.max())
         plt.title('$t=%s$' % latex_number(mymove))
         plotted_something = True
     if not plotted_something:
