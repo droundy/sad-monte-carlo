@@ -224,6 +224,49 @@ impl<S: MovableSystem> Replica<S> {
             }
         }
     }
+    fn split(&mut self) -> Replica<S> {
+        print!("Splitting ");
+        self.printme();
+        let mean = self.above_total / self.above_count as f64;
+        let mut next = Replica::empty(mean, self.cutoff_energy, self.rng.clone());
+        next.rng.jump();
+        next.translation_scale = self.translation_scale;
+        *self = Replica {
+            max_energy: self.max_energy,
+            cutoff_energy: mean,
+            above_count: 0,
+            below_count: 0,
+            rejected_count: 0,
+            accepted_count: 0,
+            above_total: Energy::new(0.0),
+            below_total: Energy::new(0.0),
+            above_extra: HashMap::new(),
+
+            translation_scale: self.translation_scale,
+            system_with_lowest_max_energy: std::mem::replace(
+                &mut self.system_with_lowest_max_energy,
+                None,
+            ),
+            unique_visitors: 1,
+            rng: self.rng.clone(),
+        };
+        self.printme();
+        next.printme();
+        next
+    }
+    fn printme(&self) {
+        let percent = self.above_count as f64 / (self.above_count as f64 + self.below_count as f64);
+        let mean = self.above_total / self.above_count as f64;
+        println!(
+            "   {} {:2.1}% > {:9.5} {:.2} unique, 𝚫E = {:.2}, T ≈ {:.2}",
+            if self.energy().is_none() { ":(" } else { "  " },
+            crate::prettyfloat::PrettyFloat(100.0 * percent),
+            self.cutoff_energy.pretty(),
+            crate::prettyfloat::PrettyFloat(self.unique_visitors as f64),
+            (self.max_energy - self.cutoff_energy).pretty(),
+            (self.max_energy - mean).pretty(),
+        );
+    }
 }
 
 /// A simulation with many replicas
@@ -389,14 +432,7 @@ impl<
             let percent = r.above_count as f64 / (r.above_count as f64 + r.below_count as f64);
             if which < 5 || which + 15 >= num_replicas || percent > 0.8 || percent < 0.2 {
                 need_dots = true;
-                println!(
-                    "   {} {:2.1}% > {:9.5} {:.2} unique, 𝚫E = {:.2}",
-                    if r.energy().is_none() { ":(" } else { "  " },
-                    crate::prettyfloat::PrettyFloat(100.0 * percent),
-                    r.cutoff_energy.pretty(),
-                    crate::prettyfloat::PrettyFloat(r.unique_visitors as f64),
-                    (r.max_energy - r.cutoff_energy).pretty(),
-                );
+                r.printme();
             } else if need_dots {
                 println!("      ...");
                 need_dots = false;
@@ -483,7 +519,7 @@ impl<
                 }
             }
         });
-        const INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN: u64 = 32;
+        const INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN: u64 = 8;
         if let Some((cutoff, energy)) = self.replicas.last().and_then(|r| {
             r.system_with_lowest_max_energy
                 .as_ref()
@@ -548,6 +584,25 @@ impl<
         self.replicas
             .par_iter_mut()
             .for_each(|r| r.occasional_update());
+
+        let need_splitting = self
+            .replicas
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| {
+                let mean = r.above_total / r.above_count as f64;
+                r.unique_visitors > 4 * INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN
+                    && r.system_with_lowest_max_energy.is_some()
+                    && r.energy().unwrap() > mean
+                    && r.above_count > 4 * r.below_count
+                    && (r.max_energy - mean) < 0.5 * (r.max_energy - r.cutoff_energy)
+            })
+            .map(|(i, _)| i)
+            .collect::<Vec<_>>();
+        for i in need_splitting.iter().rev().cloned() {
+            let next = self.replicas[i].split();
+            self.replicas.insert(i + 1, next);
+        }
 
         let mut moves = self.moves;
         let these_moves = these_moves.load(std::sync::atomic::Ordering::Relaxed);
