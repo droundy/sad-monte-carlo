@@ -46,7 +46,7 @@ impl Default for MCParams {
 pub struct MedianEstimator {
     energies: Vec<Energy>,
 }
-const ESTIMATOR_SIZE: usize = 32;
+const ESTIMATOR_SIZE: usize = 256;
 impl MedianEstimator {
     fn new(e: Energy) -> Self {
         let mut energies = Vec::with_capacity(ESTIMATOR_SIZE);
