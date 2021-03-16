@@ -84,9 +84,9 @@ def latex_number(x):
     return '%.3g' % x
 
 E = np.linspace(mean_e[1:-1].min(), peak_e, 10000)
-E = np.linspace(-133.3, -133.0, 10000)
+E = np.linspace(-133.5, -132.5, 10000)
 
-starting_moves = 1e10
+starting_moves = 1e9
 for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(bases[0]+'/*.cbor'))))):
     plt.clf()
     which_color = 0
@@ -127,9 +127,10 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         # l_function, _, _ = compute.step_entropy(energy_b, mean_e, my_lnw)
         entropy_here = l_function(E)
         # plt.plot(E, entropy_here, label=beautiful_name(f))
-        plt.plot(eee, sss, '.-', label=beautiful_name(f))
+        plt.plot(eee, sss, '.-', label=beautiful_name(f), markersize=4)
         plt.xlim(E.min(), E.max())
-        plt.ylim(entropy_here.min(), entropy_here.max())
+        if not np.any(np.isnan(entropy_here)):
+            plt.ylim(entropy_here.min(), entropy_here.max())
         plt.title('$t=%s$' % latex_number(mymove))
         plotted_something = True
     if not plotted_something:

@@ -24,6 +24,8 @@ pub struct MCParams {
     pub _save: plugin::SaveParams,
     /// report input
     pub _report: plugin::ReportParams,
+    /// Use the mean as an approximation of the median
+    pub mean_for_median: bool,
 }
 
 impl Default for MCParams {
@@ -34,6 +36,7 @@ impl Default for MCParams {
             _save: plugin::SaveParams::default(),
             _movies: plugin::MovieParams::default(),
             _report: plugin::ReportParams::default(),
+            mean_for_median: true,
         }
     }
 }
@@ -284,6 +287,9 @@ pub struct MC<S> {
     /// An estimator for the median energy below the lowest bin
     pub median: MedianEstimator,
 
+    /// Use the mean as an approximation of the median
+    pub mean_for_median: bool,
+
     /// The relative sizes of the bins
     pub replicas: Vec<Replica<S>>,
     /// How frequently to save...
@@ -345,6 +351,7 @@ impl<
             replicas,
             moves: 0,
             median: MedianEstimator::new(energies[energies.len() / 4]),
+            mean_for_median: params.mean_for_median,
 
             rng,
             save_as: save_as,
@@ -428,10 +435,13 @@ impl<
 
         let num_replicas = self.replicas.len();
         let mut need_dots = false;
+        let mut print_one_more = false;
         for (which, r) in self.replicas.iter().enumerate() {
             let percent = r.above_count as f64 / (r.above_count as f64 + r.below_count as f64);
-            if which < 5 || which + 15 >= num_replicas || percent > 0.8 || percent < 0.2 {
+            let am_crazy = percent > 0.8 || percent < 0.2 || r.energy().is_none();
+            if which < 5 || which + 15 >= num_replicas || am_crazy || print_one_more {
                 need_dots = true;
+                print_one_more = am_crazy; // print one more bin after a crazy bin.
                 r.printme();
             } else if need_dots {
                 println!("      ...");
@@ -545,7 +555,11 @@ impl<
                     if mean_below + self.min_T < r.cutoff_energy
                         && system.energy() < r.cutoff_energy
                     {
-                        let median_below = self.median.median();
+                        let median_below = if self.mean_for_median {
+                            mean_below
+                        } else {
+                            self.median.median()
+                        };
                         let num_in_median_estimator = self.median.energies.len();
                         self.median.reset(median_below);
                         let mut newr =

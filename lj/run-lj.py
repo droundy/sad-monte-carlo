@@ -15,11 +15,12 @@ def rq(name, cmd, cpus):
 movie_args = '--movie-time 10^(1/8)'.split()
 
 
-def run_replicas(name, max_iter=max_iter_default, min_T=0.001):
-    save = 'r-'+name
+def run_replicas(name, max_iter=max_iter_default, min_T=0.001, extraname='', extraflags=''):
+    save = f'r-{extraname}{name}'
     rq(name=save,
        cmd=['../target/release/replicas']+systems[name]+movie_args
-        + f' --save-time 0.5 --save-as {save}.cbor'.split()
+        + f'--save-time 0.5 --save-as {save}.cbor'.split()
+        + extraflags.split()
         + f'--max-iter {max_iter} --min-T {min_T}'.split(),
        cpus='all')
 
@@ -70,9 +71,13 @@ def run_inv_t_wl(name, de, min_E, max_E, max_iter=max_iter_default, translation_
 
 systems = {
     'lj31':  '--lj-N 31 --lj-radius 2.5'.split(),
+    'biglj31':  '--lj-N 31 --lj-radius 5'.split(),
 }
 
+run_replicas(name='biglj31', min_T=0.005, max_iter=1e12)
+run_replicas(name='lj31', min_T=0.005, extraname='mean-', extraflags='--mean-for-median')
 run_replicas(name='lj31', min_T=0.005)
+run_replicas(name='lj31', min_T=0.001, extraname='0.001-')
 
 for de in [0.01]: # , 1/2**10]: 0.1
     run_sad('lj31', de=de, min_T=0.005, max_E=0)
