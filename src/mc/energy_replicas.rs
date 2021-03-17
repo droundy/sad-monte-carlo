@@ -475,15 +475,18 @@ impl<
             .min_moves_to_randomize();
 
         let these_moves = std::sync::atomic::AtomicU64::new(0);
-        // First run a few steps of the simulation for each replica
-        let mut collect_statistics = Vec::with_capacity(self.replicas.len());
-        // We collect statistics whenever the next-lower-energy zone has a walker
-        // in it.
-        collect_statistics.push(true);
-        for r in self.replicas.iter().skip(2) {
-            collect_statistics.push(r.system_with_lowest_max_energy.is_some());
+        let mut collect_statistics = vec![true; self.replicas.len()];
+        // We collect statistics only when there is not a "hole" at lower energy
+        // than we are.  This avoids some significant issues with violation of
+        // detailed balance.
+        for (i, r) in self.replicas.iter().enumerate() {
+            if r.system_with_lowest_max_energy.is_none() {
+                for j in 1..i {
+                    collect_statistics[j] = false;
+                }
+            }
         }
-        collect_statistics.push(true);
+        // Run a few steps of the simulation for each replica
         self.replicas
             .par_iter_mut()
             .enumerate()
@@ -529,7 +532,7 @@ impl<
                 }
             }
         });
-        const INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN: u64 = 8;
+        const INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN: u64 = 16;
         if let Some((cutoff, energy)) = self.replicas.last().and_then(|r| {
             r.system_with_lowest_max_energy
                 .as_ref()
@@ -599,24 +602,24 @@ impl<
             .par_iter_mut()
             .for_each(|r| r.occasional_update());
 
-        let need_splitting = self
-            .replicas
-            .iter()
-            .enumerate()
-            .filter(|(_, r)| {
-                let mean = r.above_total / r.above_count as f64;
-                r.unique_visitors > 4 * INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN
-                    && r.system_with_lowest_max_energy.is_some()
-                    && r.energy().unwrap() > mean
-                    && r.above_count > 4 * r.below_count
-                    && (r.max_energy - mean) < 0.5 * (r.max_energy - r.cutoff_energy)
-            })
-            .map(|(i, _)| i)
-            .collect::<Vec<_>>();
-        for i in need_splitting.iter().rev().cloned() {
-            let next = self.replicas[i].split();
-            self.replicas.insert(i + 1, next);
-        }
+        // let need_splitting = self
+        //     .replicas
+        //     .iter()
+        //     .enumerate()
+        //     .filter(|(_, r)| {
+        //         let mean = r.above_total / r.above_count as f64;
+        //         r.unique_visitors > 4 * INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN
+        //             && r.system_with_lowest_max_energy.is_some()
+        //             && r.energy().unwrap() > mean
+        //             && r.above_count > 4 * r.below_count
+        //             && (r.max_energy - mean) < 0.5 * (r.max_energy - r.cutoff_energy)
+        //     })
+        //     .map(|(i, _)| i)
+        //     .collect::<Vec<_>>();
+        // for i in need_splitting.iter().rev().cloned() {
+        //     let next = self.replicas[i].split();
+        //     self.replicas.insert(i + 1, next);
+        // }
 
         let mut moves = self.moves;
         let these_moves = these_moves.load(std::sync::atomic::Ordering::Relaxed);

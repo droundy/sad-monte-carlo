@@ -74,10 +74,10 @@ systems = {
     'biglj31':  '--lj-N 31 --lj-radius 5'.split(),
 }
 
-run_replicas(name='biglj31', min_T=0.005, max_iter=1e12)
-run_replicas(name='lj31', min_T=0.005, extraname='mean-', extraflags='--mean-for-median')
-run_replicas(name='lj31', min_T=0.005)
 run_replicas(name='lj31', min_T=0.001, extraname='0.001-')
+run_replicas(name='lj31', min_T=0.005)
+run_replicas(name='lj31', min_T=0.005, extraname='mean-', extraflags='--mean-for-median')
+run_replicas(name='biglj31', min_T=0.005, max_iter=1e12)
 
 for de in [0.01]: # , 1/2**10]: 0.1
     run_sad('lj31', de=de, min_T=0.005, max_E=0)
