@@ -475,17 +475,16 @@ impl<
             .min_moves_to_randomize();
 
         let these_moves = std::sync::atomic::AtomicU64::new(0);
-        let mut collect_statistics = vec![true; self.replicas.len()];
-        // We collect statistics only when there is not a "hole" at lower energy
-        // than we are.  This avoids some significant issues with violation of
-        // detailed balance.
-        for (i, r) in self.replicas.iter().enumerate() {
-            if r.system_with_lowest_max_energy.is_none() {
-                for j in 1..i {
-                    collect_statistics[j] = false;
-                }
-            }
-        }
+        // We only collect statistics if our max_energy is less than the lowest
+        // max_energy that is missing a walker.
+        let lowest_missing = self
+            .replicas
+            .iter()
+            .rev()
+            .filter(|r| r.energy().is_none())
+            .map(|r| r.max_energy)
+            .last()
+            .unwrap_or(Energy::new(f64::INFINITY));
         // Run a few steps of the simulation for each replica
         self.replicas
             .par_iter_mut()
@@ -494,7 +493,7 @@ impl<
                 if r.system_with_lowest_max_energy.is_some() {
                     these_moves.fetch_add(steps, std::sync::atomic::Ordering::Relaxed);
                     for i in 0..steps {
-                        r.run_once(moves + i, collect_statistics[whoami]);
+                        r.run_once(moves + i, r.max_energy < lowest_missing);
                     }
                 }
             });
@@ -525,7 +524,12 @@ impl<
                     }
                     if let Some((_, me)) = &mut r1.system_with_lowest_max_energy {
                         if *me > r1.max_energy {
-                            r1.unique_visitors += 1;
+                            if r1.max_energy < lowest_missing {
+                                // Only increment the number of unique visitors if we're
+                                // currently actually collecting statistics.  This may
+                                // undercount the unique visitors, but that beast overcounting.
+                                r1.unique_visitors += 1;
+                            }
                             *me = r1.max_energy;
                         }
                     }
