@@ -484,12 +484,11 @@ impl<
             .filter(|r| r.energy().is_none())
             .map(|r| r.max_energy)
             .last()
-            .unwrap_or(Energy::new(f64::INFINITY));
+            .unwrap_or(Energy::new(std::f64::INFINITY));
         // Run a few steps of the simulation for each replica
         self.replicas
             .par_iter_mut()
-            .enumerate()
-            .for_each(|(whoami, r)| {
+            .for_each(|r| {
                 if r.system_with_lowest_max_energy.is_some() {
                     these_moves.fetch_add(steps, std::sync::atomic::Ordering::Relaxed);
                     for i in 0..steps {
