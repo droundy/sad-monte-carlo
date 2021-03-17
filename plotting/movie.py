@@ -136,7 +136,7 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         break
     plt.xlabel('E')
     if 'lj31' in bases[0]:
-        # Cite P\'artay, Bart\'ok and Cs\'anyi "Efficient sampling of atomic configurational space"
+        # Cite Calvo, Doye, and Wales "Quantum partition functions from classical distributions: application fo rare-gas clusters"
         plt.axvline(-133.58642)
         plt.axvline(-133.29382)
         plt.axvline(-133.10462)
