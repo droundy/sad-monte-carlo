@@ -143,7 +143,7 @@ impl<S: MovableSystem> Replica<S> {
             .as_ref()
             .map(|(s, _)| s.energy())
     }
-    fn run_once(&mut self, moves: u64, collect_statistics: bool) {
+    fn run_once(&mut self, moves: u64, mut collect_statistics: bool) {
         if let Some((system, lowest_max_energy)) = &mut self.system_with_lowest_max_energy {
             if self.max_energy.value_unsafe.is_finite() {
                 if let Some(e) = system.plan_move(&mut self.rng, self.translation_scale) {
@@ -159,16 +159,15 @@ impl<S: MovableSystem> Replica<S> {
             } else {
                 // If there is no upper bound, we can just entirely randomize the
                 // system.
+                collect_statistics = true;
                 system.randomize(&mut self.rng);
                 *lowest_max_energy = self.max_energy;
             }
             let e = system.energy();
             if collect_statistics {
                 if e > self.cutoff_energy {
-                    if collect_statistics {
-                        self.above_count += 1;
-                        self.above_total += e;
-                    }
+                    self.above_count += 1;
+                    self.above_total += e;
                     for (k, d) in system.data_to_collect(moves).into_iter() {
                         if let Some(p) = self.above_extra.get_mut(&k) {
                             p.0 += d;
@@ -486,16 +485,14 @@ impl<
             .last()
             .unwrap_or(Energy::new(std::f64::INFINITY));
         // Run a few steps of the simulation for each replica
-        self.replicas
-            .par_iter_mut()
-            .for_each(|r| {
-                if r.system_with_lowest_max_energy.is_some() {
-                    these_moves.fetch_add(steps, std::sync::atomic::Ordering::Relaxed);
-                    for i in 0..steps {
-                        r.run_once(moves + i, r.max_energy < lowest_missing);
-                    }
+        self.replicas.par_iter_mut().for_each(|r| {
+            if r.system_with_lowest_max_energy.is_some() {
+                these_moves.fetch_add(steps, std::sync::atomic::Ordering::Relaxed);
+                for i in 0..steps {
+                    r.run_once(moves + i, r.max_energy < lowest_missing);
                 }
-            });
+            }
+        });
 
         // Now let us try swapping if we can.
         let iterator = if self.rng.gen::<bool>() {
