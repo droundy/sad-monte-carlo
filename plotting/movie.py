@@ -62,11 +62,18 @@ for base in args.base:
 for base in bases:
     print('reading', base)
 
-    de = abs(np.diff(np.loadtxt(base+'-energy-boundaries.dat')))
-    lnw = np.loadtxt(base+'-lnw.dat')[1:-1]
-    mean_e = np.loadtxt(base+'-mean-energy.dat')[:-1]
-    s_estimate = lnw - np.log(de)
+    energy_boundaries = np.loadtxt(base+'-energy-boundaries.dat')
+    de = abs(np.diff(energy_boundaries))
+    lnw = np.loadtxt(base+'-lnw.dat')
+    mean_e = np.loadtxt(base+'-mean-energy.dat')
+    s_estimate = lnw[1:-1] - np.log(de)
     peak_e = mean_e[np.argmax(s_estimate)]
+
+    if energy_boundaries[0] < energy_boundaries[-1]:
+        energy_boundaries = np.flip(energy_boundaries)
+        mean_e = np.flip(mean_e)
+        lnw = np.flip(lnw)
+    reference_function, reference_energy, reference_entropy = compute.linear_entropy(energy_boundaries, mean_e, lnw)
 
 print('done reading bases')
 sigma = 1
@@ -83,15 +90,19 @@ def latex_number(x):
             return rf'{mantissa}\times 10^{{{exponent}}}'
     return '%.3g' % x
 
-E = np.linspace(mean_e[1:-1].min(), peak_e, 10000)
+E = np.linspace(mean_e[1:-1].min(), min(peak_e, energy_boundaries.max()), 10000)
 E = np.linspace(-133.59, -133.0, 10000)
+# E = np.linspace(-133.59, 0, 10000)
 
-starting_moves = 1e9
+starting_moves = 4e11
 for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(bases[0]+'/*.cbor'))))):
     plt.clf()
     which_color = 0
     plotted_something = False
     plt.ylabel('$S(E)$')
+
+    ymin, ymax = np.Infinity, -np.Infinity
+    plt.plot(reference_energy, reference_entropy, ':', color='gray', label='refernce')
 
     for base in bases:
         color = colors[which_color]
@@ -124,25 +135,30 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         l_function, eee, sss = compute.linear_entropy(energy_b, mean_e, my_lnw)
         # l_function, _, _ = compute.step_entropy(energy_b, mean_e, my_lnw)
         entropy_here = l_function(E)
+        offset = 0 # l_function(-133)
         # plt.plot(E, entropy_here, label=beautiful_name(f))
-        plt.plot(eee, sss, '.-', label=beautiful_name(f), markersize=4)
+        plt.plot(eee, sss - offset, '.-', label=beautiful_name(f), markersize=4)
         plt.xlim(E.min(), E.max())
         if not np.any(np.isnan(entropy_here)):
-            plt.ylim(entropy_here.min(), entropy_here.max())
+            ymin = min(ymin, entropy_here.min() - offset)
+            ymax = max(ymax, entropy_here.max() - offset)
+        #     plt.ylim(entropy_here.min() - offset, entropy_here.max() - offset)
         plt.title('$t=%s$' % latex_number(mymove))
         plotted_something = True
     if not plotted_something:
         print('nothing left to plot')
         break
+    if np.isfinite(ymin) and np.isfinite(ymax):
+        plt.ylim(ymin, ymax)
     plt.xlabel('E')
     if 'lj31' in bases[0]:
         # Cite Calvo, Doye, and Wales "Quantum partition functions from classical distributions: application fo rare-gas clusters"
-        plt.axvline(-133.58642)
-        plt.axvline(-133.29382)
-        plt.axvline(-133.10462)
+        plt.axvline(-133.58642, color='k', linestyle=':')
+        plt.axvline(-133.29382, color='k', linestyle=':')
+        plt.axvline(-133.10462, color='k', linestyle=':')
     plt.legend()
     plt.draw_if_interactive()
-    plt.pause(0.01)
+    plt.pause(1.01)
 
 plt.ioff()
 plt.show()

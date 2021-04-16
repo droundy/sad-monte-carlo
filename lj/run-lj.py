@@ -72,11 +72,15 @@ def run_inv_t_wl(name, de, min_E, max_E, max_iter=max_iter_default, translation_
 systems = {
     'lj31':  '--lj-N 31 --lj-radius 2.5'.split(),
     'biglj31':  '--lj-N 31 --lj-radius 5'.split(),
+    'huge-lj31':  '--lj-N 31 --lj-radius 15'.split(),
 }
 
-run_replicas(name='lj31', min_T=0.001, extraname='0.001-')
-run_replicas(name='lj31', min_T=0.005)
-run_replicas(name='lj31', min_T=0.005, extraname='mean-', extraflags='--mean-for-median')
+run_replicas(name='huge-lj31', min_T=0.001, max_iter=1e14, extraname="one-bubble-64b-", extraflags="--seed=3")
+exit(1)
+run_replicas(name='huge-lj31', min_T=0.001, max_iter=1e14)
+run_replicas(name='lj31', min_T=0.001, extraname='0.001-', max_iter=1e14)
+run_replicas(name='lj31', min_T=0.005, max_iter=1e14)
+# run_replicas(name='lj31', min_T=0.005, extraname='mean-', extraflags='--mean-for-median')
 run_replicas(name='biglj31', min_T=0.005, max_iter=1e12)
 
 for de in [0.01]: # , 1/2**10]: 0.1

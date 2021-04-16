@@ -46,7 +46,7 @@ impl Default for MCParams {
 pub struct MedianEstimator {
     energies: Vec<Energy>,
 }
-const ESTIMATOR_SIZE: usize = 256;
+const ESTIMATOR_SIZE: usize = 4096; // 1024;
 impl MedianEstimator {
     fn new(e: Energy) -> Self {
         let mut energies = Vec::with_capacity(ESTIMATOR_SIZE);
@@ -75,6 +75,7 @@ impl MedianEstimator {
             0.5 * (self.energies[self.energies.len() / 2]
                 + self.energies[self.energies.len() / 2 + 1])
         }
+        // self.energies[(3*self.energies.len()) / 4]
     }
 }
 
@@ -137,6 +138,9 @@ impl<S: MovableSystem> Replica<S> {
             unique_visitors: 0,
             rng,
         }
+    }
+    fn above_fraction(&self) -> f64 {
+        self.above_count as f64 / (self.above_count as f64 + self.below_count as f64)
     }
     fn energy(&self) -> Option<Energy> {
         self.system_with_lowest_max_energy
@@ -229,13 +233,14 @@ impl<S: MovableSystem> Replica<S> {
     fn split(&mut self) -> Replica<S> {
         print!("Splitting ");
         self.printme();
-        let mean = self.above_total / self.above_count as f64;
-        let mut next = Replica::empty(mean, self.cutoff_energy, self.rng.clone());
+        // let mean = self.above_total / self.above_count as f64;
+        let middle = 0.5 * (self.max_energy + self.cutoff_energy);
+        let mut next = Replica::empty(middle, self.cutoff_energy, self.rng.clone());
         next.rng.jump();
         next.translation_scale = self.translation_scale;
         *self = Replica {
             max_energy: self.max_energy,
-            cutoff_energy: mean,
+            cutoff_energy: middle,
             above_count: 0,
             below_count: 0,
             rejected_count: 0,
@@ -257,16 +262,13 @@ impl<S: MovableSystem> Replica<S> {
         next
     }
     fn printme(&self) {
-        let percent = self.above_count as f64 / (self.above_count as f64 + self.below_count as f64);
-        let mean = self.above_total / self.above_count as f64;
         println!(
-            "   {} {:2.1}% > {:9.5} {:.2} unique, 𝚫E = {:.2}, T ≈ {:.2}",
+            "   {} {:2.1}% > {:9.5} {:.2} unique, 𝚫E = {:.2}",
             if self.energy().is_none() { ":(" } else { "  " },
-            crate::prettyfloat::PrettyFloat(100.0 * percent),
+            crate::prettyfloat::PrettyFloat(100.0 * self.above_fraction()),
             self.cutoff_energy.pretty(),
             crate::prettyfloat::PrettyFloat(self.unique_visitors as f64),
             (self.max_energy - self.cutoff_energy).pretty(),
-            (self.max_energy - mean).pretty(),
         );
     }
 }
@@ -298,6 +300,8 @@ pub struct MC<S> {
     /// Movie state
     report: plugin::Report,
 }
+
+const INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN: u64 = 64;
 
 impl<
         S: Clone
@@ -437,7 +441,10 @@ impl<
         let mut print_one_more = false;
         for (which, r) in self.replicas.iter().enumerate() {
             let percent = r.above_count as f64 / (r.above_count as f64 + r.below_count as f64);
-            let am_crazy = percent > 0.8 || percent < 0.2 || r.energy().is_none();
+            let am_crazy = percent > 0.75
+                || percent < 0.05
+                || r.energy().is_none()
+                || r.unique_visitors < INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN;
             if which < 5 || which + 15 >= num_replicas || am_crazy || print_one_more {
                 need_dots = true;
                 print_one_more = am_crazy; // print one more bin after a crazy bin.
@@ -449,7 +456,11 @@ impl<
         }
         if let Some(r) = self.replicas.last() {
             let mean_below = r.below_total / r.below_count as f64;
-            println!("        mean_below: {:9.5}", mean_below.pretty());
+            println!(
+                "        mean_below: {:9.5}, T_below {:.2}",
+                mean_below.pretty(),
+                (r.cutoff_energy - mean_below).pretty()
+            );
         };
 
         let f = AtomicFile::create(&self.save_as)
@@ -476,25 +487,52 @@ impl<
         let these_moves = std::sync::atomic::AtomicU64::new(0);
         // We only collect statistics if our max_energy is less than the lowest
         // max_energy that is missing a walker.
-        let lowest_missing = self
-            .replicas
-            .iter()
-            .rev()
-            .filter(|r| r.energy().is_none())
-            .map(|r| r.max_energy)
-            .last()
-            .unwrap_or(Energy::new(std::f64::INFINITY));
+        // let lowest_missing = self
+        //     .replicas
+        //     .iter()
+        //     .rev()
+        //     .filter(|r| r.energy().is_none())
+        //     .map(|r| r.max_energy)
+        //     .last()
+        //     .unwrap_or(Energy::new(std::f64::INFINITY));
+
+        let any_missing = self.replicas.iter().any(|r| r.energy().is_none());
         // Run a few steps of the simulation for each replica
         self.replicas.par_iter_mut().for_each(|r| {
             if r.system_with_lowest_max_energy.is_some() {
                 these_moves.fetch_add(steps, std::sync::atomic::Ordering::Relaxed);
                 for i in 0..steps {
-                    r.run_once(moves + i, r.max_energy < lowest_missing);
+                    // r.run_once(moves + i, r.max_energy < lowest_missing);
+                    r.run_once(moves + i, !any_missing);
                 }
             }
         });
 
         // Now let us try swapping if we can.
+        if any_missing {
+            // Bubble up as rapidly as posssible
+            for i in (1..self.replicas.len()).rev() {
+                if let [r0, r1] = &mut self.replicas[i - 1..i + 1] {
+                    if r1.energy().is_none() {
+                        if let Some(e) = r0.energy() {
+                            if e < r1.max_energy {
+                                if r0.max_energy.value_unsafe.is_finite() {
+                                    std::mem::swap(
+                                        &mut r0.system_with_lowest_max_energy,
+                                        &mut r1.system_with_lowest_max_energy,
+                                    );
+                                } else {
+                                    // If the higher-energy bin is unbounded, then leave the existing system
+                                    // there, since it'll get randomized in a moment anyhow.
+                                    r1.system_with_lowest_max_energy =
+                                        r0.system_with_lowest_max_energy.clone();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         let iterator = if self.rng.gen::<bool>() {
             // Try swapping odd onces
             self.replicas.chunks_exact_mut(2)
@@ -520,7 +558,8 @@ impl<
                     }
                     if let Some((_, me)) = &mut r1.system_with_lowest_max_energy {
                         if *me > r1.max_energy {
-                            if r1.max_energy < lowest_missing {
+                            // if r1.max_energy < lowest_missing {
+                            if !any_missing {
                                 // Only increment the number of unique visitors if we're
                                 // currently actually collecting statistics.  This may
                                 // undercount the unique visitors, but that beast overcounting.
@@ -532,7 +571,6 @@ impl<
                 }
             }
         });
-        const INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN: u64 = 16;
         if let Some((cutoff, energy)) = self.replicas.last().and_then(|r| {
             r.system_with_lowest_max_energy
                 .as_ref()
@@ -553,7 +591,10 @@ impl<
             // the system energy must be below the median so that we have a
             // to put into our new bin.  Wow, that's a lot of, ))
             if let Some((system, _)) = &r.system_with_lowest_max_energy {
-                if r.unique_visitors >= INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN {
+                if r.unique_visitors >= INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN
+                    && self.replicas.iter().all(|rr| rr.energy().is_some())
+                    // && self.replicas.iter().all(|rr| rr.above_fraction() <= 0.8)
+                {
                     let mean_below = r.below_total / r.below_count as f64;
                     if mean_below + self.min_T < r.cutoff_energy
                         && system.energy() < r.cutoff_energy
@@ -563,23 +604,21 @@ impl<
                         } else {
                             self.median.median()
                         };
-                        let num_in_median_estimator = self.median.energies.len();
                         self.median.reset(median_below);
                         let mut newr =
                             Replica::empty(r.cutoff_energy, median_below, self.rng.clone());
                         newr.translation_scale =
                             r.translation_scale * 0.5f64.powf(1.0 / system.dimensionality() as f64);
                         println!(
-                            "      New bin: {:5} with mean {:5} and max {:.5} with {} in estimator",
+                            "      New bin: {:5} with mean {:5} and max {:.5} with {} unique",
                             median_below.pretty(),
                             mean_below.pretty(),
                             r.cutoff_energy.pretty(),
-                            num_in_median_estimator,
+                            r.unique_visitors,
                         );
-                        println!("       unique: {}", r.unique_visitors);
-                        println!("       below count: {}", r.below_count);
-                        println!("       above count: {}", r.above_count);
-                        println!("       max energy: {}", r.max_energy.pretty());
+                        // println!("       below count: {}", r.below_count);
+                        // println!("       above count: {}", r.above_count);
+                        // println!("       max energy: {}", r.max_energy.pretty());
                         newr.rng.jump();
                         Some(newr)
                     } else {
@@ -602,24 +641,26 @@ impl<
             .par_iter_mut()
             .for_each(|r| r.occasional_update());
 
-        // let need_splitting = self
-        //     .replicas
-        //     .iter()
-        //     .enumerate()
-        //     .filter(|(_, r)| {
-        //         let mean = r.above_total / r.above_count as f64;
-        //         r.unique_visitors > 4 * INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN
-        //             && r.system_with_lowest_max_energy.is_some()
-        //             && r.energy().unwrap() > mean
-        //             && r.above_count > 4 * r.below_count
-        //             && (r.max_energy - mean) < 0.5 * (r.max_energy - r.cutoff_energy)
-        //     })
-        //     .map(|(i, _)| i)
-        //     .collect::<Vec<_>>();
-        // for i in need_splitting.iter().rev().cloned() {
-        //     let next = self.replicas[i].split();
-        //     self.replicas.insert(i + 1, next);
-        // }
+        if self.replicas.iter().all(|rr| rr.energy().is_some()) {
+            // Split bins only when we've got the "decks" cleared in terms of bubbles.
+            // This helps ensure we don't go overboard.
+            let need_splitting = self
+                .replicas
+                .iter()
+                .enumerate()
+                .filter(|(_, r)| {
+                    r.above_fraction() > 0.75
+                        && 2.0 / (r.unique_visitors as f64).sqrt() < r.above_fraction() - 0.75
+                    // r.above_fraction() > 0.5
+                    //     && 2.0 / (r.unique_visitors as f64).sqrt() < r.above_fraction() - 0.5
+                })
+                .map(|(i, _)| i)
+                .collect::<Vec<_>>();
+            for i in need_splitting.iter().rev().cloned() {
+                let next = self.replicas[i].split();
+                self.replicas.insert(i + 1, next);
+            }
+        }
 
         let mut moves = self.moves;
         let these_moves = these_moves.load(std::sync::atomic::Ordering::Relaxed);
