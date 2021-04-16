@@ -106,6 +106,8 @@ pub struct Replica<S> {
     /// The number of completely and provably indepdendent systems that have
     /// us
     pub unique_visitors: u64,
+    /// Are we not collecting data for now, to avoid detailed balance violation?
+    pub not_collecting_data: bool,
     /// The random number generator.
     pub rng: crate::rng::MyRng,
 
@@ -136,6 +138,7 @@ impl<S: MovableSystem> Replica<S> {
             translation_scale: Length::new(1.0),
             system_with_lowest_max_energy: None,
             unique_visitors: 0,
+            not_collecting_data: false,
             rng,
         }
     }
@@ -147,7 +150,7 @@ impl<S: MovableSystem> Replica<S> {
             .as_ref()
             .map(|(s, _)| s.energy())
     }
-    fn run_once(&mut self, moves: u64, mut collect_statistics: bool) {
+    fn run_once(&mut self, moves: u64) {
         if let Some((system, lowest_max_energy)) = &mut self.system_with_lowest_max_energy {
             if self.max_energy.value_unsafe.is_finite() {
                 if let Some(e) = system.plan_move(&mut self.rng, self.translation_scale) {
@@ -163,12 +166,11 @@ impl<S: MovableSystem> Replica<S> {
             } else {
                 // If there is no upper bound, we can just entirely randomize the
                 // system.
-                collect_statistics = true;
                 system.randomize(&mut self.rng);
                 *lowest_max_energy = self.max_energy;
             }
             let e = system.energy();
-            if collect_statistics {
+            if !self.not_collecting_data {
                 if e > self.cutoff_energy {
                     self.above_count += 1;
                     self.above_total += e;
@@ -255,6 +257,7 @@ impl<S: MovableSystem> Replica<S> {
                 None,
             ),
             unique_visitors: 1,
+            not_collecting_data: false,
             rng: self.rng.clone(),
         };
         self.printme();
@@ -442,7 +445,7 @@ impl<
         for (which, r) in self.replicas.iter().enumerate() {
             let percent = r.above_count as f64 / (r.above_count as f64 + r.below_count as f64);
             let am_crazy = percent > 0.75
-                || percent < 0.05
+                || percent < 0.25
                 || r.energy().is_none()
                 || r.unique_visitors < INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN;
             if which < 5 || which + 15 >= num_replicas || am_crazy || print_one_more {
@@ -485,25 +488,31 @@ impl<
             .min_moves_to_randomize();
 
         let these_moves = std::sync::atomic::AtomicU64::new(0);
-        // We only collect statistics if our max_energy is less than the lowest
-        // max_energy that is missing a walker.
-        // let lowest_missing = self
-        //     .replicas
-        //     .iter()
-        //     .rev()
-        //     .filter(|r| r.energy().is_none())
-        //     .map(|r| r.max_energy)
-        //     .last()
-        //     .unwrap_or(Energy::new(std::f64::INFINITY));
 
         let any_missing = self.replicas.iter().any(|r| r.energy().is_none());
+        let lowest_max_energy = self.replicas.last().unwrap().max_energy;
         // Run a few steps of the simulation for each replica
         self.replicas.par_iter_mut().for_each(|r| {
+            if any_missing
+                && r.max_energy != lowest_max_energy
+                && r.max_energy.value_unsafe.is_finite()
+            {
+                // If we have any bubbles, and we are not looking at the highest or lowest
+                // zones, we should stop collecting data for a while to avoid violations
+                // of detailed balance while we let the bubbles rise.
+                r.not_collecting_data = true;
+            }
             if r.system_with_lowest_max_energy.is_some() {
                 these_moves.fetch_add(steps, std::sync::atomic::Ordering::Relaxed);
-                for i in 0..steps {
-                    // r.run_once(moves + i, r.max_energy < lowest_missing);
-                    r.run_once(moves + i, !any_missing);
+                if r.max_energy.value_unsafe.is_finite() {
+                    for i in 0..steps {
+                        r.run_once(moves + i);
+                    }
+                } else {
+                    // For the unbounded high energy bin, we only need to fully randomize once.
+                    // This is important, because fully randomizing is way more expensive
+                    // than a single move (but even more effective).
+                    r.run_once(moves);
                 }
             }
         });
@@ -551,6 +560,11 @@ impl<
                             &mut r0.system_with_lowest_max_energy,
                             &mut r1.system_with_lowest_max_energy,
                         );
+                        // We start collecting data after one system has risen up from
+                        // lower energy.  This is a heuristic to avoid the bias that
+                        // comes from systems dropping down to lower energies and not
+                        // returning because we have created more low-energy zones.
+                        r0.not_collecting_data = false;
                     } else {
                         // If the higher-energy bin is unbounded, then leave the existing system
                         // there, since it'll get randomized in a moment anyhow.
@@ -562,7 +576,7 @@ impl<
                             if !any_missing {
                                 // Only increment the number of unique visitors if we're
                                 // currently actually collecting statistics.  This may
-                                // undercount the unique visitors, but that beast overcounting.
+                                // undercount the unique visitors, but that beats overcounting.
                                 r1.unique_visitors += 1;
                             }
                             *me = r1.max_energy;
@@ -593,7 +607,6 @@ impl<
             if let Some((system, _)) = &r.system_with_lowest_max_energy {
                 if r.unique_visitors >= INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN
                     && self.replicas.iter().all(|rr| rr.energy().is_some())
-                    // && self.replicas.iter().all(|rr| rr.above_fraction() <= 0.8)
                 {
                     let mean_below = r.below_total / r.below_count as f64;
                     if mean_below + self.min_T < r.cutoff_energy
@@ -651,8 +664,6 @@ impl<
                 .filter(|(_, r)| {
                     r.above_fraction() > 0.75
                         && 2.0 / (r.unique_visitors as f64).sqrt() < r.above_fraction() - 0.75
-                    // r.above_fraction() > 0.5
-                    //     && 2.0 / (r.unique_visitors as f64).sqrt() < r.above_fraction() - 0.5
                 })
                 .map(|(i, _)| i)
                 .collect::<Vec<_>>();
