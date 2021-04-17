@@ -106,8 +106,8 @@ pub struct Replica<S> {
     /// The number of completely and provably indepdendent systems that have
     /// us
     pub unique_visitors: u64,
-    /// Are we not collecting data for now, to avoid detailed balance violation?
-    pub not_collecting_data: bool,
+    /// Are we collecting data for now?
+    pub collecting_data: bool,
     /// The random number generator.
     pub rng: crate::rng::MyRng,
 
@@ -138,7 +138,7 @@ impl<S: MovableSystem> Replica<S> {
             translation_scale: Length::new(1.0),
             system_with_lowest_max_energy: None,
             unique_visitors: 0,
-            not_collecting_data: false,
+            collecting_data: true,
             rng,
         }
     }
@@ -170,7 +170,7 @@ impl<S: MovableSystem> Replica<S> {
                 *lowest_max_energy = self.max_energy;
             }
             let e = system.energy();
-            if !self.not_collecting_data {
+            if self.collecting_data {
                 if e > self.cutoff_energy {
                     self.above_count += 1;
                     self.above_total += e;
@@ -257,7 +257,7 @@ impl<S: MovableSystem> Replica<S> {
                 None,
             ),
             unique_visitors: 1,
-            not_collecting_data: false,
+            collecting_data: true,
             rng: self.rng.clone(),
         };
         self.printme();
@@ -500,7 +500,7 @@ impl<
                 // If we have any bubbles, and we are not looking at the highest or lowest
                 // zones, we should stop collecting data for a while to avoid violations
                 // of detailed balance while we let the bubbles rise.
-                r.not_collecting_data = true;
+                r.collecting_data = false;
             }
             if r.system_with_lowest_max_energy.is_some() {
                 these_moves.fetch_add(steps, std::sync::atomic::Ordering::Relaxed);
@@ -560,11 +560,12 @@ impl<
                             &mut r0.system_with_lowest_max_energy,
                             &mut r1.system_with_lowest_max_energy,
                         );
-                        // We start collecting data after one system has risen up from
-                        // lower energy.  This is a heuristic to avoid the bias that
+                        // We start collecting data after the zone has done an ordinary swap.
+                        // This is a heuristic to avoid the bias that
                         // comes from systems dropping down to lower energies and not
-                        // returning because we have created more low-energy zones.
-                        r0.not_collecting_data = false;
+                        // returning because we have created new low-energy zones.
+                        r0.collecting_data = true;
+                        r1.collecting_data = true;
                     } else {
                         // If the higher-energy bin is unbounded, then leave the existing system
                         // there, since it'll get randomized in a moment anyhow.
@@ -572,8 +573,7 @@ impl<
                     }
                     if let Some((_, me)) = &mut r1.system_with_lowest_max_energy {
                         if *me > r1.max_energy {
-                            // if r1.max_energy < lowest_missing {
-                            if !any_missing {
+                            if r1.collecting_data && !any_missing {
                                 // Only increment the number of unique visitors if we're
                                 // currently actually collecting statistics.  This may
                                 // undercount the unique visitors, but that beats overcounting.

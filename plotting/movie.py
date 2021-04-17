@@ -91,10 +91,10 @@ def latex_number(x):
     return '%.3g' % x
 
 E = np.linspace(mean_e[1:-1].min(), min(peak_e, energy_boundaries.max()), 10000)
-# E = np.linspace(-133.59, -133.0, 10000)
-E = np.linspace(-133.59, 0, 10000)
+E = np.linspace(-133.59, -133.0, 10000)
+# E = np.linspace(-133.59, 0, 10000)
 
-starting_moves = 1e9
+starting_moves = 1e11
 for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(bases[0]+'/*.cbor'))))):
     plt.clf()
     which_color = 0
