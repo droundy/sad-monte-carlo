@@ -573,12 +573,17 @@ impl<
                     }
                     if let Some((_, me)) = &mut r1.system_with_lowest_max_energy {
                         if *me > r1.max_energy {
-                            if r1.collecting_data && !any_missing {
-                                // Only increment the number of unique visitors if we're
-                                // currently actually collecting statistics.  This may
-                                // undercount the unique visitors, but that beats overcounting.
-                                r1.unique_visitors += 1;
-                            }
+                            // if r1.collecting_data && !any_missing {
+                            //     // Only increment the number of unique visitors if we're
+                            //     // currently actually collecting statistics.  This may
+                            //     // undercount the unique visitors, but that beats overcounting.
+                            //     r1.unique_visitors += 1;
+                            // }
+
+                            // Always increment the number of unique visitors.  Otherwise we can never
+                            // know how many there have been, and any visitors that pass by while
+                            // we aren't collecting data will probably come back again later.
+                            r1.unique_visitors += 1;
                             *me = r1.max_energy;
                         }
                     }

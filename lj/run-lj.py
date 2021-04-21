@@ -75,7 +75,7 @@ systems = {
     'huge-lj31':  '--lj-N 31 --lj-radius 15'.split(),
 }
 
-run_replicas(name='huge-lj31', min_T=0.001, max_iter=1e14, extraname="one-bubble-64c-", extraflags="--seed=4")
+run_replicas(name='huge-lj31', min_T=0.001, max_iter=1e14, extraname="one-bubble-64d-", extraflags="--seed=5")
 exit(1)
 run_replicas(name='huge-lj31', min_T=0.001, max_iter=1e14)
 run_replicas(name='lj31', min_T=0.001, extraname='0.001-', max_iter=1e14)
