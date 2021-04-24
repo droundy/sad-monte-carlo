@@ -94,15 +94,46 @@ E = np.linspace(mean_e[1:-1].min(), min(peak_e, energy_boundaries.max()), 10000)
 E = np.linspace(-133.59, -133.0, 10000)
 # E = np.linspace(-133.59, 0, 10000)
 
+T = np.concatenate([np.arange(0.001, 0.01, 0.0001), np.arange(0.01, 0.5, 0.01)])
+
+def heat_capacity(T, S_func):
+    C = np.zeros_like(T)
+    E = np.arange(mean_e[1:-1].min(), energy_boundaries.max(), T[0]/4)
+    S = S_func(E)
+    for i in range(len(T)):
+        boltz_arg = S - E/T[i]
+        P = np.exp(boltz_arg - boltz_arg.max())
+        P = P/P.sum()
+        U = (E*P).sum()
+        C[i] = ((E-U)**2*P).sum()/T[i]**2
+    return C
+
+Cv_reference = heat_capacity(T, reference_function)
+
 starting_moves = 5e11
 for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(bases[0]+'/*.cbor'))))):
-    plt.clf()
     which_color = 0
     plotted_something = False
+    plt.figure('CV(E)', figsize=(8,6))
+    plt.clf()
+    plt.ylabel('$C_V(T)$')
+    plt.xlabel('$T$')
+    ax = plt.gca()
+    ax.set_xlim(0, max(T))
+    ax.set_ylim(0, 1.3*max(Cv_reference))
+    axins = ax.inset_axes([0.1, 0.5, 0.4, 0.47])
+    axins.set_xlim(T.min(), 0.01)
+    axins.set_ylim(0, 1.3*np.max(Cv_reference[T<0.01]))
+    
+    ax.plot(T, Cv_reference, ':', color='gray', label='reference')
+    axins.plot(T, Cv_reference, ':', color='gray', label='reference')
+
+    plt.figure('S(E)', figsize=(8,6))
+    plt.clf()
     plt.ylabel('$S(E)$')
 
     ymin, ymax = np.Infinity, -np.Infinity
-    plt.plot(reference_energy, reference_entropy, ':', color='gray', label='refernce')
+    plt.plot(reference_energy, reference_entropy, ':', color='gray', label='reference')
 
     for base in bases:
         color = colors[which_color]
@@ -136,6 +167,7 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         # l_function, _, _ = compute.step_entropy(energy_b, mean_e, my_lnw)
         entropy_here = l_function(E)
         offset = 0 # l_function(-133)
+        plt.figure('S(E)')
         # plt.plot(E, entropy_here, label=beautiful_name(f))
         plt.plot(eee, sss - offset, '.-', label=beautiful_name(f), markersize=4)
         plt.xlim(E.min(), E.max())
@@ -144,10 +176,17 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
             ymax = max(ymax, entropy_here.max() - offset)
         #     plt.ylim(entropy_here.min() - offset, entropy_here.max() - offset)
         plt.title('$t=%s$' % latex_number(mymove))
+
+        plt.figure('CV(E)')
+        Cv= heat_capacity(T, l_function)
+        ax.plot(T, Cv, '-', label=beautiful_name(f), markersize=4)
+        axins.plot(T, Cv, '-', label=beautiful_name(f), markersize=4)
+        ax.indicate_inset_zoom(axins, edgecolor='k')
         plotted_something = True
     if not plotted_something:
         print('nothing left to plot')
         break
+    plt.figure('S(E)')
     if np.isfinite(ymin) and np.isfinite(ymax):
         plt.ylim(ymin, ymax)
     plt.xlabel('E')
