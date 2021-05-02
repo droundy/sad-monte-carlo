@@ -69,13 +69,20 @@ impl MedianEstimator {
     }
     fn median(&mut self) -> Energy {
         self.energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        if self.energies.len() & 1 == 0 || self.energies.len() == 1 {
-            self.energies[self.energies.len() / 2]
+        let middle = self.energies.len() / 2;
+        let e_middle = self.energies[middle];
+        // We attempt to pick a median that is between a pair of our energies,
+        // so that if we have a discrete set of possible energies our median
+        // will not be one of them, which would be a bad place to put a bin
+        // divider.
+        if let Some(next) = self.energies[middle+1..].iter().cloned().filter(|&e| e != e_middle).next() {
+            0.5*(e_middle+next)
+        } else if let Some(prev) = self.energies[..middle].iter().rev().cloned().filter(|&e| e != e_middle).next() {
+            0.5*(e_middle+prev)
         } else {
-            0.5 * (self.energies[self.energies.len() / 2]
-                + self.energies[self.energies.len() / 2 + 1])
+            println!("not happy to pick our only ever energy as the median... :(");
+            e_middle
         }
-        // self.energies[(3*self.energies.len()) / 4]
     }
 }
 
@@ -141,6 +148,19 @@ impl<S: MovableSystem> Replica<S> {
             collecting_data: true,
             rng,
         }
+    }
+    fn decimate(&mut self) {
+        self.above_total /= self.above_count as f64;
+        self.below_total /= self.below_count as f64;
+        for (_, e) in self.above_extra.iter_mut() {
+            e.0 /= e.1 as f64;
+            e.1 = 1;
+        }
+        self.above_count = 1;
+        self.below_count = 1;
+        self.accepted_count = 1;
+        self.rejected_count = 1;
+        self.unique_visitors = 1;
     }
     fn above_fraction(&self) -> f64 {
         self.above_count as f64 / (self.above_count as f64 + self.below_count as f64)
@@ -611,7 +631,7 @@ impl<
             // to put into our new bin.  Wow, that's a lot of, ))
             if let Some((system, _)) = &r.system_with_lowest_max_energy {
                 if r.unique_visitors >= INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN
-                    && self.replicas.iter().all(|rr| rr.energy().is_some())
+                    // && self.replicas.iter().all(|rr| rr.energy().is_some())
                 {
                     let mean_below = r.below_total / r.below_count as f64;
                     if mean_below + self.min_T < r.cutoff_energy
@@ -653,13 +673,18 @@ impl<
         };
         if let Some(r) = new_replica {
             self.replicas.push(r);
+            // We now choose to throw away data, to account for the fact that
+            // we're now spending some time violating detailed balance.
+            for r in self.replicas.iter_mut() {
+                r.decimate();
+            }
         }
 
         self.replicas
             .par_iter_mut()
             .for_each(|r| r.occasional_update());
 
-        if self.replicas.iter().all(|rr| rr.energy().is_some()) {
+        if false && self.replicas.iter().all(|rr| rr.energy().is_some()) {
             // Split bins only when we've got the "decks" cleared in terms of bubbles.
             // This helps ensure we don't go overboard.
             let need_splitting = self

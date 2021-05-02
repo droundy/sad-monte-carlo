@@ -90,6 +90,8 @@ def latex_number(x):
             return rf'{mantissa}\times 10^{{{exponent}}}'
     return '%.3g' % x
 
+plot_Cv = False
+
 E = np.linspace(mean_e[1:-1].min(), min(peak_e, energy_boundaries.max()), 10000)
 E = np.linspace(-133.59, -133.0, 10000)
 # E = np.linspace(-133.59, 0, 10000)
@@ -108,25 +110,27 @@ def heat_capacity(T, S_func):
         C[i] = ((E-U)**2*P).sum()/T[i]**2
     return C
 
-Cv_reference = heat_capacity(T, reference_function)
+if plot_Cv:
+    Cv_reference = heat_capacity(T, reference_function)
 
-starting_moves = 5e11
+starting_moves = 1e11
 for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(bases[0]+'/*.cbor'))))):
     which_color = 0
     plotted_something = False
-    plt.figure('CV(E)', figsize=(8,6))
-    plt.clf()
-    plt.ylabel('$C_V(T)$')
-    plt.xlabel('$T$')
-    ax = plt.gca()
-    ax.set_xlim(0, max(T))
-    ax.set_ylim(0, 1.3*max(Cv_reference))
-    axins = ax.inset_axes([0.1, 0.5, 0.4, 0.47])
-    axins.set_xlim(T.min(), 0.01)
-    axins.set_ylim(0, 1.3*np.max(Cv_reference[T<0.01]))
-    
-    ax.plot(T, Cv_reference, ':', color='gray', label='reference')
-    axins.plot(T, Cv_reference, ':', color='gray', label='reference')
+    if plot_Cv:
+        plt.figure('CV(E)', figsize=(8,6))
+        plt.clf()
+        plt.ylabel('$C_V(T)$')
+        plt.xlabel('$T$')
+        ax = plt.gca()
+        ax.set_xlim(0, max(T))
+        ax.set_ylim(0, 1.3*max(Cv_reference))
+        axins = ax.inset_axes([0.1, 0.5, 0.4, 0.47])
+        axins.set_xlim(T.min(), 0.01)
+        axins.set_ylim(0, 1.3*np.max(Cv_reference[T<0.01]))
+        
+        ax.plot(T, Cv_reference, ':', color='gray', label='reference')
+        axins.plot(T, Cv_reference, ':', color='gray', label='reference')
 
     plt.figure('S(E)', figsize=(8,6))
     plt.clf()
@@ -177,11 +181,12 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         #     plt.ylim(entropy_here.min() - offset, entropy_here.max() - offset)
         plt.title('$t=%s$' % latex_number(mymove))
 
-        plt.figure('CV(E)')
-        Cv= heat_capacity(T, l_function)
-        ax.plot(T, Cv, '-', label=beautiful_name(f), markersize=4)
-        axins.plot(T, Cv, '-', label=beautiful_name(f), markersize=4)
-        ax.indicate_inset_zoom(axins, edgecolor='k')
+        if plot_Cv:
+            plt.figure('CV(E)')
+            Cv= heat_capacity(T, l_function)
+            ax.plot(T, Cv, '-', label=beautiful_name(f), markersize=4)
+            axins.plot(T, Cv, '-', label=beautiful_name(f), markersize=4)
+            ax.indicate_inset_zoom(axins, edgecolor='k')
         plotted_something = True
     if not plotted_something:
         print('nothing left to plot')
