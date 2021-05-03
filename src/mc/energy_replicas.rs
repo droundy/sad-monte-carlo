@@ -75,10 +75,21 @@ impl MedianEstimator {
         // so that if we have a discrete set of possible energies our median
         // will not be one of them, which would be a bad place to put a bin
         // divider.
-        if let Some(next) = self.energies[middle+1..].iter().cloned().filter(|&e| e != e_middle).next() {
-            0.5*(e_middle+next)
-        } else if let Some(prev) = self.energies[..middle].iter().rev().cloned().filter(|&e| e != e_middle).next() {
-            0.5*(e_middle+prev)
+        if let Some(next) = self.energies[middle + 1..]
+            .iter()
+            .cloned()
+            .filter(|&e| e != e_middle)
+            .next()
+        {
+            0.5 * (e_middle + next)
+        } else if let Some(prev) = self.energies[..middle]
+            .iter()
+            .rev()
+            .cloned()
+            .filter(|&e| e != e_middle)
+            .next()
+        {
+            0.5 * (e_middle + prev)
         } else {
             println!("not happy to pick our only ever energy as the median... :(");
             e_middle
@@ -150,14 +161,20 @@ impl<S: MovableSystem> Replica<S> {
         }
     }
     fn decimate(&mut self) {
-        self.above_total /= self.above_count as f64;
-        self.below_total /= self.below_count as f64;
-        for (_, e) in self.above_extra.iter_mut() {
-            e.0 /= e.1 as f64;
-            e.1 = 1;
+        if self.above_count > 1 {
+            self.above_total /= self.above_count as f64;
+            self.above_count = 1;
         }
-        self.above_count = 1;
-        self.below_count = 1;
+        if self.below_count > 1 {
+            self.below_total /= self.below_count as f64;
+            self.below_count = 1;
+        }
+        for (_, e) in self.above_extra.iter_mut() {
+            if e.1 > 1 {
+                e.0 /= e.1 as f64;
+                e.1 = 1;
+            }
+        }
         self.accepted_count = 1;
         self.rejected_count = 1;
         self.unique_visitors = 1;
@@ -631,7 +648,7 @@ impl<
             // to put into our new bin.  Wow, that's a lot of, ))
             if let Some((system, _)) = &r.system_with_lowest_max_energy {
                 if r.unique_visitors >= INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN
-                    // && self.replicas.iter().all(|rr| rr.energy().is_some())
+                // && self.replicas.iter().all(|rr| rr.energy().is_some())
                 {
                     let mean_below = r.below_total / r.below_count as f64;
                     if mean_below + self.min_T < r.cutoff_energy
