@@ -175,6 +175,10 @@ impl<S: MovableSystem> Replica<S> {
                 e.1 = 1;
             }
         }
+        if let Some((_, me)) = &mut self.system_with_lowest_max_energy {
+            // Restart tracking unique visitors.
+            *me = self.max_energy;
+        }
         self.accepted_count = 1;
         self.rejected_count = 1;
         self.unique_visitors = 1;
