@@ -317,14 +317,14 @@ impl<S: MovableSystem> Replica<S> {
     }
     fn printme(&self) {
         println!(
-            "   {} {:2.1}% > {:9.5} {:.2} unique, 𝚫E = {:.2} {:.3}% up",
+            "   {} {:2.1}% > {:9.5} {:.2} unique, 𝚫E = {:.2} ({:.3}% up)",
             if self.energy().is_none() { ":(" } else { "  " },
             crate::prettyfloat::PrettyFloat(100.0 * self.above_fraction()),
             self.cutoff_energy.pretty(),
             crate::prettyfloat::PrettyFloat(self.unique_visitors as f64),
             (self.max_energy - self.cutoff_energy).pretty(),
             crate::prettyfloat::PrettyFloat(
-                self.upwelling_count as f64 / (self.above_count as f64 + self.below_count as f64)
+                100.0*self.upwelling_count as f64 / (self.above_count as f64 + self.below_count as f64)
             ),
         );
     }
