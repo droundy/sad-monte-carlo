@@ -113,6 +113,10 @@ pub struct Replica<S> {
     pub above_count: u64,
     /// The counts below
     pub below_count: u64,
+    /// The total count from systems that have already reached the lowest energy
+    /// bin.
+    #[serde(default)]
+    pub upwelling_count: u64,
     /// The total energy above (for computing the mean)
     pub above_total: Energy,
     /// The total energy below (for computing the mean)
@@ -147,6 +151,7 @@ impl<S: MovableSystem> Replica<S> {
             cutoff_energy,
             above_count: 0,
             below_count: 0,
+            upwelling_count: 0,
             rejected_count: 0,
             accepted_count: 0,
             above_total: Energy::new(0.0),
@@ -161,6 +166,7 @@ impl<S: MovableSystem> Replica<S> {
         }
     }
     fn decimate(&mut self) {
+        self.upwelling_count = 0;
         if self.above_count > 1 {
             self.above_total /= self.above_count as f64;
             self.above_count = 1;
@@ -191,7 +197,7 @@ impl<S: MovableSystem> Replica<S> {
             .as_ref()
             .map(|(s, _)| s.energy())
     }
-    fn run_once(&mut self, moves: u64) {
+    fn run_once(&mut self, moves: u64, very_lowest_max_energy: Energy) {
         if let Some((system, lowest_max_energy)) = &mut self.system_with_lowest_max_energy {
             if self.max_energy.value_unsafe.is_finite() {
                 if let Some(e) = system.plan_move(&mut self.rng, self.translation_scale) {
@@ -226,6 +232,9 @@ impl<S: MovableSystem> Replica<S> {
                 } else {
                     self.below_count += 1;
                     self.below_total += e;
+                }
+                if *lowest_max_energy == very_lowest_max_energy {
+                    self.upwelling_count += 1;
                 }
             }
         }
@@ -286,6 +295,7 @@ impl<S: MovableSystem> Replica<S> {
             cutoff_energy: middle,
             above_count: 0,
             below_count: 0,
+            upwelling_count: 0,
             rejected_count: 0,
             accepted_count: 0,
             above_total: Energy::new(0.0),
@@ -307,12 +317,15 @@ impl<S: MovableSystem> Replica<S> {
     }
     fn printme(&self) {
         println!(
-            "   {} {:2.1}% > {:9.5} {:.2} unique, 𝚫E = {:.2}",
+            "   {} {:2.1}% > {:9.5} {:.2} unique, 𝚫E = {:.2} {:.3}% up",
             if self.energy().is_none() { ":(" } else { "  " },
             crate::prettyfloat::PrettyFloat(100.0 * self.above_fraction()),
             self.cutoff_energy.pretty(),
             crate::prettyfloat::PrettyFloat(self.unique_visitors as f64),
             (self.max_energy - self.cutoff_energy).pretty(),
+            crate::prettyfloat::PrettyFloat(
+                self.upwelling_count as f64 / (self.above_count as f64 + self.below_count as f64)
+            ),
         );
     }
 }
@@ -547,13 +560,13 @@ impl<
                 these_moves.fetch_add(steps, std::sync::atomic::Ordering::Relaxed);
                 if r.max_energy.value_unsafe.is_finite() {
                     for i in 0..steps {
-                        r.run_once(moves + i);
+                        r.run_once(moves + i, lowest_max_energy);
                     }
                 } else {
                     // For the unbounded high energy bin, we only need to fully randomize once.
                     // This is important, because fully randomizing is way more expensive
                     // than a single move (but even more effective).
-                    r.run_once(moves);
+                    r.run_once(moves, lowest_max_energy);
                 }
             }
         });
