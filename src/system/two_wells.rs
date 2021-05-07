@@ -91,3 +91,9 @@ impl MovableSystem for TwoWells {
         Length::new(2.0)
     }
 }
+
+#[test]
+fn a_test() {
+    println!("I am testing");
+    assert!(true);
+}
