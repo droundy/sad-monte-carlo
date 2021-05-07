@@ -12,6 +12,8 @@ import compute
 parser = argparse.ArgumentParser(description="fake energies analysis")
 parser.add_argument('base', nargs='*', help = 'the yaml or cbor files')
 parser.add_argument('--intensive', action='store_true')
+parser.add_argument('--T-max', action='store', type=float,
+                    help = "the highest energy for which we want heat capacity")
 
 args = parser.parse_args()
 
@@ -90,28 +92,41 @@ def latex_number(x):
             return rf'{mantissa}\times 10^{{{exponent}}}'
     return '%.3g' % x
 
-plot_Cv = False
+plot_Cv = args.T_max is not None
 
 E = np.linspace(mean_e[1:-1].min(), min(peak_e, energy_boundaries.max()), 10000)
 # E = np.linspace(-133.59, -133.0, 10000)
 # E = np.linspace(-133.59, 0, 10000)
 
-T = np.concatenate([np.arange(0.001, 0.01, 0.0001), np.arange(0.01, 0.5, 0.01)])
+if plot_Cv:
+    T_min = 2.0/(reference_function(mean_e[1:-1].min()) - reference_function(mean_e[1:-1].min()-1))
+    T = np.linspace(T_min, args.T_max, 1000)
+
+    boltz_arg_boundaries = reference_function(energy_boundaries) - energy_boundaries/T[-1]
+    P_boundaries = np.exp(boltz_arg_boundaries - boltz_arg_boundaries.max())
+    E = np.linspace(mean_e[1:-1].min(), energy_boundaries[P_boundaries > 0.1].max(), 1000)
 
 def heat_capacity(T, S_func):
     C = np.zeros_like(T)
-    E = np.arange(mean_e[1:-1].min(), energy_boundaries.max(), T[0]/4)
-    S = S_func(E)
-    for i in range(len(T)):
-        boltz_arg = S - E/T[i]
-        P = np.exp(boltz_arg - boltz_arg.max())
-        P = P/P.sum()
-        U = (E*P).sum()
-        C[i] = ((E-U)**2*P).sum()/T[i]**2
+
+    boltz_arg_boundaries = S_func(energy_boundaries) - energy_boundaries/T[-1]
+    P_boundaries = np.exp(boltz_arg_boundaries - boltz_arg_boundaries.max())
+
+    if (P_boundaries > 0).any():
+        E = np.arange(6*mean_e[1:-1].min() - 5*energy_boundaries[-1], energy_boundaries[P_boundaries > 0].max(), T[0]/8)
+        S = S_func(E)
+        for i in range(len(T)):
+            boltz_arg = S - E/T[i]
+            P = np.exp(boltz_arg - boltz_arg.max())
+            P = P/P.sum()
+            U = (E*P).sum()
+            C[i] = ((E-U)**2*P).sum()/T[i]**2
     return C
 
 if plot_Cv:
     Cv_reference = heat_capacity(T, reference_function)
+
+use_inset = False
 
 starting_moves = 1e8
 for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(bases[0]+'/*.cbor'))))):
@@ -125,12 +140,14 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         ax = plt.gca()
         ax.set_xlim(0, max(T))
         ax.set_ylim(0, 1.3*max(Cv_reference))
-        axins = ax.inset_axes([0.1, 0.5, 0.4, 0.47])
-        axins.set_xlim(T.min(), 0.01)
-        axins.set_ylim(0, 1.3*np.max(Cv_reference[T<0.01]))
+        if use_inset:
+            axins = ax.inset_axes([0.1, 0.5, 0.4, 0.47])
+            axins.set_xlim(T.min(), 0.01)
+            # axins.set_ylim(0, 1.3*np.max(Cv_reference[T<0.01]))
         
         ax.plot(T, Cv_reference, ':', color='gray', label='reference')
-        axins.plot(T, Cv_reference, ':', color='gray', label='reference')
+        if use_inset:
+            axins.plot(T, Cv_reference, ':', color='gray', label='reference')
 
     plt.figure('S(E)', figsize=(8,6))
     plt.clf()
@@ -185,8 +202,9 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
             plt.figure('CV(E)')
             Cv= heat_capacity(T, l_function)
             ax.plot(T, Cv, '-', label=beautiful_name(f), markersize=4)
-            axins.plot(T, Cv, '-', label=beautiful_name(f), markersize=4)
-            ax.indicate_inset_zoom(axins, edgecolor='k')
+            if use_inset:
+                axins.plot(T, Cv, '-', label=beautiful_name(f), markersize=4)
+                ax.indicate_inset_zoom(axins, edgecolor='k')
         plotted_something = True
     if not plotted_something:
         print('nothing left to plot')

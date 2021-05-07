@@ -76,11 +76,11 @@ systems = {}
 for v in volumes:
     name = f'wca-32-{v}'
     d = 1.0/v
-    systems[name] = f'--wca-reduced-density {d} --wca-N 32 --independent-systems-before-new-bin 4'.split()
+    systems[name] = f'--wca-reduced-density {d} --wca-N 32 --independent-systems-before-new-bin 16'.split()
     run_replicas(name=name, min_T = min_T, max_iter=1e11+1)
 
     name = f'wca-256-{v}'
     d = 1.0/v
-    systems[name] = f'--wca-reduced-density {d} --wca-N 256 --independent-systems-before-new-bin 4'.split()
+    systems[name] = f'--wca-reduced-density {d} --wca-N 256 --independent-systems-before-new-bin 16'.split()
     run_replicas(name=name, min_T = min_T, max_iter=1e11+1)
 
