@@ -18,6 +18,8 @@ pub struct MCParams {
     min_T: Energy,
     /// The seed for the random number generator.
     pub seed: Option<u64>,
+    /// The number of independent systems required before creating a new bin (default 64).
+    pub independent_systems_before_new_bin: Option<u64>,
     /// report input
     pub _movies: plugin::MovieParams,
     /// report input
@@ -33,6 +35,7 @@ impl Default for MCParams {
         MCParams {
             min_T: 0.2 * units::EPSILON,
             seed: None,
+            independent_systems_before_new_bin: None,
             _save: plugin::SaveParams::default(),
             _movies: plugin::MovieParams::default(),
             _report: plugin::ReportParams::default(),
@@ -324,7 +327,8 @@ impl<S: MovableSystem> Replica<S> {
             crate::prettyfloat::PrettyFloat(self.unique_visitors as f64),
             (self.max_energy - self.cutoff_energy).pretty(),
             crate::prettyfloat::PrettyFloat(
-                100.0*self.upwelling_count as f64 / (self.above_count as f64 + self.below_count as f64)
+                100.0 * self.upwelling_count as f64
+                    / (self.above_count as f64 + self.below_count as f64)
             ),
         );
     }
@@ -341,6 +345,9 @@ pub struct MC<S> {
     pub save_as: ::std::path::PathBuf,
     /// The number of MC moves we have done
     pub moves: u64,
+    /// The number of independent systems required before we create a new bin
+    #[serde(default)]
+    pub independent_systems_before_new_bin: u64,
 
     /// An estimator for the median energy below the lowest bin
     pub median: MedianEstimator,
@@ -357,8 +364,6 @@ pub struct MC<S> {
     /// Movie state
     report: plugin::Report,
 }
-
-const INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN: u64 = 64;
 
 impl<
         S: Clone
@@ -412,6 +417,9 @@ impl<
             moves: 0,
             median: MedianEstimator::new(energies[energies.len() / 4]),
             mean_for_median: params.mean_for_median,
+            independent_systems_before_new_bin: params
+                .independent_systems_before_new_bin
+                .unwrap_or(64),
 
             rng,
             save_as: save_as,
@@ -498,10 +506,7 @@ impl<
         let mut print_one_more = false;
         for (which, r) in self.replicas.iter().enumerate() {
             let percent = r.above_count as f64 / (r.above_count as f64 + r.below_count as f64);
-            let am_crazy = percent > 0.75
-                || percent < 0.25
-                || r.energy().is_none()
-                || r.unique_visitors < INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN;
+            let am_crazy = percent > 0.75 || percent < 0.25 || r.energy().is_none();
             if which < 5 || which + 15 >= num_replicas || am_crazy || print_one_more {
                 need_dots = true;
                 print_one_more = am_crazy; // print one more bin after a crazy bin.
@@ -653,6 +658,7 @@ impl<
                 self.median.add_energy(energy, &mut self.rng);
             }
         }
+        let independent_systems_before_new_bin = self.independent_systems_before_new_bin;
         let new_replica = if let Some(r) = self.replicas.last() {
             // We will create a new bin if we have had
             // INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN unique visitors at the lowest
@@ -664,7 +670,7 @@ impl<
             // the system energy must be below the median so that we have a
             // to put into our new bin.  Wow, that's a lot of, ))
             if let Some((system, _)) = &r.system_with_lowest_max_energy {
-                if r.unique_visitors >= INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN
+                if r.unique_visitors >= independent_systems_before_new_bin
                 // && self.replicas.iter().all(|rr| rr.energy().is_some())
                 {
                     let mean_below = r.below_total / r.below_count as f64;
