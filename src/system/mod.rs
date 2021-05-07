@@ -19,6 +19,7 @@ pub mod wca;
 pub mod any;
 
 pub mod erfinv;
+pub mod two_wells;
 pub mod fake;
 
 pub use crate::mc::binning::Interned;
