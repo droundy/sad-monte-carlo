@@ -93,7 +93,7 @@ def latex_number(x):
 plot_Cv = False
 
 E = np.linspace(mean_e[1:-1].min(), min(peak_e, energy_boundaries.max()), 10000)
-E = np.linspace(-133.59, -133.0, 10000)
+# E = np.linspace(-133.59, -133.0, 10000)
 # E = np.linspace(-133.59, 0, 10000)
 
 T = np.concatenate([np.arange(0.001, 0.01, 0.0001), np.arange(0.01, 0.5, 0.01)])
@@ -113,7 +113,7 @@ def heat_capacity(T, S_func):
 if plot_Cv:
     Cv_reference = heat_capacity(T, reference_function)
 
-starting_moves = 1e11
+starting_moves = 1e8
 for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(bases[0]+'/*.cbor'))))):
     which_color = 0
     plotted_something = False
