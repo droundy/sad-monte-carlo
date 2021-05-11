@@ -6,7 +6,7 @@ from subprocess import run
 run(['cargo', 'build', '--release', '--bin',
      'replicas', '--bin', 'histogram'], check=True)
 
-max_iter_default = 1e13
+max_iter_default = 1e12
 
 def rq(name, cmd, cpus):
     run(f'rq run -c {cpus} --max-output=30 -R -J'.split() +
@@ -70,17 +70,21 @@ def run_inv_t_wl(name, de, min_E, max_E, max_iter=max_iter_default, translation_
        cpus='1')
 
 volumes = np.arange(1.0, 2.501, 0.5)
-min_T = 0.25
+min_T = 0.1
 
 systems = {}
 for v in volumes:
-    name = f'wca-32-{v}'
     d = 1.0/v
-    systems[name] = f'--wca-reduced-density {d} --wca-N 32 --independent-systems-before-new-bin 16'.split()
-    run_replicas(name=name, min_T = min_T, max_iter=1e11+1)
+
+    name = f'wca-32-{v}'
+    systems[name] = f'--wca-reduced-density {d} --wca-N 32 --independent-systems-before-new-bin 8'.split()
+    run_replicas(name=name, min_T = min_T, max_iter=1e12)
+
+    name = f'wca-108-{v}'
+    systems[name] = f'--wca-reduced-density {d} --wca-N 108 --independent-systems-before-new-bin 8'.split()
+    run_replicas(name=name, min_T = min_T, max_iter=1e12)
 
     name = f'wca-256-{v}'
-    d = 1.0/v
-    systems[name] = f'--wca-reduced-density {d} --wca-N 256 --independent-systems-before-new-bin 16'.split()
-    run_replicas(name=name, min_T = min_T, max_iter=1e11+1)
+    systems[name] = f'--wca-reduced-density {d} --wca-N 256 --independent-systems-before-new-bin 8'.split()
+    run_replicas(name=name, min_T = min_T, max_iter=1e12)
 

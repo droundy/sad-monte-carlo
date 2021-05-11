@@ -55,6 +55,8 @@ class Bins:
             self._extra = {}
             m = list(np.array(data['energy_total'])/np.array(data['histogram']))
             self._mean_energy = np.array([np.nan]+list(m)+[np.nan]) # pad with undefined energy in the unbounded bins
+            m2 = list(np.array(data['energy_squared_total'])/np.array(data['histogram']))
+            self._mean_energy_squared = np.array([np.nan]+list(m2)+[np.nan]) # pad with undefined energy in the unbounded bins
             assert(len(self._lnw) == len(self._hist))
         self._energy = np.arange(self._min + 0.5*self._width,
                                  self._min + len(self._lnw)*self._width,
@@ -123,6 +125,9 @@ class MC:
     def mean_energy(self):
         return self._bins._mean_energy
     @property
+    def mean_energy_squared(self):
+        return self._bins._mean_energy_squared
+    @property
     def lnw(self):
         s = self.excess_entropy()
         s -= s.max()
@@ -165,6 +170,7 @@ for fname in args.yaml:
 
     np.savetxt(base+'-energy-boundaries.dat', mc.energy_boundaries)
     np.savetxt(base+'-mean-energy.dat', mc.mean_energy)
+    np.savetxt(base+'-mean-energy-squared.dat', mc.mean_energy_squared)
     np.savetxt(base+'-lnw.dat', mc.lnw) #includes unbounded extremes
 
     with open(base+'-system.dat', 'w') as f:

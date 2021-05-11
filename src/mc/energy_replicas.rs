@@ -124,6 +124,10 @@ pub struct Replica<S> {
     pub above_total: Energy,
     /// The total energy below (for computing the mean)
     pub below_total: Energy,
+    /// The total energy squared above (for computing the standard deviation)
+    pub above_total_squared: EnergySquared,
+    /// The total energy squared below (for computing the standard deviation)
+    pub below_total_squared: EnergySquared,
     /// Any extra data we might want to collect, total and count
     pub above_extra: HashMap<Interned, (f64, u64)>,
     /// The lowest `max_energy` that the system has visited, and the system itself
@@ -159,6 +163,8 @@ impl<S: MovableSystem> Replica<S> {
             accepted_count: 0,
             above_total: Energy::new(0.0),
             below_total: Energy::new(0.0),
+            above_total_squared: EnergySquared::new(0.0),
+            below_total_squared: EnergySquared::new(0.0),
             above_extra: HashMap::new(),
 
             translation_scale: Length::new(1.0),
@@ -172,10 +178,12 @@ impl<S: MovableSystem> Replica<S> {
         self.upwelling_count = 0;
         if self.above_count > 1 {
             self.above_total /= self.above_count as f64;
+            self.above_total_squared /= self.above_count as f64;
             self.above_count = 1;
         }
         if self.below_count > 1 {
             self.below_total /= self.below_count as f64;
+            self.below_total_squared /= self.below_count as f64;
             self.below_count = 1;
         }
         for (_, e) in self.above_extra.iter_mut() {
@@ -224,6 +232,7 @@ impl<S: MovableSystem> Replica<S> {
                 if e > self.cutoff_energy {
                     self.above_count += 1;
                     self.above_total += e;
+                    self.above_total_squared += e*e;
                     for (k, d) in system.data_to_collect(moves).into_iter() {
                         if let Some(p) = self.above_extra.get_mut(&k) {
                             p.0 += d;
@@ -235,6 +244,7 @@ impl<S: MovableSystem> Replica<S> {
                 } else {
                     self.below_count += 1;
                     self.below_total += e;
+                    self.below_total_squared += e*e;
                 }
                 if *lowest_max_energy == very_lowest_max_energy {
                     self.upwelling_count += 1;
@@ -303,6 +313,8 @@ impl<S: MovableSystem> Replica<S> {
             accepted_count: 0,
             above_total: Energy::new(0.0),
             below_total: Energy::new(0.0),
+            above_total_squared: EnergySquared::new(0.0),
+            below_total_squared: EnergySquared::new(0.0),
             above_extra: HashMap::new(),
 
             translation_scale: self.translation_scale,

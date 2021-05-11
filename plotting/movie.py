@@ -76,6 +76,20 @@ for base in bases:
         mean_e = np.flip(mean_e)
         lnw = np.flip(lnw)
     reference_function, reference_energy, reference_entropy = compute.linear_entropy(energy_boundaries, mean_e, lnw)
+    unscaled_reference_function = reference_function
+    if args.intensive:
+        system = compute.read_file(base)[3]
+        reference_N = system['N']
+        N = reference_N
+        reference_energy /= reference_N
+        reference_entropy /= reference_N
+        # energy_boundaries /= reference_N
+        # lnw /= reference_N
+        # peak_e /= reference_N
+        # s_estimate /= reference_N
+        # de /= reference_N
+        # mean_e /= reference_N
+        reference_function = lambda e: unscaled_reference_function(reference_N*e)/reference_N
 
 print('done reading bases')
 sigma = 1
@@ -99,12 +113,15 @@ E = np.linspace(mean_e[1:-1].min(), min(peak_e, energy_boundaries.max()), 10000)
 # E = np.linspace(-133.59, 0, 10000)
 
 if plot_Cv:
-    T_min = 2.0/(reference_function(mean_e[1:-1].min()) - reference_function(mean_e[1:-1].min()-1))
+    T_min = 2.0/(unscaled_reference_function(mean_e[1:-1].min()) - unscaled_reference_function(mean_e[1:-1].min()-1))
     T = np.linspace(T_min, args.T_max, 1000)
 
-    boltz_arg_boundaries = reference_function(energy_boundaries) - energy_boundaries/T[-1]
+    boltz_arg_boundaries = unscaled_reference_function(energy_boundaries) - energy_boundaries/T[-1]
     P_boundaries = np.exp(boltz_arg_boundaries - boltz_arg_boundaries.max())
     E = np.linspace(mean_e[1:-1].min(), energy_boundaries[P_boundaries > 0.1].max(), 1000)
+
+if args.intensive:
+    E /= reference_N
 
 def heat_capacity(T, S_func):
     C = np.zeros_like(T)
@@ -113,7 +130,7 @@ def heat_capacity(T, S_func):
     P_boundaries = np.exp(boltz_arg_boundaries - boltz_arg_boundaries.max())
 
     if (P_boundaries > 0).any():
-        E = np.arange(6*mean_e[1:-1].min() - 5*energy_boundaries[-1], energy_boundaries[P_boundaries > 0].max(), T[0]/8)
+        E = np.linspace(6*mean_e[1:-1].min() - 5*energy_boundaries[-1], energy_boundaries[P_boundaries > 0].max(), 1000)
         S = S_func(E)
         for i in range(len(T)):
             boltz_arg = S - E/T[i]
@@ -121,10 +138,12 @@ def heat_capacity(T, S_func):
             P = P/P.sum()
             U = (E*P).sum()
             C[i] = ((E-U)**2*P).sum()/T[i]**2
+    if args.intensive:
+        C /= N
     return C
 
 if plot_Cv:
-    Cv_reference = heat_capacity(T, reference_function)
+    Cv_reference = heat_capacity(T, unscaled_reference_function)
 
 use_inset = False
 
@@ -171,21 +190,32 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         moves[base].append(mymove)
         print(f'working on {base} with moves {mymove} which is {f}')
 
-        energy_b = np.loadtxt(f+'-energy-boundaries.dat')
+        energy_boundaries = np.loadtxt(f+'-energy-boundaries.dat')
         mean_e = np.loadtxt(f+'-mean-energy.dat')
         my_lnw = np.loadtxt(f+'-lnw.dat')
         
-        if energy_b.ndim == 0: #in case of a single value
-            energy_b = np.array([energy_b.item()])
+        if energy_boundaries.ndim == 0: #in case of a single value
+            energy_boundaries = np.array([energy_b.item()])
 
-        if energy_b[0] < energy_b[-1]:
-            energy_b = np.flip(energy_b)
+        if energy_boundaries[0] < energy_boundaries[-1]:
+            energy_boundaries = np.flip(energy_boundaries)
             mean_e = np.flip(mean_e)
             my_lnw = np.flip(my_lnw)
 
         # Create a function for the entropy based on this number of moves:
-        l_function, eee, sss = compute.linear_entropy(energy_b, mean_e, my_lnw)
-        # l_function, _, _ = compute.step_entropy(energy_b, mean_e, my_lnw)
+        l_function, eee, sss = compute.linear_entropy(energy_boundaries, mean_e, my_lnw)
+        if args.intensive:
+            system = compute.read_file(f)[3]
+            N = system['N']
+            eee /= N
+            sss /= N
+            # function_raw = l_function
+            # l_function = lambda e: function_raw(N*e)/N
+
+            # energy_boundaries /= N
+            # mean_e /= N
+            # my_lnw /= N
+
         entropy_here = l_function(E)
         offset = 0 # l_function(-133)
         plt.figure('S(E)')
@@ -193,8 +223,8 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         plt.plot(eee, sss - offset, '.-', label=beautiful_name(f), markersize=4)
         plt.xlim(E.min(), E.max())
         if not np.any(np.isnan(entropy_here)):
-            ymin = min(ymin, entropy_here.min() - offset)
-            ymax = max(ymax, entropy_here.max() - offset)
+            ymin = min(ymin, sss[eee >= E.min()].min() - offset)
+            ymax = max(ymax, sss[eee <= E.max()].max() - offset)
         #     plt.ylim(entropy_here.min() - offset, entropy_here.max() - offset)
         plt.title('$t=%s$' % latex_number(mymove))
 
