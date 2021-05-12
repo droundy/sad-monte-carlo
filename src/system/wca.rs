@@ -207,7 +207,7 @@ impl System for Wca {
                     p += potential_pressure((r1 - r2).norm2());
                 }
             }
-            vec![("pressure".into(), *(p / units::EPSILON).value())]
+            vec![("pressure".into(), *(p / units::EPSILON).value()) / self.positions.len() as f64]
         } else {
             Vec::new()
         }
