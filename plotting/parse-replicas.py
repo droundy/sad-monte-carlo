@@ -74,6 +74,15 @@ for fname in args.fname:
     energy_boundaries = np.array(energy_boundaries)
 
     system = readsystem.readsystem(replicas[0])
+    for e in replicas[0]['above_extra'].keys():
+        extra = []
+        for r in replicas:
+            if e in r['above_extra']:
+                extra.append(r['above_extra'][e][0]/r['above_extra'][e][1])
+            else:
+                extra.append(0)
+        np.savetxt(base+f'-{e}.dat', extra)
+            
 
     np.savetxt(base+'-above-fraction.dat', above_fraction, fmt='%13.7g')
     np.savetxt(base+'-energy-boundaries.dat', energy_boundaries)

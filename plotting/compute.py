@@ -4,17 +4,27 @@ import yaml
 def read_file(base):
     energy_boundaries = np.loadtxt(base+'-energy-boundaries.dat')
     mean_energy = np.loadtxt(base+'-mean-energy.dat')
+    excess_pressure = None
+    try:
+        excess_pressure = np.loadtxt(base+'-pressure.dat')
+    except:
+        pass
     lnw = np.loadtxt(base+'-lnw.dat')
     with open(base+'-system.dat') as f:
         system = yaml.safe_load(f)
+
+    if energy_boundaries.ndim == 0: #in case of a single value
+        energy_boundaries = np.array([energy_b.item()])
 
     if energy_boundaries[0] < energy_boundaries[-1]:
         energy_boundaries = np.flip(energy_boundaries)
         mean_energy = np.flip(mean_energy)
         lnw = np.flip(lnw)
+        if excess_pressure is not None:
+            excess_pressure = np.flip(excess_pressure)
     lnw -= lnw.max()
     lnw -= np.log(np.sum(np.exp(lnw)))
-    return energy_boundaries, mean_energy, lnw, system
+    return energy_boundaries, mean_energy, lnw, system, excess_pressure
 
 def step_entropy(energy_boundaries, mean_energy, lnw):
     step_entropy = []
@@ -106,3 +116,24 @@ def linear_entropy(energy_boundaries, mean_energy, lnw):
             return np.interp(E, step_energy, step_entropy, left=step_entropy[0], right=0) \
                 + np.heaviside(E-energy_boundaries[0], 0)*(Sup-(E-energy_boundaries[0])**2/(2*sigup**2))
     return entropy, 1*step_energy, 1*step_entropy
+
+
+def pressure_temperature(density, energy_boundaries, mean_energy, excess_pressure):
+    p = [0] # just set to zero for highest energy bin
+    T = [1e10] # just set to zero for highest energy bin
+
+    print('p_exc', excess_pressure)
+    print('mean_e', mean_energy)
+    # Now consider all the middle cases
+    for i in range(len(energy_boundaries)-1):
+        deltaE = energy_boundaries[i] - energy_boundaries[i+1]
+        meanE = mean_energy[i+1]
+        beta = find_beta_deltaE((meanE - energy_boundaries[i+1])/deltaE)/deltaE
+        p.append(excess_pressure[i+1] + density/beta)
+        T.append(1/beta)
+    # Now let's do the low-energy unbounded bin
+    kT = energy_boundaries[-1] - mean_energy[-1]
+    p.append(excess_pressure[-1] + kT*density)
+    T.append(kT)
+
+    return np.array(p), np.array(T)

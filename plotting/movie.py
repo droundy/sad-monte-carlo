@@ -142,12 +142,24 @@ def heat_capacity(T, S_func):
         C /= N
     return C
 
+def canonical(T, E, X_of_E, S_func):
+    X_of_T = np.zeros_like(T)
+    X_of_E[np.isinf(X_of_E)] = 0
+
+    S = S_func(E)
+    for i in range(len(T)):
+        boltz_arg = S - E/T[i]
+        P = np.exp(boltz_arg - boltz_arg.max())
+        P = P/P.sum()
+        X_of_T[i] = (X_of_E*P).sum()
+    return X_of_T
+
 if plot_Cv:
     Cv_reference = heat_capacity(T, unscaled_reference_function)
 
 use_inset = False
 
-starting_moves = 1e8
+starting_moves = 1e9
 for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(bases[0]+'/*.cbor'))))):
     which_color = 0
     plotted_something = False
@@ -168,6 +180,12 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         if use_inset:
             axins.plot(T, Cv_reference, ':', color='gray', label='reference')
 
+    if args.intensive:
+        plt.figure('pressure', figsize=(8,6))
+        plt.clf()
+        plt.ylabel('$p$')
+        plt.xlabel('$T$')
+        # pmax = 0
     plt.figure('S(E)', figsize=(8,6))
     plt.clf()
     plt.ylabel('$S(E)$')
@@ -190,22 +208,11 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         moves[base].append(mymove)
         print(f'working on {base} with moves {mymove} which is {f}')
 
-        energy_boundaries = np.loadtxt(f+'-energy-boundaries.dat')
-        mean_e = np.loadtxt(f+'-mean-energy.dat')
-        my_lnw = np.loadtxt(f+'-lnw.dat')
+        energy_boundaries, mean_e, my_lnw, system, p_exc = compute.read_file(f)
         
-        if energy_boundaries.ndim == 0: #in case of a single value
-            energy_boundaries = np.array([energy_b.item()])
-
-        if energy_boundaries[0] < energy_boundaries[-1]:
-            energy_boundaries = np.flip(energy_boundaries)
-            mean_e = np.flip(mean_e)
-            my_lnw = np.flip(my_lnw)
-
         # Create a function for the entropy based on this number of moves:
         l_function, eee, sss = compute.linear_entropy(energy_boundaries, mean_e, my_lnw)
         if args.intensive:
-            system = compute.read_file(f)[3]
             N = system['N']
             eee /= N
             sss /= N
@@ -215,6 +222,19 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
             # energy_boundaries /= N
             # mean_e /= N
             # my_lnw /= N
+            plt.figure('pressure')
+            density = system['density']
+            pressure, T_here = compute.pressure_temperature(density, energy_boundaries, mean_e, p_exc)
+            # plt.plot(mean_e/N, pressure, '.-', label=beautiful_name(f))
+            # plt.xlim(E.min(), E.max())
+            # if len(pressure[mean_e/N <= E.max()] > 0):
+            #     pmax = max(pmax, pressure[mean_e/N <= E.max()].max())
+
+            pressure_of_T = canonical(T, mean_e, pressure, l_function)
+            plt.plot(T, pressure_of_T, '-', label=beautiful_name(f))
+
+            plt.plot(T_here[T_here<=T.max()], pressure[T_here<=T.max()], '.-', label=beautiful_name(f))
+            plt.xlim(0, T.max())
 
         entropy_here = l_function(E)
         offset = 0 # l_function(-133)
@@ -249,6 +269,12 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         plt.axvline(-133.29382, color='k', linestyle=':')
         plt.axvline(-133.10462, color='k', linestyle=':')
     plt.legend()
+    if args.intensive:
+        plt.figure('pressure')
+        plt.title('$t=%s$' % latex_number(mymove))
+        # if np.isfinite(pmax):
+        #     plt.ylim(0, pmax)
+        plt.legend()
     plt.draw_if_interactive()
     plt.pause(1.01)
 
