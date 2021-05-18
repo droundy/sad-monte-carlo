@@ -53,8 +53,8 @@ impl TwoWells {
         let mut d_2_squared = 0.;
 
         for i in 0..(self.parameters.N){
-            d_1_squared += position[i].powi(2);
-            d_2_squared += (position[i] - self.parameters.center_2[i]).powi(2);
+            d_1_squared += position[i]*position[i];
+            d_2_squared += (position[i] - self.parameters.center_2[i])*(position[i] - self.parameters.center_2[i]);
         }
 
         let e_1 = self.parameters.h_1*(d_1_squared/ (self.parameters.r_1*self.parameters.r_1) - 1.);
