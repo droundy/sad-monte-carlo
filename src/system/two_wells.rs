@@ -21,6 +21,8 @@ pub struct Parameters {
     pub r_1: f64,
     /// Radius of the first well
     pub r_2: f64,
+    /// Center of the first Well
+    pub center_1: Vec<f64>,
     /// Center of the Second Well
     pub center_2: Vec<f64>,
 }
@@ -53,7 +55,7 @@ impl TwoWells {
         let mut d_2_squared = 0.;
 
         for i in 0..(self.parameters.N){
-            d_1_squared += position[i]*position[i];
+            d_1_squared += (position[i] - self.parameters.center_1[i])*(position[i] - self.parameters.center_1[i]);
             d_2_squared += (position[i] - self.parameters.center_2[i])*(position[i] - self.parameters.center_2[i]);
         }
 
