@@ -22,6 +22,8 @@ pub enum AnyParams {
     Ising(ising::IsingParams),
     /// a square well system
     Sw(optsquare::SquareWellNParams),
+    /// a two well system
+    TwoWells(two_wells::Parameters),
 }
 /// The parameters needed to configure an AnyGrand model.
 ///
@@ -71,6 +73,8 @@ pub enum Any {
     Ising(ising::Ising),
     /// a square well system
     Sw(optsquare::SquareWell),
+    /// a two wells system
+    TwoWells(two_wells::TwoWells),
 }
 
 impl From<AnyParams> for Any {
@@ -83,6 +87,7 @@ impl From<AnyParams> for Any {
             AnyParams::FakeErfinv(parameters) => Any::FakeErfinv(erfinv::ErfInv::from(parameters)),
             AnyParams::Sw(parameters) => Any::Sw(optsquare::SquareWell::from(parameters)),
             AnyParams::Water(parameters) => Any::Water(water::Water::from(parameters)),
+            AnyParams::TwoWells(parameters) => Any::TwoWells(two_wells::TwoWells::from(parameters)),
         }
     }
 }
@@ -97,6 +102,7 @@ impl Any {
             Any::FakeErfinv(s) => s as &dyn MovableSystem,
             Any::Sw(s) => s as &dyn MovableSystem,
             Any::Water(s) => s as &dyn MovableSystem,
+            Any::TwoWells(s) => s as &dyn MovableSystem,
         }
     }
     fn movable_mut(&mut self) -> &mut dyn MovableSystem {
@@ -108,6 +114,7 @@ impl Any {
             Any::FakeErfinv(s) => s as &mut dyn MovableSystem,
             Any::Sw(s) => s as &mut dyn MovableSystem,
             Any::Water(s) => s as &mut dyn MovableSystem,
+            Any::TwoWells(s) => s as &mut dyn MovableSystem,
         }
     }
 }
