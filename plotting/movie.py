@@ -144,12 +144,15 @@ def heat_capacity(T, S_func):
 
 def canonical(T, E, X_of_E, S_func):
     X_of_T = np.zeros_like(T)
-    X_of_E[np.isinf(X_of_E)] = 0
+    X_of_E = 1.0*X_of_E
+    badnum = np.isnan(X_of_E) | np.isinf(X_of_E)
+    X_of_E[badnum] = 0
 
     S = S_func(E)
     for i in range(len(T)):
         boltz_arg = S - E/T[i]
         P = np.exp(boltz_arg - boltz_arg.max())
+        P[badnum] = 0
         P = P/P.sum()
         X_of_T[i] = (X_of_E*P).sum()
     return X_of_T
@@ -159,12 +162,12 @@ if plot_Cv:
 
 use_inset = False
 
-starting_moves = 1e9
+starting_moves = 1e10
 for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(bases[0]+'/*.cbor'))))):
     which_color = 0
     plotted_something = False
     if plot_Cv:
-        plt.figure('CV(E)', figsize=(8,6))
+        plt.figure('$C_V$', figsize=(8,6))
         plt.clf()
         plt.ylabel('$C_V(T)$')
         plt.xlabel('$T$')
@@ -249,12 +252,26 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         plt.title('$t=%s$' % latex_number(mymove))
 
         if plot_Cv:
-            plt.figure('CV(E)')
+            plt.figure('$C_V$')
             Cv= heat_capacity(T, l_function)
             ax.plot(T, Cv, '-', label=beautiful_name(f), markersize=4)
             if use_inset:
                 axins.plot(T, Cv, '-', label=beautiful_name(f), markersize=4)
                 ax.indicate_inset_zoom(axins, edgecolor='k')
+
+            diff_by = 10
+            # pressure, T_here = compute.pressure_temperature(density, energy_boundaries, mean_e, p_exc)
+            # T_mean = 0.5*(T_here[diff_by:] + T_here[:-diff_by])
+            # Cv_canonical = (mean_e[diff_by:]-mean_e[:-diff_by])/(T_here[diff_by:]-T_here[:-diff_by])
+            # if args.intensive:
+            #     Cv_canonical /= N
+            
+            # T_here = (eee[diff_by:]-eee[:-diff_by])/(sss[diff_by:]-sss[:-diff_by])
+            # e_here = 0.5*(eee[diff_by:]+eee[:-diff_by])
+
+            # Cv_canonical = (e_here[diff_by:]-e_here[:-diff_by])/(T_here[diff_by:]-T_here[:-diff_by])
+            # T_mean = 0.5*(T_here[diff_by:] + T_here[:-diff_by])
+            # ax.plot(T_mean, Cv_canonical, '.-', label=beautiful_name(f))
         plotted_something = True
     if not plotted_something:
         print('nothing left to plot')
@@ -274,6 +291,9 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         plt.title('$t=%s$' % latex_number(mymove))
         # if np.isfinite(pmax):
         #     plt.ylim(0, pmax)
+        plt.legend()
+    if plot_Cv:
+        plt.figure('$C_V$')
         plt.legend()
     plt.draw_if_interactive()
     plt.pause(1.01)
