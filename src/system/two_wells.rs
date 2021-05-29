@@ -58,10 +58,10 @@ impl TwoWells {
         let e_2 = Energy::new(self.parameters.h_2_to_h_1)*(d_2_squared/ (self.parameters.r_2*self.parameters.r_2) - 1.);
 
         if e_1 < e_2{
-            e_2
+            e_1
         }
         else{
-            e_1
+            e_2
         }
     }
 }
