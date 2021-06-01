@@ -12,9 +12,9 @@ pub struct Parameters {
     /// the number of dimensions
     pub N: usize,
     /// Ratio of depths of the wells (h_2/h_1)
-    pub h_2_to_h_1: f64,
+    pub h2_to_h1: f64,
     /// Radius of the second well
-    pub r_2: f64,
+    pub r2: f64,
 }
 
 #[allow(non_snake_case)]
@@ -41,21 +41,20 @@ impl From<Parameters> for TwoWells {
 
 impl TwoWells {
     fn find_energy(&self, position: &[f64]) -> Energy {
-        let r_1 = 1.-self.parameters.r_2;
+        //r_1 is assumed to be 1 and center_2 is such that the two wells are touching
 
-        let center_1 = -1. + r_1;
-        let center_2 = 1. - self.parameters.r_2;
+        let mut d_1_squared = 0.;
+        let mut d_2_squared = 0.;
 
-        let mut d_1_squared = (position[0] - center_1)*(position[0] - center_1);
-        let mut d_2_squared = (position[0] - center_2)*(position[0] - center_2);
+        let center_2 = (1.+self.parameters.r2) / ((self.parameters.N as f64).sqrt());
 
-        for i in 1..(self.parameters.N){
+        for i in 0..(self.parameters.N){
             d_1_squared += (position[i])*(position[i]);
-            d_2_squared += (position[i])*(position[i]);
+            d_2_squared += (position[i] - center_2)*(position[i] - center_2);
         }
 
-        let e_1 = Energy::new(1.)*(d_1_squared/ (r_1*r_1) - 1.);
-        let e_2 = Energy::new(self.parameters.h_2_to_h_1)*(d_2_squared/ (self.parameters.r_2*self.parameters.r_2) - 1.);
+        let e_1 = Energy::new(1.)*(d_1_squared - 1.);
+        let e_2 = Energy::new(self.parameters.h2_to_h1)*(d_2_squared/ (self.parameters.r2*self.parameters.r2) - 1.);
 
         if e_1 < e_2{
             e_1
