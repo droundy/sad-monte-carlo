@@ -258,8 +258,11 @@ impl Report {
     /// Am all done?
     pub fn am_all_done(&self, moves: u64, independent_samples: u64) -> bool {
         if let TimeToRun::TotalMoves(maxiter) = self.max_iter {
-            moves >= maxiter
-        } else if let Some(mis) = self.max_independent_samples {
+            if moves >= maxiter {
+                return True;
+            }
+        }
+        if let Some(mis) = self.max_independent_samples {
             independent_samples >= mis
         } else {
             false
