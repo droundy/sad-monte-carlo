@@ -503,7 +503,7 @@ impl<
     }
     /// Create a simulation checkpoint.
     pub fn checkpoint(&mut self) {
-        self.report.print(self.moves);
+        self.report.print(self.moves, self.replicas.last().unwrap().unique_visitors);
         println!(
             "    [{} walkers in {} zones]",
             self.replicas
@@ -765,7 +765,7 @@ impl<
             if movie_time {
                 self.movie.save_frame(&self.save_as, moves, &self);
             }
-            if self.report.am_all_done(moves) {
+            if self.report.am_all_done(moves, self.replicas.last().unwrap().unique_visitors) {
                 self.checkpoint();
                 println!("All done!");
                 ::std::process::exit(0);

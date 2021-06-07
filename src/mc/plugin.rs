@@ -148,6 +148,8 @@ impl PluginManager {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Report {
     max_iter: TimeToRun,
+    #[serde(default)]
+    max_independent_samples: Option<u64>,
     /// This is when and where the simulation started.
     #[serde(skip, default)]
     start: Cell<Option<(time::Instant, u64)>>,
@@ -161,6 +163,8 @@ pub struct Report {
 pub struct ReportParams {
     /// The maximum number of iterations to run.
     pub max_iter: Option<u64>,
+    /// The maximum number of independent samples to find.
+    pub max_independent_samples: Option<u64>,
     /// Do not make reports!
     pub quiet: bool,
 }
@@ -169,6 +173,7 @@ impl Default for ReportParams {
     fn default() -> Self {
         ReportParams {
             max_iter: None,
+            max_independent_samples: None,
             quiet: true,
         }
     }
@@ -182,6 +187,7 @@ impl From<ReportParams> for Report {
             } else {
                 TimeToRun::Never
             },
+            max_independent_samples: params.max_independent_samples,
             start: Cell::new(Some((time::Instant::now(), 0))),
             quiet: params.quiet,
         }
@@ -193,11 +199,12 @@ impl Report {
     pub fn update_from(&mut self, params: ReportParams) {
         let other = Self::from(params);
         self.max_iter = other.max_iter;
+        self.max_independent_samples = other.max_independent_samples;
         self.quiet = other.quiet;
     }
 
     /// Print a log message
-    pub fn print(&self, moves: u64) {
+    pub fn print(&self, moves: u64, independent_samples: u64) {
         if self.quiet {
             return;
         }
@@ -225,6 +232,22 @@ impl Report {
                         PrettyFloat(time_per_move * 1e6),
                     );
                 }
+                if let Some(max) = self.max_independent_samples {
+                    let frac_complete = independent_samples as f64 / max as f64;
+                    let samples_left = if max >= independent_samples {
+                        max - independent_samples
+                    } else {
+                        0
+                    };
+                    let moves_per_sample = moves as f64 / (1.0 + independent_samples as f64);
+                    let time_left = (time_per_move * samples_left as f64 * moves_per_sample) as u64;
+                    println!(
+                        "{}% done ({} left, {} per sample)",
+                        (100. * frac_complete) as isize,
+                        format_duration(time_left),
+                        format_duration((time_per_move * moves_per_sample) as u64),
+                    );
+                }
             }
             None => {
                 self.start.set(Some((time::Instant::now(), moves)));
@@ -233,18 +256,19 @@ impl Report {
     }
 
     /// Am all done?
-    pub fn am_all_done(&self, moves: u64) -> bool {
+    pub fn am_all_done(&self, moves: u64, independent_samples: u64) -> bool {
         if let TimeToRun::TotalMoves(maxiter) = self.max_iter {
-            if moves >= maxiter {
-                return true;
-            }
+            moves >= maxiter
+        } else if let Some(mis) = self.max_independent_samples {
+            independent_samples >= mis
+        } else {
+            false
         }
-        false
     }
 }
 impl<MC: MonteCarlo> Plugin<MC> for Report {
     fn run(&self, mc: &MC, _sys: &MC::System) -> Action {
-        if self.am_all_done(mc.num_moves()) {
+        if self.am_all_done(mc.num_moves(), mc.independent_samples()) {
             return Action::Exit;
         }
         Action::None
@@ -253,7 +277,7 @@ impl<MC: MonteCarlo> Plugin<MC> for Report {
         self.max_iter
     }
     fn log(&self, mc: &MC, _sys: &MC::System) {
-        self.print(mc.num_moves());
+        self.print(mc.num_moves(), mc.independent_samples());
     }
     fn save(&self, mc: &MC, _sys: &MC::System) {
         if self.quiet {

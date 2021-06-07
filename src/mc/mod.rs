@@ -130,6 +130,11 @@ pub trait MonteCarlo: Sized + serde::Serialize + ::serde::de::DeserializeOwned {
     /// The number of moves that have been made.
     fn num_moves(&self) -> u64;
 
+    /// The number of moves that have been made.
+    fn independent_samples(&self) -> u64 {
+        self.num_accepted_moves()
+    }
+
     /// The number of accepted moves.
     fn num_accepted_moves(&self) -> u64;
 

@@ -218,7 +218,7 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
     }
     /// Create a simulation checkpoint.
     pub fn checkpoint(&mut self) {
-        self.report.print(self.moves);
+        self.report.print(self.moves, self.moves);
         println!(
             "    Current energy {:.5} rejected {:.2}%",
             self.system.energy().pretty(),
@@ -269,7 +269,7 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
         if movie_time {
             self.movie.save_frame(&self.save_as, self.moves, &self);
         }
-        if self.report.am_all_done(self.moves) {
+        if self.report.am_all_done(self.moves, self.moves) {
             self.checkpoint();
             println!("All done!");
             ::std::process::exit(0);
