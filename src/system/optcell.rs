@@ -191,6 +191,10 @@ impl Cell {
         }
         r
     }
+    /// The volume of the cell
+    pub fn volume(&self) -> Volume {
+        self.box_diagonal[0]*self.box_diagonal[1]*self.box_diagonal[2]
+    }
     /// PUBLIC FOR TESTING ONLY! The shortest distance squared between two vectors.
     pub fn closest_distance2(&self, r1: Vector3d<Length>, r2: Vector3d<Length>) -> Area {
         let mut dr = r2 - r1;

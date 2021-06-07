@@ -207,7 +207,8 @@ impl System for Wca {
                     p += potential_pressure((r1 - r2).norm2());
                 }
             }
-            vec![("pressure".into(), *(p / units::EPSILON).value() / self.num_atoms() as f64)]
+            // We do not need factor of 0.5 below because it's in potential_pressure above -- DJR
+            vec![("pressure".into(), *(p / units::EPSILON).value() / (3.0*self.cell.volume().value_unsafe))]
         } else {
             Vec::new()
         }
