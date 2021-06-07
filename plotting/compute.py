@@ -122,8 +122,6 @@ def pressure_temperature(density, energy_boundaries, mean_energy, excess_pressur
     p = [0] # just set to zero for highest energy bin
     T = [1e10] # just set to zero for highest energy bin
 
-    print('p_exc', excess_pressure)
-    print('mean_e', mean_energy)
     # Now consider all the middle cases
     for i in range(len(energy_boundaries)-1):
         deltaE = energy_boundaries[i] - energy_boundaries[i+1]

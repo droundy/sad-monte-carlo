@@ -16,13 +16,17 @@ def rq(name, cmd, cpus):
 movie_args = '--movie-time 10^(1/8)'.split()
 
 
-def run_replicas(name, max_iter=max_iter_default, min_T=0.001, extraname='', extraflags=''):
-    save = f'r-{extraname}{name}'
+def run_replicas(name, max_iter=max_iter_default, min_T=0.001, max_independent_samples=None, extraname='', extraflags=''):
+    save = f'z-{extraname}{name}'
+    samples = []
+    if max_independent_samples is not None:
+        samples = ['--max-independent-samples', str(max_independent_samples)]
     rq(name=save,
        cmd=['../target/release/replicas']+systems[name]+movie_args
         + f'--save-time 0.5 --save-as {save}.cbor'.split()
         + extraflags.split()
-        + f'--max-iter {max_iter} --min-T {min_T}'.split(),
+        + f'--max-iter {max_iter} --min-T {min_T}'.split()
+        + samples,
        cpus='all')
 
 
@@ -69,22 +73,41 @@ def run_inv_t_wl(name, de, min_E, max_E, max_iter=max_iter_default, translation_
         + f'--max-iter {max_iter} --inv-t-wl --min-allowed-energy {min_E} --max-allowed-energy {max_E}'.split(),
        cpus='1')
 
-volumes = np.arange(1.0, 2.501, 0.5)
+volumes = np.arange(2.6, 0.95, -0.05)
 min_T = 0.1
+
+movie_args = '--movie-time 10^(1/2)'.split()
 
 systems = {}
 for v in volumes:
     d = 1.0/v
+    name = f'wca-32-%.2f' % v
+    systems[name] = f'--wca-reduced-density {d} --wca-N 32 --independent-systems-before-new-bin 16'.split()
+    run_replicas(name=name, min_T = min_T, max_independent_samples=1000)
 
-    name = f'wca-32-{v}'
-    systems[name] = f'--wca-reduced-density {d} --wca-N 32 --independent-systems-before-new-bin 8'.split()
-    run_replicas(name=name, min_T = min_T, max_iter=1e12)
+movie_args = '--movie-time 10^(1/8)'.split()
 
-    name = f'wca-108-{v}'
-    systems[name] = f'--wca-reduced-density {d} --wca-N 108 --independent-systems-before-new-bin 8'.split()
-    run_replicas(name=name, min_T = min_T, max_iter=1e12)
+for v in volumes:
+    d = 1.0/v
+    name = f'wca-108-%.2f' % v
+    systems[name] = f'--wca-reduced-density {d} --wca-N 108 --independent-systems-before-new-bin 16'.split()
+    run_replicas(name=name, min_T = min_T, max_independent_samples=1000)
 
-    name = f'wca-256-{v}'
-    systems[name] = f'--wca-reduced-density {d} --wca-N 256 --independent-systems-before-new-bin 8'.split()
-    run_replicas(name=name, min_T = min_T, max_iter=1e12)
+# for v in volumes:
+#     d = 1.0/v
+#     name = f'wca-256-{v}'
+#     systems[name] = f'--wca-reduced-density {d} --wca-N 256 --independent-systems-before-new-bin 8'.split()
+#     run_replicas(name=name, min_T = min_T, max_iter=1e11)
+
+# for v in volumes:
+#     d = 1.0/v
+#     name = f'wca-256-{v}-i16'
+#     systems[name] = f'--wca-reduced-density {d} --wca-N 256 --independent-systems-before-new-bin 16'.split()
+#     run_replicas(name=name, min_T = min_T, max_iter=1e11)
+
+# for v in volumes:
+#     d = 1.0/v
+#     name = f'wca-500-{v}-i16'
+#     systems[name] = f'--wca-reduced-density {d} --wca-N 500 --independent-systems-before-new-bin 16'.split()
+#     run_replicas(name=name, min_T = min_T, max_iter=1e12)
 

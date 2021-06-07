@@ -26,6 +26,9 @@ def beautiful_name(base):
     if 'r-' == base[:2]:
         name += "Zeno's "
         base = base[2:].split('/')[0]
+    elif 'z-' == base[:2]:
+        name += "Zeno's "
+        base = base[2:].split('/')[0]
     elif 'wl-' == base[:3]:
         name += 'WL '
         base = base[3:].split('/')[0]
@@ -47,81 +50,6 @@ def beautiful_name(base):
         name += rf' $\Delta E = {base}$'
         base = ''
     return name + base
-
-#Read Data
-moves = {}
-error = {} #store the max error in each move
-bases = []
-print('base', args.base)
-
-#each file has different path (including extension) so concatenating is easy
-for base in args.base:
-    #change base to have the cbor files. currently has the directory
-    if '.cbor' in base or '.yaml' in base:
-        base = base[:-5]
-    bases.append(base)
-
-for base in bases:
-    print('reading', base)
-
-    energy_boundaries = np.loadtxt(base+'-energy-boundaries.dat')
-    de = abs(np.diff(energy_boundaries))
-    lnw = np.loadtxt(base+'-lnw.dat')
-    mean_e = np.loadtxt(base+'-mean-energy.dat')
-    s_estimate = lnw[1:-1] - np.log(de)
-    peak_e = mean_e[np.argmax(s_estimate)]
-
-    if energy_boundaries[0] < energy_boundaries[-1]:
-        energy_boundaries = np.flip(energy_boundaries)
-        mean_e = np.flip(mean_e)
-        lnw = np.flip(lnw)
-    reference_function, reference_energy, reference_entropy = compute.linear_entropy(energy_boundaries, mean_e, lnw)
-    unscaled_reference_function = reference_function
-    if args.intensive:
-        system = compute.read_file(base)[3]
-        reference_N = system['N']
-        N = reference_N
-        reference_energy /= reference_N
-        reference_entropy /= reference_N
-        # energy_boundaries /= reference_N
-        # lnw /= reference_N
-        # peak_e /= reference_N
-        # s_estimate /= reference_N
-        # de /= reference_N
-        # mean_e /= reference_N
-        reference_function = lambda e: unscaled_reference_function(reference_N*e)/reference_N
-
-print('done reading bases')
-sigma = 1
-
-def parse_moves(name):
-    return float(os.path.basename(os.path.splitext(name)[0]))
-def latex_number(x):
-    if x > 10000:
-        s = '%.3e' % x
-        mantissa, exponent = s.split('e+')
-        if mantissa == '1' or mantissa == '1.000':
-            return rf'10^{{{exponent}}}'
-        else:
-            return rf'{mantissa}\times 10^{{{exponent}}}'
-    return '%.3g' % x
-
-plot_Cv = args.T_max is not None
-
-E = np.linspace(mean_e[1:-1].min(), min(peak_e, energy_boundaries.max()), 10000)
-# E = np.linspace(-133.59, -133.0, 10000)
-# E = np.linspace(-133.59, 0, 10000)
-
-if plot_Cv:
-    T_min = 2.0/(unscaled_reference_function(mean_e[1:-1].min()) - unscaled_reference_function(mean_e[1:-1].min()-1))
-    T = np.linspace(T_min, args.T_max, 1000)
-
-    boltz_arg_boundaries = unscaled_reference_function(energy_boundaries) - energy_boundaries/T[-1]
-    P_boundaries = np.exp(boltz_arg_boundaries - boltz_arg_boundaries.max())
-    E = np.linspace(mean_e[1:-1].min(), energy_boundaries[P_boundaries > 0.1].max(), 1000)
-
-if args.intensive:
-    E /= reference_N
 
 def heat_capacity(T, S_func):
     C = np.zeros_like(T)
@@ -157,12 +85,96 @@ def canonical(T, E, X_of_E, S_func):
         X_of_T[i] = (X_of_E*P).sum()
     return X_of_T
 
+#Read Data
+moves = {}
+error = {} #store the max error in each move
+bases = []
+print('base', args.base)
+
+#each file has different path (including extension) so concatenating is easy
+for base in args.base:
+    #change base to have the cbor files. currently has the directory
+    if '.cbor' in base or '.yaml' in base:
+        base = base[:-5]
+    bases.append(base)
+
+for base in bases:
+    print('reading', base)
+
+    energy_boundaries = np.loadtxt(base+'-energy-boundaries.dat')
+    de = abs(np.diff(energy_boundaries))
+    lnw = np.loadtxt(base+'-lnw.dat')
+    mean_e = np.loadtxt(base+'-mean-energy.dat')
+    s_estimate = lnw[1:-1] - np.log(de)
+    peak_e = mean_e[np.argmax(s_estimate)]
+
+    if energy_boundaries[0] < energy_boundaries[-1]:
+        energy_boundaries = np.flip(energy_boundaries)
+        mean_e = np.flip(mean_e)
+        lnw = np.flip(lnw)
+    reference_function, reference_energy, reference_entropy = compute.linear_entropy(energy_boundaries, mean_e, lnw)
+    unscaled_reference_function = reference_function
+    if args.intensive:
+        energy_boundaries, mean_e, _, system, p_exc_reference = compute.read_file(base)
+        reference_N = system['N']
+        N = reference_N
+        reference_energy /= reference_N
+        reference_entropy /= reference_N
+        # energy_boundaries /= reference_N
+        # lnw /= reference_N
+        # peak_e /= reference_N
+        # s_estimate /= reference_N
+        # de /= reference_N
+        # mean_e /= reference_N
+        reference_function = lambda e: unscaled_reference_function(reference_N*e)/reference_N
+        pressure_reference, T_reference = compute.pressure_temperature(system['density'], energy_boundaries, mean_e, p_exc_reference)
+        mean_e_reference = mean_e
+        print(pressure_reference)
+            
+        T_to_save = np.arange(0.5, 100, 0.5)
+        pressure_to_save = canonical(T_to_save, mean_e, pressure_reference, unscaled_reference_function)
+        np.savetxt(base+'-p-vs-T.dat',
+            np.transpose(np.vstack([T_to_save, pressure_to_save])),
+            fmt='%.3g')
+
+print('done reading bases')
+sigma = 1
+
+def parse_moves(name):
+    return float(os.path.basename(os.path.splitext(name)[0]))
+def latex_number(x):
+    if x > 10000:
+        s = '%.3e' % x
+        mantissa, exponent = s.split('e+')
+        if mantissa == '1' or mantissa == '1.000':
+            return rf'10^{{{exponent}}}'
+        else:
+            return rf'{mantissa}\times 10^{{{exponent}}}'
+    return '%.3g' % x
+
+plot_Cv = args.T_max is not None
+
+E = np.linspace(mean_e[1:-1].min(), min(peak_e, energy_boundaries.max()), 10000)
+# E = np.linspace(-133.59, -133.0, 10000)
+# E = np.linspace(-133.59, 0, 10000)
+
+if plot_Cv:
+    T_min = 2.0/(unscaled_reference_function(mean_e[1:-1].min()) - unscaled_reference_function(mean_e[1:-1].min()-1))
+    T = np.linspace(T_min, args.T_max, 1000)
+
+    boltz_arg_boundaries = unscaled_reference_function(energy_boundaries) - energy_boundaries/T[-1]
+    P_boundaries = np.exp(boltz_arg_boundaries - boltz_arg_boundaries.max())
+    E = np.linspace(mean_e[1:-1].min(), energy_boundaries[P_boundaries > 0.1].max(), 1000)
+
+if args.intensive:
+    E /= reference_N
+
 if plot_Cv:
     Cv_reference = heat_capacity(T, unscaled_reference_function)
 
 use_inset = False
 
-starting_moves = 1e10
+starting_moves = 1e8
 for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(bases[0]+'/*.cbor'))))):
     which_color = 0
     plotted_something = False
@@ -189,6 +201,8 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         plt.ylabel('$p$')
         plt.xlabel('$T$')
         # pmax = 0
+        pressure_of_T = canonical(T, mean_e_reference, pressure_reference, unscaled_reference_function)
+        plt.plot(T, pressure_of_T, ':', color='gray', label='reference')
     plt.figure('S(E)', figsize=(8,6))
     plt.clf()
     plt.ylabel('$S(E)$')
