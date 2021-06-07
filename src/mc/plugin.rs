@@ -216,7 +216,7 @@ impl Report {
                     let frac_complete = moves as f64 / max as f64;
                     let moves_left = if max >= moves { max - moves } else { 0 };
                     let time_left = (time_per_move * moves_left as f64) as u64;
-                    println!(
+                    print!(
                         "[{}] {}% complete after {} ({} left, {:.1}us per move)",
                         PrettyFloat(moves as f64),
                         (100. * frac_complete) as isize,
@@ -225,7 +225,7 @@ impl Report {
                         PrettyFloat(time_per_move * 1e6),
                     );
                 } else {
-                    println!(
+                    print!(
                         "[{}] after {} ({:.1}us per move)",
                         PrettyFloat(moves as f64),
                         format_duration(runtime.as_secs()),
@@ -241,12 +241,24 @@ impl Report {
                     };
                     let moves_per_sample = moves as f64 / (1.0 + independent_samples as f64);
                     let time_left = (time_per_move * samples_left as f64 * moves_per_sample) as u64;
-                    println!(
-                        "{}% done ({} left, {} per sample)",
-                        (100. * frac_complete) as isize,
-                        format_duration(time_left),
-                        format_duration((time_per_move * moves_per_sample) as u64),
-                    );
+                    let time_per_sample = time_per_move * moves_per_sample;
+                    if time_per_sample < 2.0 {
+                        println!(
+                            "{}% done ({} left, {:.2} s per sample)",
+                            (100. * frac_complete) as isize,
+                            format_duration(time_left),
+                            PrettyFloat(time_per_sample),
+                        );
+                    } else {
+                        println!(
+                            "{}% done ({} left, {} per sample)",
+                            (100. * frac_complete) as isize,
+                            format_duration(time_left),
+                            format_duration(time_per_sample as u64),
+                        );
+                    }
+                } else {
+                    println!();
                 }
             }
             None => {
