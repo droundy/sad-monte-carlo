@@ -244,14 +244,14 @@ impl Report {
                     let time_per_sample = time_per_move * moves_per_sample;
                     if time_per_sample < 2.0 {
                         println!(
-                            "{}% done ({} left, {:.2} s per sample)",
+                            " {}% sampled ({} left, {:.2} s per sample)",
                             (100. * frac_complete) as isize,
                             format_duration(time_left),
                             PrettyFloat(time_per_sample),
                         );
                     } else {
                         println!(
-                            "{}% done ({} left, {} per sample)",
+                            " {}% sampled ({} left, {} per sample)",
                             (100. * frac_complete) as isize,
                             format_duration(time_left),
                             format_duration(time_per_sample as u64),
