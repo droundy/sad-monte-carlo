@@ -85,13 +85,17 @@ for v in volumes:
     systems[name] = f'--wca-reduced-density {d} --wca-N 32 --independent-systems-before-new-bin 16'.split()
     run_replicas(name=name, min_T = min_T, max_independent_samples=1000)
 
-movie_args = '--movie-time 10^(1/8)'.split()
-
 for v in volumes:
     d = 1.0/v
     name = f'wca-108-%.2f' % v
     systems[name] = f'--wca-reduced-density {d} --wca-N 108 --independent-systems-before-new-bin 16'.split()
-    run_replicas(name=name, min_T = min_T, max_independent_samples=1000)
+    run_replicas(name=name, min_T = min_T, max_independent_samples=100)
+
+for v in volumes:
+    d = 1.0/v
+    name = f'wca-256-%.2f' % v
+    systems[name] = f'--wca-reduced-density {d} --wca-N 256 --independent-systems-before-new-bin 16'.split()
+    run_replicas(name=name, min_T = min_T, max_independent_samples=100, max_iter=1e13)
 
 # for v in volumes:
 #     d = 1.0/v
