@@ -10,10 +10,16 @@ import readsystem
 
 parser = argparse.ArgumentParser(description="fake energies analysis")
 parser.add_argument('fname', nargs='*', help='the yaml or cbor file')
+parser.add_argument("--reparse", help="parse file even if it has already been parsed",
+                    action="store_true")
 
 args = parser.parse_args()
 
 for fname in args.fname:
+    base = os.path.splitext(fname)[0]
+    if not args.reparse and os.path.exists(base+'-lnw.dat'):
+        continue
+
     with open(fname, 'rb') as stream:
         if 'yaml' in fname:
             try:
@@ -29,8 +35,6 @@ for fname in args.fname:
             print('What kind of file is this?!')
             exit(1)
     print('done reading', fname)
-
-    base = os.path.splitext(fname)[0]
 
     replicas = data_loaded['replicas']
 

@@ -73,12 +73,22 @@ def run_inv_t_wl(name, de, min_E, max_E, max_iter=max_iter_default, translation_
         + f'--max-iter {max_iter} --inv-t-wl --min-allowed-energy {min_E} --max-allowed-energy {max_E}'.split(),
        cpus='1')
 
-volumes = np.arange(2.6, 0.95, -0.05)
+volumes = np.arange(2.0, 0.89, -0.05)
+densities = np.arange(0.1, 1.01, 0.1)
 min_T = 0.1
 
 movie_args = '--movie-time 10^(1/2)'.split()
 
 systems = {}
+for n in densities:
+    name = f'wca-108-n%.2f' % n
+    systems[name] = f'--wca-reduced-density {n} --wca-N 108 --independent-systems-before-new-bin 16'.split()
+    run_replicas(name=name, min_T = min_T, max_independent_samples=100)
+for n in densities:
+    name = f'wca-256-n%.2f' % n
+    systems[name] = f'--wca-reduced-density {n} --wca-N 256 --independent-systems-before-new-bin 16'.split()
+    run_replicas(name=name, min_T = min_T, max_independent_samples=100)
+
 for v in volumes:
     d = 1.0/v
     name = f'wca-32-%.2f' % v
