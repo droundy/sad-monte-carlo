@@ -650,7 +650,9 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Logger;
-impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> Plugin<EnergyMC<S>> for Logger {
+impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> Plugin<EnergyMC<S>>
+    for Logger
+{
     fn log(&self, mc: &EnergyMC<S>, _sys: &S) {
         mc.method.report(&mc);
     }

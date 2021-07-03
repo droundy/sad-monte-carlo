@@ -109,14 +109,18 @@ impl SystemInvCdf {
         for N in 1..dim {
             val = 0.0;
             w = 1;
-            for i in 1 .. (num_points-1)*numerical_precision_mult {
+            for i in 1..(num_points - 1) * numerical_precision_mult {
                 if i % numerical_precision_mult == 0 {
-                    stencils[N*num_points+w] = val;
+                    stencils[N * num_points + w] = val;
                     w += 1;
                 }
-                val += (pdf(us[i-1], dim-N) + 4. * pdf((us[i] + us[i-1]) *0.5, dim-N) + pdf(us[i], dim-N)) * du/6.;
+                val += (pdf(us[i - 1], dim - N)
+                    + 4. * pdf((us[i] + us[i - 1]) * 0.5, dim - N)
+                    + pdf(us[i], dim - N))
+                    * du
+                    / 6.;
             }
-            stencils[N*num_points + w] = 1.; // val
+            stencils[N * num_points + w] = 1.; // val
         }
 
         SystemInvCdf {

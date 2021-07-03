@@ -69,10 +69,14 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("MyRng.gen<f64>", move |b| b.iter(|| rng.gen::<f64>()));
 
     let mut rng = sadmc::rng::MyRng::seed_from_u64(0);
-    c.bench_function("rand_unit_ball", move |b| b.iter(|| sadmc::system::water::rand_unit_ball(&mut rng)));
+    c.bench_function("rand_unit_ball", move |b| {
+        b.iter(|| sadmc::system::water::rand_unit_ball(&mut rng))
+    });
 
     let mut rng = sadmc::rng::MyRng::seed_from_u64(0);
-    c.bench_function("rand_unit_ball_2", move |b| b.iter(|| sadmc::system::water::rand_unit_ball_2(&mut rng)));
+    c.bench_function("rand_unit_ball_2", move |b| {
+        b.iter(|| sadmc::system::water::rand_unit_ball_2(&mut rng))
+    });
 
     c.bench_function_over_inputs(
         "sad_optsw_move_once",

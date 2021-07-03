@@ -208,7 +208,10 @@ impl System for Wca {
                 }
             }
             // We do not need factor of 0.5 below because it's in potential_pressure above -- DJR
-            vec![("pressure".into(), *(p / units::EPSILON).value() / (3.0*self.cell.volume().value_unsafe))]
+            vec![(
+                "pressure".into(),
+                *(p / units::EPSILON).value() / (3.0 * self.cell.volume().value_unsafe),
+            )]
         } else {
             Vec::new()
         }
@@ -266,7 +269,7 @@ impl System for Wca {
         self.num_atoms() as u64
     }
     fn dimensionality(&self) -> u64 {
-        self.min_moves_to_randomize()*3
+        self.min_moves_to_randomize() * 3
     }
 }
 

@@ -118,7 +118,7 @@ pub struct EnergyMC<S> {
     pub recent_acceptance_probability: f64,
 }
 
-const RECENT_ACCEPTANCE: f64 = 1.0/16.0;
+const RECENT_ACCEPTANCE: f64 = 1.0 / 16.0;
 
 impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
     /// This decides whether to reject the move based on the actual
@@ -142,7 +142,9 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
         }
         if lnw2 > lnw1 {
             let prob = (lnw1 - lnw2).exp();
-            self.recent_acceptance_probability = self.recent_acceptance_probability*(1.0-RECENT_ACCEPTANCE) + prob*RECENT_ACCEPTANCE;
+            self.recent_acceptance_probability = self.recent_acceptance_probability
+                * (1.0 - RECENT_ACCEPTANCE)
+                + prob * RECENT_ACCEPTANCE;
             self.rng.gen::<f64>() > prob
         } else {
             false
@@ -265,7 +267,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                 );
                 // assert!(false);
             }
-    
+
             let de = min_energy_mean - mean_here;
             if de > self.min_T
                 && self.recent_acceptance_probability > self.gamma.sqrt()
@@ -276,7 +278,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     .min()
                     .unwrap()
                     > 0
-                && self.rel_bins[self.rel_bins.len()-1] > min_w
+                && self.rel_bins[self.rel_bins.len() - 1] > min_w
             {
                 // We add a new low energy bin under the following circumstances:
                 //
@@ -319,7 +321,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
                     *h = false;
                 }
                 self.histogram_since_adding_bin = vec![0; self.histogram.len()];
-                let newgamma = 4.0*self.gamma;
+                let newgamma = 4.0 * self.gamma;
                 if newgamma <= GAMMA_INIT {
                     self.gamma = newgamma; // make gamma a bit bigger to let us explore this new region of energy.
                 }
@@ -383,7 +385,7 @@ impl<S: MovableSystem + ConfirmSystem> EnergyMC<S> {
     }
 }
 
-const MAX_INIT: usize = 10;  // Looking for 10 initial quantiles requires maybe a dozen megabytes of memory.
+const MAX_INIT: usize = 10; // Looking for 10 initial quantiles requires maybe a dozen megabytes of memory.
 const GAMMA_INIT: f64 = 0.25;
 
 impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCarlo for EnergyMC<S> {
@@ -396,8 +398,8 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
 
         // First let's brute-force to find where a number of the quantiles are
         // We look for at most MAX_INIT quantiles.
-        let mut energies = Vec::with_capacity(1 << (2*MAX_INIT));
-        for _ in 0..1 << (2*MAX_INIT) {
+        let mut energies = Vec::with_capacity(1 << (2 * MAX_INIT));
+        for _ in 0..1 << (2 * MAX_INIT) {
             energies.push(system.randomize(&mut rng));
         }
         energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -405,7 +407,9 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
         energy_boundaries.push(energies[1 << MAX_INIT]);
         for i in (0..MAX_INIT).rev() {
             let here = energies[1 << i];
-            if *energy_boundaries.last().unwrap() > here + params.min_T || energy_boundaries.len() < 3 {
+            if *energy_boundaries.last().unwrap() > here + params.min_T
+                || energy_boundaries.len() < 3
+            {
                 energy_boundaries.push(here);
             } else {
                 break;
@@ -416,7 +420,7 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
         let min_energy = energy_boundaries[energy_boundaries.len() - 1];
         let mut lnw = Vec::with_capacity(energy_boundaries.len() + 2);
         lnw.push((1.0 - f).ln());
-        for _ in 0..energy_boundaries.len()-1 {
+        for _ in 0..energy_boundaries.len() - 1 {
             lnw.push(lnw[lnw.len() - 1] + f.ln());
         }
         lnw.push(lnw[lnw.len() - 1] + (f / (1. - f)).ln());
@@ -429,7 +433,7 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
             );
         }
 
-        assert_eq!(rel_bins.len()+2, lnw.len());
+        assert_eq!(rel_bins.len() + 2, lnw.len());
         EnergyMC {
             min_gamma: params.min_gamma,
             moves: 0,

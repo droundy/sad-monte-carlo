@@ -62,7 +62,9 @@ impl ErfInv {
         Energy::new(
             position
                 .iter()
-                .map(|&x| self .parameters.mean_energy.value_unsafe+statrs::function::erf::erf_inv(x))
+                .map(|&x| {
+                    self.parameters.mean_energy.value_unsafe + statrs::function::erf::erf_inv(x)
+                })
                 .sum::<f64>(),
         )
     }
@@ -85,7 +87,7 @@ impl System for ErfInv {
         self.position.len() as u64
     }
     fn dimensionality(&self) -> u64 {
-        self.min_moves_to_randomize()*3
+        self.min_moves_to_randomize() * 3
     }
 }
 
@@ -114,7 +116,7 @@ impl MovableSystem for ErfInv {
 impl GrandSystem for ErfInv {
     fn plan_add(&mut self, rng: &mut MyRng) -> Option<Energy> {
         self.possible_change = self.position.clone();
-        self.possible_change.push( rng.gen_range(-1., 1.));
+        self.possible_change.push(rng.gen_range(-1., 1.));
         Some(self.find_energy(&self.possible_change))
     }
     fn plan_remove(&mut self, rng: &mut MyRng) -> Energy {

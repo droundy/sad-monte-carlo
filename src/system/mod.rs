@@ -11,16 +11,16 @@ pub mod units;
 pub mod ising;
 pub mod lattice_gas;
 pub mod lj;
-pub mod water;
 pub mod optsquare;
 pub mod square;
+pub mod water;
 pub mod wca;
 
 pub mod any;
 
 pub mod erfinv;
-pub mod two_wells;
 pub mod fake;
+pub mod two_wells;
 
 pub use crate::mc::binning::Interned;
 

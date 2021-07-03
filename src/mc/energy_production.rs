@@ -113,7 +113,10 @@ fn bounds_subdivision() {
     let half = divide_boundaries(bounds, 2);
     let quarter = divide_boundaries(bounds, 4);
     assert_eq!(&half, &[1.5, 1.0, 0.5, 0.0, -0.5]);
-    assert_eq!(&quarter, &[1.75, 1.5, 1.25, 1.0, 0.75, 0.5, 0.25, 0.0, -0.25, -0.5, -0.75]);
+    assert_eq!(
+        &quarter,
+        &[1.75, 1.5, 1.25, 1.0, 0.75, 0.5, 0.25, 0.0, -0.25, -0.5, -0.75]
+    );
 }
 
 impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::DeserializeOwned>
@@ -136,7 +139,7 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
                 .flat_map(|v| vec![v; subdivide])
                 .collect();
             energy_boundaries = divide_boundaries(&energy_boundaries, subdivide);
-            assert_eq!(lnw.len(), energy_boundaries.len()+1);
+            assert_eq!(lnw.len(), energy_boundaries.len() + 1);
         }
         let energy_boundaries: Vec<Energy> = energy_boundaries
             .iter()
@@ -224,12 +227,18 @@ impl<S: Clone + ConfirmSystem + MovableSystem + serde::Serialize + serde::de::De
             self.system.energy().pretty(),
             crate::prettyfloat::PrettyFloat(self.rejected_moves as f64 / self.moves as f64 * 100.0)
         );
-        let unexplored = self.histogram.iter().cloned().filter(|&h| h== 0).count();
+        let unexplored = self.histogram.iter().cloned().filter(|&h| h == 0).count();
         if unexplored > 0 {
-            println!("    {:.4} bins remain unexplored", crate::prettyfloat::PrettyFloat(unexplored as f64));
+            println!(
+                "    {:.4} bins remain unexplored",
+                crate::prettyfloat::PrettyFloat(unexplored as f64)
+            );
         } else {
             let minimum = self.histogram.iter().cloned().min().unwrap();
-            println!("    saw each bin at least {:.2} times", crate::prettyfloat::PrettyFloat(minimum as f64));
+            println!(
+                "    saw each bin at least {:.2} times",
+                crate::prettyfloat::PrettyFloat(minimum as f64)
+            );
         }
 
         let f = AtomicFile::create(&self.save_as)

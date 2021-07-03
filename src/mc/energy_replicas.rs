@@ -232,7 +232,7 @@ impl<S: MovableSystem> Replica<S> {
                 if e > self.cutoff_energy {
                     self.above_count += 1;
                     self.above_total += e;
-                    self.above_total_squared += e*e;
+                    self.above_total_squared += e * e;
                     for (k, d) in system.data_to_collect(moves).into_iter() {
                         if let Some(p) = self.above_extra.get_mut(&k) {
                             p.0 += d;
@@ -244,7 +244,7 @@ impl<S: MovableSystem> Replica<S> {
                 } else {
                     self.below_count += 1;
                     self.below_total += e;
-                    self.below_total_squared += e*e;
+                    self.below_total_squared += e * e;
                 }
                 if *lowest_max_energy == very_lowest_max_energy {
                     self.upwelling_count += 1;
@@ -503,7 +503,8 @@ impl<
     }
     /// Create a simulation checkpoint.
     pub fn checkpoint(&mut self) {
-        self.report.print(self.moves, self.replicas.last().unwrap().unique_visitors);
+        self.report
+            .print(self.moves, self.replicas.last().unwrap().unique_visitors);
         println!(
             "    [{} walkers in {} zones]",
             self.replicas
@@ -765,7 +766,10 @@ impl<
             if movie_time {
                 self.movie.save_frame(&self.save_as, moves, &self);
             }
-            if self.report.am_all_done(moves, self.replicas.last().unwrap().unique_visitors) {
+            if self
+                .report
+                .am_all_done(moves, self.replicas.last().unwrap().unique_visitors)
+            {
                 self.checkpoint();
                 println!("All done!");
                 ::std::process::exit(0);

@@ -365,7 +365,7 @@ impl MovableSystem for SquareWell {
     }
     fn max_size(&self) -> Length {
         use dimensioned::Sqrt;
-        0.5*self.box_diagonal.norm2().sqrt()
+        0.5 * self.box_diagonal.norm2().sqrt()
     }
 }
 

@@ -395,7 +395,9 @@ impl<S: System> EnergyMC<S> {
             self.bins.t_found.insert(0, 0);
             self.bins.lnw.insert(0, Unitless::new(0.0));
             self.bins.energy_total.insert(0, Energy::new(0.0));
-            self.bins.energy_squared_total.insert(0, EnergySquared::new(0.0));
+            self.bins
+                .energy_squared_total
+                .insert(0, EnergySquared::new(0.0));
             for v in self.bins.extra.iter_mut() {
                 v.1.count.insert(0, 0);
                 v.1.total.insert(0, 0.0);
@@ -847,7 +849,7 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
                 t_found: vec![0],
                 lnw: vec![Unitless::new(0.0)],
                 energy_total: vec![system.energy()],
-                energy_squared_total: vec![system.energy()*system.energy()],
+                energy_squared_total: vec![system.energy() * system.energy()],
                 min: emin,
                 width: ewidth,
                 extra: std::collections::HashMap::new(),
@@ -917,7 +919,7 @@ impl<S: MovableSystem + serde::Serialize + serde::de::DeserializeOwned> MonteCar
         }
         self.bins.histogram[i] += 1;
         self.bins.energy_total[i] += energy.E;
-        self.bins.energy_squared_total[i] += energy.E*energy.E;
+        self.bins.energy_squared_total[i] += energy.E * energy.E;
         for (k, d) in self.system.data_to_collect(self.moves).into_iter() {
             self.bins.accumulate_extra(k, i, d);
         }

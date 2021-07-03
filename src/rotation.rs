@@ -11,9 +11,12 @@ pub struct Rotation {
 }
 
 impl<T> std::ops::Mul<Vector3d<T>> for Rotation
-    where
-    T: Copy + std::ops::Mul<f64, Output=T> + std::ops::Add<Output=T> + std::ops::Sub<Output=T>, // TODO: maybe change this to Length
-    f64: std::ops::Mul<T, Output=T> + std::ops::Mul<f64, Output=f64>
+where
+    T: Copy
+        + std::ops::Mul<f64, Output = T>
+        + std::ops::Add<Output = T>
+        + std::ops::Sub<Output = T>, // TODO: maybe change this to Length
+    f64: std::ops::Mul<T, Output = T> + std::ops::Mul<f64, Output = f64>,
 {
     type Output = Vector3d<T>;
     fn mul(self, v: Vector3d<T>) -> Vector3d<T> {

@@ -206,7 +206,7 @@ impl System for SquareWell {
         self.num_atoms() as u64
     }
     fn dimensionality(&self) -> u64 {
-        self.min_moves_to_randomize()*3
+        self.min_moves_to_randomize() * 3
     }
 }
 

@@ -1,4 +1,4 @@
-use sadmc::system::any::{AnyParams, Any};
+use sadmc::system::any::{Any, AnyParams};
 
 use sadmc::mc::energy::EnergyMC;
 use sadmc::mc::MonteCarlo;
