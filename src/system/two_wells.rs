@@ -132,29 +132,38 @@ impl SystemInvCdf {
             stencils,
         }
     }
+
+    fn eval(&self, probability: f64, which_dim: usize) -> Length {
+        // L, U, j = find_bin(self.stencils, which_dim*self.num_points, (which_dim+1)*self.num_points-1, probability)
+        let stencil =
+            &self.stencils[which_dim * self.num_points..(which_dim + 1) * self.num_points];
+        let j = binary_search(stencil, probability);
+        let L = stencil[j];
+        let U = stencil[j+1];
+        if which_dim == 0 {
+            let slope = self.dx1_ball1/(U - L);
+            slope * (probability - L) + -self.r1 + j as f64*self.dx1_ball1
+        } else {
+            let dx = Length::new(2.0/self.num_points as f64);
+            let slope = dx/(U-L);
+            slope * (probability - L) - Length::new(1.0) + j as f64*dx
+        }
+    }
 }
 
-//     def pdf_x1(self, x1):
-//         if(x1 <= np.sqrt(self.r1**2 - self.r2**2)):
-//             return (self.r1**2-x1**2)**((self.dim-1)/2) * V(self.dim - 1) / self.V_tot
-
-//         elif(x1 < self.r1+self.r2):
-//             return (self.r2)**(self.dim-1) * V(self.dim - 1) / self.V_tot
-
-//         else:
-//             return (self.r2**2-(x1-self.r1-self.r2)**2)**((self.dim-1)/2) * V(self.dim - 1) / self.V_tot
-
-//     def eval(self, probability, which_dim):
-//         L, U, j = find_bin(self.stencils, which_dim*self.num_points, (which_dim+1)*self.num_points-1, probability)
-//         if(which_dim == 0):
-//             slope = self.dx1_ball1/(U-L)
-//             return slope * (probability - L) + -self.r1 + j*self.dx1_ball1
-//         # elif(which_dim == 1):
-//         #     slope = self.dx1_ball2/(U-L)
-//         #     return slope * (probability - L) + self.r1 + self.r2 + j*self.dx1_ball2
-//         else:
-//             slope = self.dx/(U-L)
-//         return slope * (probability - L) + -1. + j*self.dx
+fn binary_search(values: &[f64], v: f64) -> usize {
+    let mut lo = 0;
+    let mut hi = values.len() - 1;
+    while lo < hi - 1 {
+        let mid = (lo + hi)/2;
+        if values[mid] < v {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    lo
+}
 
 //     def print_data(self, which_dim):
 //         print(self.stencils[which_dim * self.num_points : (which_dim+1) * self.num_points])
