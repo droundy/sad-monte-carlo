@@ -119,54 +119,27 @@ class SystemInvCdf:
         self.dx = 2/(num_points)
         self.r1 = r1
         self.r2 = r2
-        self.dx1_ball1 = (r1 + np.sqrt(r1**2 - r2**2))/self.num_points
+        x1 = np.linspace(-r1, r1+2*r2, self.num_points)
+        self.dx1_ball1 = x1[1] - x1[0]
 
         ######## The first axis, ball 1 ########
 
-        self.stencils = np.zeros(self.num_points*(self.dim))  ## We need a stencil for the first ball, and the second ball
+        self.stencils = np.zeros(self.num_points*(self.dim))
         numerical_precision_mult = 100
 
-        us = np.linspace(-r1, np.sqrt(r1**2 - r2**2) ,(num_points) * numerical_precision_mult)  ## We only need a stencil for the first ball
-        du = us[1]-us[0]
-
         val = 0
-        w = 1
-        for i in range(1,(self.num_points-1)*numerical_precision_mult):
-            if(i % numerical_precision_mult == 0):
-                self.stencils[w] = val
-                w+=1
+        for w in range(self.num_points-1):
+            us = np.linspace(x1[w], x1[w+1], numerical_precision_mult)
+            du = us[1] - us[0]
+            for i in range(numerical_precision_mult-1):
+                # use midpoint method
+                val += du*self.pdf_x1_nonnormalized(0.5*(us[i+1]+us[i]))
+            self.stencils[w+1] = val
 
-            val += (self.pdf_x1_nonnormalized(us[i-1]) + 4 * self.pdf_x1_nonnormalized((us[i] + us[i-1]) / 2) + self.pdf_x1_nonnormalized(us[i])) * du/6
-
-        self.stencils[w] = val
         self.V_ball1 = val
 
         for i in range(0, self.num_points):
             self.stencils[i] /= val
-
-        # The bellow was not needed, but I didn't want to get rid of it
-
-        ######## The first axis, ball 2 ######## 
-        
-        # numerical_precision_mult = 100
-
-        # us = np.linspace(r1 + r2, r1 + 2*r2 ,(num_points) * numerical_precision_mult)  ## We only need a stencil for the first ball
-        # du = us[1]-us[0]
-
-        # val = 0
-        # w = 1
-        # for i in range(1,(self.num_points-1)*numerical_precision_mult):
-        #     if(i % numerical_precision_mult == 0):
-        #         self.stencils[self.num_points + w] = val
-        #         w+=1
-
-        #     val += (self.pdf_x1_nonnormalized(us[i-1]) + 4 * self.pdf_x1_nonnormalized((us[i] + us[i-1]) / 2) + self.pdf_x1_nonnormalized(us[i])) * du/6
-
-        # self.stencils[self.num_points + w] = val
-        # self.V_ball2 = 2*val
-
-        # for i in range(0, self.num_points):
-        #     self.stencils[self.num_points + i] /= val
 
         ######## Find the volume of the cylinder, second ball, and total volume ########
 
@@ -245,19 +218,16 @@ class SystemInvCdf:
         ### Determine if in ball 1 ###
         random_num = np.random.uniform(0,1)
 
+        sample[0] = self.eval(np.random.uniform(0,1), 0)
         if(random_num < self.P_ball1):
-            sample[0] = self.eval(np.random.uniform(0,1), 0)
+            
             R = np.sqrt(self.r1**2 - sample[0]**2)
         ### Determine if in the cylinder ###
         elif(random_num < self.P_ball1 + self.P_cyl):
-            sample[0] = np.random.uniform(np.sqrt(self.r1**2 - self.r2**2), self.r1 + self.r2)
             R = self.r2
         ### Determine if in ball 2 ###
         else:
-            sample[0] = np.abs( self.r2 * self.eval(np.random.uniform(0,1), 1) )
             R = np.sqrt(self.r2**2 - sample[0]**2)
-            sample[0] += self.r1 + self.r2
-
 
         for i in range(2,self.dim):
             sample[i-1] = self.eval(np.random.uniform(0,1), i)
@@ -333,7 +303,7 @@ class SystemInvCdf:
 
 # plt.figure()
 
-g = SystemInvCdf(300, 3, 0.75, 0.5)
+g = SystemInvCdf(10, 3, 0.75, 0.5)
 g.print_data(1)
 print("\n\nVolume of Ball 1: " + str(g.V_ball1))
 print("Volume of Cylinder: " + str(g.V_cyl))
