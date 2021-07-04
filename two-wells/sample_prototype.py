@@ -254,7 +254,6 @@ class SystemInvCdf:
             R = self.r2
         ### Determine if in ball 2 ###
         else:
-             # BUG DJR: looks like the abs below shouldn't be there.
             sample[0] = np.abs( self.r2 * self.eval(np.random.uniform(0,1), 1) )
             R = np.sqrt(self.r2**2 - sample[0]**2)
             sample[0] += self.r1 + self.r2
@@ -346,15 +345,24 @@ print("Probability of being in Ball 2: " + str(g.P_ball2))
 
 
 ex = np.linspace(-0.75, 0.75 + 2*0.5, 1000)
-p = []
+p = np.zeros_like(ex)
+for i in range(len(p)):
+    p[i] = g.pdf_x1(ex[i])
 
-for x in ex:
-    p.append(g.pdf_x1(x))
+hist = np.zeros_like(p)
+N_hist = 1000000
+for percent in range(100):
+    for _ in range(N_hist//100):
+        s = g.sample()
+        hist[abs(ex-s[0]).argmin()] += 1
+    print(f'{percent}% done')
+hist *= p.sum()/hist.sum() # normalize
 
 plt.plot(ex,p)
+plt.plot(ex, hist, '.')
 plt.title('pdf inside the big well')
 
-plt.figure()
+plt.figure('x1')
 
 
 ex = np.linspace(0, 1, 1000)
