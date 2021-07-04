@@ -254,6 +254,7 @@ class SystemInvCdf:
             R = self.r2
         ### Determine if in ball 2 ###
         else:
+             # BUG DJR: looks like the abs below shouldn't be there.
             sample[0] = np.abs( self.r2 * self.eval(np.random.uniform(0,1), 1) )
             R = np.sqrt(self.r2**2 - sample[0]**2)
             sample[0] += self.r1 + self.r2

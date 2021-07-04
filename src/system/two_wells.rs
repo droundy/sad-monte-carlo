@@ -25,6 +25,9 @@ struct SystemInvCdf {
     r2: Length,
     dx1_ball1: Length,
     stencils: Vec<f64>,
+    P_ball1: f64,
+    P_cyl: f64,
+    P_ball2: f64,
 }
 
 static NUM_POINTS: usize = 10000;
@@ -130,6 +133,9 @@ impl SystemInvCdf {
             r2,
             dx1_ball1,
             stencils,
+            P_ball1,
+            P_ball2,
+            P_cyl,
         }
     }
 
@@ -139,15 +145,46 @@ impl SystemInvCdf {
             &self.stencils[which_dim * self.num_points..(which_dim + 1) * self.num_points];
         let j = binary_search(stencil, probability);
         let L = stencil[j];
-        let U = stencil[j+1];
+        let U = stencil[j + 1];
         if which_dim == 0 {
-            let slope = self.dx1_ball1/(U - L);
-            slope * (probability - L) + -self.r1 + j as f64*self.dx1_ball1
+            let slope = self.dx1_ball1 / (U - L);
+            slope * (probability - L) + -self.r1 + j as f64 * self.dx1_ball1
         } else {
-            let dx = Length::new(2.0/self.num_points as f64);
-            let slope = dx/(U-L);
-            slope * (probability - L) - Length::new(1.0) + j as f64*dx
+            let dx = Length::new(2.0 / self.num_points as f64);
+            let slope = dx / (U - L);
+            slope * (probability - L) - Length::new(1.0) + j as f64 * dx
         }
+    }
+
+    fn sample(&self, rng: &mut MyRng) -> Vec<Length> {
+        let mut sample = Vec::with_capacity(self.dim);
+        // ### Determine if in ball 1 ###
+        let random_num: f64 = rng.gen();
+        let mut R: Length;
+        if random_num < self.P_ball1 {
+            sample.push(self.eval(rng.gen(), 0));
+            R = (self.r1 * self.r1 - sample[0] * sample[0]).sqrt();
+        } else if random_num < self.P_ball1 + self.P_cyl {
+            // ### Determine if in the cylinder ###
+            // elif():
+            sample[0] = Length::new(rng.gen_range(
+                (self.r1 * self.r1 - self.r2 * self.r2).sqrt().value_unsafe,
+                (self.r1 + self.r2).value_unsafe,
+            ));
+            R = self.r2;
+        } else {
+            // ### Determine if in ball 2 ###
+            sample[0] = self.r2 * self.eval(rng.gen(), 1) / self.r1;
+            R = (self.r2 * self.r2 - sample[0] * sample[0]).sqrt();
+            sample[0] += self.r1 + self.r2;
+        }
+        for i in 2..self.dim {
+            let x = (R/self.r1) * self.eval(rng.gen(), i);
+            sample.push(x);
+            R = (R * R - x * x).sqrt();
+        }
+        sample.push(R*rng.gen_range(-1.0, 1.0));
+        sample
     }
 }
 
@@ -155,7 +192,7 @@ fn binary_search(values: &[f64], v: f64) -> usize {
     let mut lo = 0;
     let mut hi = values.len() - 1;
     while lo < hi - 1 {
-        let mid = (lo + hi)/2;
+        let mid = (lo + hi) / 2;
         if values[mid] < v {
             lo = mid;
         } else {
@@ -164,36 +201,6 @@ fn binary_search(values: &[f64], v: f64) -> usize {
     }
     lo
 }
-
-//     def print_data(self, which_dim):
-//         print(self.stencils[which_dim * self.num_points : (which_dim+1) * self.num_points])
-
-//     def sample(self):
-//         sample = np.zeros(self.dim)
-//         ### Determine if in ball 1 ###
-//         random_num = np.random.uniform(0,1)
-
-//         if(random_num < self.P_ball1):
-//             sample[0] = self.eval(np.random.uniform(0,1), 0)
-//             R = np.sqrt(self.r1**2 - sample[0]**2)
-//         ### Determine if in the cylinder ###
-//         elif(random_num < self.P_ball1 + self.P_cyl):
-//             sample[0] = np.random.uniform(np.sqrt(self.r1**2 - self.r2**2), self.r1 + self.r2)
-//             R = self.r2
-//         ### Determine if in ball 2 ###
-//         else:
-//             sample[0] = np.abs( self.r2 * self.eval(np.random.uniform(0,1), 1) )
-//             R = np.sqrt(self.r2**2 - sample[0]**2)
-//             sample[0] += self.r1 + self.r2
-
-//         for i in range(2,self.dim):
-//             sample[i-1] = self.eval(np.random.uniform(0,1), i)
-//             sample[i-1] *= R
-//             R = np.sqrt(R**2 - sample[i-1]**2)
-
-//         sample[self.dim - 1] = R * np.random.uniform(-1,1)
-
-//         return sample
 
 // gamma function from https://github.com/rust-lang/rust/issues/18271
 #[link(name = "m")]
