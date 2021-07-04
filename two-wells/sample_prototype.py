@@ -218,16 +218,17 @@ class SystemInvCdf:
         ### Determine if in ball 1 ###
         random_num = np.random.uniform(0,1)
 
-        sample[0] = self.eval(np.random.uniform(0,1), 0)
-        if(random_num < self.P_ball1):
-            
-            R = np.sqrt(self.r1**2 - sample[0]**2)
-        ### Determine if in the cylinder ###
-        elif(random_num < self.P_ball1 + self.P_cyl):
+        x1 = self.eval(np.random.uniform(0,1), 0)
+        sample[0] = x1
+        if x1 <= np.sqrt(self.r1**2 - self.r2**2):
+            # we are in the first ball
+            R = np.sqrt(self.r1**2 - x1**2)
+        elif x1 <self.r1+self.r2:
+            # we're in the cylinder
             R = self.r2
-        ### Determine if in ball 2 ###
         else:
-            R = np.sqrt(self.r2**2 - sample[0]**2)
+            # We're in the final hemisphere
+            R = np.sqrt(self.r2**2 - x1**2)
 
         for i in range(2,self.dim):
             sample[i-1] = self.eval(np.random.uniform(0,1), i)
