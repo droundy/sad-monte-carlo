@@ -228,7 +228,7 @@ class SystemInvCdf:
             R = self.r2
         else:
             # We're in the final hemisphere
-            R = np.sqrt(self.r2**2 - x1**2)
+            R = np.sqrt(self.r2**2 - (x1-self.r1-self.r2)**2)
 
         for i in range(2,self.dim):
             sample[i-1] = self.eval(np.random.uniform(0,1), i)
@@ -355,19 +355,21 @@ plt.title('inv cdf in the big well')
 
 # plt.plot(samples[0,:], samples[1,:],'.')
 
+g = SystemInvCdf(1024, 2, 0.75, 0.5)
 
 fig = plt.figure()
-ax = fig.add_subplot(projection='3d')
+# ax = fig.add_subplot(projection='3d')
 
 
-num_samples = 1000
+num_samples = 10000
 
-samples = np.zeros((3,num_samples))
+samples = np.zeros((2,num_samples))
 
 for i in range(0,num_samples):
     samples[:,i] = g.sample()
 
-ax.scatter(samples[0,:], samples[1,:], samples[2,:])
+plt.plot(samples[0,:], samples[1,:],'.')
+# ax.scatter(samples[0,:], samples[1,:], samples[2,:])
 
 
 plt.show()
