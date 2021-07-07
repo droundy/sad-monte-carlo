@@ -14,6 +14,8 @@ pub struct Parameters {
     pub N: usize,
     /// Ratio of depths of the wells (h_2/h_1)
     pub h2_to_h1: f64,
+    /// Energy barrier between wells
+    pub barrier_over_h1: f64,
     /// Radius of the second well
     pub r2: Length,
 }
@@ -197,16 +199,24 @@ pub struct TwoWells {
     pub parameters: Parameters,
     /// The last change we made (and might want to undo).
     possible_change: Vec<Length>,
+    /// The position of the second well
+    well_position: Length,
     /// The inverse cumulative distribution function for computing random positionis
     invcdf: SystemInvCdf,
 }
 
 impl From<Parameters> for TwoWells {
     fn from(parameters: Parameters) -> TwoWells {
+        // x**2 = b, (w-x)**2/r2**2 = b
+        // (w - sqrt(b))**2 = b r2**2
+        // w - sqrt(b) = sqrt(b) r2
+        // w = sqrt(b)(1 + r2) = sqrt(b)(r1 + r2)
+        let well_position = parameters.barrier_over_h1.sqrt() * (Length::new(1.) + parameters.r2);
         TwoWells {
             position: vec![Length::new(0.5); parameters.N],
             possible_change: Vec::new(),
             invcdf: SystemInvCdf::new(&parameters),
+            well_position,
             parameters,
         }
     }
@@ -217,14 +227,24 @@ impl TwoWells {
         //r_1 is assumed to be 1 and center_2 is such that the two wells are touching
         let r1 = Length::new(1.0);
         let r2 = self.parameters.r2;
+        let rw = self.well_position;
 
         let mut d_orthog_squared = Area::new(0.);
 
         for i in 1..self.parameters.N {
             d_orthog_squared += position[i] * position[i];
         }
-        let d_1_squared = d_orthog_squared + position[0] * position[0];
-        let d_2_squared = d_orthog_squared + (position[0] - r1 - r2) * (position[0] - r1 - r2);
+
+        let x1 = position[0];
+        let x2 = x1 - r1 - r2;
+        let xw = x1 - rw;
+        let xi = x1 - 2. * r1 - 2. * r2;
+
+        let d_1_squared = d_orthog_squared + x1 * x1;
+        let d_2_squared = d_orthog_squared + x2 * x2;
+        let d_w_squared = d_orthog_squared + xw * xw;
+        let d_i_squared = d_orthog_squared + xi * xi;
+
         if (position[0] < r1 && d_1_squared > r1 * r1)
             || (position[0] > r1 && d_2_squared > r2 * r2)
             || (position[0] > Length::new(0.)
@@ -234,15 +254,28 @@ impl TwoWells {
             return None;
         }
 
-        let e_1 = Energy::new(1.) * (d_1_squared - r1 * r1) / (r1 * r1);
-        let e_2 = Energy::new(self.parameters.h2_to_h1)
-            * (d_2_squared / (self.parameters.r2 * self.parameters.r2) - 1.);
+        let e1 = |d2: Area| -> Energy { Energy::new(1.) * (d2 / (r1 * r1) - 1.) };
+        let e2 =
+            |d2: Area| -> Energy { Energy::new(self.parameters.h2_to_h1) * (d2 / (r2 * r2) - 1.) };
 
-        if e_1 < e_2 {
-            Some(e_1)
+        let e_1 = e1(d_1_squared);
+        let e_2 = e2(d_2_squared);
+        let e_w = e2(d_w_squared);
+        let e_i = e1(d_i_squared);
+
+        Some(if e_1 < e_2 {
+            if e_1 < e_w {
+                e_1
+            } else {
+                e_w
+            }
         } else {
-            Some(e_2)
-        }
+            if e_i > e_2 && e_i < Energy::new(0.) {
+                e_i
+            } else {
+                e_2
+            }
+        })
     }
 }
 
@@ -251,7 +284,8 @@ impl System for TwoWells {
         self.compute_energy()
     }
     fn compute_energy(&self) -> Energy {
-        self.find_energy(&self.position).expect("position is out of bounds")
+        self.find_energy(&self.position)
+            .expect("position is out of bounds")
     }
     fn randomize(&mut self, rng: &mut MyRng) -> Energy {
         self.position = self.invcdf.sample(rng);

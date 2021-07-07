@@ -11,22 +11,20 @@ def rq(name, cmd, cpus):
     run(f'rq run -c {cpus} --max-output=30 -R -J'.split() +
         [name, '--']+cmd, check=True)
 
-
 movie_args = '--movie-time 10^(1/8)'.split()
 
-
-def run_replicas(name, max_iter=max_iter_default, min_T=0.001, extraname='', extraflags=''):
-    save = f'r-{extraname}{name}'
+def run_replicas(name, max_iter=max_iter_default, min_T=0.001, max_independent_samples=None, extraname='', extraflags=''):
+    save = f'z-{extraname}{name}'
+    samples = []
+    if max_independent_samples is not None:
+        samples = ['--max-independent-samples', str(max_independent_samples)]
     rq(name=save,
        cmd=['../target/release/replicas']+systems[name]+movie_args
         + f'--save-time 0.5 --save-as {save}.cbor'.split()
         + extraflags.split()
-        + f'--max-iter {max_iter} --min-T {min_T}'.split(),
+        + f'--max-iter {max_iter} --min-T {min_T}'.split()
+        + samples,
        cpus='all')
-
-
-# def binning_histogram(name, de, translation_scale):
-#     return f'../target/release/binning --save-time 0.5 --histogram-bin {de} --translation-scale {translation_scale}'.split()+movie_args+systems[name]
 
 def histogram(name, de, translation_scale):
     return f'../target/release/histogram --save-time 0.5 --energy-bin {de} --translation-scale {translation_scale}'.split()+movie_args+systems[name]
@@ -70,12 +68,14 @@ def run_inv_t_wl(name, de, min_E, max_E, max_iter=max_iter_default, translation_
 
 
 systems = {
-    'lj31':  '--lj-N 31 --lj-radius 2.5'.split(),
-    'biglj31':  '--lj-N 31 --lj-radius 5'.split(),
-    'huge-lj31':  '--lj-N 31 --lj-radius 15'.split(),
+    'lj31':  '--lj-N 31 --lj-radius 2.5 --independent-systems-before-new-bin 16'.split(),
+    'big-lj31':  '--lj-N 31 --lj-radius 5 --independent-systems-before-new-bin 16'.split(),
+    'huge-lj31':  '--lj-N 31 --lj-radius 15 --independent-systems-before-new-bin 16'.split(),
 }
 
-run_replicas(name='huge-lj31', min_T=0.001, max_iter=1e14, extraname="one-decimate-nosplit-64-", extraflags="--seed=14")
+run_replicas(name='lj31', min_T=0.001, max_iter=1e14, max_independent_samples=100)
+run_replicas(name='big-lj31', min_T=0.001, max_iter=1e14, max_independent_samples=100)
+run_replicas(name='huge-lj31', min_T=0.001, max_iter=1e14, max_independent_samples=100)
 exit(1)
 run_replicas(name='huge-lj31', min_T=0.001, max_iter=1e14)
 run_replicas(name='lj31', min_T=0.001, extraname='0.001-', max_iter=1e14)
