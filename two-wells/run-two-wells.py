@@ -73,7 +73,7 @@ E_transition = -131 # approximate energy of the transition state between the two
 T_transition = 0.025 # approximate temperature for transition between the two
 
 systems = {
-    'lj31-like': '--two-wells-N 90 --two-wells-h-2-to-h-1 1.005 --two-wells-barrier-over-h1 0.03 --two-wells-r-2 0.75'.split(),
+    'lj31-like': '--two-wells-N 90 --two-wells-h2-to-h1 1.005 --two-wells-barrier-over-h1 0.03 --two-wells-r2 0.75'.split(),
 }
 
 run_replicas(name='lj31-like', min_T=min_T, max_iter=1e12, max_independent_samples=100)

@@ -73,9 +73,9 @@ systems = {
     'huge-lj31':  '--lj-N 31 --lj-radius 15 --independent-systems-before-new-bin 16'.split(),
 }
 
-run_replicas(name='lj31', min_T=0.001, max_iter=1e14, max_independent_samples=100)
-run_replicas(name='big-lj31', min_T=0.001, max_iter=1e14, max_independent_samples=100)
-run_replicas(name='huge-lj31', min_T=0.001, max_iter=1e14, max_independent_samples=100)
+run_replicas(name='lj31', min_T=0.001, max_iter=1e14, max_independent_samples=1000)
+run_replicas(name='big-lj31', min_T=0.001, max_iter=1e14, max_independent_samples=1000)
+run_replicas(name='huge-lj31', min_T=0.001, max_iter=1e14, max_independent_samples=1000)
 exit(1)
 run_replicas(name='huge-lj31', min_T=0.001, max_iter=1e14)
 run_replicas(name='lj31', min_T=0.001, extraname='0.001-', max_iter=1e14)

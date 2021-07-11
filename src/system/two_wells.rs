@@ -35,7 +35,7 @@ static NUM_POINTS: usize = 10000;
 fn linspace(start: Length, end: Length, numpoints: usize) -> Vec<Length> {
     let last = numpoints as f64 - 1.0;
     let inv_last = 1.0 / last as f64;
-    (1..numpoints)
+    (0..numpoints)
         .map(|i| ((last - i as f64) * start + i as f64 * end) * inv_last)
         .collect()
 }
@@ -54,19 +54,25 @@ impl SystemInvCdf {
         let numerical_precision_mult = 100;
 
         // us = np.linspace(-r1, np.sqrt(r1**2 - r2**2) ,(num_points) * numerical_precision_mult)  ## We only need a stencil for the first ball
-        let x1: Vec<Length> = linspace(-r1, r1 + 2.0 * r2, numerical_precision_mult);
+        let x1: Vec<Length> = linspace(-r1, r1 + 2.0 * r2, num_points);
         let dx1_ball1 = x1[1] - x1[0];
 
         let dim_power =
             |x_squared: Area| -> f64 { x_squared.sqrt().value_unsafe.powi(dim as i32 - 1) };
         let pdf_x1_nonnormalized = |x1: Length| -> f64 {
-            if x1 <= (r1 * r1 - r2 * r2).sqrt() {
+            debug_assert!(V(dim-1).is_finite());
+            let pdf = if x1 <= (r1 * r1 - r2 * r2).sqrt() {
+                // println!("in first sphere");
                 dim_power(r1 * r1 - x1 * x1) * V(dim - 1)
             } else if x1 < r1 + r2 {
+                // println!("in cylinder");
                 r2.value_unsafe.powi(dim as i32 - 1) * V(dim - 1)
             } else {
+                // println!("in hemisphere");
                 dim_power(r2 * r2 - (x1 - r1 - r2) * (x1 - r1 - r2)) * V(dim - 1)
-            }
+            };
+            debug_assert!(pdf.is_finite());
+            pdf
         };
 
         let mut val = 0.0;
@@ -75,10 +81,13 @@ impl SystemInvCdf {
             let du = us[1] - us[0];
             for i in 0..numerical_precision_mult - 1 {
                 // use midpoint method
+                debug_assert!(us[i].value_unsafe.is_finite() && us[i+1].value_unsafe.is_finite());
                 val += du.value_unsafe * pdf_x1_nonnormalized(0.5 * (us[i + 1] + us[i]));
             }
+            debug_assert!(val.is_finite());
             stencils[w + 1] = val
         }
+        assert!(val > 0.);
         for v in stencils.iter_mut() {
             *v /= val;
         }
@@ -111,6 +120,7 @@ impl SystemInvCdf {
             stencils[N * num_points + w] = 1.; // val
         }
 
+        println!("Finished computing inverse cumulative distribution function!");
         SystemInvCdf {
             num_points,
             dim,
@@ -244,6 +254,7 @@ impl TwoWells {
         let d_2_squared = d_orthog_squared + x2 * x2;
         let d_w_squared = d_orthog_squared + xw * xw;
         let d_i_squared = d_orthog_squared + xi * xi;
+        assert!(d_1_squared.value_unsafe.is_finite());
 
         if (position[0] < r1 && d_1_squared > r1 * r1)
             || (position[0] > r1 && d_2_squared > r2 * r2)
@@ -262,6 +273,11 @@ impl TwoWells {
         let e_2 = e2(d_2_squared);
         let e_w = e2(d_w_squared);
         let e_i = e1(d_i_squared);
+        // println!("energies are {} {} {} {}", e_1, e_2, e_w, e_i);
+        debug_assert!(e_1.value_unsafe.is_finite());
+        debug_assert!(e_2.value_unsafe.is_finite());
+        debug_assert!(e_w.value_unsafe.is_finite());
+        debug_assert!(e_i.value_unsafe.is_finite());
 
         Some(if e_1 < e_2 {
             if e_1 < e_w {
