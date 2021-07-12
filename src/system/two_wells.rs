@@ -60,7 +60,7 @@ impl SystemInvCdf {
         let dim_power =
             |x_squared: Area| -> f64 { x_squared.sqrt().value_unsafe.powi(dim as i32 - 1) };
         let pdf_x1_nonnormalized = |x1: Length| -> f64 {
-            debug_assert!(V(dim-1).is_finite());
+            debug_assert!(V(dim - 1).is_finite());
             let pdf = if x1 <= (r1 * r1 - r2 * r2).sqrt() {
                 // println!("in first sphere");
                 dim_power(r1 * r1 - x1 * x1) * V(dim - 1)
@@ -81,7 +81,7 @@ impl SystemInvCdf {
             let du = us[1] - us[0];
             for i in 0..numerical_precision_mult - 1 {
                 // use midpoint method
-                debug_assert!(us[i].value_unsafe.is_finite() && us[i+1].value_unsafe.is_finite());
+                debug_assert!(us[i].value_unsafe.is_finite() && us[i + 1].value_unsafe.is_finite());
                 val += du.value_unsafe * pdf_x1_nonnormalized(0.5 * (us[i + 1] + us[i]));
             }
             debug_assert!(val.is_finite());
@@ -94,30 +94,31 @@ impl SystemInvCdf {
 
         // ######## The rest follow a uniform sphere ########
 
-        //         us = np.linspace(-1,1,(num_points-1) * numerical_precision_mult)
-        let mut us: Vec<f64> = vec![0.0; (num_points - 1) * numerical_precision_mult];
-        for i in 0..us.len() {
-            us[i] = -1.0 + i as f64 * (1.0 / (us.len() as f64 - 1.0));
-        }
-        let du = us[1] - us[0];
+        let xN: Vec<Length> = linspace(Length::new(-1.0), Length::new(1.0), num_points);
+        // let dxN = xN[1] - xN[0];
+        // println!("dxN {}", dxN);
 
         let pdf = |x: f64, dim: usize| (1.0 - x * x).powf(0.5 * dim as f64) * V(dim) / V(dim + 1);
 
-        for N in 1..dim {
+        for which_dim in 1..dim {
+            let stencil =
+                &mut stencils[which_dim * num_points..(which_dim + 1) * num_points];
             let mut val = 0.0;
-            let mut w = 1;
-            for i in 1..(num_points - 1) * numerical_precision_mult {
-                if i % numerical_precision_mult == 0 {
-                    stencils[N * num_points + w] = val;
-                    w += 1;
+            for w in 0..num_points - 1 {
+                let us = linspace(xN[w], xN[w + 1], numerical_precision_mult);
+                let du = us[1] - us[0];
+                for i in 0..numerical_precision_mult - 1 {
+                    // use midpoint method
+                    debug_assert!(us[i].value_unsafe.is_finite() && us[i + 1].value_unsafe.is_finite());
+                    val += du.value_unsafe * pdf(0.5 * (us[i + 1] + us[i]).value_unsafe, dim - which_dim);
                 }
-                val += (pdf(us[i - 1], dim - N)
-                    + 4. * pdf((us[i] + us[i - 1]) * 0.5, dim - N)
-                    + pdf(us[i], dim - N))
-                    * du
-                    / 6.;
+                debug_assert!(val.is_finite());
+                stencil[w + 1] = val
             }
-            stencils[N * num_points + w] = 1.; // val
+            assert!(val > 0.);
+            for v in stencil.iter_mut() {
+                *v /= val;
+            }
         }
 
         println!("Finished computing inverse cumulative distribution function!");
@@ -142,7 +143,7 @@ impl SystemInvCdf {
             let slope = self.dx1_ball1 / (U - L);
             slope * (probability - L) + -self.r1 + j as f64 * self.dx1_ball1
         } else {
-            let dx = Length::new(2.0 / self.num_points as f64);
+            let dx = Length::new(2.0) / (self.num_points as f64 - 1.0);
             let slope = dx / (U - L);
             slope * (probability - L) - Length::new(1.0) + j as f64 * dx
         }
@@ -153,17 +154,20 @@ impl SystemInvCdf {
         let x1: Length = self.eval(rng.gen(), 0);
         sample.push(x1);
         let mut R: Length = if x1 <= (self.r1 * self.r1 - self.r2 * self.r2).sqrt() {
-            // we are in the first ball
+            // println!("we're in the first ball");
             (self.r1 * self.r1 - x1 * x1).sqrt()
         } else if x1 < self.r1 + self.r2 {
-            // we're in the cylinder
+            // println!("we're in the cylinder");
             self.r2
         } else {
-            // We're in the final hemisphere
-            (self.r2 * self.r2 - (x1 - self.r1 - self.r2) * (x1 - self.r1 - self.r2)).sqrt()
+            // println!("we're in the final hemisphere");
+            let x2 = x1 - self.r1 - self.r2;
+            (self.r2 * self.r2 - x2 * x2).sqrt()
         };
         for i in 2..self.dim {
-            let x = (R / self.r1) * self.eval(rng.gen(), i);
+            let e = self.eval(rng.gen(), i);
+            // println!("e: {}", e);
+            let x = (R / self.r1) * e;
             sample.push(x);
             R = (R * R - x * x).sqrt();
         }
@@ -256,12 +260,16 @@ impl TwoWells {
         let d_i_squared = d_orthog_squared + xi * xi;
         assert!(d_1_squared.value_unsafe.is_finite());
 
-        if (position[0] < r1 && d_1_squared > r1 * r1)
-            || (position[0] > r1 && d_2_squared > r2 * r2)
-            || (position[0] > Length::new(0.)
-                && position[0] < r1 + r2
-                && d_orthog_squared > r2 * r2)
-        {
+        let x1 = position[0];
+        let x_of_cylinder = (r1 * r1 - r2 * r2).sqrt();
+        if x1 < x_of_cylinder && d_1_squared > r1 * r1 {
+            // println!("Outside of first sphere");
+            return None;
+        } else if x1 >= r1 + r2 && d_2_squared > r2 * r2 {
+            // println!("Outside of last hemisphere");
+            return None;
+        } else if x1 >= x_of_cylinder && x1 < r1 + r2 && d_orthog_squared > r2 * r2 {
+            // println!("Outside of cylinder");
             return None;
         }
 
@@ -305,7 +313,12 @@ impl System for TwoWells {
     }
     fn randomize(&mut self, rng: &mut MyRng) -> Energy {
         self.position = self.invcdf.sample(rng);
-        self.energy()
+        if let Some(e) = self.find_energy(&self.position) {
+            e
+        } else {
+            println!("We had a roundoff error issue?!");
+            self.randomize(rng)
+        }
     }
     fn min_moves_to_randomize(&self) -> u64 {
         self.dimensionality() // FIXME /3
