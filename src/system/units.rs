@@ -38,3 +38,12 @@ impl<A> UNITS<f64, A> {
 }
 
 pub use self::f64consts::*;
+
+impl<A> std::iter::Sum<Self> for UNITS<f64, A> {
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = Self>,
+    {
+        iter.fold(UNITS::<f64,A>::new(0.0), |a, b| a+b)
+    }
+}

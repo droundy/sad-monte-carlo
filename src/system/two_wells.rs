@@ -243,11 +243,7 @@ impl TwoWells {
         let r2 = self.parameters.r2;
         let rw = self.well_position;
 
-        let mut d_orthog_squared = Area::new(0.);
-
-        for i in 1..self.parameters.N {
-            d_orthog_squared += position[i] * position[i];
-        }
+        let d_orthog_squared = position[1..].iter().map(|&x| x*x).sum::<Area>();
 
         let x1 = position[0];
         let x2 = x1 - r1 - r2;
