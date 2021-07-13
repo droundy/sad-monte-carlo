@@ -4,6 +4,7 @@ use super::*;
 
 use dimensioned::Sqrt;
 use rand::prelude::*;
+use vector3d::Vector3d;
 /// The parameters needed to configure a fake model with N dimensions.
 ///
 /// These parameters are normally set via command-line arguments.
@@ -205,6 +206,13 @@ fn V(n: usize) -> f64 {
     return std::f64::consts::PI.powf(0.5 * n as f64) / (gamma(n as f64 * 0.5 + 1.0));
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct Change {
+    index: usize,
+    /// The new values at index and beyond
+    values: Vector3d<Length>,
+}
+
 #[allow(non_snake_case)]
 /// A Fake model.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -212,11 +220,11 @@ pub struct TwoWells {
     /// The state of the system
     pub position: Vec<Length>,
     /// Squared distance apart from first coordinate
-    pub d_orthog_squared: Area,
+    pub d_squared: Area,
     /// The function itself
     pub parameters: Parameters,
-    /// The last change we made (and might want to undo).
-    possible_change: Vec<Length>,
+    /// The change we are considering.
+    change: Change,
     /// The position of the second well
     well_position: Length,
     /// The inverse cumulative distribution function for computing random positionis
@@ -229,13 +237,22 @@ impl From<Parameters> for TwoWells {
         // (w - sqrt(b))**2 = b r2**2
         // w - sqrt(b) = sqrt(b) r2
         // w = sqrt(b)(1 + r2) = sqrt(b)(r1 + r2)
+        if parameters.N % 3 != 0 {
+            panic!(
+                "The number of dimensions {} is not divisible by three!",
+                parameters.N
+            );
+        }
         let well_position = parameters.barrier_over_h1.sqrt() * (Length::new(1.) + parameters.r2);
         let position = vec![Length::new(0.5); parameters.N];
-        let d_orthog_squared = position[1..].iter().map(|&x| x * x).sum::<Area>();
+        let d_squared = position.iter().map(|&x| x * x).sum::<Area>();
         TwoWells {
             position,
-            d_orthog_squared,
-            possible_change: Vec::new(),
+            d_squared,
+            change: Change {
+                index: 0,
+                values: Vector3d::new(Length::new(0.0), Length::new(0.0), Length::new(0.0)),
+            },
             invcdf: SystemInvCdf::new(&parameters),
             well_position,
             parameters,
@@ -312,15 +329,16 @@ impl System for TwoWells {
     fn compute_energy(&self) -> Energy {
         self.find_energy(
             self.position[0],
-            self.position[1..].iter().map(|&x| x * x).sum::<Area>(),
+            self.d_squared - self.position[0] * self.position[0],
         )
         .expect("position is out of bounds")
     }
     fn randomize(&mut self, rng: &mut MyRng) -> Energy {
         self.position = self.invcdf.sample(rng);
+        self.d_squared = self.position.iter().map(|&x| x * x).sum::<Area>();
         if let Some(e) = self.find_energy(
             self.position[0],
-            self.position[1..].iter().map(|&x| x * x).sum::<Area>(),
+            self.d_squared - self.position[0] * self.position[0],
         ) {
             e
         } else {
@@ -342,27 +360,32 @@ impl System for TwoWells {
 
 impl ConfirmSystem for TwoWells {
     fn confirm(&mut self) {
-        self.position = self.possible_change.clone();
+        let change = &self.change; // for convenience
+        self.d_squared -= self.position[change.index..change.index + 3]
+            .iter()
+            .map(|&x| x * x)
+            .sum::<Area>();
+        self.position[change.index] = change.values.x;
+        self.position[change.index + 1] = change.values.y;
+        self.position[change.index + 2] = change.values.z;
+        self.d_squared += change.values.norm2();
     }
 }
 
 impl MovableSystem for TwoWells {
     fn plan_move(&mut self, rng: &mut MyRng, d: Length) -> Option<Energy> {
         use crate::rng::vector;
-        let i = rng.gen_range(0, self.position.len() / 3);
-        self.possible_change = self.position.clone();
-        let dr = vector(rng) * d;
-        self.possible_change[i] += dr.x;
-        if i + 1 < self.possible_change.len() {
-            self.possible_change[i + 1] += dr.y;
-        }
-        if i + 2 < self.possible_change.len() {
-            self.possible_change[i + 2] += dr.z;
-        }
-        self.find_energy(
-            self.possible_change[0],
-            self.possible_change[1..].iter().map(|&x| x * x).sum::<Area>(),
-        )
+        let index = rng.gen_range(0, self.position.len() / 3);
+        let old_r = Vector3d::new(
+            self.position[index],
+            self.position[index + 1],
+            self.position[index + 2],
+        );
+        let r = vector(rng) * d + old_r;
+        let d_squared = self.d_squared - old_r.norm2() + r.norm2();
+        let x1 = if index == 0 { r.x } else { self.position[0] };
+        self.change = Change { index, values: r };
+        self.find_energy(x1, d_squared - x1 * x1)
     }
     fn max_size(&self) -> Length {
         Length::new(2.0)
