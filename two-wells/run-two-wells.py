@@ -16,6 +16,7 @@ def rq(name, cmd, cpus):
 
 movie_args = '--movie-time 10^(1/8)'.split()
 
+
 def run_replicas(name, max_iter=max_iter_default, min_T=0.001, max_independent_samples=None, extraname='', extraflags=''):
     save = f'z-{extraname}{name}'
     samples = []
@@ -28,6 +29,7 @@ def run_replicas(name, max_iter=max_iter_default, min_T=0.001, max_independent_s
         + f'--max-iter {max_iter} --min-T {min_T}'.split()
         + samples,
        cpus='all')
+
 
 def histogram(name, de, translation_scale):
     return f'../target/release/histogram --save-time 0.5 --energy-bin {de} --translation-scale {translation_scale}'.split()+movie_args+systems[name]
@@ -67,13 +69,16 @@ def run_inv_t_wl(name, de, min_E, max_E, max_iter=max_iter_default, translation_
 
 min_T = 0.0001
 
-E1 = -133.58642 # minimum energy (Mackay) for an LJ31 cluster
-E2 = -133.29382 # first local minimum (anti-Mackay) for an LJ31 cluster
-E_transition = -131 # approximate energy of the transition state between the two
-T_transition = 0.025 # approximate temperature for transition between the two
+E1 = -133.58642  # minimum energy (Mackay) for an LJ31 cluster
+E2 = -133.29382  # first local minimum (anti-Mackay) for an LJ31 cluster
+E_transition = -131  # approximate energy of the transition state between the two
+T_transition = 0.025  # approximate temperature for transition between the two
 
 systems = {
     'lj31-like': '--two-wells-N 90 --two-wells-h2-to-h1 1.005 --two-wells-barrier-over-h1 0.03 --two-wells-r2 0.75'.split(),
 }
 
-run_replicas(name='lj31-like', min_T=min_T, max_iter=1e12, max_independent_samples=100)
+run_replicas(name='lj31-like', min_T=min_T, max_iter=1e12, max_independent_samples=100,
+             extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
+run_replicas(name='lj31-like', min_T=min_T,
+             max_iter=1e12, max_independent_samples=100)

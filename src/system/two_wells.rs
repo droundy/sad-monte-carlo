@@ -321,7 +321,7 @@ impl System for TwoWells {
         }
     }
     fn min_moves_to_randomize(&self) -> u64 {
-        self.dimensionality() // FIXME /3
+        if self.dimensionality() < 1 { 1 } else { self.dimensionality()/3 }
     }
     fn dimensionality(&self) -> u64 {
         self.position.len() as u64
@@ -336,11 +336,17 @@ impl ConfirmSystem for TwoWells {
 
 impl MovableSystem for TwoWells {
     fn plan_move(&mut self, rng: &mut MyRng, d: Length) -> Option<Energy> {
-        // FIXME move three coordinates at once.
-        let i = rng.gen_range(0, self.position.len());
+        use crate::rng::vector;
+        let i = rng.gen_range(0, self.position.len()/3);
         self.possible_change = self.position.clone();
-        let v: f64 = rng.sample(rand_distr::StandardNormal);
-        self.possible_change[i] += v * d;
+        let dr = vector(rng) * d;
+        self.possible_change[i] += dr.x;
+        if i+1 < self.possible_change.len() {
+            self.possible_change[i+1] += dr.y;
+        }
+        if i+2 < self.possible_change.len() {
+            self.possible_change[i+2] += dr.z;
+        }
         self.find_energy(&self.possible_change)
     }
     fn max_size(&self) -> Length {
