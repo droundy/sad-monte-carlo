@@ -101,16 +101,18 @@ impl SystemInvCdf {
         let pdf = |x: f64, dim: usize| (1.0 - x * x).powf(0.5 * dim as f64) * V(dim) / V(dim + 1);
 
         for which_dim in 1..dim {
-            let stencil =
-                &mut stencils[which_dim * num_points..(which_dim + 1) * num_points];
+            let stencil = &mut stencils[which_dim * num_points..(which_dim + 1) * num_points];
             let mut val = 0.0;
             for w in 0..num_points - 1 {
                 let us = linspace(xN[w], xN[w + 1], numerical_precision_mult);
                 let du = us[1] - us[0];
                 for i in 0..numerical_precision_mult - 1 {
                     // use midpoint method
-                    debug_assert!(us[i].value_unsafe.is_finite() && us[i + 1].value_unsafe.is_finite());
-                    val += du.value_unsafe * pdf(0.5 * (us[i + 1] + us[i]).value_unsafe, dim - which_dim);
+                    debug_assert!(
+                        us[i].value_unsafe.is_finite() && us[i + 1].value_unsafe.is_finite()
+                    );
+                    val += du.value_unsafe
+                        * pdf(0.5 * (us[i + 1] + us[i]).value_unsafe, dim - which_dim);
                 }
                 debug_assert!(val.is_finite());
                 stencil[w + 1] = val
@@ -209,6 +211,8 @@ fn V(n: usize) -> f64 {
 pub struct TwoWells {
     /// The state of the system
     pub position: Vec<Length>,
+    /// Squared distance apart from first coordinate
+    pub d_orthog_squared: Area,
     /// The function itself
     pub parameters: Parameters,
     /// The last change we made (and might want to undo).
@@ -226,8 +230,11 @@ impl From<Parameters> for TwoWells {
         // w - sqrt(b) = sqrt(b) r2
         // w = sqrt(b)(1 + r2) = sqrt(b)(r1 + r2)
         let well_position = parameters.barrier_over_h1.sqrt() * (Length::new(1.) + parameters.r2);
+        let position = vec![Length::new(0.5); parameters.N];
+        let d_orthog_squared = position[1..].iter().map(|&x| x * x).sum::<Area>();
         TwoWells {
-            position: vec![Length::new(0.5); parameters.N],
+            position,
+            d_orthog_squared,
             possible_change: Vec::new(),
             invcdf: SystemInvCdf::new(&parameters),
             well_position,
@@ -237,15 +244,15 @@ impl From<Parameters> for TwoWells {
 }
 
 impl TwoWells {
-    fn find_energy(&self, position: &[Length]) -> Option<Energy> {
+    fn find_energy(&self, x1: Length, d_orthog_squared: Area) -> Option<Energy> {
         //r_1 is assumed to be 1 and center_2 is such that the two wells are touching
         let r1 = Length::new(1.0);
         let r2 = self.parameters.r2;
         let rw = self.well_position;
 
-        let d_orthog_squared = position[1..].iter().map(|&x| x*x).sum::<Area>();
+        // let d_orthog_squared = position[1..].iter().map(|&x| x * x).sum::<Area>();
 
-        let x1 = position[0];
+        // let x1 = position[0];
         let x2 = x1 - r1 - r2;
         let xw = x1 - rw;
         let xi = x1 - 2. * r1 - 2. * r2;
@@ -256,7 +263,6 @@ impl TwoWells {
         let d_i_squared = d_orthog_squared + xi * xi;
         assert!(d_1_squared.value_unsafe.is_finite());
 
-        let x1 = position[0];
         let x_of_cylinder = (r1 * r1 - r2 * r2).sqrt();
         if x1 < x_of_cylinder && d_1_squared > r1 * r1 {
             // println!("Outside of first sphere");
@@ -304,12 +310,18 @@ impl System for TwoWells {
         self.compute_energy()
     }
     fn compute_energy(&self) -> Energy {
-        self.find_energy(&self.position)
-            .expect("position is out of bounds")
+        self.find_energy(
+            self.position[0],
+            self.position[1..].iter().map(|&x| x * x).sum::<Area>(),
+        )
+        .expect("position is out of bounds")
     }
     fn randomize(&mut self, rng: &mut MyRng) -> Energy {
         self.position = self.invcdf.sample(rng);
-        if let Some(e) = self.find_energy(&self.position) {
+        if let Some(e) = self.find_energy(
+            self.position[0],
+            self.position[1..].iter().map(|&x| x * x).sum::<Area>(),
+        ) {
             e
         } else {
             println!("We had a roundoff error issue?!");
@@ -317,7 +329,11 @@ impl System for TwoWells {
         }
     }
     fn min_moves_to_randomize(&self) -> u64 {
-        if self.dimensionality() < 1 { 1 } else { self.dimensionality()/3 }
+        if self.dimensionality() < 1 {
+            1
+        } else {
+            self.dimensionality() / 3
+        }
     }
     fn dimensionality(&self) -> u64 {
         self.position.len() as u64
@@ -333,17 +349,20 @@ impl ConfirmSystem for TwoWells {
 impl MovableSystem for TwoWells {
     fn plan_move(&mut self, rng: &mut MyRng, d: Length) -> Option<Energy> {
         use crate::rng::vector;
-        let i = rng.gen_range(0, self.position.len()/3);
+        let i = rng.gen_range(0, self.position.len() / 3);
         self.possible_change = self.position.clone();
         let dr = vector(rng) * d;
         self.possible_change[i] += dr.x;
-        if i+1 < self.possible_change.len() {
-            self.possible_change[i+1] += dr.y;
+        if i + 1 < self.possible_change.len() {
+            self.possible_change[i + 1] += dr.y;
         }
-        if i+2 < self.possible_change.len() {
-            self.possible_change[i+2] += dr.z;
+        if i + 2 < self.possible_change.len() {
+            self.possible_change[i + 2] += dr.z;
         }
-        self.find_energy(&self.possible_change)
+        self.find_energy(
+            self.possible_change[0],
+            self.possible_change[1..].iter().map(|&x| x * x).sum::<Area>(),
+        )
     }
     fn max_size(&self) -> Length {
         Length::new(2.0)
