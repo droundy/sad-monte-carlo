@@ -77,10 +77,15 @@ T_transition = 0.025  # approximate temperature for transition between the two
 systems = {
     'lj31-like': '--two-wells-N 90 --two-wells-h2-to-h1 1.005 --two-wells-barrier-over-h1 0.03 --two-wells-r2 0.75'.split(),
     'easy': '--two-wells-N 30 --two-wells-h2-to-h1 1.1 --two-wells-barrier-over-h1 0.5 --two-wells-r2 0.5'.split(),
+    'easier': '--two-wells-N 9 --two-wells-h2-to-h1 1.1347 --two-wells-barrier-over-h1 0.5 --two-wells-r2 0.5'.split(),
 }
 
+run_replicas(name='easier', min_T=0.005, max_iter=1e13, max_independent_samples=100)
+run_replicas(name='easier', min_T=0.005, max_iter=1e13, max_independent_samples=100,
+             extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
+
 run_replicas(name='easy', min_T=0.001, max_iter=1e13, max_independent_samples=100)
-run_replicas(name='easy', min_T=min_T, max_iter=1e13, max_independent_samples=100,
+run_replicas(name='easy', min_T=0.001, max_iter=1e13, max_independent_samples=100,
              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
 
 run_replicas(name='lj31-like', min_T=min_T, max_iter=1e13, max_independent_samples=100,

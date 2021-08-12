@@ -3,19 +3,36 @@
 import numpy as np
 import scipy.special as spl
 import matplotlib.pyplot as plt
+import sys
 
-h_small = 1.005
-h_big = 1
-R_small = 0.75
-R_big = 1.
-n = 90
+systems = {
+    'easy': {
+        'h_small': 1.1,
+        'R_small': 0.5,
+        'n': 30,
+    },
+    'easier': {
+        'h_small': 1.1347,
+        'R_small': 0.5,
+        'n': 9,
+    },
+    'lj31-like': {
+        'h_small': 1.005,
+        'R_small': 0.75,
+        'n': 90,
+    }
+}
 
-# "easy" version
-h_small = 1.1
+if len(sys.argv) == 2:
+    system = sys.argv[1]
+else:
+    system = 'easier'
+
+h_small = systems[system]['h_small']
+R_small = systems[system]['R_small']
+n = systems[system]['n']
 h_big = 1
-R_small = 0.5
 R_big = 1.
-n = 30
 
 E1 = -133.58642 # minimum energy (Mackay) for an LJ31 cluster
 E2 = -133.29382 # first local minimum (anti-Mackay) for an LJ31 cluster
