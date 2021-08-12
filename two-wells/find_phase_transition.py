@@ -10,6 +10,13 @@ R_small = 0.75
 R_big = 1.
 n = 90
 
+# "easy" version
+h_small = 1.1
+h_big = 1
+R_small = 0.5
+R_big = 1.
+n = 30
+
 E1 = -133.58642 # minimum energy (Mackay) for an LJ31 cluster
 E2 = -133.29382 # first local minimum (anti-Mackay) for an LJ31 cluster
 E_barrier = -131 # approximate energy of the transition state between the two
