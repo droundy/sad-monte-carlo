@@ -80,8 +80,8 @@ systems = {
     'easier': '--two-wells-N 9 --two-wells-h2-to-h1 1.1347 --two-wells-barrier-over-h1 0.5 --two-wells-r2 0.5'.split(),
 }
 
-run_replicas(name='easier', min_T=0.005, max_iter=1e13, max_independent_samples=100)
-run_replicas(name='easier', min_T=0.005, max_iter=1e13, max_independent_samples=100,
+run_replicas(name='easier', min_T=0.005, max_iter=1e13, max_independent_samples=1000)
+run_replicas(name='easier', min_T=0.005, max_iter=1e13, max_independent_samples=1000,
              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
 
 run_replicas(name='easy', min_T=0.001, max_iter=1e13, max_independent_samples=100)
