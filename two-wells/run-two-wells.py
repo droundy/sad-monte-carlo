@@ -35,9 +35,9 @@ def histogram(name, de, translation_scale):
     return f'../target/release/histogram --save-time 0.5 --energy-bin {de} --translation-scale {translation_scale}'.split()+movie_args+systems[name]
 
 
-def run_sad(name, de, max_iter=max_iter_default, min_T=0.001, max_E=None, translation_scale=0.05):
+def run_sad(name, de, max_iter=max_iter_default, min_T=0.001, max_E=None, translation_scale=0.05, extraname=''):
     de = str(de)
-    save = 'sad-'+name+'-'+de
+    save = f'sad-{extraname}{name}-'+de
     max_E_args = []
     if max_E is not None:
         max_E_args = f'--max-allowed-energy {max_E}'.split()
@@ -83,6 +83,15 @@ systems = {
 run_replicas(name='easier', min_T=0.005, max_iter=1e13, max_independent_samples=1000)
 run_replicas(name='easier', min_T=0.005, max_iter=1e13, max_independent_samples=1000,
              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
+
+run_sad(name='easier', min_T=0.005, max_iter=1e13, translation_scale=0.05, de=0.001,
+        extraname='0.05-')
+run_sad(name='easier', min_T=0.005, max_iter=1e13, translation_scale=0.01, de=0.001,
+        extraname='0.01-')
+run_sad(name='easier', min_T=0.005, max_iter=1e13, translation_scale=0.05, de=0.01,
+        extraname='0.05-')
+run_sad(name='easier', min_T=0.005, max_iter=1e13, translation_scale=0.01, de=0.01,
+        extraname='0.01-')
 
 run_replicas(name='easy', min_T=0.001, max_iter=1e13, max_independent_samples=100)
 run_replicas(name='easy', min_T=0.001, max_iter=1e13, max_independent_samples=100,
