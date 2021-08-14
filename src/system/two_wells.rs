@@ -230,7 +230,8 @@ impl From<Parameters> for TwoWells {
         // w - sqrt(b) = sqrt(b) r2
         // w = sqrt(b)(1 + r2) = sqrt(b)(r1 + r2)
         let well_position = parameters.barrier_over_h1.sqrt() * (Length::new(1.) + parameters.r2);
-        let position = vec![Length::new(0.0); parameters.N];
+        let mut position = vec![Length::new(0.0); parameters.N];
+        position[0] = Length::new(-0.99);
         let d_orthog_squared = position[1..].iter().map(|&x| x * x).sum::<Area>();
         TwoWells {
             position,
