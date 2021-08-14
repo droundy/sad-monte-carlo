@@ -37,5 +37,8 @@ def V(n):
 def D(e):
     if e < -h_big:
         return V(n)*R_small**n/2*np.sqrt(e/h_small+1)**(n-2)
-    else:
-        return V(n)*R_small**n/2*np.sqrt(e/h_small+1)**(n-2) + V(n)*R_big**n/2*np.sqrt(e/h_big+1)**(n-2)
+    return V(n)*R_small**n/2*np.sqrt(e/h_small+1)**(n-2) + V(n)*R_big**n/2*np.sqrt(e/h_big+1)**(n-2)
+D = np.vectorize(D)
+
+def S(E):
+    return np.log(D(E))

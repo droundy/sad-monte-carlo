@@ -3,7 +3,6 @@
 import numpy as np
 import scipy.special as spl
 import matplotlib.pyplot as plt
-import sys
 import system
 
 E1 = -133.58642 # minimum energy (Mackay) for an LJ31 cluster
