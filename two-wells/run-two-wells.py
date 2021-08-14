@@ -37,11 +37,11 @@ def histogram(name, de, translation_scale):
 
 def run_sad(name, de, max_iter=max_iter_default, min_T=0.001, max_E=None, translation_scale=0.05, extraname=''):
     de = str(de)
-    save = f'sad-{extraname}{name}-'+de
+    save = f'sad-{name}-{de}+{translation_scale}'
     max_E_args = []
     if max_E is not None:
         max_E_args = f'--max-allowed-energy {max_E}'.split()
-    run(histogram(name, de, translation_scale=translation_scale)
+    rq(histogram(name, de, translation_scale=translation_scale)
         + f'--save-as {save}.cbor'.split()
         + f'--max-iter {max_iter} --sad-min-T {min_T}'.split()
         + max_E_args, check=True)
@@ -49,11 +49,11 @@ def run_sad(name, de, max_iter=max_iter_default, min_T=0.001, max_E=None, transl
 
 def run_wl(name, de, min_E, max_E, min_gamma=None, max_iter=max_iter_default, translation_scale=0.05):
     de = str(de)
-    save = 'wl-'+name+'-'+de
+    save = f'wl-{name}-{de}+{translation_scale}'
     min_gamma_args = []
     if min_gamma is not None:
         min_gamma_args = f'--wl-min-gamma {min_gamma}'.split()
-    run(histogram(name, de, translation_scale=translation_scale)
+    rq(histogram(name, de, translation_scale=translation_scale)
         + f'--save-as {save}.cbor'.split()
         + f'--max-iter {max_iter} --wl --min-allowed-energy {min_E} --max-allowed-energy {max_E}'.split()
         + min_gamma_args, check=True)
@@ -61,8 +61,8 @@ def run_wl(name, de, min_E, max_E, min_gamma=None, max_iter=max_iter_default, tr
 
 def run_inv_t_wl(name, de, min_E, max_E, max_iter=max_iter_default, translation_scale=0.05):
     de = str(de)
-    save = 'itwl-'+name+'-'+de
-    run(histogram(name, de, translation_scale=translation_scale)
+    save = f'itwl-{name}-{de}+{translation_scale}'
+    rq(histogram(name, de, translation_scale=translation_scale)
         + f'--save-as {save}.cbor'.split()
         + f'--max-iter {max_iter} --inv-t-wl --min-allowed-energy {min_E} --max-allowed-energy {max_E}'.split(), check=True)
 
