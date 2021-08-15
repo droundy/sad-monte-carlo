@@ -86,14 +86,15 @@ systems = {
     'easier': '--two-wells-N 9 --two-wells-h2-to-h1 1.1347 --two-wells-barrier-over-h1 0.5 --two-wells-r2 0.5'.split(),
 }
 
-run_sad(name='easier', min_T=0.005, max_iter=1e12, translation_scale=0.05, de=0.001,
-        extraname='0.05-')
-run_sad(name='easier', min_T=0.005, max_iter=1e12, translation_scale=0.01, de=0.001,
-        extraname='0.01-')
-run_sad(name='easier', min_T=0.005, max_iter=1e12, translation_scale=0.05, de=0.01,
-        extraname='0.05-')
-run_sad(name='easier', min_T=0.005, max_iter=1e12, translation_scale=0.01, de=0.01,
-        extraname='0.01-')
+run_inv_t_wl(name='easier', min_E=-1.13, max_E=0, max_iter=1e12,
+             translation_scale=0.05, de=0.01)
+run_inv_t_wl(name='easier', min_E=-1.13, max_E=0, max_iter=1e12,
+             translation_scale=0.05, de=0.001)
+
+run_sad(name='easier', min_T=0.005, max_iter=1e12, translation_scale=0.05, de=0.001)
+run_sad(name='easier', min_T=0.005, max_iter=1e12, translation_scale=0.01, de=0.001)
+run_sad(name='easier', min_T=0.005, max_iter=1e12, translation_scale=0.05, de=0.01)
+run_sad(name='easier', min_T=0.005, max_iter=1e12, translation_scale=0.01, de=0.01)
 
 run_replicas(name='easier', min_T=0.005, max_iter=1e13, max_independent_samples=1000)
 run_replicas(name='easier', min_T=0.005, max_iter=1e13, max_independent_samples=1000,
