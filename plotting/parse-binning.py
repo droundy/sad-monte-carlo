@@ -5,6 +5,13 @@ import numpy as np
 import scipy.constants as scipy
 import readsystem
 
+parser = argparse.ArgumentParser(description="fake energies analysis")
+parser.add_argument('fname', nargs='*', help='the yaml or cbor file')
+parser.add_argument("--reparse", help="parse file even if it has already been parsed",
+                    action="store_true")
+
+args = parser.parse_args()
+
 def latex_float(x):
     exp = int(np.log10(x*1.0))
     if abs(exp) > 2:

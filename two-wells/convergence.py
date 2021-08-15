@@ -10,7 +10,7 @@ E = np.linspace(-system.h_small, 0, 10000)
 E = 0.5*(E[1:] + E[:-1])
 plt.plot(E, system.S(E), label='exact')
 
-for fname in sorted(glob.glob('z-*'+system.system+'*.cbor')):
+for fname in sorted(glob.glob('*'+system.system+'*.cbor')):
     print(fname)
     base = fname[:-5]
 
