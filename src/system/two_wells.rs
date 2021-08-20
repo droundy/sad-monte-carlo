@@ -244,7 +244,8 @@ impl From<Parameters> for TwoWells {
             );
         }
         let well_position = parameters.barrier_over_h1.sqrt() * (Length::new(1.) + parameters.r2);
-        let position = vec![Length::new(0.5); parameters.N];
+        let mut position = vec![Length::new(0.0); parameters.N];
+        position[0] = Length::new(-0.99);
         let d_squared = position.iter().map(|&x| x * x).sum::<Area>();
         TwoWells {
             position,
@@ -306,7 +307,7 @@ impl TwoWells {
         debug_assert!(e_w.value_unsafe.is_finite());
         debug_assert!(e_i.value_unsafe.is_finite());
 
-        Some(if e_1 < e_2 {
+        let e = if e_1 < e_2 {
             if e_1 < e_w {
                 e_1
             } else {
@@ -318,6 +319,12 @@ impl TwoWells {
             } else {
                 e_2
             }
+        };
+        // Make the energy max out at zero
+        Some(if e < Energy::new(0.) {
+            e
+        } else {
+            Energy::new(0.)
         })
     }
 }

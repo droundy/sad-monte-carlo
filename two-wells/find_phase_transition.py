@@ -3,12 +3,7 @@
 import numpy as np
 import scipy.special as spl
 import matplotlib.pyplot as plt
-
-h_small = 1.005
-h_big = 1
-R_small = 0.75
-R_big = 1.
-n = 90
+import system
 
 E1 = -133.58642 # minimum energy (Mackay) for an LJ31 cluster
 E2 = -133.29382 # first local minimum (anti-Mackay) for an LJ31 cluster
@@ -19,32 +14,21 @@ delta_E = E2 - E1
 print('temperature over Delta E LJ31', T_transition/delta_E)
 print('barrier over Delta E LJ31', (E_barrier-E1)/delta_E)
 
-
-def V(n):
-    return np.pi**(n/2)/(spl.gamma(n/2+1))
-
-def D(e):
-    if e < -h_big:
-        return V(n)*R_small**n/2*np.sqrt(e/h_small+1)**(n-2)
-    else:
-        return V(n)*R_small**n/2*np.sqrt(e/h_small+1)**(n-2) + V(n)*R_big**n/2*np.sqrt(e/h_big+1)**(n-2)
-
-
 def E_1(e):
     '''
        Finds the lower energy that has the same slope as energy e
     '''
-    numerator = R_small**n * np.sqrt(e/h_small+1)**(n-2) + R_big**n * np.sqrt(e/h_big+1)**(n-2)
+    numerator = system.R_small**system.n * np.sqrt(e/system.h_small+1)**(system.n-2) + system.R_big**system.n * np.sqrt(e/system.h_big+1)**(system.n-2)
 
-    denominator = (1/h_small)*R_small**n * np.sqrt(e/h_small+1)**(n-4) + (1/h_big)*R_big**n * np.sqrt(e/h_big+1)**(n-4) 
+    denominator = (1/system.h_small)*system.R_small**system.n * np.sqrt(e/system.h_small+1)**(system.n-4) + (1/system.h_big)*system.R_big**system.n * np.sqrt(e/system.h_big+1)**(system.n-4) 
 
-    return numerator/denominator - h_small
+    return numerator/denominator - system.h_small
 
 def S(e):
-    return np.log(D(e)/D(0))
+    return np.log(system.D(e)/system.D(0))
 
 def S_prime(e): #ONLY VALID FOR VALUES BELOW SHORT WELL. More complicated above the short well
-    return ((n-2)/(2*h_small))/(e/h_small + 1)
+    return ((system.n-2)/(2*system.h_small))/(e/system.h_small + 1)
 
 def g(e):
     return S(e) - S(E_1(e)) - S_prime(E_1(e))*(e - E_1(e))
@@ -53,8 +37,8 @@ def g(e):
 max_iter = 1000
 
 
-lower_bound = -h_big#h_2*0.99
-upper_bound = -0.1*h_big #The highest E_2 with a valid E_1
+lower_bound = -system.h_big#h_2*0.99
+upper_bound = -0.1*system.h_big #The highest E_2 with a valid E_1
 guess = (lower_bound + upper_bound)/2 #Guess based on looking at the plot
 
 iters = 0
@@ -75,14 +59,14 @@ print('\nguess is', guess)
 # print("->T: " + str(1/S_prime(guess)))
 
 actual_T = 1/S_prime(guess)
-print('actual T/Delta E', actual_T/(h_small - h_big))
-print('actual barrier/Delta E', h_small/(h_small - h_big))
+print('actual T/Delta E', actual_T/(system.h_small - system.h_big))
+print('actual barrier/Delta E', system.h_small/(system.h_small - system.h_big))
 
-print('barrier energy should be', (actual_T/0.025)*(E_barrier-E1) - h_small)
+print('barrier energy should be', (actual_T/0.025)*(E_barrier-E1) - system.h_small)
 
 ##### Plotting #####
 print('guess', guess, E_1(guess))
-E_2 = np.arange(-h_big, 0, 0.0001)
+E_2 = np.arange(-system.h_big, 0, 0.0001)
 
 
 # plt.figure()
@@ -93,7 +77,7 @@ E_2 = np.arange(-h_big, 0, 0.0001)
 e_2 = []
 
 for e in E_2:
-    if E_1(e) < -h_big:
+    if E_1(e) < -system.h_big:
         e_2.append(e)
 
 e_1 = []
@@ -101,7 +85,7 @@ for e in e_2:
     e_1.append(E_1(e))
 
 plt.figure()
-E = np.arange(-h_small,0,abs(h_big-h_small)/100)
+E = np.arange(-system.h_small,0,abs(system.h_big-system.h_small)/100)
 
 s = np.zeros_like(E)
 
@@ -122,7 +106,7 @@ plt.plot(E_1(guess), S(E_1(guess)), '.')
 
 ##### Common Tangent #####
 
-t = np.arange(-h_small,-0,0.5)
+t = np.arange(-system.h_small,-0,0.5)
 m = S_prime(E_1(guess))
 print('T =', 1/m)
 Y = m*(t-guess) + S(guess)
