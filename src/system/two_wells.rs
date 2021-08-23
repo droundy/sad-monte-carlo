@@ -441,7 +441,7 @@ impl ConfirmSystem for TwoWells {
 impl MovableSystem for TwoWells {
     fn plan_move(&mut self, rng: &mut MyRng, d: Length) -> Option<Energy> {
         use crate::rng::vector;
-        let index = rng.gen_range(0, self.position.len() / 3);
+        let index = 3*rng.gen_range(0, self.position.len() / 3);
         let old_r = Vector3d::new(
             self.position[index],
             self.position[index + 1],
