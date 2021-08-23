@@ -22,11 +22,6 @@ def latex_float(x):
     else:
         return '%g' % x
 
-parser = argparse.ArgumentParser(description="parse data for energy histogram data")
-parser.add_argument('yaml', nargs='*',
-                    help = 'the names of some yaml files')
-args = parser.parse_args()
-
 class Bins:
     """ A thing with bins """
     def __init__(self, data, method=None):
@@ -175,10 +170,12 @@ class MC:
                  print(hist)
          return lnw - lnw.max()
 
-for fname in args.yaml:
+for fname in args.fname:
+    base = os.path.splitext(fname)[0]
+    if not args.reparse and os.path.exists(base+'-lnw.dat') or '*' in base:
+        continue
     print(fname)
     mc = MC(fname)
-    base = os.path.splitext(fname)[0]
 
     np.savetxt(base+'-histogram.dat', np.array([0]+list(mc.histogram())+[0]))
     np.savetxt(base+'-energy-boundaries.dat', mc.energy_boundaries)

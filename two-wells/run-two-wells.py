@@ -89,41 +89,30 @@ systems = {
     'easiest': '--two-wells-N 9 --two-wells-h2-to-h1 1 --two-wells-barrier-over-h1 0.5 --two-wells-r2 0.5'.split(),
 }
 
-run_wl(name='easier-no-barrier', min_E=-1.13, max_E=0.0005, max_iter=1e12,
-             translation_scale=0.05, de=0.001, min_gamma=1e-9)
-run_wl(name='easier-no-barrier', min_E=-1.13, max_E=0.0005, max_iter=1e12,
-             translation_scale=0.5, de=0.001, min_gamma=1e-9)
+for translation_scale in [0.001, 0.01]:
+    for system in ['easier-no-barrier', 'easier-all-barrier', 'easier']:
+        run_wl(name=system, min_E=-1.13, max_E=0.0005, max_iter=1e12,
+                    translation_scale=translation_scale, de=0.001, min_gamma=1e-9)
+        run_inv_t_wl(name=system, min_E=-1.13, max_E=0.0005, max_iter=1e12,
+                    translation_scale=translation_scale, de=0.001)
+        run_sad(name=system, min_T=0.005, max_iter=1e12, translation_scale=translation_scale, de=0.001)
 
-run_inv_t_wl(name='easier-no-barrier', min_E=-1.13, max_E=0.0005, max_iter=1e12,
-             translation_scale=0.05, de=0.001)
-
-run_inv_t_wl(name='easier-all-barrier', min_E=-1.13, max_E=0.0005, max_iter=1e12,
-             translation_scale=0.05, de=0.001)
-
-run_replicas(name='easier-all-barrier', min_T=0.005, max_iter=1e13, max_independent_samples=100)
-run_replicas(name='easier', min_T=0.005, max_iter=1e13, max_independent_samples=100)
-run_replicas(name='easier-no-barrier', min_T=0.005, max_iter=1e13, max_independent_samples=100)
-
-run_inv_t_wl(name='easier', min_E=-1.13, max_E=0.0005, max_iter=1e12,
-             translation_scale=0.05, de=0.001)
-run_inv_t_wl(name='easier', min_E=-1.13, max_E=0.0005, max_iter=1e12,
-             translation_scale=0.01, de=0.001)
-
-run_inv_t_wl(name='easiest', min_E=-1.13, max_E=0.0005, max_iter=1e12,
-             translation_scale=0.05, de=0.001)
-run_replicas(name='easiest', min_T=0.005, max_iter=1e13, max_independent_samples=100000)
-
-run_sad(name='easier', min_T=0.005, max_iter=1e12, translation_scale=0.05, de=0.001)
-run_sad(name='easier', min_T=0.005, max_iter=1e12, translation_scale=0.01, de=0.001)
-
-run_replicas(name='easier', min_T=0.005, max_iter=1e13, max_independent_samples=1000,
+run_replicas(name='easier-all-barrier', min_T=0.005, max_iter=1e13, max_independent_samples=100,
+             extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
+run_replicas(name='easier', min_T=0.005, max_iter=1e13, max_independent_samples=100,
+             extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
+run_replicas(name='easier-no-barrier', min_T=0.005, max_iter=1e13, max_independent_samples=100,
              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
 
-run_replicas(name='easy', min_T=0.001, max_iter=1e13, max_independent_samples=100)
-run_replicas(name='easy', min_T=0.001, max_iter=1e13, max_independent_samples=100,
-             extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
+# run_inv_t_wl(name='easiest', min_E=-1.13, max_E=0.0005, max_iter=1e12,
+#              translation_scale=0.05, de=0.001)
+# run_replicas(name='easiest', min_T=0.005, max_iter=1e13, max_independent_samples=100000)
 
-run_replicas(name='lj31-like', min_T=min_T, max_iter=1e13, max_independent_samples=100,
-             extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
-run_replicas(name='lj31-like', min_T=min_T,
-             max_iter=1e13, max_independent_samples=100)
+# run_replicas(name='easy', min_T=0.001, max_iter=1e13, max_independent_samples=100)
+# run_replicas(name='easy', min_T=0.001, max_iter=1e13, max_independent_samples=100,
+#              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
+
+# run_replicas(name='lj31-like', min_T=min_T, max_iter=1e13, max_independent_samples=100,
+#              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
+# run_replicas(name='lj31-like', min_T=min_T,
+#              max_iter=1e13, max_independent_samples=100)

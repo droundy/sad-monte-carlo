@@ -17,7 +17,7 @@ args = parser.parse_args()
 
 for fname in args.fname:
     base = os.path.splitext(fname)[0]
-    if not args.reparse and os.path.exists(base+'-lnw.dat'):
+    if not args.reparse and os.path.exists(base+'-lnw.dat') or '*' in base:
         continue
 
     with open(fname, 'rb') as stream:
