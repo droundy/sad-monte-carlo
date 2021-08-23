@@ -91,6 +91,8 @@ systems = {
 
 run_wl(name='easier-no-barrier', min_E=-1.13, max_E=0.0005, max_iter=1e12,
              translation_scale=0.05, de=0.001, min_gamma=1e-9)
+run_wl(name='easier-no-barrier', min_E=-1.13, max_E=0.0005, max_iter=1e12,
+             translation_scale=0.5, de=0.001, min_gamma=1e-9)
 
 run_inv_t_wl(name='easier-no-barrier', min_E=-1.13, max_E=0.0005, max_iter=1e12,
              translation_scale=0.05, de=0.001)

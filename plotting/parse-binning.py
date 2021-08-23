@@ -180,6 +180,7 @@ for fname in args.yaml:
     mc = MC(fname)
     base = os.path.splitext(fname)[0]
 
+    np.savetxt(base+'-histogram.dat', np.array([0]+list(mc.histogram())+[0]))
     np.savetxt(base+'-energy-boundaries.dat', mc.energy_boundaries)
     np.savetxt(base+'-mean-energy.dat', mc.mean_energy)
     np.savetxt(base+'-mean-energy-squared.dat', mc.mean_energy_squared)
