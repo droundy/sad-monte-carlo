@@ -29,7 +29,7 @@ args = parser.parse_args()
 
 class Bins:
     """ A thing with bins """
-    def __init__(self, data):
+    def __init__(self, data, method=None):
         if 'Histogram' in data:
             self._kind = 'Histogram'
             self._min = data['Histogram']['min']
@@ -59,7 +59,12 @@ class Bins:
             self._width = data['width']
             self._lnw = np.array(data['lnw'])
             self._hist = np.array(data['histogram'])
-            self._extra = {}
+            self._extra = data['extra']
+            if 'WL' in method:
+                # print('hist is', method['WL']['hist'].keys())
+                self._extra['hist'] = {
+                    'count': method['WL']['hist']
+                }
             m = list(np.array(data['energy_total'])/np.array(data['histogram']))
             self._mean_energy = np.array([np.nan]+list(m)+[np.nan]) # pad with undefined energy in the unbounded bins
             m2 = list(np.array(data['energy_squared_total'])/np.array(data['histogram']))
@@ -116,7 +121,7 @@ class MC:
             else:
                 print('What kind of file is this?!')
 
-            self._bins = Bins(self.data['bins'])
+            self._bins = Bins(self.data['bins'], method=self.data['method'])
             if 'high_resolution' in self.data and self.data['high_resolution'] is not None:
                 self._high_resolution = Bins(self.data['high_resolution'])
             else:
@@ -178,6 +183,9 @@ for fname in args.yaml:
     np.savetxt(base+'-energy-boundaries.dat', mc.energy_boundaries)
     np.savetxt(base+'-mean-energy.dat', mc.mean_energy)
     np.savetxt(base+'-mean-energy-squared.dat', mc.mean_energy_squared)
+    for extra in mc._bins._extra.keys():
+        if extra != 'hist':
+            np.savetxt(base+f'-{extra}.dat', np.array([np.NINF]+list(mc._bins.mean_extra(extra))+[np.NINF])[::-1])
     np.savetxt(base+'-lnw.dat', mc.lnw) #includes unbounded extremes
 
     with open(base+'-system.dat', 'w') as f:

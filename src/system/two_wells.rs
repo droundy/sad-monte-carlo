@@ -327,6 +327,54 @@ impl TwoWells {
             Energy::new(0.)
         })
     }
+
+    fn find_which(&self, x1: Length, d_orthog_squared: Area) -> f64 {
+        //r_1 is assumed to be 1 and center_2 is such that the two wells are touching
+        let r1 = Length::new(1.0);
+        let r2 = self.parameters.r2;
+        let rw = self.well_position;
+
+        // let d_orthog_squared = position[1..].iter().map(|&x| x * x).sum::<Area>();
+
+        // let x1 = position[0];
+        let x2 = x1 - r1 - r2;
+        let xw = x1 - rw;
+        let xi = x1 - 2. * r1 - 2. * r2;
+
+        let d_1_squared = d_orthog_squared + x1 * x1;
+        let d_2_squared = d_orthog_squared + x2 * x2;
+        let d_w_squared = d_orthog_squared + xw * xw;
+        let d_i_squared = d_orthog_squared + xi * xi;
+        assert!(d_1_squared.value_unsafe.is_finite());
+
+        let e1 = |d2: Area| -> Energy { Energy::new(1.) * (d2 / (r1 * r1) - 1.) };
+        let e2 =
+            |d2: Area| -> Energy { Energy::new(self.parameters.h2_to_h1) * (d2 / (r2 * r2) - 1.) };
+
+        let e_1 = e1(d_1_squared);
+        let e_2 = e2(d_2_squared);
+        let e_w = e2(d_w_squared);
+        let e_i = e1(d_i_squared);
+        // println!("energies are {} {} {} {}", e_1, e_2, e_w, e_i);
+        debug_assert!(e_1.value_unsafe.is_finite());
+        debug_assert!(e_2.value_unsafe.is_finite());
+        debug_assert!(e_w.value_unsafe.is_finite());
+        debug_assert!(e_i.value_unsafe.is_finite());
+
+        if e_1 < e_2 {
+            if e_1 < e_w {
+                0.0
+            } else {
+                1.0
+            }
+        } else {
+            if e_i > e_2 && e_i < Energy::new(0.) {
+                0.0
+            } else {
+                1.0
+            }
+        }
+    }
 }
 
 impl System for TwoWells {
@@ -362,6 +410,17 @@ impl System for TwoWells {
     }
     fn dimensionality(&self) -> u64 {
         self.position.len() as u64
+    }
+    fn data_to_collect(&self, _iter: u64) -> Vec<(Interned, f64)> {
+        let which_well = Interned::from("which");
+
+        vec![(
+            which_well,
+            self.find_which(
+                self.position[0],
+                self.d_squared - self.position[0] * self.position[0],
+            ),
+        )]
     }
 }
 

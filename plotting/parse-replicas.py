@@ -85,6 +85,7 @@ for fname in args.fname:
                 extra.append(r['above_extra'][e][0]/r['above_extra'][e][1])
             else:
                 extra.append(np.NaN)
+        extra.append(np.NaN)
         np.savetxt(base+f'-{e}.dat', extra)
             
 
