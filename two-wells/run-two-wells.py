@@ -96,13 +96,14 @@ run_replicas(name='easier', min_T=0.005, max_iter=1e13, max_independent_samples=
 run_replicas(name='easier-no-barrier', min_T=0.005, max_iter=1e13, max_independent_samples=10000,
              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
 
-for translation_scale in [0.001, 0.01]:
-    for system in ['easier-no-barrier', 'easier-all-barrier', 'easier']:
-        run_wl(name=system, min_E=-1.13, max_E=0.0005, max_iter=1e12,
-                    translation_scale=translation_scale, de=0.001, min_gamma=1e-9)
-        run_inv_t_wl(name=system, min_E=-1.13, max_E=0.0005, max_iter=1e12,
-                    translation_scale=translation_scale, de=0.001)
-        run_sad(name=system, min_T=0.005, max_iter=1e12, translation_scale=translation_scale, de=0.001)
+for de in [0.001, 0.01, 0.1]:
+    for translation_scale in [0.001, 0.01]:
+        for system in ['easier-no-barrier', 'easier-all-barrier', 'easier']:
+            run_wl(name=system, min_E=-1.13, max_E=0.0005, max_iter=1e12,
+                        translation_scale=translation_scale, de=de, min_gamma=1e-9)
+            run_inv_t_wl(name=system, min_E=-1.13, max_E=0.0005, max_iter=1e12,
+                        translation_scale=translation_scale, de=de)
+            run_sad(name=system, min_T=0.005, max_iter=1e12, translation_scale=translation_scale, de=de)
 
 # run_inv_t_wl(name='easiest', min_E=-1.13, max_E=0.0005, max_iter=1e12,
 #              translation_scale=0.05, de=0.001)
