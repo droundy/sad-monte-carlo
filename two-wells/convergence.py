@@ -40,7 +40,6 @@ for fname in sorted(glob.glob('*'+system.system+'*.cbor')):
     plt.plot(E, normalize_S(l_function(E)), label=base)
 
     plt.figure('fraction-well')
-    print('base is', base)
     mean_which = np.loadtxt(f'{base}-which.dat')
     plt.plot(mean_e, mean_which, label=base)
 
