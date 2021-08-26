@@ -24,7 +24,7 @@ def run_replicas(name, max_iter=max_iter_default, min_T=0.001, max_independent_s
         samples = ['--max-independent-samples', str(max_independent_samples)]
     rq(name=save,
        cmd=['../target/release/replicas']+systems[name]+movie_args
-        + f'--save-time 0.5 --save-as {save}.cbor'.split()
+        + f'--save-time 0.5 --save-as {save}.yaml'.split()
         + extraflags.split()
         + f'--max-iter {max_iter} --min-T {min_T}'.split()
         + samples,

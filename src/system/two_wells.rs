@@ -274,7 +274,7 @@ impl TwoWells {
         // let x1 = position[0];
         let x2 = x1 - r1 - r2;
         let xw = x1 - rw;
-        let xi = x1 - 2. * r1 - 2. * r2;
+        let xi = x2 + rw;
 
         let d_1_squared = d_orthog_squared + x1 * x1;
         let d_2_squared = d_orthog_squared + x2 * x2;
@@ -340,7 +340,7 @@ impl TwoWells {
         // let x1 = position[0];
         let x2 = x1 - r1 - r2;
         let xw = x1 - rw;
-        let xi = x1 - 2. * r1 - 2. * r2;
+        let xi = x2 + rw;
 
         let d_1_squared = d_orthog_squared + x1 * x1;
         let d_2_squared = d_orthog_squared + x2 * x2;
