@@ -33,11 +33,14 @@ def known_moments(E):
     b = np.exp(-ER/(2*sigma**2)) - np.exp(-EL/(2*sigma**2))
     c = erf(EL/(np.sqrt(2)*sigma)) - erf(ER/(np.sqrt(2)*sigma))
     known_E_avg = a*(b/c)
+    print('known_E_avg', known_E_avg)
     d = ER*np.exp(-ER/(2*sigma**2)) - EL*np.exp(-EL/(2*sigma**2))
     known_E_sqrd_avg = (2*sigma)*(np.sqrt(2/np.pi)*(d/c**2)+(sigma/c))
     known_E_uncertainty = np.sqrt(1/known_weights*((sigma*d)/2 + (sigma**2*c/2) - (sigma**2*b/2*np.pi)))
     return [known_weights, known_E_avg, known_E_sqrd_avg, known_E_uncertainty]
 
+print('E_exp', E_exp)
+print(known_moments(E_exp))
 
 '''
 Calculate Moments
@@ -90,12 +93,13 @@ def Moments(x):
         return [weight, E_avg, E_sqrd_avg, E_uncertainty]
     else:
         print('A < 0')
+        return [np.NaN, np.NaN, np.NaN, np.NaN]
         # A < 0 was removed because when A is negative np.sqrt(gamma) is imaginary !!!
 
 '''
 Root Finding
 '''
-def find_residuals(x):
+def find_residuals(x, which_bin):
     # temporary values
     M = Moments(x)
     w = M[0]
@@ -125,31 +129,25 @@ def find_residuals(x):
     print('sum = ', sum(E_uncertainty_diff))
     print('E_uncertainty_matrix - known_E_uncertainty = ', E_uncertainty_diff)
     print('sum = ', sum(E_uncertainty_diff))
-    return w_diff, E_avg_diff, E_sqrd_avg_diff, E_uncertainty_diff
+    return w_diff[which_bin], E_avg_diff[which_bin], E_sqrd_avg_diff[which_bin], E_uncertainty_diff[which_bin]
 
 # function for roots coppied from separte document to check functioning on simmple expression
 
-def roots(x0_guess, x1_guess, x2_guess,x3_guess):
-    sol = optimize.root(Moments,[x0_guess, x1_guess, x2_guess, x3_guess])
+def roots(which_bin, x0_guess, x1_guess, x2_guess,x3_guess):
+    sol = optimize.root(find_residuals,[x0_guess, x1_guess, x2_guess, x3_guess], args=(which_bin))
     return sol.x
 
-def find_coefficients(A_guess, SL_guess, SR_guess, eps_guess):
-    EL = E_exp[1:]  
-    ER = E_exp[:-1] 
+def find_coefficients(which_bin, A_guess, SL_guess, SR_guess, eps_guess):
+    # use rootfinding to determine roots for weights
+    A_guess, SL_guess, SR_guess, eps_guess = roots(which_bin, A_guess, SL_guess, SR_guess, eps_guess)
+    # check the residuals
     w_diff, E_avg_diff, E_sqrd_avg_diff, E_uncertainty_diff = find_residuals(
-        [A_guess, SL_guess, SR_guess, eps_guess])
-    # if the difference is not zero the guess is not the root
-    if sum(w_diff) > 0.0005:
-        # use rootfinding to determine roots for weights
-        A_guess, SL_guess, SR_guess, eps_guess = roots(A_guess, SL_guess, SR_guess, eps_guess)
-        # check the residuals
-        w_diff, E_avg_diff, E_sqrd_avg_diff, E_uncertainty_diff = find_residuals(
-            [A_guess, SL_guess, SR_guess, eps_guess])
-        print('coef = ',A_guess, SL_guess,SR_guess,eps_guess)
+        [A_guess, SL_guess, SR_guess, eps_guess], which_bin)
+    print('coef = ',A_guess, SL_guess,SR_guess,eps_guess)
     return A_guess, SL_guess, SR_guess, eps_guess
 
 
-print(find_coefficients(A_guess, SL_guess, SR_guess, eps_guess))
+print('coefficients are', find_coefficients(0, A_guess, SL_guess, SR_guess, eps_guess))
 
 '''
 Plots
