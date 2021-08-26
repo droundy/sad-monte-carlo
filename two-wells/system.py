@@ -29,7 +29,7 @@ systems = {
 if len(sys.argv) == 2:
     system = sys.argv[1]
 else:
-    system = 'easier'
+    system = 'easy'
 
 h_small = systems[system]['h_small']
 R_small = systems[system]['R_small']

@@ -81,6 +81,8 @@ if hist is not None:
     plt.savefig(system.system+'-histogram.svg')
 
 plt.figure('convergence')
+plt.xlabel('number of moves')
+plt.ylabel(f'max error in entropy between {lowest_interesting_E} and {highest_interesting_E}')
 plt.legend()
 plt.savefig(system.system+'-convergence.svg')
 
