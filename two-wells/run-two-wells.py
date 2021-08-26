@@ -82,24 +82,31 @@ T_transition = 0.025  # approximate temperature for transition between the two
 
 systems = {
     'lj31-like': '--two-wells-N 90 --two-wells-h2-to-h1 1.005 --two-wells-barrier-over-h1 0.03 --two-wells-r2 0.75'.split(),
+
     'easy': '--two-wells-N 30 --two-wells-h2-to-h1 1.1 --two-wells-barrier-over-h1 0.5 --two-wells-r2 0.5'.split(),
+    'easy-no-barrier': '--two-wells-N 30 --two-wells-h2-to-h1 1.1 --two-wells-barrier-over-h1 0 --two-wells-r2 0.5'.split(),
+
     'easier': '--two-wells-N 9 --two-wells-h2-to-h1 1.1347 --two-wells-barrier-over-h1 0.5 --two-wells-r2 0.5'.split(),
     'easier-all-barrier': '--two-wells-N 9 --two-wells-h2-to-h1 1.1347 --two-wells-barrier-over-h1 1 --two-wells-r2 0.5'.split(),
     'easier-no-barrier': '--two-wells-N 9 --two-wells-h2-to-h1 1.1347 --two-wells-barrier-over-h1 0 --two-wells-r2 0.5'.split(),
+
     'easiest': '--two-wells-N 9 --two-wells-h2-to-h1 1 --two-wells-barrier-over-h1 0.5 --two-wells-r2 0.5'.split(),
 }
 
-run_replicas(name='easy', min_T=0.0001, max_iter=1e13, max_independent_samples=10000,
+easy_min_T = 1e-6
+run_replicas(name='easy', min_T=easy_min_T, max_iter=1e13, max_independent_samples=10000,
+             extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
+run_replicas(name='easy-no-barrier', min_T=easy_min_T, max_iter=1e13, max_independent_samples=10000,
              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
 
 for de in [0.001, 0.01]:
     for translation_scale in [0.001, 0.01]:
-        for system in ['easy']:
+        for system in ['easy', 'easy-no-barrier']:
             run_wl(name=system, min_E=-1.09, max_E=0.0005, max_iter=1e12,
                         translation_scale=translation_scale, de=de, min_gamma=1e-9)
             run_inv_t_wl(name=system, min_E=-1.09, max_E=0.0005, max_iter=1e12,
                         translation_scale=translation_scale, de=de)
-            run_sad(name=system, min_T=0.0001, max_iter=1e12, translation_scale=translation_scale, de=de)
+            run_sad(name=system, min_T=easy_min_T, max_iter=1e12, translation_scale=translation_scale, de=de)
 
 # run_replicas(name='easier-all-barrier', min_T=0.005, max_iter=1e13, max_independent_samples=10000,
 #              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
