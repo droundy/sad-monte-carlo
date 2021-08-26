@@ -83,7 +83,7 @@ T_transition = 0.025  # approximate temperature for transition between the two
 systems = {
     'lj31-like': '--two-wells-N 90 --two-wells-h2-to-h1 1.005 --two-wells-barrier-over-h1 0.03 --two-wells-r2 0.75'.split(),
 
-    'easy': '--two-wells-N 30 --two-wells-h2-to-h1 1.1 --two-wells-barrier-over-h1 0.5 --two-wells-r2 0.5'.split(),
+    'easy': '--two-wells-N 30 --two-wells-h2-to-h1 1.1 --two-wells-barrier-over-h1 0.2 --two-wells-r2 0.5'.split(),
     'easy-no-barrier': '--two-wells-N 30 --two-wells-h2-to-h1 1.1 --two-wells-barrier-over-h1 0 --two-wells-r2 0.5'.split(),
 
     'easier': '--two-wells-N 9 --two-wells-h2-to-h1 1.1347 --two-wells-barrier-over-h1 0.5 --two-wells-r2 0.5'.split(),

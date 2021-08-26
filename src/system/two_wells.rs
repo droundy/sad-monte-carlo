@@ -243,7 +243,8 @@ impl From<Parameters> for TwoWells {
                 parameters.N
             );
         }
-        let well_position = parameters.barrier_over_h1.sqrt() * (Length::new(1.) + parameters.r2);
+        let well_position = parameters.barrier_over_h1.sqrt() * Length::new(1.)
+            + parameters.r2 * (1.0 + parameters.barrier_over_h1 - 1.0 / parameters.h2_to_h1).sqrt();
         let mut position = vec![Length::new(0.0); parameters.N];
         position[0] = Length::new(-0.99);
         let d_squared = position.iter().map(|&x| x * x).sum::<Area>();
@@ -441,7 +442,7 @@ impl ConfirmSystem for TwoWells {
 impl MovableSystem for TwoWells {
     fn plan_move(&mut self, rng: &mut MyRng, d: Length) -> Option<Energy> {
         use crate::rng::vector;
-        let index = 3*rng.gen_range(0, self.position.len() / 3);
+        let index = 3 * rng.gen_range(0, self.position.len() / 3);
         let old_r = Vector3d::new(
             self.position[index],
             self.position[index + 1],
