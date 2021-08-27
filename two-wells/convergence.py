@@ -11,7 +11,7 @@ E = 0.5*(E[1:] + E[:-1])
 dE = E[1] - E[0]
 hist = None
 
-lowest_interesting_E = -1.12
+lowest_interesting_E = -1.07
 highest_interesting_E = -0.5
 
 indices_for_err = np.array([i for i in range(len(E)) if lowest_interesting_E <= E[i] <= highest_interesting_E])

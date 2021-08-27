@@ -6,7 +6,7 @@ import scipy
 systems = {
     'easy': {
         'h_small': 1.1,
-        'R_small': 0.5,
+        'R_small': 0.75,
         'n': 30,
     },
     'easier': {

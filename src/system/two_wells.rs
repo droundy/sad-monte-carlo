@@ -259,7 +259,11 @@ impl From<Parameters> for TwoWells {
             well_position,
             parameters,
         };
-        for x in linspace(Length::new(-1.0), Length::new(1.0)+2.0*parameters.r2, 100) {
+        for x in linspace(
+            Length::new(-1.0),
+            Length::new(1.0) + 2.0 * parameters.r2,
+            100,
+        ) {
             println!("{:.4} {:.2}", x, tw.find_energy(x, Area::new(0.0)).unwrap());
         }
         tw
@@ -302,19 +306,15 @@ impl TwoWells {
 
         if d_1_squared <= r1 * r1 {
             // We are in the big sphere, pick whichever is smaller
-            Some(if e_1 < e_w {
-                e_1
-            } else {
-                e_w
-            })
-        } else if d_2_squared <= r2*r2 {
+            Some(if e_1 < e_w { e_1 } else { e_w })
+        } else if d_2_squared <= r2 * r2 {
             // We are in the small sphere
             Some(if e_i > e_2 && e_i < Energy::new(0.) {
                 e_i
             } else {
                 e_2
             })
-        } else if d_orthog_squared <= r2*r2 && x1 > Length::new(0.0) && x1 < r1+r2 {
+        } else if d_orthog_squared <= r2 * r2 && x1 > Length::new(0.0) && x1 < r1 + r2 {
             // We are in the cylinder
             Some(Energy::new(0.0))
         } else {
@@ -355,18 +355,26 @@ impl TwoWells {
         debug_assert!(e_w.value_unsafe.is_finite());
         debug_assert!(e_i.value_unsafe.is_finite());
 
-        if e_1 < e_2 {
+        if d_1_squared <= r1 * r1 {
+            // We are in the big sphere, pick whichever is smaller
             if e_1 < e_w {
-                0.0
+                0.0 // "big well"
             } else {
-                1.0
+                1.0 // "small well"
             }
-        } else {
+        } else if d_2_squared <= r2 * r2 {
+            // We are in the small sphere
             if e_i > e_2 && e_i < Energy::new(0.) {
                 0.0
             } else {
                 1.0
             }
+        } else if d_orthog_squared <= r2 * r2 && x1 > Length::new(0.0) && x1 < r1 + r2 {
+            // We are in the cylinder
+            0.0
+        } else {
+            // We're in an invalid location!
+            0.0
         }
     }
 }
@@ -417,7 +425,19 @@ impl System for TwoWells {
         )]
     }
     fn print_debug(&self) {
-        print!(" x0: {:9.3}", self.position[0].pretty());
+        print!(
+            " x0: {:9.3} {}",
+            self.position[0].pretty(),
+            if self.find_which(
+                self.position[0],
+                self.d_squared - self.position[0] * self.position[0]
+            ) == 0.0
+            {
+                "B"
+            } else {
+                "S"
+            }
+        );
     }
 }
 
