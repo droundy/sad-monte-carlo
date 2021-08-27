@@ -93,6 +93,8 @@ pub trait System {
     fn min_moves_to_randomize(&self) -> u64;
     /// Dimensions of the configuration space
     fn dimensionality(&self) -> u64;
+    /// Print information for debugging purposes.
+    fn print_debug(&self) {}
 }
 
 /// A system that can have a change confirmed.

@@ -8,7 +8,7 @@ use vector3d::Vector3d;
 /// The parameters needed to configure a fake model with N dimensions.
 ///
 /// These parameters are normally set via command-line arguments.
-#[derive(Serialize, Deserialize, Debug, AutoArgs, Clone)] //AutoArgs in incompatable with Vec<Length>
+#[derive(Serialize, Deserialize, Debug, AutoArgs, Clone, Copy)] //AutoArgs in incompatable with Vec<Length>
 #[allow(non_snake_case)]
 pub struct Parameters {
     /// the number of dimensions
@@ -248,7 +248,7 @@ impl From<Parameters> for TwoWells {
         let mut position = vec![Length::new(0.0); parameters.N];
         position[0] = Length::new(-0.99);
         let d_squared = position.iter().map(|&x| x * x).sum::<Area>();
-        TwoWells {
+        let tw = TwoWells {
             position,
             d_squared,
             change: Change {
@@ -258,7 +258,11 @@ impl From<Parameters> for TwoWells {
             invcdf: SystemInvCdf::new(&parameters),
             well_position,
             parameters,
+        };
+        for x in linspace(Length::new(-1.0), Length::new(1.0)+2.0*parameters.r2, 100) {
+            println!("{:.4} {:.2}", x, tw.find_energy(x, Area::new(0.0)).unwrap());
         }
+        tw
     }
 }
 
@@ -282,18 +286,6 @@ impl TwoWells {
         let d_i_squared = d_orthog_squared + xi * xi;
         assert!(d_1_squared.value_unsafe.is_finite());
 
-        let x_of_cylinder = (r1 * r1 - r2 * r2).sqrt();
-        if x1 < x_of_cylinder && d_1_squared > r1 * r1 {
-            // println!("Outside of first sphere");
-            return None;
-        } else if x1 >= r1 + r2 && d_2_squared > r2 * r2 {
-            // println!("Outside of last hemisphere");
-            return None;
-        } else if x1 >= x_of_cylinder && x1 < r1 + r2 && d_orthog_squared > r2 * r2 {
-            // println!("Outside of cylinder");
-            return None;
-        }
-
         let e1 = |d2: Area| -> Energy { Energy::new(1.) * (d2 / (r1 * r1) - 1.) };
         let e2 =
             |d2: Area| -> Energy { Energy::new(self.parameters.h2_to_h1) * (d2 / (r2 * r2) - 1.) };
@@ -308,25 +300,26 @@ impl TwoWells {
         debug_assert!(e_w.value_unsafe.is_finite());
         debug_assert!(e_i.value_unsafe.is_finite());
 
-        let e = if e_1 < e_2 {
-            if e_1 < e_w {
+        if d_1_squared <= r1 * r1 {
+            // We are in the big sphere, pick whichever is smaller
+            Some(if e_1 < e_w {
                 e_1
             } else {
                 e_w
-            }
-        } else {
-            if e_i > e_2 && e_i < Energy::new(0.) {
+            })
+        } else if d_2_squared <= r2*r2 {
+            // We are in the small sphere
+            Some(if e_i > e_2 && e_i < Energy::new(0.) {
                 e_i
             } else {
                 e_2
-            }
-        };
-        // Make the energy max out at zero
-        Some(if e < Energy::new(0.) {
-            e
+            })
+        } else if d_orthog_squared <= r2*r2 && x1 > Length::new(0.0) && x1 < r1+r2 {
+            // We are in the cylinder
+            Some(Energy::new(0.0))
         } else {
-            Energy::new(0.)
-        })
+            None
+        }
     }
 
     fn find_which(&self, x1: Length, d_orthog_squared: Area) -> f64 {
@@ -422,6 +415,9 @@ impl System for TwoWells {
                 self.d_squared - self.position[0] * self.position[0],
             ),
         )]
+    }
+    fn print_debug(&self) {
+        print!(" x0: {:9.3}", self.position[0].pretty());
     }
 }
 

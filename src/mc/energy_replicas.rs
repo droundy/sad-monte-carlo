@@ -331,7 +331,7 @@ impl<S: MovableSystem> Replica<S> {
         next
     }
     fn printme(&self) {
-        println!(
+        print!(
             "   {} {:2.1}% > {:9.5} {:.2} unique, 𝚫E = {:.2} ({:.3}% up)",
             if self.energy().is_none() { ":(" } else { "  " },
             crate::prettyfloat::PrettyFloat(100.0 * self.above_fraction()),
@@ -343,6 +343,10 @@ impl<S: MovableSystem> Replica<S> {
                     / (self.above_count as f64 + self.below_count as f64)
             ),
         );
+        if let Some((sys, _)) = &self.system_with_lowest_max_energy {
+            sys.print_debug();
+        }
+        println!();
     }
 }
 
@@ -398,6 +402,9 @@ impl<
         let mut energies = Vec::with_capacity(MAX_INIT);
         for _ in 0..MAX_INIT {
             energies.push(system.randomize(&mut rng));
+            print!("Random: ");
+            system.print_debug();
+            println!(" E: {:.3}", system.energy().pretty());
         }
         let mut high_system = system.clone();
         high_system.randomize(&mut rng);

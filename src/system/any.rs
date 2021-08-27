@@ -141,6 +141,9 @@ impl System for Any {
     fn data_to_collect(&self, iter: u64) -> Vec<(Interned, f64)> {
         self.movable().data_to_collect(iter)
     }
+    fn print_debug(&self) {
+        self.movable().print_debug();
+    }
 }
 
 impl ConfirmSystem for Any {
