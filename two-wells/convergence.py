@@ -92,5 +92,6 @@ plt.xlabel(r'\# of Moves')
 plt.ylabel(rf'max error in entropy between {lowest_interesting_E} and {highest_interesting_E}')
 plt.legend()
 plt.savefig(system.system+'-convergence.svg')
+plt.savefig(system.system+'-convergence.pdf')
 
 plt.show()
