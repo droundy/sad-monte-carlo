@@ -23,8 +23,6 @@ def normalize_S(S):
     return S - np.log(total)
 
 plt.figure('latest-entropy')
-plt.xlabel(r'$E$')
-plt.ylabel(r'$S(E)$')
 
 correct_S = normalize_S(system.S(E))
 
@@ -50,15 +48,13 @@ for fname in sorted(glob.glob('*'+system.system+'*.cbor')):
     plt.figure('fraction-well')
     mean_which = np.loadtxt(f'{base}-which.dat')
     plt.plot(mean_e, mean_which, label=base)
-    plt.xlabel(r'E')
-    plt.ylabel(r'Proportion in Small Well')
+    
 
     if os.path.exists(f'{base}-histogram.dat'):
         hist = np.loadtxt(f'{base}-histogram.dat')
         plt.figure('histogram')
         plt.plot(mean_e, hist, label=base)
-        plt.xlabel(r'$E$')
-        plt.ylabel(r'\# of Visitors')
+
 
     errors = []
     moves = []
@@ -86,15 +82,21 @@ for fname in sorted(glob.glob('*'+system.system+'*.cbor')):
     #print(base[:base.find('-')]) #for debugging
 
 plt.figure('latest-entropy')
+plt.xlabel(r'$E$')
+plt.ylabel(r'$S(E)$')
 plt.legend()
 plt.savefig(system.system+'.svg')
 
 plt.figure('fraction-well')
+plt.xlabel(r'E')
+plt.ylabel(r'Proportion in Small Well')
 plt.legend()
 plt.savefig(system.system+'-which.svg')
 
 if hist is not None:
     plt.figure('histogram')
+    plt.xlabel(r'$E$')
+    plt.ylabel(r'# of Visitors')
     plt.legend()
     plt.savefig(system.system+'-histogram.svg')
 
