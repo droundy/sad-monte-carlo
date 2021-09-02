@@ -31,9 +31,14 @@ correct_S = normalize_S(system.S(E))
 correct_S_for_err = correct_S[indices_for_err]
 plt.plot(E, correct_S, ':', label='exact', linewidth=2)
 
+markers= {'z':'D','wl':'^','itwl':'o','sad':'x'}
+colors = {1:'r', 0:'b'} #no-barrier <--> 1 and barrier <--> 0
+alphas = {'0.01+0.01':0.25,'0.01+0.001':0.5,'0.001+0.01':0.75,'0.001+0.001':1.}
+
 for fname in sorted(glob.glob('*'+system.system+'*.cbor')):
     print(fname)
     base = fname[:-5]
+    method = base[:base.find('-')]
 
     energy_boundaries, mean_e, my_lnw, my_system, p_exc = compute.read_file(base)
     
@@ -72,7 +77,13 @@ for fname in sorted(glob.glob('*'+system.system+'*.cbor')):
             pass
 
     plt.figure('convergence')
-    plt.loglog(moves, errors, label=base)
+    if method in {'wl','itwl','sad'}:
+        precision = base[base.rfind('-') + 1:]
+        plt.loglog(moves, errors, label=base, marker = markers[method], color = colors['no-barrier' in base], alpha = alphas[precision])
+    elif method == 'z':
+        plt.loglog(moves, errors, label=base, marker = markers[method], color = colors['no-barrier' in base], alpha = 1.)
+
+    #print(base[:base.find('-')]) #for debugging
 
 plt.figure('latest-entropy')
 plt.legend()
