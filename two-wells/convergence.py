@@ -29,9 +29,10 @@ correct_S = normalize_S(system.S(E))
 correct_S_for_err = correct_S[indices_for_err]
 plt.plot(E, correct_S, ':', label='exact', linewidth=2)
 
-markers= {'z':'D','wl':'^','itwl':'o','sad':'x'}
-colors = {1:'r', 0:'b'} #no-barrier <--> 1 and barrier <--> 0
-alphas = {'0.01+0.01':0.25,'0.01+0.001':0.5,'0.001+0.01':0.75,'0.001+0.001':1.}
+markers= {'0.01+0.01':'D','0.01+0.001':'^','0.001+0.01':'o','0.001+0.001':'x'}
+colors = {'z':'k','wl':'b','itwl':'g','sad':'tab:orange'}
+dashes = {1: 'solid', 0:'dashed'}
+#alphas = {'0.01+0.01':0.25,'0.01+0.001':0.5,'0.001+0.01':0.75,'0.001+0.001':1.}
 
 for fname in sorted(glob.glob('*'+system.system+'*.cbor')):
     print(fname)
@@ -43,7 +44,12 @@ for fname in sorted(glob.glob('*'+system.system+'*.cbor')):
     # Create a function for the entropy
     l_function, eee, sss = compute.linear_entropy(energy_boundaries, mean_e, my_lnw)
     plt.figure('latest-entropy')
-    plt.plot(E, normalize_S(l_function(E)), label=base)
+    #plt.plot(E, normalize_S(l_function(E)), label=base)
+    if method in {'wl','itwl','sad'}:
+        precision = base[base.rfind('-') + 1:]
+        plt.plot(E, normalize_S(l_function(E)), label=base, marker = markers[precision], color = colors[method], linestyle= dashes['no-barrier' in base], markevery=250)
+    elif method == 'z':
+        plt.plot(E, normalize_S(l_function(E)), label=base, color = colors[method], linestyle= dashes['no-barrier' in base])
 
     plt.figure('fraction-well')
     mean_which = np.loadtxt(f'{base}-which.dat')
@@ -75,9 +81,9 @@ for fname in sorted(glob.glob('*'+system.system+'*.cbor')):
     plt.figure('convergence')
     if method in {'wl','itwl','sad'}:
         precision = base[base.rfind('-') + 1:]
-        plt.loglog(moves, errors, label=base, marker = markers[method], color = colors['no-barrier' in base], alpha = alphas[precision])
+        plt.loglog(moves, errors, label=base, marker = markers[precision], color = colors[method], linestyle= dashes['no-barrier' in base], markevery=2)
     elif method == 'z':
-        plt.loglog(moves, errors, label=base, marker = markers[method], color = colors['no-barrier' in base], alpha = 1.)
+        plt.loglog(moves, errors, label=base, color = colors[method], linestyle= dashes['no-barrier' in base])
 
     #print(base[:base.find('-')]) #for debugging
 
