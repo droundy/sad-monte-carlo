@@ -23,37 +23,44 @@ def normalize_S(S):
     return S - np.log(total)
 
 plt.figure('latest-entropy')
-plt.xlabel(r'$E$')
-plt.ylabel(r'$S(E)$')
 
 correct_S = normalize_S(system.S(E))
 
 correct_S_for_err = correct_S[indices_for_err]
 plt.plot(E, correct_S, ':', label='exact', linewidth=2)
 
+markers= {'0.01+0.01':'D','0.01+0.001':'^','0.001+0.01':'o','0.001+0.001':'x'}
+colors = {'z':'k','wl':'b','itwl':'g','sad':'tab:orange'}
+dashes = {1: 'solid', 0:'dashed'}
+#alphas = {'0.01+0.01':0.25,'0.01+0.001':0.5,'0.001+0.01':0.75,'0.001+0.001':1.}
+
 for fname in sorted(glob.glob('*'+system.system+'*.cbor')):
     print(fname)
     base = fname[:-5]
+    method = base[:base.find('-')]
 
     energy_boundaries, mean_e, my_lnw, my_system, p_exc = compute.read_file(base)
     
     # Create a function for the entropy
     l_function, eee, sss = compute.linear_entropy(energy_boundaries, mean_e, my_lnw)
     plt.figure('latest-entropy')
-    plt.plot(E, normalize_S(l_function(E)), label=base)
+    #plt.plot(E, normalize_S(l_function(E)), label=base)
+    if method in {'wl','itwl','sad'}:
+        precision = base[base.rfind('-') + 1:]
+        plt.plot(E, normalize_S(l_function(E)), label=base, marker = markers[precision], color = colors[method], linestyle= dashes['no-barrier' in base], markevery=250)
+    elif method == 'z':
+        plt.plot(E, normalize_S(l_function(E)), label=base, color = colors[method], linestyle= dashes['no-barrier' in base])
 
     plt.figure('fraction-well')
     mean_which = np.loadtxt(f'{base}-which.dat')
     plt.plot(mean_e, mean_which, label=base)
-    plt.xlabel(r'E')
-    plt.ylabel(r'Proportion in Small Well')
+    
 
     if os.path.exists(f'{base}-histogram.dat'):
         hist = np.loadtxt(f'{base}-histogram.dat')
         plt.figure('histogram')
         plt.plot(mean_e, hist, label=base)
-        plt.xlabel(r'$E$')
-        plt.ylabel(r'\# of Visitors')
+
 
     errors = []
     moves = []
@@ -72,18 +79,30 @@ for fname in sorted(glob.glob('*'+system.system+'*.cbor')):
             pass
 
     plt.figure('convergence')
-    plt.loglog(moves, errors, label=base)
+    if method in {'wl','itwl','sad'}:
+        precision = base[base.rfind('-') + 1:]
+        plt.loglog(moves, errors, label=base, marker = markers[precision], color = colors[method], linestyle= dashes['no-barrier' in base], markevery=2)
+    elif method == 'z':
+        plt.loglog(moves, errors, label=base, color = colors[method], linestyle= dashes['no-barrier' in base])
+
+    #print(base[:base.find('-')]) #for debugging
 
 plt.figure('latest-entropy')
+plt.xlabel(r'$E$')
+plt.ylabel(r'$S(E)$')
 plt.legend()
 plt.savefig(system.system+'.svg')
 
 plt.figure('fraction-well')
+plt.xlabel(r'E')
+plt.ylabel(r'Proportion in Small Well')
 plt.legend()
 plt.savefig(system.system+'-which.svg')
 
 if hist is not None:
     plt.figure('histogram')
+    plt.xlabel(r'$E$')
+    plt.ylabel(r'# of Visitors')
     plt.legend()
     plt.savefig(system.system+'-histogram.svg')
 
