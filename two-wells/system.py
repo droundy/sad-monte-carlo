@@ -23,13 +23,18 @@ systems = {
         'h_small': 1.005,
         'R_small': 0.75,
         'n': 90,
-    }
+    },
+    'hard': {
+        'h_small': 1.10,
+        'R_small': 0.75,
+        'n': 60,
+    },
 }
 
 if len(sys.argv) == 2:
     system = sys.argv[1]
 else:
-    system = 'easy'
+    system = 'hard'
 
 h_small = systems[system]['h_small']
 R_small = systems[system]['R_small']
