@@ -8,26 +8,36 @@ systems = {
         'h_small': 1.1,
         'R_small': 0.75,
         'n': 30,
+        'min_T': 0.001,
+        'min_E': -1.08
     },
     'easier': {
         'h_small': 1.1347,
         'R_small': 0.5,
         'n': 9,
+        'min_T': 0.001, #FIXME, Figure out what this should be
+        'min_E': -1.08 #FIXME, Figure out what this should be
     },
     'easiest': {
         'h_small': 1.0,
         'R_small': 0.5,
         'n': 9,
+        'min_T': 0.001, #FIXME, Figure out what this should be
+        'min_E': -0.9 #FIXME, Figure out what this should be
     },
     'lj31-like': {
         'h_small': 1.005,
         'R_small': 0.75,
         'n': 90,
+        'min_T': 0.001, #FIXME, Figure out what this should be
+        'min_E': -1.08 #FIXME, Figure out what this should be
     },
     'hard': {
-        'h_small': 1.10,
+        'h_small': 1.1,
         'R_small': 0.75,
         'n': 60,
+        'min_T': 0.0005,
+        'min_E': -1.08
     },
 }
 
