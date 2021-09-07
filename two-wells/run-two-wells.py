@@ -89,7 +89,7 @@ hard_r2 = system.systems['hard']['R_small']
 hard_h2 = system.systems['hard']['h_small']
 hard_n = system.systems['hard']['n']
 
-systems1 = {
+systems = {
     'lj31-like': '--two-wells-N 90 --two-wells-h2-to-h1 1.005 --two-wells-barrier-over-h1 0.03 --two-wells-r2 0.75'.split(),
 
     'easy': f'--two-wells-N {easy_n} --two-wells-h2-to-h1 {easy_h2} --two-wells-barrier-over-h1 0.1 --two-wells-r2 {easy_r2}'.split(),
