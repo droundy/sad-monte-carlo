@@ -81,13 +81,13 @@ E2 = -133.29382  # first local minimum (anti-Mackay) for an LJ31 cluster
 E_transition = -131  # approximate energy of the transition state between the two
 T_transition = 0.025  # approximate temperature for transition between the two
 
-easy_r2 = system.systems['easy']['R_small']
+hard_r2 = system.systems['hard']['R_small']
 
 systems = {
     'lj31-like': '--two-wells-N 90 --two-wells-h2-to-h1 1.005 --two-wells-barrier-over-h1 0.03 --two-wells-r2 0.75'.split(),
 
-    'easy': f'--two-wells-N 30 --two-wells-h2-to-h1 1.1 --two-wells-barrier-over-h1 0.1 --two-wells-r2 {easy_r2}'.split(),
-    'easy-no-barrier': f'--two-wells-N 30 --two-wells-h2-to-h1 1.1 --two-wells-barrier-over-h1 0 --two-wells-r2 {easy_r2}'.split(),
+    'hard': f'--two-wells-N 30 --two-wells-h2-to-h1 1.1 --two-wells-barrier-over-h1 0.1 --two-wells-r2 {hard_r2}'.split(),
+    'hard-no-barrier': f'--two-wells-N 30 --two-wells-h2-to-h1 1.1 --two-wells-barrier-over-h1 0 --two-wells-r2 {hard_r2}'.split(),
 
     'easier': '--two-wells-N 9 --two-wells-h2-to-h1 1.1347 --two-wells-barrier-over-h1 0.5 --two-wells-r2 0.5'.split(),
     'easier-all-barrier': '--two-wells-N 9 --two-wells-h2-to-h1 1.1347 --two-wells-barrier-over-h1 1 --two-wells-r2 0.5'.split(),
@@ -96,21 +96,21 @@ systems = {
     'easiest': '--two-wells-N 9 --two-wells-h2-to-h1 1 --two-wells-barrier-over-h1 0.5 --two-wells-r2 0.5'.split(),
 }
 
-easy_min_T = 0.001
-easy_min_E = -1.08
-run_replicas(name='easy', min_T=easy_min_T, max_iter=1e13, max_independent_samples=10000,
+hard_min_T = 0.0005
+hard_min_E = -1.08
+run_replicas(name='hard', min_T=hard_min_T, max_iter=1e13, max_independent_samples=10000,
              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
-run_replicas(name='easy-no-barrier', min_T=easy_min_T, max_iter=1e13, max_independent_samples=10000,
+run_replicas(name='hard-no-barrier', min_T=hard_min_T, max_iter=1e13, max_independent_samples=10000,
              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
 
 for de in [0.001, 0.01]:
     for translation_scale in [0.001, 0.01]:
-        for system in ['easy', 'easy-no-barrier']:
-            run_wl(name=system, min_E=easy_min_E, max_E=de/2, max_iter=1e12,
+        for system in ['hard', 'hard-no-barrier']:
+            run_wl(name=system, min_E=hard_min_E, max_E=de/2, max_iter=1e12,
                         translation_scale=translation_scale, de=de, min_gamma=1e-9)
-            run_inv_t_wl(name=system, min_E=easy_min_E, max_E=de/2, max_iter=1e12,
+            run_inv_t_wl(name=system, min_E=hard_min_E, max_E=de/2, max_iter=1e12,
                         translation_scale=translation_scale, de=de)
-            run_sad(name=system, min_T=easy_min_T, max_iter=1e12, translation_scale=translation_scale, de=de)
+            run_sad(name=system, min_T=hard_min_T, max_iter=1e12, translation_scale=translation_scale, de=de)
 
 # run_replicas(name='easier-all-barrier', min_T=0.005, max_iter=1e13, max_independent_samples=10000,
 #              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
@@ -132,8 +132,8 @@ for de in [0.001, 0.01]:
 #              translation_scale=0.05, de=0.001)
 # run_replicas(name='easiest', min_T=0.005, max_iter=1e13, max_independent_samples=100000)
 
-# run_replicas(name='easy', min_T=0.001, max_iter=1e13, max_independent_samples=100)
-# run_replicas(name='easy', min_T=0.001, max_iter=1e13, max_independent_samples=100,
+# run_replicas(name='hard', min_T=0.001, max_iter=1e13, max_independent_samples=100)
+# run_replicas(name='hard', min_T=0.001, max_iter=1e13, max_independent_samples=100,
 #              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
 
 # run_replicas(name='lj31-like', min_T=min_T, max_iter=1e13, max_independent_samples=100,
