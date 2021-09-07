@@ -25,7 +25,7 @@ systems = {
         'n': 90,
     },
     'hard': {
-        'h_small': 1.05,
+        'h_small': 1.10,
         'R_small': 0.75,
         'n': 60,
     },
