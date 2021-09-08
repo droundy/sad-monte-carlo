@@ -46,6 +46,8 @@ if len(sys.argv) == 2:
 else:
     system = 'hard'
 
+min_T = systems[system]['min_T']
+min_E = systems[system]['min_E']
 h_small = systems[system]['h_small']
 R_small = systems[system]['R_small']
 n = systems[system]['n']
