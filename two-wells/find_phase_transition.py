@@ -38,7 +38,7 @@ max_iter = 1000
 
 
 lower_bound = -system.h_big#h_2*0.99
-upper_bound = -0.1*system.h_big #The highest E_2 with a valid E_1
+upper_bound = -0.2*system.h_big #The highest E_2 with a valid E_1
 guess = (lower_bound + upper_bound)/2 #Guess based on looking at the plot
 
 iters = 0

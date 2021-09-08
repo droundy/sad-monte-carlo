@@ -34,9 +34,9 @@ systems = {
     },
     'hard': {
         'h_small': 1.1,
-        'R_small': 0.75,
+        'R_small': 0.85,
         'n': 60,
-        'min_T': 0.0005,
+        'min_T': 0.001,
         'min_E': -1.08
     },
 }

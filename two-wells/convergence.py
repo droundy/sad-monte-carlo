@@ -31,10 +31,21 @@ plt.plot(E, correct_S, ':', label='exact', linewidth=2)
 
 markers= {'0.01+0.01':'D','0.01+0.001':'^','0.001+0.01':'o','0.001+0.001':'x'}
 colors = {'z':'k','wl':'b','itwl':'g','sad':'tab:orange'}
-dashes = {1: 'solid', 0:'dashed'}
-#alphas = {'0.01+0.01':0.25,'0.01+0.001':0.5,'0.001+0.01':0.75,'0.001+0.001':1.}
+dashes = {0: 'solid', 1:'dashed'}
 
+paths = []
 for fname in sorted(glob.glob('*'+system.system+'*.cbor')):
+    if not ('no-barrier' in fname):
+        if 'sad' in fname:
+            if not( '0.01+0.001' in fname):
+                paths.append(fname)
+        elif 'wl' in fname or 'itwl' in fname:
+            if '0.001+' in fname:
+                paths.append(fname)
+        else:
+            paths.append(fname)
+
+for fname in paths:
     print(fname)
     base = fname[:-5]
     method = base[:base.find('-')]
@@ -83,7 +94,7 @@ for fname in sorted(glob.glob('*'+system.system+'*.cbor')):
         precision = base[base.rfind('-') + 1:]
         plt.loglog(moves, errors, label=base, marker = markers[precision], color = colors[method], linestyle= dashes['no-barrier' in base], markevery=2)
     elif method == 'z':
-        plt.loglog(moves, errors, label=base, color = colors[method], linestyle= dashes['no-barrier' in base])
+        plt.loglog(moves, errors, label=base, color = colors[method], linestyle= dashes['no-barrier' in base], linewidth = 3)
 
     #print(base[:base.find('-')]) #for debugging
 
@@ -107,8 +118,9 @@ if hist is not None:
     plt.savefig(system.system+'-histogram.svg')
 
 plt.figure('convergence')
-plt.xlabel(r'\# of Moves')
+plt.xlabel(r'# of Moves')
 plt.ylabel(rf'max error in entropy between {lowest_interesting_E} and {highest_interesting_E}')
+plt.ylim(1e-2, 1e2)
 plt.legend()
 plt.savefig(system.system+'-convergence.svg')
 plt.savefig(system.system+'-convergence.pdf')
