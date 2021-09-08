@@ -1,0 +1,5 @@
+#!/bin/sh
+
+set -ev
+
+rsync -avz --exclude '*.cbor' bingley.physics.oregonstate.edu:/home/sprueilh/sad-monte-carlo/two-wells/{z,sad,wl,itwl}-* .
