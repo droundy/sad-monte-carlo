@@ -264,7 +264,15 @@ impl From<Parameters> for TwoWells {
             Length::new(1.0) + 2.0 * parameters.r2,
             100,
         ) {
-            println!("{:.4} {:.2}", x, tw.find_energy(x, Area::new(0.0)).unwrap());
+            if let Some(energy) = tw.find_energy(x, Area::new(0.0)) {
+                println!("{:.4} {:.2}", x, energy);
+            } else {
+                panic!(
+                    "We generated an invalid system?! x1 = {}, d_squared = {}",
+                    tw.position[0],
+                    tw.d_squared,
+                );
+            }
         }
         tw
     }
@@ -314,7 +322,7 @@ impl TwoWells {
             } else {
                 e_2
             })
-        } else if d_orthog_squared <= r2 * r2 && x1 > Length::new(0.0) && x1 < r1 + r2 {
+        } else if d_orthog_squared <= r2 * r2 && x1 > Length::new(0.0) && x1 <= r1 + r2 {
             // We are in the cylinder
             Some(Energy::new(0.0))
         } else {
