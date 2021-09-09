@@ -4,7 +4,10 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import system, compute
+import heat_capacity
 import glob
+
+T = np.linspace(0.005,0.012,75)
 
 E = np.linspace(-system.h_small, 0, 10000)
 E = 0.5*(E[1:] + E[:-1])
@@ -28,6 +31,10 @@ correct_S = normalize_S(system.S(E))
 
 correct_S_for_err = correct_S[indices_for_err]
 plt.plot(E, correct_S, ':', label='exact', linewidth=2)
+
+plt.figure('latest_heat_capacity')
+correct_Cv = [heat_capacity.C(t,system.S) for t in T]
+plt.plot(T, correct_Cv, ':', label='exact', linewidth=2)
 
 markers= {'0.01+0.01':'D','0.01+0.001':'^','0.001+0.01':'o','0.001+0.001':'x'}
 colors = {'z':'k','wl':'b','itwl':'g','sad':'tab:orange'}
@@ -62,6 +69,14 @@ for fname in paths:
     elif method == 'z':
         plt.plot(E, normalize_S(l_function(E)), label=base, color = colors[method], linestyle= dashes['no-barrier' in base])
 
+    plt.figure('latest_heat_capacity')
+    plt.legend()
+    correct_Cv = [heat_capacity.C(t,l_function) for t in T]
+    if method in {'wl','itwl','sad'}:
+        plt.plot(T, correct_Cv, label=base, marker = markers[precision], color = colors[method], linestyle= dashes['no-barrier' in base], markevery=5)
+    elif method == 'z':
+        plt.plot(T, correct_Cv, label=base, color = colors[method], linestyle= dashes['no-barrier' in base])
+
     plt.figure('fraction-well')
     mean_which = np.loadtxt(f'{base}-which.dat')
     plt.plot(mean_e, mean_which, label=base)
@@ -74,6 +89,7 @@ for fname in paths:
 
 
     errors = []
+    errors_Cv = []
     moves = []
     for frame_fname in sorted(glob.glob(f'{base}/*-lnw.dat')):
         frame_base =frame_fname[:-8]
@@ -86,6 +102,7 @@ for fname in paths:
             err = np.max(np.abs(normalize_S(l_function(E))[indices_for_err] - correct_S_for_err))
             # print(f'err is {err} for {frame_base}')
             errors.append(err)
+            errors_Cv.append(np.abs(heat_capacity.C(0.0078, system.S) - heat_capacity.C(0.0078, l_function)))
         except:
             pass
 
@@ -95,6 +112,13 @@ for fname in paths:
         plt.loglog(moves, errors, label=base, marker = markers[precision], color = colors[method], linestyle= dashes['no-barrier' in base], markevery=2)
     elif method == 'z':
         plt.loglog(moves, errors, label=base, color = colors[method], linestyle= dashes['no-barrier' in base], linewidth = 3)
+
+    plt.figure('convergence_heat_capacity')
+    if method in {'wl','itwl','sad'}:
+        precision = base[base.rfind('-') + 1:]
+        plt.loglog(moves, errors_Cv, label=base, marker = markers[precision], color = colors[method], linestyle= dashes['no-barrier' in base], markevery=2)
+    elif method == 'z':
+        plt.loglog(moves, errors_Cv, label=base, color = colors[method], linestyle= dashes['no-barrier' in base], linewidth = 3)
 
     #print(base[:base.find('-')]) #for debugging
 
