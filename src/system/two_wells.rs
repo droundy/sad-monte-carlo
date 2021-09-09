@@ -314,7 +314,7 @@ impl TwoWells {
             } else {
                 e_2
             })
-        } else if d_orthog_squared <= r2 * r2 && x1 > Length::new(0.0) && x1 < r1 + r2 {
+        } else if d_orthog_squared <= r2 * r2 && x1 > Length::new(0.0) && x1 <= r1 + r2 {
             // We are in the cylinder
             Some(Energy::new(0.0))
         } else {
