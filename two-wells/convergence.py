@@ -7,7 +7,7 @@ import system, compute
 import heat_capacity
 import glob
 
-T = np.linspace(0.005,0.012,75)
+T = np.linspace(0.002,0.007,75)
 
 E = np.linspace(-system.h_small, 0, 10000)
 E = 0.5*(E[1:] + E[:-1])
@@ -42,12 +42,12 @@ dashes = {0: 'solid', 1:'dashed'}
 
 paths = []
 for fname in sorted(glob.glob('*'+system.system+'*-lnw.dat')):
-    if not ('no-barrier' in fname):
+    if  ('no-barrier' in fname):
         if 'sad' in fname:
-            if not( '0.01+0.001' in fname):
+            if True:#not( '0.01+0.001' in fname):
                 paths.append(fname)
         elif 'wl' in fname or 'itwl' in fname:
-            if '0.001+' in fname:
+            if True:#'0.001+' in fname:
                 paths.append(fname)
         else:
             paths.append(fname)
@@ -102,7 +102,7 @@ for fname in paths:
             err = np.max(np.abs(normalize_S(l_function(E))[indices_for_err] - correct_S_for_err))
             # print(f'err is {err} for {frame_base}')
             errors.append(err)
-            errors_Cv.append(np.abs(heat_capacity.C(0.0078, system.S) - heat_capacity.C(0.0078, l_function)))
+            errors_Cv.append(np.abs(heat_capacity.C(0.005, system.S) - heat_capacity.C(0.005, l_function)))
         except:
             pass
 
@@ -148,5 +148,8 @@ plt.ylim(1e-2, 1e2)
 plt.legend()
 plt.savefig(system.system+'-convergence.svg')
 plt.savefig(system.system+'-convergence.pdf')
+
+plt.figure('latest_heat_capacity')
+plt.legend()
 
 plt.show()
