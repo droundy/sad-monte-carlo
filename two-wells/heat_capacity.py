@@ -29,10 +29,39 @@ def C(T, S):#T is a temperature and S is an entropy function
     return (avg_E_squared - avg_E**2 ) / T**2
 
 #Testing
-#t = np.linspace(0.005,0.012,100)
-#c = [C(T) for T in t]
-#plt.plot(t, c)
-#plt.show()
+if __name__ == "__main__":
+    
+    t = np.linspace(0.001,0.1,75)
+    t_peak = np.linspace(0.002,0.005,75)
+    try:
+        c = np.loadtxt('cv_saved.txt')
+    except:
+        c = np.array([C(T,system.S) for T in t])
+        np.savetxt('cv_saved.txt', c)
+
+    try:
+        c_peak = np.loadtxt('cv_peak_saved.txt')
+    except:
+        c_peak = np.array([C(T,system.S) for T in t_peak])
+        np.savetxt('cv_peak_saved.txt', c)
+
+    fig, ax = plt.subplots(figsize=[5, 4])
+
+    ax.plot(t, c)
+
+    # inset axes....
+    axins = ax.inset_axes([0.5, 0.5, 0.47, 0.47])#[0.005, 0.012, 25, 140])
+    axins.plot(t_peak,c_peak)
+    # sub region of the original image
+    x1, x2, y1, y2 = 0.002, 0.009, 25, 140
+    axins.set_xlim(x1, x2)
+    axins.set_ylim(y1, y2)
+    axins.set_xticklabels('')
+    axins.set_yticklabels('')
+
+    ax.indicate_inset_zoom(axins, edgecolor="black")
+
+    plt.show()
 
 
 

@@ -7,7 +7,7 @@ import system, compute
 import heat_capacity
 import glob
 
-T = np.linspace(0.002,0.007,75)
+T = np.linspace(0.001,0.1,75)
 
 E = np.linspace(-system.h_small, 0, 10000)
 E = 0.5*(E[1:] + E[:-1])
