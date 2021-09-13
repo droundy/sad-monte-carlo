@@ -9,5 +9,10 @@
         "**/fake/**": true,
         "**/grand-transposed/**": true,
         "**/energy-number/**": true,
+
+        "**/z-*/**": true,
+        "**/sad-*/**": true,
+        "**/wl-*/**": true,
+        "**/it-*/**": true,
     }
 }
