@@ -32,18 +32,14 @@ def C(T, S):#T is a temperature and S is an entropy function
 if __name__ == "__main__":
     
     t = np.linspace(0.001,0.1,75)
-    t_peak = np.linspace(0.002,0.005,75)
+    t_peak = np.linspace(0.002,0.009,75)
     try:
         c = np.loadtxt('cv_saved.txt')
     except:
         c = np.array([C(T,system.S) for T in t])
         np.savetxt('cv_saved.txt', c)
 
-    try:
-        c_peak = np.loadtxt('cv_peak_saved.txt')
-    except:
-        c_peak = np.array([C(T,system.S) for T in t_peak])
-        np.savetxt('cv_peak_saved.txt', c)
+    c_peak = np.array([C(T,system.S) for T in t_peak])
 
     fig, ax = plt.subplots(figsize=[5, 4])
 
