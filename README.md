@@ -1,3 +1,5 @@
+![Tests](https://github.com/droundy/sad-monte-carlo/actions/workflows/test.yml/badge.svg)
+
 Monte Carlo
 ===========
 
