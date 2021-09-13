@@ -61,6 +61,11 @@ pub enum MethodParams {
     Inv_t_WL,
     /// Use the 1/t-Wang-Landau algorithm, nicer spelling
     inv_t_wl,
+    /// A canonical simulation
+    _Canonical {
+        /// Use a canonical simulation with this temperature
+        T: Energy,
+    },
 }
 
 /// Parameters to configure the moves.
@@ -232,6 +237,10 @@ enum Method {
         inv_t: bool,
         min_gamma: Option<f64>,
     },
+    /// Canonical
+    Canonical {
+        temperature: Energy,
+    }
 }
 
 impl Method {
@@ -296,6 +305,9 @@ impl Method {
                 min_energy: E,
                 inv_t: true,
                 min_gamma: None,
+            },
+            MethodParams::_Canonical { T } => Method::Canonical {
+                temperature: T,
             },
         }
     }
@@ -489,6 +501,13 @@ impl<S: System> EnergyMC<S> {
                 }
                 rejected
             }
+            Method::Canonical { temperature } => {
+                if e1.E >= e2.E {
+                    false
+                } else {
+                    self.rng.gen::<f64>() > ((e1.E - e2.E)/temperature).exp()
+                }
+            }
         }
     }
     /// This updates the lnw based on the actual method in use.
@@ -500,6 +519,7 @@ impl<S: System> EnergyMC<S> {
         // let mut gamma_changed = false;
         let mut switch_to_samc: Option<f64> = None;
         match self.method {
+            Method::Canonical {..} => (), // Nothing to update!
             Method::Sad {
                 min_T,
                 ref mut too_lo,
@@ -778,6 +798,7 @@ impl<S: System> EnergyMC<S> {
 impl<S: System> EnergyMC<S> {
     fn gamma(&self) -> f64 {
         match self.method {
+            Method::Canonical {..} => 0.0,
             Method::Sad {
                 num_states,
                 tF,
@@ -1021,6 +1042,7 @@ impl Method {
     fn report<S: MovableSystem>(&self, mc: &EnergyMC<S>) {
         print!("    ");
         match self {
+            Method::Canonical {..} => (), // Nothing special to report!
             Method::Sad { too_lo, too_hi, .. } => {
                 let too_lo_count = mc.bins.histogram[mc.bins.state_to_index(State { E: *too_lo })];
                 let too_hi_count = mc.bins.histogram[mc.bins.state_to_index(State { E: *too_hi })];
