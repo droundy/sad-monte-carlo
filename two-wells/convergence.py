@@ -36,7 +36,12 @@ plt.figure('latest_heat_capacity')
 correct_Cv = [heat_capacity.C(t,system.S) for t in T]
 plt.plot(T, correct_Cv, ':', label='exact', linewidth=2)
 
-markers= {'0.01+0.01':'D','0.01+0.001':'^','0.001+0.01':'o','0.001+0.001':'x'}
+markers= {'0.01+0.1':'D',
+          '0.01+0.01':'v',
+          '0.01+0.001':'^',
+          '0.001+0.1':'x',
+          '0.001+0.01':'o',
+          '0.001+0.001':'x'}
 colors = {'z':'k','wl':'b','itwl':'g','sad':'tab:orange'}
 dashes = {0: 'solid', 1:'dashed'}
 
