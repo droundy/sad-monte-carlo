@@ -117,7 +117,7 @@ run_replicas(name='hard-no-barrier', min_T=hard_min_T, max_iter=1e13, max_indepe
              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
              
 
-for s in ['hard-fifth-barrier','hard-no-barrier', 'hard']:#['hard', 'hard-no-barrier']:
+for s in ['hard-half-barrier', 'hard-fifth-barrier','hard-no-barrier', 'hard']:#['hard', 'hard-no-barrier']:
     for de in [0.001, 0.01]:
         for translation_scale in [0.01, 0.1]:
                 run_wl(name=s, min_E=hard_min_E, max_E=de/2, max_iter=1e12,
