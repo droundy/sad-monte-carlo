@@ -7,7 +7,7 @@ import system, compute
 import heat_capacity
 import glob
 
-T = np.linspace(0.001,0.1,75)
+T = np.linspace(0.001,0.01,175)
 
 E = np.linspace(-system.h_small, 0, 10000)
 E = 0.5*(E[1:] + E[:-1])
@@ -36,18 +36,13 @@ plt.figure('latest_heat_capacity')
 correct_Cv = [heat_capacity.C(t,system.S) for t in T]
 plt.plot(T, correct_Cv, ':', label='exact', linewidth=2)
 
-markers= {'0.01+0.1':'D',
-          '0.01+0.01':'v',
-          '0.01+0.001':'^',
-          '0.001+0.1':'x',
-          '0.001+0.01':'o',
-          '0.001+0.001':'x'}
+markers= {'0.01+0.01':'D','0.01+0.001':'^','0.001+0.01':'o','0.001+0.001':'x','0.001+0.1':'^','0.01+0.1':'x'}
 colors = {'z':'k','wl':'b','itwl':'g','sad':'tab:orange'}
 dashes = {0: 'solid', 1:'dashed'}
 
 paths = []
 for fname in sorted(glob.glob('*'+system.system+'*-lnw.dat')):
-    if  ('no-barrier' in fname):
+    if  ('fifth-barrier' in fname):
         if 'sad' in fname:
             if True:#not( '0.01+0.001' in fname):
                 paths.append(fname)
