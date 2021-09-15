@@ -102,12 +102,15 @@ systems = {
     'easiest': '--two-wells-N 9 --two-wells-h2-to-h1 1 --two-wells-barrier-over-h1 0.5 --two-wells-r2 0.5'.split(),
 
     'hard': f'--two-wells-N {hard_n} --two-wells-h2-to-h1 {hard_h2} --two-wells-barrier-over-h1 0.1 --two-wells-r2 {hard_r2}'.split(),
+    'hard-half-barrier': f'--two-wells-N {hard_n} --two-wells-h2-to-h1 {hard_h2} --two-wells-barrier-over-h1 0.05 --two-wells-r2 {hard_r2}'.split(),
     'hard-fifth-barrier': f'--two-wells-N {hard_n} --two-wells-h2-to-h1 {hard_h2} --two-wells-barrier-over-h1 0.02 --two-wells-r2 {hard_r2}'.split(),
     'hard-no-barrier': f'--two-wells-N {hard_n} --two-wells-h2-to-h1 {hard_h2} --two-wells-barrier-over-h1 0 --two-wells-r2 {hard_r2}'.split(),
 }
 
 hard_min_T = system.systems['hard']['min_T']
 hard_min_E = system.systems['hard']['min_E']
+run_replicas(name='hard-half-barrier', min_T=hard_min_T, max_iter=1e13, max_independent_samples=10000,
+             extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
 run_replicas(name='hard-fifth-barrier', min_T=hard_min_T, max_iter=1e13, max_independent_samples=10000,
              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
 run_replicas(name='hard-no-barrier', min_T=hard_min_T, max_iter=1e13, max_independent_samples=10000,
