@@ -31,22 +31,35 @@ def C(T, S):#T is a temperature and S is an entropy function
 #Testing
 if __name__ == "__main__":
     
-    t = np.linspace(0.001,0.1,75)
-    t_peak = np.linspace(0.002,0.009,75)
+    t_low = np.linspace(0.001,0.002,50)
+    t_peak = np.linspace(0.002,0.009,150)
+    t_high = np.linspace(0.009,0.1,50)
     try:
-        c = np.loadtxt('cv_saved.txt')
+        c_low = np.loadtxt('cv_low_saved.txt')
     except:
-        c = np.array([C(T,system.S) for T in t])
-        np.savetxt('cv_saved.txt', c)
+        c_low = np.array([C(T,system.S) for T in t_low])
+        np.savetxt('cv_low_saved.txt', c_low)
+
+    try:
+        c_peak = np.loadtxt('cv_peak_saved.txt')
+    except:
+        c_peak = np.array([C(T,system.S) for T in t_peak])
+        np.savetxt('cv_peak_saved.txt', c_peak)
+
+    try:
+        c_high= np.loadtxt('cv_high_saved.txt')
+    except:
+        c_high = np.array([C(T,system.S) for T in t_high])
+        np.savetxt('cv_high_saved.txt', c_high)
 
     c_peak = np.array([C(T,system.S) for T in t_peak])
 
     fig, ax = plt.subplots(figsize=[5, 4])
 
-    ax.plot(t, c)
+    ax.plot(np.concatenate((t_low,t_peak,t_high)), np.concatenate((c_low,c_peak,c_high)))
 
     # inset axes....
-    axins = ax.inset_axes([0.5, 0.5, 0.47, 0.47])#[0.005, 0.012, 25, 140])
+    axins = ax.inset_axes( 0.75 *  np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012, 25, 140])
     axins.plot(t_peak,c_peak)
     # sub region of the original image
     x1, x2, y1, y2 = 0.002, 0.009, 25, 140
