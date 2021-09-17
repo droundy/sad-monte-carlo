@@ -27,7 +27,7 @@ struct SystemInvCdf {
     dim: usize,
     r1: Length,
     r2: Length,
-    dx1_ball1: Length,
+    dx0_ball1: Length,
     stencils: Vec<f64>,
 }
 
@@ -55,22 +55,22 @@ impl SystemInvCdf {
         let numerical_precision_mult = 100;
 
         // us = np.linspace(-r1, np.sqrt(r1**2 - r2**2) ,(num_points) * numerical_precision_mult)  ## We only need a stencil for the first ball
-        let x1: Vec<Length> = linspace(-r1, r1 + 2.0 * r2, num_points);
-        let dx1_ball1 = x1[1] - x1[0];
+        let x0: Vec<Length> = linspace(-r1, r1 + 2.0 * r2, num_points);
+        let dx0_ball1 = x0[1] - x0[0];
 
         let dim_power =
             |x_squared: Area| -> f64 { x_squared.sqrt().value_unsafe.powi(dim as i32 - 1) };
-        let pdf_x1_nonnormalized = |x1: Length| -> f64 {
+        let pdf_x0_nonnormalized = |x0: Length| -> f64 {
             debug_assert!(V(dim - 1).is_finite());
-            let pdf = if x1 <= (r1 * r1 - r2 * r2).sqrt() {
+            let pdf = if x0 <= (r1 * r1 - r2 * r2).sqrt() {
                 // println!("in first sphere");
-                dim_power(r1 * r1 - x1 * x1) * V(dim - 1)
-            } else if x1 < r1 + r2 {
+                dim_power(r1 * r1 - x0 * x0) * V(dim - 1)
+            } else if x0 < r1 + r2 {
                 // println!("in cylinder");
                 r2.value_unsafe.powi(dim as i32 - 1) * V(dim - 1)
             } else {
                 // println!("in hemisphere");
-                dim_power(r2 * r2 - (x1 - r1 - r2) * (x1 - r1 - r2)) * V(dim - 1)
+                dim_power(r2 * r2 - (x0 - r1 - r2) * (x0 - r1 - r2)) * V(dim - 1)
             };
             debug_assert!(pdf.is_finite());
             pdf
@@ -78,12 +78,12 @@ impl SystemInvCdf {
 
         let mut val = 0.0;
         for w in 0..num_points - 1 {
-            let us = linspace(x1[w], x1[w + 1], numerical_precision_mult);
+            let us = linspace(x0[w], x0[w + 1], numerical_precision_mult);
             let du = us[1] - us[0];
             for i in 0..numerical_precision_mult - 1 {
                 // use midpoint method
                 debug_assert!(us[i].value_unsafe.is_finite() && us[i + 1].value_unsafe.is_finite());
-                val += du.value_unsafe * pdf_x1_nonnormalized(0.5 * (us[i + 1] + us[i]));
+                val += du.value_unsafe * pdf_x0_nonnormalized(0.5 * (us[i + 1] + us[i]));
             }
             debug_assert!(val.is_finite());
             stencils[w + 1] = val
@@ -130,7 +130,7 @@ impl SystemInvCdf {
             dim,
             r1,
             r2,
-            dx1_ball1,
+            dx0_ball1,
             stencils,
         }
     }
@@ -143,8 +143,8 @@ impl SystemInvCdf {
         let L = stencil[j];
         let U = stencil[j + 1];
         if which_dim == 0 {
-            let slope = self.dx1_ball1 / (U - L);
-            slope * (probability - L) + -self.r1 + j as f64 * self.dx1_ball1
+            let slope = self.dx0_ball1 / (U - L);
+            slope * (probability - L) + -self.r1 + j as f64 * self.dx0_ball1
         } else {
             let dx = Length::new(2.0) / (self.num_points as f64 - 1.0);
             let slope = dx / (U - L);
@@ -154,17 +154,17 @@ impl SystemInvCdf {
 
     fn sample(&self, rng: &mut MyRng) -> Vec<Length> {
         let mut sample = Vec::with_capacity(self.dim);
-        let x1: Length = self.eval(rng.gen(), 0);
-        sample.push(x1);
-        let mut R: Length = if x1 <= (self.r1 * self.r1 - self.r2 * self.r2).sqrt() {
+        let x0: Length = self.eval(rng.gen(), 0);
+        sample.push(x0);
+        let mut R: Length = if x0 <= (self.r1 * self.r1 - self.r2 * self.r2).sqrt() {
             // println!("we're in the first ball");
-            (self.r1 * self.r1 - x1 * x1).sqrt()
-        } else if x1 < self.r1 + self.r2 {
+            (self.r1 * self.r1 - x0 * x0).sqrt()
+        } else if x0 < self.r1 + self.r2 {
             // println!("we're in the cylinder");
             self.r2
         } else {
             // println!("we're in the final hemisphere");
-            let x2 = x1 - self.r1 - self.r2;
+            let x2 = x0 - self.r1 - self.r2;
             (self.r2 * self.r2 - x2 * x2).sqrt()
         };
         for i in 2..self.dim {
@@ -210,6 +210,7 @@ fn V(n: usize) -> f64 {
 struct Change {
     index: usize,
     /// The new values at index and beyond
+    new_x0: Length,
     values: Vector3d<Length>,
 }
 
@@ -253,6 +254,7 @@ impl From<Parameters> for TwoWells {
             d_squared,
             change: Change {
                 index: 0,
+                new_x0: Length::new(0.0),
                 values: Vector3d::new(Length::new(0.0), Length::new(0.0), Length::new(0.0)),
             },
             invcdf: SystemInvCdf::new(&parameters),
@@ -268,9 +270,8 @@ impl From<Parameters> for TwoWells {
                 println!("{:.4} {:.2}", x, energy);
             } else {
                 panic!(
-                    "We generated an invalid system?! x1 = {}, d_squared = {}",
-                    tw.position[0],
-                    tw.d_squared,
+                    "We generated an invalid system?! x0 = {}, d_squared = {}",
+                    tw.position[0], tw.d_squared,
                 );
             }
         }
@@ -279,7 +280,7 @@ impl From<Parameters> for TwoWells {
 }
 
 impl TwoWells {
-    fn find_energy(&self, x1: Length, d_orthog_squared: Area) -> Option<Energy> {
+    fn find_energy(&self, x0: Length, d_orthog_squared: Area) -> Option<Energy> {
         //r_1 is assumed to be 1 and center_2 is such that the two wells are touching
         let r1 = Length::new(1.0);
         let r2 = self.parameters.r2;
@@ -287,12 +288,12 @@ impl TwoWells {
 
         // let d_orthog_squared = position[1..].iter().map(|&x| x * x).sum::<Area>();
 
-        // let x1 = position[0];
-        let x2 = x1 - r1 - r2;
-        let xw = x1 - rw;
+        // let x0 = position[0];
+        let x2 = x0 - r1 - r2;
+        let xw = x0 - rw;
         let xi = x2 + rw;
 
-        let d_1_squared = d_orthog_squared + x1 * x1;
+        let d_1_squared = d_orthog_squared + x0 * x0;
         let d_2_squared = d_orthog_squared + x2 * x2;
         let d_w_squared = d_orthog_squared + xw * xw;
         let d_i_squared = d_orthog_squared + xi * xi;
@@ -322,7 +323,7 @@ impl TwoWells {
             } else {
                 e_2
             })
-        } else if d_orthog_squared <= r2 * r2 && x1 > Length::new(0.0) && x1 <= r1 + r2 {
+        } else if d_orthog_squared <= r2 * r2 && x0 > Length::new(0.0) && x0 <= r1 + r2 {
             // We are in the cylinder
             Some(Energy::new(0.0))
         } else {
@@ -330,7 +331,7 @@ impl TwoWells {
         }
     }
 
-    fn find_which(&self, x1: Length, d_orthog_squared: Area) -> f64 {
+    fn find_which(&self, x0: Length, d_orthog_squared: Area) -> f64 {
         //r_1 is assumed to be 1 and center_2 is such that the two wells are touching
         let r1 = Length::new(1.0);
         let r2 = self.parameters.r2;
@@ -338,12 +339,12 @@ impl TwoWells {
 
         // let d_orthog_squared = position[1..].iter().map(|&x| x * x).sum::<Area>();
 
-        // let x1 = position[0];
-        let x2 = x1 - r1 - r2;
-        let xw = x1 - rw;
+        // let x0 = position[0];
+        let x2 = x0 - r1 - r2;
+        let xw = x0 - rw;
         let xi = x2 + rw;
 
-        let d_1_squared = d_orthog_squared + x1 * x1;
+        let d_1_squared = d_orthog_squared + x0 * x0;
         let d_2_squared = d_orthog_squared + x2 * x2;
         let d_w_squared = d_orthog_squared + xw * xw;
         let d_i_squared = d_orthog_squared + xi * xi;
@@ -377,7 +378,7 @@ impl TwoWells {
             } else {
                 1.0
             }
-        } else if d_orthog_squared <= r2 * r2 && x1 > Length::new(0.0) && x1 < r1 + r2 {
+        } else if d_orthog_squared <= r2 * r2 && x0 > Length::new(0.0) && x0 < r1 + r2 {
             // We are in the cylinder
             0.0
         } else {
@@ -456,10 +457,17 @@ impl ConfirmSystem for TwoWells {
             .iter()
             .map(|&x| x * x)
             .sum::<Area>();
+        if change.index != 0 {
+            self.d_squared -= self.position[0] * self.position[0];
+        }
         self.position[change.index] = change.values.x;
         self.position[change.index + 1] = change.values.y;
         self.position[change.index + 2] = change.values.z;
+        self.position[0] = change.new_x0;
         self.d_squared += change.values.norm2();
+        if change.index != 0 {
+            self.d_squared += change.new_x0 * change.new_x0;
+        }
     }
 }
 
@@ -477,6 +485,7 @@ impl ConfirmSystem for TwoWells {
 impl MovableSystem for TwoWells {
     fn plan_move(&mut self, rng: &mut MyRng, d: Length) -> Option<Energy> {
         use crate::rng::vector;
+        use rand::Rng as RandRng;
         let index = 3 * rng.gen_range(0, self.position.len() / 3);
         let old_r = Vector3d::new(
             self.position[index],
@@ -484,19 +493,25 @@ impl MovableSystem for TwoWells {
             self.position[index + 2],
         );
         let dr = vector(rng) * d;
-        let r = dr + old_r;
-        let old_x1 = self.position[0];
-        let dx1 = dr.x/(self.position.len() as f64).sqrt();
-        let x1 = if index == 0 { r.x } else { old_x1 + dx1 };
+        let mut r = dr + old_r;
+        let old_x0 = self.position[0];
+        let dx0: f64 = rng.sample(rand_distr::StandardNormal);
+        let dx0: Length = d * dx0 / (self.position.len() as f64).sqrt();
+        let new_x0 = old_x0 + dx0;
+        if index == 0 {
+            r.x = new_x0;
+        }
         let d_squared = if index == 0 {
             self.d_squared - old_r.norm2() + r.norm2()
         } else {
-            self.position[0] = x1;
-            self.d_squared - old_r.norm2() + r.norm2() - old_x1*old_x1 + x1*x1
+            self.d_squared - old_r.norm2() + r.norm2() - old_x0 * old_x0 + new_x0 * new_x0
         };
-        let x1 = if index == 0 { r.x } else { self.position[0] };
-        self.change = Change { index, values: r };
-        self.find_energy(x1, d_squared - x1 * x1)
+        self.change = Change {
+            index,
+            new_x0,
+            values: r,
+        };
+        self.find_energy(new_x0, d_squared - new_x0 * new_x0)
     }
     fn max_size(&self) -> Length {
         Length::new(2.0)
