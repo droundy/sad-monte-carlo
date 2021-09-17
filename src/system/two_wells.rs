@@ -496,7 +496,7 @@ impl MovableSystem for TwoWells {
         let mut r = dr + old_r;
         let old_x0 = self.position[0];
         let dx0: f64 = rng.sample(rand_distr::StandardNormal);
-        let dx0: Length = d * dx0 / (self.position.len() as f64).sqrt();
+        let dx0: Length = d * dx0 / (self.position.len() as f64 * (1.0 / 3.0)).sqrt();
         let new_x0 = old_x0 + dx0;
         if index == 0 {
             r.x = new_x0;
