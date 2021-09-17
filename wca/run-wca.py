@@ -105,13 +105,13 @@ for v in volumes:
     d = 1.0/v
     name = f'wca-256-%.2f' % v
     systems[name] = f'--wca-reduced-density {d} --wca-N 256 --independent-systems-before-new-bin 16'.split()
-    run_replicas(name=name, min_T = min_T, max_independent_samples=100, max_iter=1e13)
+    run_replicas(name=name, min_T = min_T, max_independent_samples=1000, max_iter=1e13)
 
 for v in reversed(volumes):
     d = 1.0/v
     name = f'wca-600--%.2f' % v
     systems[name] = f'--wca-reduced-density {d} --wca-N 600 --independent-systems-before-new-bin 16'.split()
-    run_replicas(name=name, min_T = 0.5, max_independent_samples=100, max_iter=1e13)
+    run_replicas(name=name, min_T = 0.5, max_independent_samples=1000, max_iter=1e13)
 
 
 # for v in volumes:
