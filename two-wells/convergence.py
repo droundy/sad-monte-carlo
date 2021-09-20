@@ -42,7 +42,7 @@ dashes = {0: 'solid', 1:'dashed'}
 
 paths = []
 for fname in sorted(glob.glob('*'+system.system+'*-lnw.dat')):
-    if  ('fifth-barrier' in fname):
+    if not ('half-barrier' in fname):
         if 'sad' in fname:
             if True:#not( '0.01+0.001' in fname):
                 paths.append(fname)

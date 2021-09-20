@@ -11,6 +11,13 @@ systems = {
         'min_T': 0.001,
         'min_E': -1.08
     },
+    'tiny': {
+        'h_small': 1.01,
+        'R_small': 0.1,
+        'n': 9,
+        'min_T': 0.00001,
+        'min_E': -1.0099
+    },
     'easier': {
         'h_small': 1.1347,
         'R_small': 0.5,
@@ -44,7 +51,7 @@ systems = {
 if len(sys.argv) == 2:
     system = sys.argv[1]
 else:
-    system = 'hard'
+    system = 'tiny'
 
 min_T = systems[system]['min_T']
 min_E = systems[system]['min_E']
