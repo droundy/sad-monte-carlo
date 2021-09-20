@@ -471,17 +471,6 @@ impl ConfirmSystem for TwoWells {
     }
 }
 
-// Basis set for moving "atoms"
-
-// N atom coordinates, we want each atom coordinate to involve moving
-// position[0] by the same distance.  What basis vectors would accomplish this?
-
-// Picking hypercube diagonals as basis vectors:
-// [1/sqrt(N)  1/N  1/N  1/N ...  1/N  1/N  1/N  1/N]
-// [1/N -1/N  1/N -1/N ...  1/N -1/N  1/N -1/N]
-// ...
-// [1/N  1/N  1/N  1/N ... -1/N -1/N -1/N -1/N ]
-
 impl MovableSystem for TwoWells {
     fn plan_move(&mut self, rng: &mut MyRng, d: Length) -> Option<Energy> {
         use crate::rng::vector;
@@ -492,26 +481,11 @@ impl MovableSystem for TwoWells {
             self.position[index + 1],
             self.position[index + 2],
         );
-        let dr = vector(rng) * d;
-        let mut r = dr + old_r;
-        let old_x0 = self.position[0];
-        let dx0: f64 = rng.sample(rand_distr::StandardNormal);
-        let dx0: Length = d * dx0 / (self.position.len() as f64).sqrt();
-        let new_x0 = old_x0 + dx0;
-        if index == 0 {
-            r.x = new_x0;
-        }
-        let d_squared = if index == 0 {
-            self.d_squared - old_r.norm2() + r.norm2()
-        } else {
-            self.d_squared - old_r.norm2() + r.norm2() - old_x0 * old_x0 + new_x0 * new_x0
-        };
-        self.change = Change {
-            index,
-            new_x0,
-            values: r,
-        };
-        self.find_energy(new_x0, d_squared - new_x0 * new_x0)
+        let r = vector(rng) * d + old_r;
+        let d_squared = self.d_squared - old_r.norm2() + r.norm2();
+        let x1 = if index == 0 { r.x } else { self.position[0] };
+        self.change = Change { index, values: r };
+        self.find_energy(x1, d_squared - x1 * x1)
     }
     fn max_size(&self) -> Length {
         Length::new(2.0)
