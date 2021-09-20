@@ -248,7 +248,7 @@ impl From<Parameters> for TwoWells {
         let mut position = vec![Length::new(0.0); parameters.N];
         position[0] = Length::new(-0.99);
         let d_squared = position.iter().map(|&x| x * x).sum::<Area>();
-        let tw = TwoWells {
+        TwoWells {
             position,
             d_squared,
             change: Change {
@@ -258,23 +258,7 @@ impl From<Parameters> for TwoWells {
             invcdf: SystemInvCdf::new(&parameters),
             well_position,
             parameters,
-        };
-        for x in linspace(
-            Length::new(-1.0),
-            Length::new(1.0) + 2.0 * parameters.r2,
-            100,
-        ) {
-            if let Some(energy) = tw.find_energy(x, Area::new(0.0)) {
-                println!("{:.4} {:.2}", x, energy);
-            } else {
-                panic!(
-                    "We generated an invalid system?! x1 = {}, d_squared = {}",
-                    tw.position[0],
-                    tw.d_squared,
-                );
-            }
         }
-        tw
     }
 }
 
