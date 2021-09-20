@@ -32,9 +32,16 @@ correct_S = normalize_S(system.S(E))
 correct_S_for_err = correct_S[indices_for_err]
 plt.plot(E, correct_S, ':', label='exact', linewidth=2)
 
-plt.figure('latest_heat_capacity')
-correct_Cv = [heat_capacity.C(t,system.S) for t in T]
-plt.plot(T, correct_Cv, ':', label='exact', linewidth=2)
+fig, ax = plt.subplots(figsize=[5, 4])
+axins = ax.inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012, 25, 140])
+x1, x2, y1, y2 = 0.002, 0.009, 25, 140
+axins.set_xlim(x1, x2)
+axins.set_ylim(y1, y2)
+axins.set_xticklabels('')
+axins.set_yticklabels('')
+
+ax.indicate_inset_zoom(axins, edgecolor="black")
+heat_capacity.plot(system.S, ax=ax, axins=axins)
 
 markers= {'0.01+0.01':'D','0.01+0.001':'^','0.001+0.01':'o','0.001+0.001':'x','0.001+0.1':'^','0.01+0.1':'x'}
 colors = {'z':'k','wl':'b','itwl':'g','sad':'tab:orange'}
@@ -43,7 +50,7 @@ linestyles = {'z':'solid','wl':'dashed','itwl':'dashdot','sad':(0, (3, 1, 1, 1, 
 
 paths = []
 for fname in sorted(glob.glob('*'+system.system+'*-lnw.dat')):
-    if  ('fifth-barrier' in fname):
+    if  ('half-barrier' in fname):
         if 'sad' in fname:
             if True:#not( '0.01+0.001' in fname):
                 paths.append(fname)
@@ -71,12 +78,12 @@ for fname in paths:
         plt.plot(E, normalize_S(l_function(E)), label=base, color = colors[method], linestyle= linestyles[method])
 
     plt.figure('latest_heat_capacity')
-    plt.legend()
-    correct_Cv = [heat_capacity.C(t,l_function) for t in T]
-    if method in {'wl','itwl','sad'}:
-        plt.plot(T, correct_Cv, label=base, marker = markers[precision], color = colors[method], linestyle= linestyles[method], markevery=5)
-    elif method == 'z':
-        plt.plot(T, correct_Cv, label=base, color = colors[method], linestyle= linestyles[method])
+    heat_capacity.plot(l_function, fname=fname,ax=ax, axins=axins)
+    # correct_Cv = [heat_capacity.C(t,l_function) for t in T]
+    # if method in {'wl','itwl','sad'}:
+    #     plt.plot(T, correct_Cv, label=base, marker = markers[precision], color = colors[method], linestyle= linestyles[method], markevery=5)
+    # elif method == 'z':
+    #     plt.plot(T, correct_Cv, label=base, color = colors[method], linestyle= linestyles[method])
 
     plt.figure('fraction-well')
     mean_which = np.loadtxt(f'{base}-which.dat')
