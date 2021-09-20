@@ -115,7 +115,6 @@ systems = {
 
 run_replicas(name='tiny', min_T=system.systems['tiny']['min_T'], max_iter=1e13, max_independent_samples=3e5,
              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
-exit(0)
 
 for s in ['tiny']:
     for de in [0.00001, 0.0001]:
