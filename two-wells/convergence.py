@@ -37,8 +37,8 @@ axins = ax.inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012
 x1, x2, y1, y2 = 0.002, 0.009, 25, 140
 axins.set_xlim(x1, x2)
 axins.set_ylim(y1, y2)
-axins.set_xticklabels('')
-axins.set_yticklabels('')
+#axins.set_xticklabels('')
+#axins.set_yticklabels('')
 
 ax.indicate_inset_zoom(axins, edgecolor="black")
 heat_capacity.plot(system.S, ax=ax, axins=axins)
@@ -177,6 +177,6 @@ plt.savefig(system.system+'-convergence.pdf')
 
 
 plt.figure('latest_heat_capacity')
-plt.legend()
+ax.legend()
 
 plt.show()

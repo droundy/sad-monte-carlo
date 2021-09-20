@@ -88,7 +88,7 @@ def plot(S, fname=None, ax=None, axins=None):
                     ':',
                     label='exact',
                     linewidth=2,
-                    color='b')
+                    color='tab:cyan')
 
     # inset axes....
     #axins = ax.inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012, 25, 140])
@@ -109,12 +109,12 @@ def plot(S, fname=None, ax=None, axins=None):
                     linestyle= linestyles[method], 
                     markevery=10)
     else:
-        ax.plot(t_peak, 
+        axins.plot(t_peak, 
                     c_peak,
                     ':',
                     label='exact',
                     linewidth=2,
-                    color='b')
+                    color='tab:cyan')
     # sub region of the original image
     # x1, x2, y1, y2 = 0.002, 0.009, 25, 140
     # axins.set_xlim(x1, x2)
