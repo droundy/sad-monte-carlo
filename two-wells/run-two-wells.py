@@ -118,7 +118,7 @@ run_replicas(name='tiny', min_T=system.systems['tiny']['min_T'], max_iter=1e13, 
 
 for s in ['tiny']:
     for de in [0.00001, 0.0001]:
-        for translation_scale in [0.01, 0.1]:
+        for translation_scale in [1e-4, 1e-3, 0.01, 0.1]:
                 run_wl(name=s, min_E=system.systems[s]['min_E'], max_E=de/2, max_iter=1e12,
                             translation_scale=translation_scale, de=de, min_gamma=1e-9)
                 run_inv_t_wl(name=s, min_E=system.systems[s]['min_E'], max_E=de/2, max_iter=1e12,
