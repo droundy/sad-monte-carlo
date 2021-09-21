@@ -107,7 +107,7 @@ for fname in paths:
             err = np.max(np.abs(normalize_S(l_function(E))[indices_for_err] - correct_S_for_err))
             # print(f'err is {err} for {frame_base}')
             errors.append(err)
-            errors_Cv.append(np.abs(heat_capacity.C(0.005, system.S) - heat_capacity.C(0.005, l_function)))
+            errors_Cv.append(np.abs(heat_capacity.C(heat_capacity.T_peak, system.S) - heat_capacity.C(heat_capacity.T_peak, l_function)))
         except:
             pass
 

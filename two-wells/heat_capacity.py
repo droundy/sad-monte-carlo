@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import system, compute
 import find_phase_transition
 
+T_peak = find_phase_transition.actual_T
+
 def C(T, S):#T is a temperature and S is an entropy function
     E = np.linspace(-system.h_small, 0, 5000)
     E = 0.5*(E[1:] + E[:-1])
@@ -41,7 +43,6 @@ def plot(S, fname=None, ax=None, axins=None):
         base = None
         method = None
 
-    T_peak = find_phase_transition.actual_T
     print('peak should be at', T_peak)
     T_width = T_peak/2 # this is just a guess
     t_low = np.linspace(T_peak/10,T_peak - T_width,50)
