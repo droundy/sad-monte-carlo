@@ -32,17 +32,29 @@ correct_S = normalize_S(system.S(E))
 correct_S_for_err = correct_S[indices_for_err]
 plt.plot(E, correct_S, ':', label='exact', linewidth=2)
 
-plt.figure('latest_heat_capacity')
-correct_Cv = [heat_capacity.C(t,system.S) for t in T]
-plt.plot(T, correct_Cv, ':', label='exact', linewidth=2)
+fig, ax = plt.subplots(figsize=[5, 4])
+axins = ax.inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012, 25, 140])
+x1, x2, y1, y2 = 0.002, 0.009, 25, 140
+axins.set_xlim(x1, x2)
+axins.set_ylim(y1, y2)
+#axins.set_xticklabels('')
+#axins.set_yticklabels('')
+
+ax.indicate_inset_zoom(axins, edgecolor="black")
+heat_capacity.plot(system.S, ax=ax, axins=axins)
 
 markers= {'0.01+0.01':'D','0.01+0.001':'^','0.001+0.01':'o','0.001+0.001':'x','0.001+0.1':'^','0.01+0.1':'x'}
 colors = {'z':'k','wl':'b','itwl':'g','sad':'tab:orange'}
 dashes = {0: 'solid', 1:'dashed'}
+linestyles = {'z':'solid','wl':'dashed','itwl':'dashdot','sad':(0, (3, 1, 1, 1, 1, 1))}
 
 paths = []
 for fname in sorted(glob.glob('*'+system.system+'*-lnw.dat')):
+<<<<<<< HEAD
     if not ('half-barrier' in fname):
+=======
+    if  ('half-barrier' in fname):
+>>>>>>> d14e3c2555b6292aad63569b6a115a0b147f45c6
         if 'sad' in fname:
             if True:#not( '0.01+0.001' in fname):
                 paths.append(fname)
@@ -65,17 +77,17 @@ for fname in paths:
     #plt.plot(E, normalize_S(l_function(E)), label=base)
     if method in {'wl','itwl','sad'}:
         precision = base[base.rfind('-') + 1:]
-        plt.plot(E, normalize_S(l_function(E)), label=base, marker = markers[precision], color = colors[method], linestyle= dashes['no-barrier' in base], markevery=250)
+        plt.plot(E, normalize_S(l_function(E)), label=base, marker = markers[precision], color = colors[method], linestyle= linestyles[method], markevery=100)
     elif method == 'z':
-        plt.plot(E, normalize_S(l_function(E)), label=base, color = colors[method], linestyle= dashes['no-barrier' in base])
+        plt.plot(E, normalize_S(l_function(E)), label=base, color = colors[method], linestyle= linestyles[method])
 
     plt.figure('latest_heat_capacity')
-    plt.legend()
-    correct_Cv = [heat_capacity.C(t,l_function) for t in T]
-    if method in {'wl','itwl','sad'}:
-        plt.plot(T, correct_Cv, label=base, marker = markers[precision], color = colors[method], linestyle= dashes['no-barrier' in base], markevery=5)
-    elif method == 'z':
-        plt.plot(T, correct_Cv, label=base, color = colors[method], linestyle= dashes['no-barrier' in base])
+    heat_capacity.plot(l_function, fname=fname,ax=ax, axins=axins)
+    # correct_Cv = [heat_capacity.C(t,l_function) for t in T]
+    # if method in {'wl','itwl','sad'}:
+    #     plt.plot(T, correct_Cv, label=base, marker = markers[precision], color = colors[method], linestyle= linestyles[method], markevery=5)
+    # elif method == 'z':
+    #     plt.plot(T, correct_Cv, label=base, color = colors[method], linestyle= linestyles[method])
 
     plt.figure('fraction-well')
     mean_which = np.loadtxt(f'{base}-which.dat')
@@ -109,16 +121,16 @@ for fname in paths:
     plt.figure('convergence')
     if method in {'wl','itwl','sad'}:
         precision = base[base.rfind('-') + 1:]
-        plt.loglog(moves, errors, label=base, marker = markers[precision], color = colors[method], linestyle= dashes['no-barrier' in base], markevery=2)
+        plt.loglog(moves, errors, label=base, marker = markers[precision], color = colors[method], linestyle= linestyles[method], markevery=2)
     elif method == 'z':
-        plt.loglog(moves, errors, label=base, color = colors[method], linestyle= dashes['no-barrier' in base], linewidth = 3)
+        plt.loglog(moves, errors, label=base, color = colors[method], linestyle= linestyles[method], linewidth = 3)
 
     plt.figure('convergence_heat_capacity')
     if method in {'wl','itwl','sad'}:
         precision = base[base.rfind('-') + 1:]
-        plt.loglog(moves, errors_Cv, label=base, marker = markers[precision], color = colors[method], linestyle= dashes['no-barrier' in base], markevery=2)
+        plt.loglog(moves, errors_Cv, label=base, marker = markers[precision], color = colors[method], linestyle= linestyles[method], markevery=2)
     elif method == 'z':
-        plt.loglog(moves, errors_Cv, label=base, color = colors[method], linestyle= dashes['no-barrier' in base], linewidth = 3)
+        plt.loglog(moves, errors_Cv, label=base, color = colors[method], linestyle= linestyles[method], linewidth = 3)
 
     #print(base[:base.find('-')]) #for debugging
 
@@ -146,10 +158,29 @@ plt.xlabel(r'# of Moves')
 plt.ylabel(rf'max error in entropy between {lowest_interesting_E} and {highest_interesting_E}')
 plt.ylim(1e-2, 1e2)
 plt.legend()
+#make diagonal lines for convergence
+x = np.linspace(1e-10,1e20,2)
+y = 1/np.sqrt(x)
+for i in range(20):
+    plt.loglog(x,y*10**(4*i/5-2), color = 'y',alpha=0.5)
 plt.savefig(system.system+'-convergence.svg')
 plt.savefig(system.system+'-convergence.pdf')
 
-plt.figure('latest_heat_capacity')
+plt.figure('convergence_heat_capacity')
+plt.xlabel(r'# of Moves')
+plt.ylabel(rf'max error in entropy between {lowest_interesting_E} and {highest_interesting_E}')
+plt.ylim(1e-2, 1e2)
 plt.legend()
+#make diagonal lines for convergence
+x = np.linspace(1e-10,1e20,2)
+y = 1/np.sqrt(x)
+for i in range(20):
+    plt.loglog(x,y*10**(4*i/5-2), color = 'y',alpha=0.5)
+plt.savefig(system.system+'-convergence.svg')
+plt.savefig(system.system+'-convergence.pdf')
+
+
+plt.figure('latest_heat_capacity')
+ax.legend()
 
 plt.show()
