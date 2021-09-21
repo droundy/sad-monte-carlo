@@ -40,7 +40,10 @@ axins = ax.inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012
 heat_capacity.plot(system.S, ax=ax, axins=axins)
 ax.indicate_inset_zoom(axins, edgecolor="black")
 
-markers= {'0.01+0.01':'D','0.01+0.001':'^','0.001+0.01':'o','0.001+0.001':'x','0.001+0.1':'^','0.01+0.1':'x'}
+markers= {'0.01+0.01':'D','0.01+0.001':'^','0.001+0.01':'o','0.001+0.001':'x',
+            '0.001+0.1':'^','0.01+0.1':'x',
+            '0.0001+0.01':'^','1e-05+0.1':'x','0.0001+0.1':'o','1e-05+0.01':'D','05+0.1':'x','05+0.01':'D'}
+
 colors = {'z':'k','wl':'b','itwl':'g','sad':'tab:orange'}
 dashes = {0: 'solid', 1:'dashed'}
 linestyles = {'z':'solid','wl':'dashed','itwl':'dashdot','sad':(0, (3, 1, 1, 1, 1, 1))}
