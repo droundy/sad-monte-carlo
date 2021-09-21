@@ -49,22 +49,22 @@ def plot(S, fname=None, ax=None, axins=None):
     axins.set_xlim(T_peak - T_width, T_peak + T_width)
     t_high = np.linspace(T_peak + T_width,1.0,150)
     try:
-        c_low = np.loadtxt('cv_low_saved.txt')
+        c_low = np.loadtxt(f'{base}-cv_low_saved.txt')
     except:
         c_low = np.array([C(T,S) for T in t_low])
-        np.savetxt('cv_low_saved.txt', c_low)
+        np.savetxt(f'{base}-cv_low_saved.txt', c_low)
 
     try:
-        c_peak = np.loadtxt('cv_peak_saved.txt')
+        c_peak = np.loadtxt(f'{base}-cv_peak_saved.txt')
     except:
         c_peak = np.array([C(T,S) for T in t_peak])
-        np.savetxt('cv_peak_saved.txt', c_peak)
+        np.savetxt(f'{base}-cv_peak_saved.txt', c_peak)
 
     try:
-        c_high= np.loadtxt('cv_high_saved.txt')
+        c_high= np.loadtxt(f'{base}-cv_high_saved.txt')
     except:
         c_high = np.array([C(T,S) for T in t_high])
-        np.savetxt('cv_high_saved.txt', c_high)
+        np.savetxt(f'{base}-cv_high_saved.txt', c_high)
 
     c_peak = np.array([C(T,S) for T in t_peak])
 
