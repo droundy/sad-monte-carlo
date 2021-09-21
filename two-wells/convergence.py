@@ -50,11 +50,7 @@ linestyles = {'z':'solid','wl':'dashed','itwl':'dashdot','sad':(0, (3, 1, 1, 1, 
 
 paths = []
 for fname in sorted(glob.glob('*'+system.system+'*-lnw.dat')):
-<<<<<<< HEAD
     if not ('half-barrier' in fname):
-=======
-    if  ('half-barrier' in fname):
->>>>>>> d14e3c2555b6292aad63569b6a115a0b147f45c6
         if 'sad' in fname:
             if True:#not( '0.01+0.001' in fname):
                 paths.append(fname)
