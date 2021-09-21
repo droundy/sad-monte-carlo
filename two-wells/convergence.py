@@ -32,16 +32,13 @@ correct_S = normalize_S(system.S(E))
 correct_S_for_err = correct_S[indices_for_err]
 plt.plot(E, correct_S, ':', label='exact', linewidth=2)
 
-fig, ax = plt.subplots(figsize=[5, 4])
+fig, ax = plt.subplots(figsize=[5, 4], num='latest heat capacity')
 axins = ax.inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012, 25, 140])
-x1, x2, y1, y2 = 0.002, 0.009, 25, 140
-axins.set_xlim(x1, x2)
-axins.set_ylim(y1, y2)
 #axins.set_xticklabels('')
 #axins.set_yticklabels('')
 
-ax.indicate_inset_zoom(axins, edgecolor="black")
 heat_capacity.plot(system.S, ax=ax, axins=axins)
+ax.indicate_inset_zoom(axins, edgecolor="black")
 
 markers= {'0.01+0.01':'D','0.01+0.001':'^','0.001+0.01':'o','0.001+0.001':'x','0.001+0.1':'^','0.01+0.1':'x'}
 colors = {'z':'k','wl':'b','itwl':'g','sad':'tab:orange'}
@@ -77,7 +74,7 @@ for fname in paths:
     elif method == 'z':
         plt.plot(E, normalize_S(l_function(E)), label=base, color = colors[method], linestyle= linestyles[method])
 
-    plt.figure('latest_heat_capacity')
+    plt.figure('latest heat capacity')
     heat_capacity.plot(l_function, fname=fname,ax=ax, axins=axins)
     # correct_Cv = [heat_capacity.C(t,l_function) for t in T]
     # if method in {'wl','itwl','sad'}:
@@ -176,7 +173,7 @@ plt.savefig(system.system+'-convergence.svg')
 plt.savefig(system.system+'-convergence.pdf')
 
 
-plt.figure('latest_heat_capacity')
+plt.figure('latest heat capacity')
 ax.legend()
 
 plt.show()

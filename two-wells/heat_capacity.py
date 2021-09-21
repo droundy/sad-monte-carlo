@@ -3,7 +3,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import system, compute
-import glob
+import find_phase_transition
 
 def C(T, S):#T is a temperature and S is an entropy function
     E = np.linspace(-system.h_small, 0, 5000)
@@ -41,9 +41,13 @@ def plot(S, fname=None, ax=None, axins=None):
         base = None
         method = None
 
-    t_low = np.linspace(0.001,0.002,50)
-    t_peak = np.linspace(0.002,0.009,150)
-    t_high = np.linspace(0.009,0.1,50)
+    T_peak = find_phase_transition.actual_T
+    print('peak should be at', T_peak)
+    T_width = T_peak/2 # this is just a guess
+    t_low = np.linspace(T_peak/10,T_peak - T_width,50)
+    t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
+    axins.set_xlim(T_peak - T_width, T_peak + T_width)
+    t_high = np.linspace(T_peak + T_width,1.0,150)
     try:
         c_low = np.loadtxt('cv_low_saved.txt')
     except:

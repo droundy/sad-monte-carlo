@@ -58,71 +58,73 @@ print('\nguess is', guess)
 # print("1/T: " + str(S_prime(guess)))
 # print("->T: " + str(1/S_prime(guess)))
 
-actual_T = 1/S_prime(guess)
+actual_T = 1/S_prime(E_1(guess))
+
 print('actual T/Delta E', actual_T/(system.h_small - system.h_big))
 print('actual barrier/Delta E', system.h_small/(system.h_small - system.h_big))
 
 print('barrier energy should be', (actual_T/0.025)*(E_barrier-E1) - system.h_small)
 
-##### Plotting #####
-print('guess', guess, E_1(guess))
-E_2 = np.arange(-system.h_big, 0, 0.0001)
+if __name__ ==  "__main__":
+    ##### Plotting #####
+    print('guess', guess, E_1(guess))
+    E_2 = np.arange(-system.h_big, 0, 0.0001)
 
 
-# plt.figure()
-# plt.plot(E_2, E_1(E_2))
-# plt.plot([-h_big,0],[-h_big,-h_big])
-# plt.title(r'$E_1(E_2)$')
+    # plt.figure()
+    # plt.plot(E_2, E_1(E_2))
+    # plt.plot([-h_big,0],[-h_big,-h_big])
+    # plt.title(r'$E_1(E_2)$')
 
-e_2 = []
+    e_2 = []
 
-for e in E_2:
-    if E_1(e) < -system.h_big:
-        e_2.append(e)
+    for e in E_2:
+        if E_1(e) < -system.h_big:
+            e_2.append(e)
 
-e_1 = []
-for e in e_2:
-    e_1.append(E_1(e))
+    e_1 = []
+    for e in e_2:
+        e_1.append(E_1(e))
 
-plt.figure()
-E = np.arange(-system.h_small,0,abs(system.h_big-system.h_small)/100)
+    plt.figure()
+    E = np.arange(-system.h_small,0,abs(system.h_big-system.h_small)/100)
 
-s = np.zeros_like(E)
+    s = np.zeros_like(E)
 
-for i in range(0,len(E)):
-    s[i] = S(E[i])
+    for i in range(0,len(E)):
+        s[i] = S(E[i])
 
-# s_1 = []
-# s_2 = []
-# for i in range(0,len(e_1)):
-#     s_1.append(np.log( D(e_1[i])) )
-#     s_2.append(np.log( D(e_2[i])) )
+    # s_1 = []
+    # s_2 = []
+    # for i in range(0,len(e_1)):
+    #     s_1.append(np.log( D(e_1[i])) )
+    #     s_2.append(np.log( D(e_2[i])) )
 
-plt.plot(E,s)
-plt.plot(guess, S(guess), '.')
-plt.plot(E_1(guess), S(E_1(guess)), '.')
-# plt.plot(e_1,s_1)
-# plt.plot(e_2,s_2)
+    plt.plot(E,s)
+    plt.plot(guess, S(guess), '.')
+    plt.plot(E_1(guess), S(E_1(guess)), '.')
+    # plt.plot(e_1,s_1)
+    # plt.plot(e_2,s_2)
 
-##### Common Tangent #####
+    ##### Common Tangent #####
 
-t = np.arange(-system.h_small,-0,0.5)
-m = S_prime(E_1(guess))
-print('T =', 1/m)
-Y = m*(t-guess) + S(guess)
+    t = np.arange(-system.h_small,-0,0.5)
+    m = S_prime(E_1(guess))
+    print('T =', 1/m)
+    Y = m*(t-guess) + S(guess)
 
-plt.plot(t,Y)
-plt.ylim(ymax=0)
-plt.title(r'$S(E)$')
-##### g(E_2) #####
+    plt.plot(t,Y)
+    plt.ylim(ymax=0)
+    plt.title(r'$S(E)$')
+    ##### g(E_2) #####
 
-# G = np.zeros_like(E_2) 
+    # G = np.zeros_like(E_2) 
 
-# for i in range(0,len(G)):
-#     G[i] = g(E_2[i])
-# plt.figure()
-# plt.plot(E_2,G)
+    # for i in range(0,len(G)):
+    #     G[i] = g(E_2[i])
+    # plt.figure()
+    # plt.plot(E_2,G)
 
 
-# plt.title(r'$G(E_2)$')
-plt.show()
+    # plt.title(r'$G(E_2)$')
+    plt.show()
