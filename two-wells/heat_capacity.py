@@ -72,7 +72,7 @@ def plot(S, fname=None, ax=None, axins=None):
     if method in {'wl','itwl','sad'}:
         ax.plot(np.concatenate((t_low,t_peak,t_high)), 
                     np.concatenate((c_low,c_peak,c_high)), 
-                    label=base, 
+                    label=styles.pretty_label(base), 
                     marker = styles.marker(base), 
                     color = styles.color(base), 
                     linestyle= styles.linestyle(base), 
@@ -80,7 +80,7 @@ def plot(S, fname=None, ax=None, axins=None):
     elif method == 'z':
         ax.plot(np.concatenate((t_low,t_peak,t_high)), 
                     np.concatenate((c_low,c_peak,c_high)), 
-                    label=base, 
+                    label=styles.pretty_label(base), 
                     color = styles.color(base), 
                     linestyle= styles.linestyle(base), 
                     markevery=10)
@@ -98,7 +98,7 @@ def plot(S, fname=None, ax=None, axins=None):
         precision = base[base.rfind('-') + 1:]
         axins.plot(t_peak, 
                     c_peak, 
-                    label=base, 
+                    label=styles.pretty_label(base), 
                     marker = styles.marker(base), 
                     color = styles.color(base), 
                     linestyle= styles.linestyle(base), 
@@ -106,7 +106,7 @@ def plot(S, fname=None, ax=None, axins=None):
     elif method == 'z':
         axins.plot(t_peak, 
                     c_peak, 
-                    label=base, 
+                    label=styles.pretty_label(base), 
                     color = styles.color(base), 
                     linestyle= styles.linestyle(base),
                     markevery=10)

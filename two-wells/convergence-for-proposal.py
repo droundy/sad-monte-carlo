@@ -57,6 +57,8 @@ paths = ['wl-tiny-0.0001+0.0001-lnw.dat',
          'z-i16-tiny-lnw.dat',
 ]
 
+minimum_moves = 1e7
+
 for fname in paths:
     print()
     timer_fname = Timer(f'Everything for {fname}')
@@ -72,14 +74,17 @@ for fname in paths:
     plt.figure('latest-entropy')
     #plt.plot(E, normalize_S(l_function(E)), label=base)
     if method in {'wl', 'itwl', 'sad'}:
-        plt.plot(E, normalize_S(l_function(E)), label=base, marker=styles.marker(base),
+        plt.plot(E, normalize_S(l_function(E)), 
+                    label=styles.pretty_label(base), marker=styles.marker(base),
                  color=styles.color(base), linestyle=styles.linestyle(base), markevery=100)
     elif method == 'z':
-        plt.plot(E, normalize_S(l_function(E)), label=base,
+        plt.plot(E, normalize_S(l_function(E)),
+                    label=styles.pretty_label(base),
                  color=styles.color(base), linestyle=styles.linestyle(base))
 
     plt.figure('latest heat capacity')
-    heat_capacity.plot(l_function, fname=fname, ax=ax, axins=axins)
+    if 'z-' in fname:
+        heat_capacity.plot(l_function, fname=fname, ax=ax, axins=axins)
     # correct_Cv = [heat_capacity.C(t,l_function) for t in T]
     # if method in {'wl','itwl','sad'}:
     #     plt.plot(T, correct_Cv, label=base, marker = markers[precision], color = colors[method], linestyle= linestyles[method], markevery=5)
@@ -89,12 +94,14 @@ for fname in paths:
     start_well_histogram = time.process_time()
     plt.figure('fraction-well')
     mean_which = np.loadtxt(f'{base}-which.dat')
-    plt.plot(mean_e, mean_which, label=base)
+    plt.plot(mean_e, mean_which,
+                    label=styles.pretty_label(base), )
 
     if os.path.exists(f'{base}-histogram.dat'):
         hist = np.loadtxt(f'{base}-histogram.dat')
         plt.figure('histogram')
-        plt.plot(mean_e, hist, label=base)
+        plt.plot(mean_e, hist, 
+                    label=styles.pretty_label(base), )
     print(f'Plotting fraction and histogram {fname} took %.2g' % (
         time.process_time() - start_well_histogram))
 
@@ -107,7 +114,7 @@ for fname in paths:
 
         try:
             frame_moves = int(frame_fname[len(base)+1:-8])
-            if frame_moves < 1e8:
+            if frame_moves < minimum_moves:
                 continue
             energy_boundaries, mean_e, my_lnw, my_system, p_exc = compute.read_file(
                 frame_base)
@@ -127,18 +134,22 @@ for fname in paths:
 
     plt.figure('convergence')
     if method in {'wl', 'itwl', 'sad'}:
-        plt.loglog(moves, errors, label=base, marker=styles.marker(
+        plt.loglog(moves, errors, 
+                    label=styles.pretty_label(base), marker=styles.marker(
             base), color=styles.color(base), linestyle=styles.linestyle(base), markevery=2)
     elif method == 'z':
-        plt.loglog(moves, errors, label=base, color=styles.color(
+        plt.loglog(moves, errors, 
+                    label=styles.pretty_label(base), color=styles.color(
             base), linestyle=styles.linestyle(base), linewidth=3)
 
     plt.figure('convergence_heat_capacity')
     if method in {'wl', 'itwl', 'sad'}:
-        plt.loglog(moves, errors_Cv, label=base, marker=styles.marker(
+        plt.loglog(moves, errors_Cv, 
+                    label=styles.pretty_label(base), marker=styles.marker(
             base), color=styles.color(base), linestyle=styles.linestyle(base), markevery=2)
     elif method == 'z':
-        plt.loglog(moves, errors_Cv, label=base, color=styles.color(base),
+        plt.loglog(moves, errors_Cv, 
+                    label=styles.pretty_label(base), color=styles.color(base),
                    linestyle=styles.linestyle(base), linewidth=3)
 
     del timer_fname
@@ -180,9 +191,9 @@ plt.savefig(system.system+'-convergence.pdf')
 
 plt.figure('convergence_heat_capacity')
 plt.xlabel(r'# of Moves')
-plt.ylabel(
-    rf'max error in entropy between {lowest_interesting_E} and {highest_interesting_E}')
-plt.ylim(1e-2, 1e2)
+plt.ylabel(rf'max error in heat capacity')
+plt.ylim(1e-4, 1e3)
+plt.xlim(xmin=minimum_moves)
 plt.legend()
 # make diagonal lines for convergence
 x = np.linspace(1e-10, 1e20, 2)
@@ -195,6 +206,8 @@ plt.savefig(system.system+'-heat-capacity-convergence.pdf')
 
 plt.figure('latest heat capacity')
 ax.legend()
+plt.xlabel('$T$')
+plt.ylabel('heat capacity')
 plt.savefig(system.system+'-heat-capacity.svg')
 plt.savefig(system.system+'-heat-capacity.pdf')
 
