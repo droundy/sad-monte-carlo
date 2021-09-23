@@ -5,14 +5,16 @@ import scipy.special as spl
 import matplotlib.pyplot as plt
 import system
 
+print('starting find_phase_transition')
+
 E1 = -133.58642 # minimum energy (Mackay) for an LJ31 cluster
 E2 = -133.29382 # first local minimum (anti-Mackay) for an LJ31 cluster
 E_barrier = -131 # approximate energy of the transition state between the two
 T_transition = 0.025 # approximate temperature for transition between the two
 delta_E = E2 - E1
 
-print('temperature over Delta E LJ31', T_transition/delta_E)
-print('barrier over Delta E LJ31', (E_barrier-E1)/delta_E)
+# print('temperature over Delta E LJ31', T_transition/delta_E)
+# print('barrier over Delta E LJ31', (E_barrier-E1)/delta_E)
 
 def E_1(e):
     '''
@@ -42,7 +44,7 @@ upper_bound = -0.2*system.h_big #The highest E_2 with a valid E_1
 guess = (lower_bound + upper_bound)/2 #Guess based on looking at the plot
 
 iters = 0
-print(lower_bound, '< E000 <', upper_bound)
+# print(lower_bound, '< E000 <', upper_bound)
 while upper_bound - lower_bound > 1e-10 and iters < max_iter:
     iters += 1
     if g(guess) > 0 or np.isnan(g(guess)) or abs(E_1(guess) - guess) < 1e-10:
@@ -51,19 +53,18 @@ while upper_bound - lower_bound > 1e-10 and iters < max_iter:
         lower_bound  = guess
     guess = (lower_bound + upper_bound) / 2
 
-print('\nguess is', guess)
-
-# print("Guess: " + str(guess) )
-# print("g(guess): " +  str(g(guess)) )
-# print("1/T: " + str(S_prime(guess)))
-# print("->T: " + str(1/S_prime(guess)))
+# print('\nguess is', guess)
 
 actual_T = 1/S_prime(E_1(guess))
 
-print('actual T/Delta E', actual_T/(system.h_small - system.h_big))
-print('actual barrier/Delta E', system.h_small/(system.h_small - system.h_big))
+# print('actual T/Delta E', actual_T/(system.h_small - system.h_big))
+# print('actual barrier/Delta E', system.h_small/(system.h_small - system.h_big))
 
-print('barrier energy should be', (actual_T/0.025)*(E_barrier-E1) - system.h_small)
+# print('barrier energy should be', (actual_T/0.025)*(E_barrier-E1) - system.h_small)
+
+
+print('finished loading find_phase_transition')
+
 
 if __name__ ==  "__main__":
     ##### Plotting #####

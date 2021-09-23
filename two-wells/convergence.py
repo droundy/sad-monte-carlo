@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import os
+import os, time
 import numpy as np
 import matplotlib.pyplot as plt
 import system, compute
@@ -53,7 +53,8 @@ for fname in sorted(glob.glob('*'+system.system+'*-lnw.dat')):
             paths.append(fname)
 
 for fname in paths:
-    print(fname)
+    print()
+    start_fname = time.process_time()
     base = fname[:-8]
     method = base[:base.find('-')]
 
@@ -77,6 +78,7 @@ for fname in paths:
     # elif method == 'z':
     #     plt.plot(T, correct_Cv, label=base, color = colors[method], linestyle= linestyles[method])
 
+    start_well_histogram = time.process_time()
     plt.figure('fraction-well')
     mean_which = np.loadtxt(f'{base}-which.dat')
     plt.plot(mean_e, mean_which, label=base)
@@ -86,25 +88,30 @@ for fname in paths:
         hist = np.loadtxt(f'{base}-histogram.dat')
         plt.figure('histogram')
         plt.plot(mean_e, hist, label=base)
+    print(f'Plotting fraction and histogram {fname} took %.2g' % (time.process_time() - start_well_histogram))
 
 
     errors = []
     errors_Cv = []
     moves = []
+    start_conv = time.process_time()
     for frame_fname in sorted(glob.glob(f'{base}/*-lnw.dat')):
         frame_base =frame_fname[:-8]
 
         try:
+            frame_moves = int(frame_fname[len(base)+1:-8])
+            if frame_moves < 1e8:
+                continue
             energy_boundaries, mean_e, my_lnw, my_system, p_exc = compute.read_file(frame_base)
             l_function, eee, sss = compute.linear_entropy(energy_boundaries, mean_e, my_lnw)
-
-            moves.append(int(frame_fname[len(base)+1:-8]))
+            moves.append(frame_moves)
             err = np.max(np.abs(normalize_S(l_function(E))[indices_for_err] - correct_S_for_err))
             # print(f'err is {err} for {frame_base}')
             errors.append(err)
             errors_Cv.append(np.abs(heat_capacity.C(heat_capacity.T_peak, system.S) - heat_capacity.C(heat_capacity.T_peak, l_function)))
         except:
             pass
+    print(f'Heat capacity convergence {fname} took %.2g' % (time.process_time() - start_conv))
 
     plt.figure('convergence')
     if method in {'wl','itwl','sad'}:
@@ -118,6 +125,7 @@ for fname in paths:
     elif method == 'z':
         plt.loglog(moves, errors_Cv, label=base, color = styles.colors(base), linestyle= styles.linestyle(base), linewidth = 3)
 
+    print(f'Everything for {fname} took %.2g\n' % (time.process_time() - start_fname))
     #print(base[:base.find('-')]) #for debugging
 
 plt.figure('latest-entropy')

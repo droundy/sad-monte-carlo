@@ -4,10 +4,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import system, styles
 import find_phase_transition
+import time
+from mytimer import Timer
 
 T_peak = find_phase_transition.actual_T
 
 def C(T, S):#T is a temperature and S is an entropy function
+    # start = time.process_time()
     E = np.linspace(-system.h_small, 0, 5000)
     E = 0.5*(E[1:] + E[:-1])
     dE = E[1] - E[0]
@@ -17,7 +20,7 @@ def C(T, S):#T is a temperature and S is an entropy function
         total = np.sum(np.exp(S)*dE)
         return S - np.log(total)
 
-    S = normalize_S(S(E))
+    S = S(E) # normalize_S(S(E))
 
     S_minus_E = S-E/T
     M = np.max(S_minus_E)
@@ -28,9 +31,11 @@ def C(T, S):#T is a temperature and S is an entropy function
 
     avg_E_squared = np.sum(np.exp(S_minus_E-M) * E**2) * dE / Z
 
+    # print('C took', time.process_time() - start)
     return (avg_E_squared - avg_E**2 ) / T**2
 
 def plot(S, fname=None, ax=None, axins=None):
+    timer = Timer(f'heat_capacity.plot {fname}')
     if fname is not None:
         base = fname[:-8]
         method = base[:base.find('-')]
@@ -38,7 +43,7 @@ def plot(S, fname=None, ax=None, axins=None):
         base = None
         method = None
 
-    print('peak should be at', T_peak)
+    # print('peak should be at', T_peak)
     T_width = T_peak/2 # this is just a guess
     t_low = np.linspace(T_peak/10,T_peak - T_width,50)
     t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
@@ -47,7 +52,9 @@ def plot(S, fname=None, ax=None, axins=None):
     try:
         c_low = np.loadtxt(f'{base}-cv_low_saved.txt')
     except:
+        timer_low_T = Timer('C for low T')
         c_low = np.array([C(T,S) for T in t_low])
+        del timer_low_T
         np.savetxt(f'{base}-cv_low_saved.txt', c_low)
 
     try:
@@ -61,10 +68,6 @@ def plot(S, fname=None, ax=None, axins=None):
     except:
         c_high = np.array([C(T,S) for T in t_high])
         np.savetxt(f'{base}-cv_high_saved.txt', c_high)
-
-    c_peak = np.array([C(T,S) for T in t_peak])
-
-    #fig, ax = plt.subplots(figsize=[5, 4])
 
     if method in {'wl','itwl','sad'}:
         ax.plot(np.concatenate((t_low,t_peak,t_high)), 
