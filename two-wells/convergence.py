@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import system, compute
 import heat_capacity, styles
 import glob
+import time
 
 T = np.linspace(0.001,0.01,175)
 
