@@ -2,7 +2,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import system, compute
+import system, styles
 import find_phase_transition
 
 T_peak = find_phase_transition.actual_T
@@ -31,14 +31,6 @@ def C(T, S):#T is a temperature and S is an entropy function
     return (avg_E_squared - avg_E**2 ) / T**2
 
 def plot(S, fname=None, ax=None, axins=None):
-    markers= {'0.01+0.01':'D','0.01+0.001':'^','0.001+0.01':'o','0.001+0.001':'x',
-            '0.001+0.1':'^','0.01+0.1':'x',
-            '0.0001+0.01':'^','1e-05+0.1':'x','0.0001+0.1':'o','1e-05+0.01':'D','05+0.1':'x','05+0.01':'D'}
-
-    colors = {'z':'k','wl':'b','itwl':'g','sad':'tab:orange'}
-    dashes = {0: 'solid', 1:'dashed'}
-    linestyles = {'z':'solid','wl':'dashed','itwl':'dashdot','sad':(0, (3, 1, 1, 1, 1, 1))}
-
     if fname is not None:
         base = fname[:-8]
         method = base[:base.find('-')]
@@ -75,20 +67,19 @@ def plot(S, fname=None, ax=None, axins=None):
     #fig, ax = plt.subplots(figsize=[5, 4])
 
     if method in {'wl','itwl','sad'}:
-        precision = base[base.rfind('-') + 1:]
         ax.plot(np.concatenate((t_low,t_peak,t_high)), 
                     np.concatenate((c_low,c_peak,c_high)), 
                     label=base, 
-                    marker = markers[precision], 
-                    color = colors[method], 
-                    linestyle= linestyles[method], 
+                    marker = styles.marker(base), 
+                    color = styles.color(base), 
+                    linestyle= styles.linestyle(base), 
                     markevery=10)
     elif method == 'z':
         ax.plot(np.concatenate((t_low,t_peak,t_high)), 
                     np.concatenate((c_low,c_peak,c_high)), 
                     label=base, 
-                    color = colors[method], 
-                    linestyle= linestyles[method], 
+                    color = styles.color(base), 
+                    linestyle= styles.linestyle(base), 
                     markevery=10)
     else:
         ax.plot(np.concatenate((t_low,t_peak,t_high)), 
@@ -105,16 +96,16 @@ def plot(S, fname=None, ax=None, axins=None):
         axins.plot(t_peak, 
                     c_peak, 
                     label=base, 
-                    marker = markers[precision], 
-                    color = colors[method], 
-                    linestyle= linestyles[method], 
+                    marker = styles.marker(base), 
+                    color = styles.color(base), 
+                    linestyle= styles.linestyle(base), 
                     markevery=10)
     elif method == 'z':
         axins.plot(t_peak, 
                     c_peak, 
                     label=base, 
-                    color = colors[method], 
-                    linestyle= linestyles[method], 
+                    color = styles.color(base), 
+                    linestyle= styles.linestyle(base),
                     markevery=10)
     else:
         axins.plot(t_peak, 
