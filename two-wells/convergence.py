@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import system, compute
 import heat_capacity
 import glob
+import time
 
 T = np.linspace(0.001,0.01,175)
 
@@ -42,7 +43,7 @@ ax.indicate_inset_zoom(axins, edgecolor="black")
 
 markers= {'0.01+0.01':'D','0.01+0.001':'^','0.001+0.01':'o','0.001+0.001':'x',
             '0.001+0.1':'^','0.01+0.1':'x',
-            '0.0001+0.01':'^','1e-05+0.1':'x','0.0001+0.1':'o','1e-05+0.01':'D','05+0.1':'x','05+0.01':'D'}
+            '0.0001+0.01':'^','0.0001+0.001':'<','0.0001+0.0001':'>','05+0.01':'x','05+0.001':'D','05+0.0001':'o'}
 
 colors = {'z':'k','wl':'b','itwl':'g','sad':'tab:orange'}
 dashes = {0: 'solid', 1:'dashed'}
