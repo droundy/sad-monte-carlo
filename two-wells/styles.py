@@ -45,4 +45,16 @@ def pretty_label(base):
         return None
     if 'z-' in base:
         return 'ZMC'
-    return base
+    
+    try:
+        method_name = base[:base.find('-')]
+        #find index of first digit
+        for i, e in enumerate(base):
+            if e.isdigit():
+                dE = base[i:base.find('+')]
+                break
+
+        ds = base[base.find('+')+1:]
+        return method_name.upper() + ', dE=' + dE + ', ds=' + ds
+    except:
+        return base

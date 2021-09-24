@@ -160,7 +160,7 @@ if __name__ == "__main__":
     ax.plot(np.concatenate((t_low,t_peak,t_high)), np.concatenate((c_low,c_peak,c_high)))
 
     # inset axes....
-    axins = ax.inset_axes( 0.75 *  np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012, 25, 140])
+    axins = ax.inset_axes( np.array([0.27, 0.27, 0.7, 0.7]))#[0.005, 0.012, 25, 140])
     axins.plot(t_peak,c_peak)
     # sub region of the original image
     x1, x2, y1, y2 = 0.002, 0.009, 25, 140

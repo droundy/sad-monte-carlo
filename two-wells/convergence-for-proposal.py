@@ -41,7 +41,7 @@ plt.plot(E, correct_S, ':', label='exact', linewidth=2)
 
 fig, ax = plt.subplots(figsize=[5, 4], num='latest heat capacity')
 # [0.005, 0.012, 25, 140])
-axins = ax.inset_axes(0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))
+axins = ax.inset_axes(np.array([0.27, 0.27, 0.7, 0.7]))
 # axins.set_xticklabels('')
 # axins.set_yticklabels('')
 
