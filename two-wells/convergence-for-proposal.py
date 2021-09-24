@@ -113,7 +113,7 @@ for fname in paths:
         for frame_fname in sorted(glob.glob(f'{base}/*-lnw.dat')):
             try:
                 frame_moves = int(frame_fname[len(base)+1:-8])
-                if frame_moves < 1e8:
+                if frame_moves < minimum_moves:
                     continue
                 moves.append(frame_moves)
             except:
