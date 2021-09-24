@@ -110,7 +110,7 @@ for fname in paths:
         errors = np.loadtxt(f'{base}-S-error-saved.txt')
         errors_Cv = np.loadtxt(f'{base}-Cv-error-saved.txt')
 
-        for frame_fname in sorted(glob.glob(f'{base}/*-lnw.dat')):
+        for frame_fname in sorted(glob.glob(f'{base}/*-lnw.dat'))[::2]:
             try:
                 frame_moves = int(frame_fname[len(base)+1:-8])
                 if frame_moves < 1e8:
