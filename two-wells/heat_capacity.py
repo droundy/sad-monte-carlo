@@ -34,7 +34,7 @@ def C(T, S):#T is a temperature and S is an entropy function
     # print('C took', time.process_time() - start)
     return (avg_E_squared - avg_E**2 ) / T**2
 
-def plot(S, fname=None, ax=None, axins=None):
+def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
     timer = Timer(f'heat_capacity.plot {fname}')
     if fname is not None:
         base = fname[:-8]
@@ -48,7 +48,7 @@ def plot(S, fname=None, ax=None, axins=None):
     t_low = np.linspace(T_peak/10,T_peak - T_width,50)
     t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
     axins.set_xlim(T_peak - T_width, T_peak + T_width)
-    t_high = np.linspace(T_peak + T_width,0.3, 50)
+    t_high = np.linspace(T_peak + T_width,Tmax, 50)
     try:
         c_low = np.loadtxt(f'{base}-cv_low_saved.txt')
     except:

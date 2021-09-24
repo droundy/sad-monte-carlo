@@ -45,8 +45,10 @@ axins = ax.inset_axes(0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))
 # axins.set_xticklabels('')
 # axins.set_yticklabels('')
 
-heat_capacity.plot(system.S, ax=ax, axins=axins)
-ax.indicate_inset_zoom(axins, edgecolor="black")
+Tmax = 0.25
+
+heat_capacity.plot(system.S, ax=ax, axins=axins, Tmax=Tmax)
+ax.indicate_inset_zoom(axins, edgecolor="black", label=None)
 
 paths = [# 'wl-tiny-0.0001+0.0001-lnw.dat',
          'wl-tiny-0.0001+0.01-lnw.dat',
@@ -84,7 +86,7 @@ for fname in paths:
 
     plt.figure('latest heat capacity')
     if 'z-' in fname:
-        heat_capacity.plot(l_function, fname=fname, ax=ax, axins=axins)
+        heat_capacity.plot(l_function, fname=fname, ax=ax, axins=axins, Tmax=Tmax)
     # correct_Cv = [heat_capacity.C(t,l_function) for t in T]
     # if method in {'wl','itwl','sad'}:
     #     plt.plot(T, correct_Cv, label=base, marker = markers[precision], color = colors[method], linestyle= linestyles[method], markevery=5)
@@ -118,7 +120,9 @@ for fname in paths:
                 moves.append(frame_moves)
             except:
                 pass
-        assert(len(moves == len(errors))) # this causes us to recompute automatically if there are new moves
+        if len(moves) != len(errors):
+            print('Need to recompute, there are new moves!')
+            assert(len(moves) == len(errors))
     except:
         errors = []
         errors_Cv = []
