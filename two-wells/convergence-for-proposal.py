@@ -48,12 +48,12 @@ axins = ax.inset_axes(0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))
 heat_capacity.plot(system.S, ax=ax, axins=axins)
 ax.indicate_inset_zoom(axins, edgecolor="black")
 
-paths = ['wl-tiny-0.0001+0.0001-lnw.dat',
+paths = [# 'wl-tiny-0.0001+0.0001-lnw.dat',
          'wl-tiny-0.0001+0.01-lnw.dat',
          'wl-tiny-1e-05+0.001-lnw.dat',
          'wl-tiny-0.0001+0.001-lnw.dat',
         #  'wl-tiny-1e-05+0.0001-lnw.dat',
-        #  'wl-tiny-1e-05+0.01-lnw.dat',
+         'wl-tiny-1e-05+0.01-lnw.dat',
          'z-i16-tiny-lnw.dat',
 ]
 
@@ -118,12 +118,13 @@ for fname in paths:
                 moves.append(frame_moves)
             except:
                 pass
+        assert(len(moves == len(errors))) # this causes us to recompute automatically if there are new moves
     except:
         errors = []
         errors_Cv = []
         moves = []
         start_conv = time.process_time()
-        for frame_fname in sorted(glob.glob(f'{base}/*-lnw.dat'))[::2]:
+        for frame_fname in sorted(glob.glob(f'{base}/*-lnw.dat')):
             frame_base = frame_fname[:-8]
 
             try:
