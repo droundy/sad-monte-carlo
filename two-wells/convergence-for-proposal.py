@@ -105,32 +105,48 @@ for fname in paths:
     print(f'Plotting fraction and histogram {fname} took %.2g' % (
         time.process_time() - start_well_histogram))
 
-    errors = []
-    errors_Cv = []
-    moves = []
-    start_conv = time.process_time()
-    for frame_fname in sorted(glob.glob(f'{base}/*-lnw.dat'))[::2]:
-        frame_base = frame_fname[:-8]
+    try: #### REMOVE *saved.txt FILES IF DATA IS UPDATED ####
+        moves = []
+        errors = np.loadtxt(f'{base}-S-error-saved.txt')
+        errors_Cv = np.loadtxt(f'{base}-Cv-error-saved.txt')
 
-        try:
-            frame_moves = int(frame_fname[len(base)+1:-8])
-            if frame_moves < minimum_moves:
-                continue
-            energy_boundaries, mean_e, my_lnw, my_system, p_exc = compute.read_file(
-                frame_base)
-            l_function, eee, sss = compute.linear_entropy(
-                energy_boundaries, mean_e, my_lnw)
-            moves.append(frame_moves)
-            err = np.max(np.abs(normalize_S(l_function(E))[
-                         indices_for_err] - correct_S_for_err))
-            # print(f'err is {err} for {frame_base}')
-            errors.append(err)
-            errors_Cv.append(np.abs(heat_capacity.C(
-                heat_capacity.T_peak, system.S) - heat_capacity.C(heat_capacity.T_peak, l_function)))
-        except:
-            pass
-    print(f'Heat capacity convergence {fname} took %.2g' % (
-        time.process_time() - start_conv))
+        for frame_fname in sorted(glob.glob(f'{base}/*-lnw.dat')):
+            try:
+                frame_moves = int(frame_fname[len(base)+1:-8])
+                if frame_moves < 1e8:
+                    continue
+                moves.append(frame_moves)
+            except:
+                pass
+    except:
+        errors = []
+        errors_Cv = []
+        moves = []
+        start_conv = time.process_time()
+        for frame_fname in sorted(glob.glob(f'{base}/*-lnw.dat'))[::2]:
+            frame_base = frame_fname[:-8]
+
+            try:
+                frame_moves = int(frame_fname[len(base)+1:-8])
+                if frame_moves < minimum_moves:
+                    continue
+                energy_boundaries, mean_e, my_lnw, my_system, p_exc = compute.read_file(
+                    frame_base)
+                l_function, eee, sss = compute.linear_entropy(
+                    energy_boundaries, mean_e, my_lnw)
+                moves.append(frame_moves)
+                err = np.max(np.abs(normalize_S(l_function(E))[
+                            indices_for_err] - correct_S_for_err))
+                # print(f'err is {err} for {frame_base}')
+                errors.append(err)
+                errors_Cv.append(np.abs(heat_capacity.C(
+                    heat_capacity.T_peak, system.S) - heat_capacity.C(heat_capacity.T_peak, l_function)))
+            except:
+                pass
+        print(f'Heat capacity convergence {fname} took %.2g' % (
+            time.process_time() - start_conv))
+        np.savetxt(f'{base}-S-error-saved.txt', errors)
+        np.savetxt(f'{base}-Cv-error-saved.txt', errors_Cv)
 
     plt.figure('convergence')
     if method in {'wl', 'itwl', 'sad'}:
