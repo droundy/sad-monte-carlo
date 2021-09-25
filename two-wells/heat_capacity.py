@@ -48,6 +48,7 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
     t_low = np.linspace(T_peak/10,T_peak - T_width,50)
     t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
     axins.set_xlim(T_peak - T_width, T_peak + T_width)
+    axins.set_ylim(ymin=0)
     t_high = np.linspace(T_peak + T_width,Tmax, 50)
     try:
         c_low = np.loadtxt(f'{base}-cv_low_saved.txt')

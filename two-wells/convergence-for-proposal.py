@@ -44,8 +44,11 @@ fig, ax = plt.subplots(figsize=[5, 4], num='latest heat capacity')
 axins = ax.inset_axes(np.array([0.27, 0.27, 0.7, 0.7]))
 # axins.set_xticklabels('')
 # axins.set_yticklabels('')
-
 Tmax = 0.25
+ax.set_ylim(ymin=0)
+ax.set_xlim(0, Tmax)
+
+heat_capacity.plot(system.S, ax=ax, axins=axins, Tmax=Tmax)
 
 paths = ['wl-tiny-0.0001+0.001-lnw.dat',
          'wl-tiny-1e-05+0.001-lnw.dat',
@@ -56,7 +59,7 @@ paths = ['wl-tiny-0.0001+0.001-lnw.dat',
          'z-i16-tiny-lnw.dat',
 ]
 
-minimum_moves = 1e7
+minimum_moves = 1e6
 
 for fname in paths:
     print()
@@ -184,21 +187,21 @@ plt.legend()
 x = np.linspace(1e-10, 1e20, 2)
 y = 1/np.sqrt(x)
 for i in range(20):
-    plt.loglog(x, y*10**(4*i/5-2), color='y', alpha=0.5)
+    plt.loglog(x, y*10**(4*i/5-3), color='g', alpha=0.25)
 plt.savefig(system.system+'-convergence.svg')
 plt.savefig(system.system+'-convergence.pdf')
 
 plt.figure('convergence_heat_capacity')
 plt.xlabel(r'# of Moves')
 plt.ylabel(rf'max error in heat capacity')
-plt.ylim(1e-4, 1e3)
-plt.xlim(xmin=minimum_moves)
+heat_capacity_convergence_minimum = 1e-3
+plt.ylim(heat_capacity_convergence_minimum, 2e2)
+plt.xlim(xmin=minimum_moves, xmax=1e12)
 plt.legend()
 # make diagonal lines for convergence
 x = np.linspace(1e-10, 1e20, 2)
-y = 1/np.sqrt(x)
 for i in range(20):
-    plt.loglog(x, y*10**(4*i/5-2), color='y', alpha=0.5)
+    plt.loglog(x, heat_capacity_convergence_minimum*np.sqrt(10**i/x), color='xkcd:gray', alpha=0.25)
 plt.savefig(system.system+'-heat-capacity-convergence.svg')
 plt.savefig(system.system+'-heat-capacity-convergence.pdf')
 

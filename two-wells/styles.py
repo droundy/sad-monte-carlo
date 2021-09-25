@@ -53,8 +53,17 @@ def pretty_label(base):
             if e.isdigit():
                 dE = base[i:base.find('+')]
                 break
+        if dE == '1e-05':
+            dE = r'$1\times 10^5$'
 
         ds = base[base.find('+')+1:]
-        return method_name.upper() + ', dE=' + dE + ', ds=' + ds
+        if method_name == 'itwl':
+            name = '$1/t$-WL'
+        else:
+            name = method_name.upper()
+        # for proposal, we will omit any parameters that are identical for all plots
+        return rf'{name}, $\Delta E={dE}$'
+        return name # for if we use same delta E and translation scale for each
+        return rf'{name}, $\Delta E={dE}$, $\Delta s={ds}$'
     except:
         return base
