@@ -45,10 +45,8 @@ axins = ax.inset_axes(np.array([0.27, 0.27, 0.7, 0.7]))
 # axins.set_xticklabels('')
 # axins.set_yticklabels('')
 Tmax = 0.25
-ax.set_ylim(ymin=0)
+ax.set_ylim(0, 119)
 ax.set_xlim(0, Tmax)
-
-heat_capacity.plot(system.S, ax=ax, axins=axins, Tmax=Tmax)
 
 paths = ['wl-tiny-0.0001+0.001-lnw.dat',
          'wl-tiny-1e-05+0.001-lnw.dat',
@@ -107,52 +105,50 @@ for fname in paths:
     print(f'Plotting fraction and histogram {fname} took %.2g' % (
         time.process_time() - start_well_histogram))
 
-    errors = []
-    errors_Cv = []
-    moves = []
     start_conv = time.process_time()
-    for frame_fname in sorted(glob.glob(f'{base}/*-lnw.dat'))[::2]:
-        frame_base = frame_fname[:-8]
+    try:
+        errors = np.loadtxt(f'{base}-errors-saved.txt')
+        errors_Cv = np.loadtxt(f'{base}-errors-Cv-saved.txt')
+        moves = np.loadtxt(f'{base}-moves-saved.txt')
+    except:
+        errors = []
+        errors_Cv = []
+        moves = []
+        for frame_fname in sorted(glob.glob(f'{base}/*-lnw.dat'))[::2]:
+            frame_base = frame_fname[:-8]
 
-        try:
-            frame_moves = int(frame_fname[len(base)+1:-8])
-            if frame_moves < minimum_moves:
-                continue
-            energy_boundaries, mean_e, my_lnw, my_system, p_exc = compute.read_file(
-                frame_base)
-            l_function, eee, sss = compute.linear_entropy(
-                energy_boundaries, mean_e, my_lnw)
-            moves.append(frame_moves)
-            err = np.max(np.abs(normalize_S(l_function(E))[
-                        indices_for_err] - correct_S_for_err))
-            # print(f'err is {err} for {frame_base}')
-            errors.append(err)
-            errors_Cv.append(np.abs(heat_capacity.C(
-                heat_capacity.T_peak, system.S) - heat_capacity.C(heat_capacity.T_peak, l_function)))
-        except:
-            pass
+            try:
+                frame_moves = int(frame_fname[len(base)+1:-8])
+                if frame_moves < minimum_moves:
+                    continue
+                energy_boundaries, mean_e, my_lnw, my_system, p_exc = compute.read_file(
+                    frame_base)
+                l_function, eee, sss = compute.linear_entropy(
+                    energy_boundaries, mean_e, my_lnw)
+                moves.append(frame_moves)
+                err = np.max(np.abs(normalize_S(l_function(E))[
+                            indices_for_err] - correct_S_for_err))
+                # print(f'err is {err} for {frame_base}')
+                errors.append(err)
+                errors_Cv.append(np.abs(heat_capacity.C(
+                    heat_capacity.T_peak, system.S) - heat_capacity.C(heat_capacity.T_peak, l_function)))
+            except:
+                pass
+        np.savetxt(f'{base}-errors-saved.txt', errors)
+        np.savetxt(f'{base}-errors-Cv-saved.txt', errors_Cv)
+        np.savetxt(f'{base}-moves-saved.txt', moves)
     print(f'Heat capacity convergence {fname} took %.2g' % (
         time.process_time() - start_conv))
 
     plt.figure('convergence')
-    if method in {'wl', 'itwl', 'sad'}:
-        plt.loglog(moves, errors, 
-                    label=styles.pretty_label(base), marker=styles.marker(
-            base), color=styles.color(base), linestyle=styles.linestyle(base), markevery=2)
-    elif method == 'z':
-        plt.loglog(moves, errors, 
-                    label=styles.pretty_label(base), color=styles.color(
-            base), linestyle=styles.linestyle(base), linewidth=3)
+    plt.loglog(moves, errors, 
+               label=styles.pretty_label(base), marker=styles.marker(base),
+               color=styles.color(base), linestyle=styles.linestyle(base), markevery=2)
 
     plt.figure('convergence_heat_capacity')
-    if method in {'wl', 'itwl', 'sad'}:
-        plt.loglog(moves, errors_Cv, 
-                    label=styles.pretty_label(base), marker=styles.marker(
-            base), color=styles.color(base), linestyle=styles.linestyle(base), markevery=2)
-    elif method == 'z':
-        plt.loglog(moves, errors_Cv, 
-                    label=styles.pretty_label(base), color=styles.color(base),
-                   linestyle=styles.linestyle(base), linewidth=3)
+    plt.loglog(moves, errors_Cv, 
+               label=styles.pretty_label(base), marker=styles.marker(base),
+               color=styles.color(base), linestyle=styles.linestyle(base), markevery=2)
 
     del timer_fname
     print()
@@ -207,9 +203,11 @@ plt.savefig(system.system+'-heat-capacity-convergence.pdf')
 
 
 plt.figure('latest heat capacity')
+heat_capacity.plot(system.S, ax=ax, axins=axins, Tmax=Tmax)
+
 ax.legend()
 plt.xlabel('$T$')
-axins.set_xlabel('$T$')
+# axins.set_xlabel('$T$')
 plt.ylabel('heat capacity')
 plt.savefig(system.system+'-heat-capacity.svg')
 plt.savefig(system.system+'-heat-capacity.pdf')

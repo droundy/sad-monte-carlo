@@ -7,8 +7,12 @@ _markers = {
 
 _colors = {'z': 'k', 'wl': 'b', 'itwl': 'g', 'sad': 'tab:orange'}
 dashes = {0: 'solid', 1: 'dashed'}
-_linestyles = {'z': 'solid', 'wl': 'dashed',
-               'itwl': 'dashdot', 'sad': (0, (3, 1, 1, 1, 1, 1))}
+_linestyles = {
+    'z': '-',
+    'wl': 'dashed',
+    'itwl': 'dashdot',
+    'sad': (0, (3, 1, 1, 1, 1, 1))
+}
 
 
 def marker(base):
@@ -23,7 +27,7 @@ def marker(base):
 
 def color(base):
     if base is None:
-        return None
+        return 'tab:cyan'
     method = base[:base.find('-')]
     if method in _colors:
         return _colors[method]
@@ -33,7 +37,7 @@ def color(base):
 
 def linestyle(base):
     if base is None:
-        return None
+        return ':'
     method = base[:base.find('-')]
     if method in _linestyles:
         return _linestyles[method]
@@ -42,7 +46,7 @@ def linestyle(base):
 
 def pretty_label(base):
     if base is None:
-        return None
+        return 'exact'
     if 'z-' in base:
         return 'ZMC'
     
@@ -54,7 +58,7 @@ def pretty_label(base):
                 dE = base[i:base.find('+')]
                 break
         if dE == '1e-05':
-            dE = r'$1\times 10^5$'
+            dE = r'1\times 10^5'
 
         ds = base[base.find('+')+1:]
         if method_name == 'itwl':

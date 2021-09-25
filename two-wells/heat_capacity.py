@@ -48,7 +48,7 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
     t_low = np.linspace(T_peak/10,T_peak - T_width,50)
     t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
     axins.set_xlim(T_peak - T_width, T_peak + T_width)
-    axins.set_ylim(ymin=0)
+    axins.set_ylim(0, 119)
     t_high = np.linspace(T_peak + T_width,Tmax, 50)
     try:
         c_low = np.loadtxt(f'{base}-cv_low_saved.txt')
@@ -70,54 +70,22 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
         c_high = np.array([C(T,S) for T in t_high])
         np.savetxt(f'{base}-cv_high_saved.txt', c_high)
 
-    if method in {'wl','itwl','sad'}:
-        ax.plot(np.concatenate((t_low,t_peak,t_high)), 
-                    np.concatenate((c_low,c_peak,c_high)), 
-                    label=styles.pretty_label(base), 
-                    marker = styles.marker(base), 
-                    color = styles.color(base), 
-                    linestyle= styles.linestyle(base), 
-                    markevery=10)
-    elif method == 'z':
-        ax.plot(np.concatenate((t_low,t_peak,t_high)), 
-                    np.concatenate((c_low,c_peak,c_high)), 
-                    label=styles.pretty_label(base), 
-                    color = styles.color(base), 
-                    linestyle= styles.linestyle(base), 
-                    markevery=10)
-    else:
-        ax.plot(np.concatenate((t_low,t_peak,t_high)), 
-                    np.concatenate((c_low,c_peak,c_high)),
-                    ':',
-                    label='exact',
-                    linewidth=2,
-                    color='tab:cyan')
+    ax.plot(np.concatenate((t_low,t_peak,t_high)), 
+            np.concatenate((c_low,c_peak,c_high)), 
+            label=styles.pretty_label(base), 
+            color = styles.color(base), 
+            linestyle= styles.linestyle(base), 
+            markevery=10)
 
     # inset axes....
     #axins = ax.inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012, 25, 140])
-    if method in {'wl','itwl','sad'}:
-        precision = base[base.rfind('-') + 1:]
-        axins.plot(t_peak, 
-                    c_peak, 
-                    label=styles.pretty_label(base), 
-                    marker = styles.marker(base), 
-                    color = styles.color(base), 
-                    linestyle= styles.linestyle(base), 
-                    markevery=10)
-    elif method == 'z':
-        axins.plot(t_peak, 
-                    c_peak, 
-                    label=styles.pretty_label(base), 
-                    color = styles.color(base), 
-                    linestyle= styles.linestyle(base),
-                    markevery=10)
-    else:
-        axins.plot(t_peak, 
-                    c_peak,
-                    ':',
-                    label='exact',
-                    linewidth=2,
-                    color='tab:cyan')
+    axins.plot(t_peak, 
+               c_peak, 
+               label=styles.pretty_label(base), 
+               marker = styles.marker(base), 
+               color = styles.color(base), 
+               linestyle= styles.linestyle(base), 
+               markevery=10)
     # sub region of the original image
     # x1, x2, y1, y2 = 0.002, 0.009, 25, 140
     # axins.set_xlim(x1, x2)
