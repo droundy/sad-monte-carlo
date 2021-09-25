@@ -201,7 +201,7 @@ plt.legend()
 # make diagonal lines for convergence
 x = np.linspace(1e-10, 1e20, 2)
 for i in range(20):
-    plt.loglog(x, heat_capacity_convergence_minimum*np.sqrt(10**i/x), color='xkcd:gray', alpha=0.25)
+    plt.loglog(x, heat_capacity_convergence_minimum*np.sqrt(heat_capacity_convergence_minimum*10**i/x), color='xkcd:gray', alpha=0.25)
 plt.savefig(system.system+'-heat-capacity-convergence.svg')
 plt.savefig(system.system+'-heat-capacity-convergence.pdf')
 
