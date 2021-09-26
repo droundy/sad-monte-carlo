@@ -58,7 +58,7 @@ def pretty_label(base):
                 dE = base[i:base.find('+')]
                 break
         if dE == '1e-05':
-            dE = r'1\times 10^5'
+            dE = r'10^{-5}'
 
         ds = base[base.find('+')+1:]
         if method_name == 'itwl':
