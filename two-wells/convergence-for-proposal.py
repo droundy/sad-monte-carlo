@@ -49,11 +49,11 @@ ax.set_ylim(0, 119)
 ax.set_xlim(0, Tmax)
 
 paths = ['wl-tiny-0.0001+0.001-lnw.dat',
-         'wl-tiny-1e-05+0.001-lnw.dat',
+        #  'wl-tiny-1e-05+0.001-lnw.dat',
          'itwl-tiny-0.0001+0.001-lnw.dat',
          'sad-tiny-0.0001+0.001-lnw.dat',
         #  'wl-tiny-1e-05+0.0001-lnw.dat',
-         'wl-tiny-1e-05+0.01-lnw.dat',
+        #  'wl-tiny-1e-05+0.01-lnw.dat',
          'z-i16-tiny-lnw.dat',
 ]
 
@@ -182,7 +182,7 @@ plt.legend()
 # make diagonal lines for convergence
 x = np.linspace(1e-10, 1e20, 2)
 y = 1/np.sqrt(x)
-for i in range(20):
+for i in range(40):
     plt.loglog(x, y*10**(4*i/5-3), color='g', alpha=0.25)
 plt.savefig(system.system+'-convergence.svg')
 plt.savefig(system.system+'-convergence.pdf')
@@ -196,8 +196,9 @@ plt.xlim(xmin=minimum_moves, xmax=1e12)
 plt.legend()
 # make diagonal lines for convergence
 x = np.linspace(1e-10, 1e20, 2)
-for i in range(20):
-    plt.loglog(x, heat_capacity_convergence_minimum*np.sqrt(heat_capacity_convergence_minimum*10**i/x), color='xkcd:gray', alpha=0.25)
+for i in range(1, 40, 2):
+    plt.loglog(x, heat_capacity_convergence_minimum*np.sqrt(heat_capacity_convergence_minimum*10**i/x), color='xkcd:gray',
+               alpha=0.25, linewidth=0.5)
 plt.savefig(system.system+'-heat-capacity-convergence.svg')
 plt.savefig(system.system+'-heat-capacity-convergence.pdf')
 

@@ -18,6 +18,7 @@ _linestyles = {
 def marker(base):
     if base is None:
         return None
+    return None # Always use no marker if dE etc. is same for all simulations
     precision = base[base.rfind('-') + 1:]
     if precision in _markers:
         return _markers[precision]
@@ -66,7 +67,7 @@ def pretty_label(base):
         else:
             name = method_name.upper()
         # for proposal, we will omit any parameters that are identical for all plots
-        return rf'{name}, $\Delta E={dE}$'
+        # return rf'{name}, $\Delta E={dE}$'
         return name # for if we use same delta E and translation scale for each
         return rf'{name}, $\Delta E={dE}$, $\Delta s={ds}$'
     except:
