@@ -13,7 +13,8 @@ from mytimer import Timer
 
 T = np.linspace(0.001, 0.01, 175)
 
-E = np.linspace(-system.h_small, 0, 100000)
+max_interesting_E = -1.442360888736597957e-01
+E = np.linspace(-system.h_small, max_interesting_E, 100000)
 E = 0.5*(E[1:] + E[:-1])
 dE = E[1] - E[0]
 hist = None
@@ -38,6 +39,7 @@ correct_S = normalize_S(system.S(E))
 
 correct_S_for_err = correct_S[indices_for_err]
 plt.plot(E, correct_S, ':', label='exact', linewidth=2)
+plt.xlim(-system.h_small*1.005, max_interesting_E)
 
 fig, ax = plt.subplots(figsize=[5, 4], num='latest heat capacity')
 # [0.005, 0.012, 25, 140])
@@ -160,7 +162,7 @@ plt.figure('latest-entropy')
 plt.xlabel(r'$E$')
 plt.ylabel(r'$S(E)$')
 plt.legend()
-plt.savefig(system.system+'.svg')
+plt.savefig(system.system+'-entropy.pdf')
 
 plt.figure('fraction-well')
 plt.xlabel(r'E')
