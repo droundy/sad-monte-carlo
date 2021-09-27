@@ -113,7 +113,7 @@ systems = {
     'hard-no-barrier': f'--two-wells-N {hard_n} --two-wells-h2-to-h1 {hard_h2} --two-wells-barrier-over-h1 0 --two-wells-r2 {hard_r2}'.split(),
 }
 
-run_replicas(name='tiny', min_T=system.systems['tiny']['min_T'], max_iter=1e13, max_independent_samples=3e5,
+run_replicas(name='tiny', min_T=system.systems['tiny']['min_T'], max_iter=1e13, max_independent_samples=3e7,
              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
 
 for s in ['tiny']:

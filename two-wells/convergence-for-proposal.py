@@ -13,7 +13,7 @@ from mytimer import Timer
 
 T = np.linspace(0.001, 0.01, 175)
 
-E = np.linspace(-system.h_small, 0, 10000)
+E = np.linspace(-system.h_small, 0, 100000)
 E = 0.5*(E[1:] + E[:-1])
 dE = E[1] - E[0]
 hist = None
@@ -78,6 +78,8 @@ for fname in paths:
                     label=styles.pretty_label(base), marker=styles.marker(base),
                  color=styles.color(base), linestyle=styles.linestyle(base), markevery=100)
     elif method == 'z':
+        for e in energy_boundaries:
+            plt.axvline(e)
         plt.plot(E, normalize_S(l_function(E)),
                     label=styles.pretty_label(base),
                  color=styles.color(base), linestyle=styles.linestyle(base))
