@@ -6,11 +6,11 @@ import styles
 import time
 from mytimer import Timer
 
-T_peak = 0.03
+T_peak = 0.0037
 
 def C(T, S):#T is a temperature and S is an entropy function
     # start = time.process_time()
-    E = np.linspace(-133.58, 0, 5000)
+    E = np.linspace(-133.58, 0, 50000)
     E = 0.5*(E[1:] + E[:-1])
     dE = E[1] - E[0]
 
@@ -43,8 +43,8 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
         method = None
 
     # print('peak should be at', T_peak)
-    T_width = T_peak/2 # this is just a guess
-    t_low = np.linspace(T_peak/10,T_peak - T_width,50)
+    T_width = T_peak/4 # this is just a guess
+    t_low = np.linspace(T_peak/2,T_peak - T_width,50)
     t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
     axins.set_xlim(T_peak - T_width, T_peak + T_width)
     t_high = np.linspace(T_peak + T_width,Tmax, 50)

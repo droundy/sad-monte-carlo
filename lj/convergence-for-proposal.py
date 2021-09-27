@@ -10,8 +10,6 @@ import styles
 import glob
 from mytimer import Timer
 
-T = np.linspace(0.002, 0.01, 175)
-
 E = np.linspace(-133.6, 0, 10000)
 E = 0.5*(E[1:] + E[:-1])
 dE = E[1] - E[0]
@@ -37,7 +35,7 @@ axins = ax.inset_axes(0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))
 # axins.set_xticklabels('')
 # axins.set_yticklabels('')
 
-Tmax = 0.25
+Tmax = 0.6
 
 paths = [# 'wl-tiny-0.0001+0.0001-lnw.dat',
         #  'wl-tiny-0.0001+0.01-lnw.dat',
