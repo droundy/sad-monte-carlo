@@ -1,0 +1,5 @@
+#!/bin/sh
+
+set -ev
+
+rsync -avz bingley.physics.oregonstate.edu:/home/droundy/src/sad-monte-carlo/lj/{sad,wl,itwl}-* .
