@@ -74,8 +74,15 @@ systems = {
 }
 
 run_replicas(name='lj31', min_T=0.001, max_iter=1e14, max_independent_samples=10000)
-run_replicas(name='big-lj31', min_T=0.001, max_iter=1e14, max_independent_samples=10000)
-run_replicas(name='huge-lj31', min_T=0.001, max_iter=1e14, max_independent_samples=10000)
+
+de = 2**-11
+run_sad('lj31', de=de, min_T=0.001, max_E=0)
+min_E = -round(133.543/de)*de
+run_wl('lj31', de=de, min_gamma=1e-10, min_E=min_E, max_E=0)
+run_inv_t_wl('lj31', de=de, min_E=min_E, max_E=0)
+
+# run_replicas(name='big-lj31', min_T=0.001, max_iter=1e14, max_independent_samples=10000)
+# run_replicas(name='huge-lj31', min_T=0.001, max_iter=1e14, max_independent_samples=10000)
 exit(1)
 run_replicas(name='huge-lj31', min_T=0.001, max_iter=1e14)
 run_replicas(name='lj31', min_T=0.001, extraname='0.001-', max_iter=1e14)

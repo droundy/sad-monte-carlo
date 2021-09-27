@@ -63,7 +63,7 @@ axins_S.axvline(-133.58642, color='k', linestyle=':')
 axins_S.axvline(-133.29382, color='k', linestyle=':')
 # axins_S.axvline(-133.10462, color='k', linestyle=':')
 
-heat_capacity.plot(reference_S, ax=ax, axins=axins, Tmax=Tmax)
+# heat_capacity.plot(reference_S, ax=ax, axins=axins, Tmax=Tmax)
 ax.indicate_inset_zoom(axins, edgecolor="black", label=None)
 
 ax_S.set_xlim(-133.6, -100)
@@ -175,6 +175,7 @@ plt.savefig('lj31-heat-capacity-convergence.pdf')
 
 
 plt.figure('latest heat capacity')
+ax.set_xlim(0, Tmax)
 ax.legend()
 plt.xlabel('$T$')
 plt.ylabel('heat capacity')
