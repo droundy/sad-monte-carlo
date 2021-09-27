@@ -68,12 +68,13 @@ def run_inv_t_wl(name, de, min_E, max_E, max_iter=max_iter_default, translation_
 
 
 systems = {
-    'lj31':  '--lj-N 31 --lj-radius 2.5 --independent-systems-before-new-bin 16'.split(),
+    'lj31':  '--lj-N 31 --lj-radius 2.5'.split(),
     'big-lj31':  '--lj-N 31 --lj-radius 5 --independent-systems-before-new-bin 16'.split(),
     'huge-lj31':  '--lj-N 31 --lj-radius 15 --independent-systems-before-new-bin 16'.split(),
 }
 
-run_replicas(name='lj31', min_T=0.001, max_iter=1e14, max_independent_samples=10000)
+run_replicas(name='lj31', min_T=0.001, max_iter=1e14, max_independent_samples=10000,
+             extraflags='--independent-systems-before-new-bin 16')
 
 de = 2**-11
 run_sad('lj31', de=de, min_T=0.001, max_E=0)
