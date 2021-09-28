@@ -33,7 +33,15 @@ def normalize_S(S):
     return S - np.log(total)
 
 
-plt.figure('latest-entropy')
+fig_S, ax_S = plt.subplots(figsize=[5, 4], num='latest-entropy')
+
+axins_S = ax_S.inset_axes(np.array([0.22, 0.08, 0.7, 0.7]))
+axins_S.set_xlim(-1.01,-0.99)
+axins_S.set_ylim(-50,-15)
+# axins.set_xticklabels('')
+# axins.set_yticklabels('')
+#ax_S.set_ylim(0, 119)
+#ax_S.set_xlim(0, Tmax)
 
 correct_S = normalize_S(system.S(E))
 
@@ -41,14 +49,14 @@ correct_S_for_err = correct_S[indices_for_err]
 plt.plot(E, correct_S, ':', label='exact', linewidth=2)
 plt.xlim(-system.h_small*1.005, max_interesting_E)
 
-fig, ax = plt.subplots(figsize=[5, 4], num='latest heat capacity')
+fig_S, ax_Cv = plt.subplots(figsize=[5, 4], num='latest heat capacity')
 # [0.005, 0.012, 25, 140])
-axins = ax.inset_axes(np.array([0.27, 0.27, 0.7, 0.7]))
+axins_Cv = ax_Cv.inset_axes(np.array([0.27, 0.27, 0.7, 0.7]))
 # axins.set_xticklabels('')
 # axins.set_yticklabels('')
 Tmax = 0.25
-ax.set_ylim(0, 119)
-ax.set_xlim(0, Tmax)
+ax_Cv.set_ylim(0, 119)
+ax_Cv.set_xlim(0, Tmax)
 
 paths = ['wl-tiny-0.0001+0.001-lnw.dat',
         #  'wl-tiny-1e-05+0.001-lnw.dat',
@@ -76,19 +84,26 @@ for fname in paths:
     plt.figure('latest-entropy')
     #plt.plot(E, normalize_S(l_function(E)), label=base)
     if method in {'wl', 'itwl', 'sad'}:
-        plt.plot(E, normalize_S(l_function(E)), 
+        ax_S.plot(E, normalize_S(l_function(E)), 
+                    label=styles.pretty_label(base), marker=styles.marker(base),
+                 color=styles.color(base), linestyle=styles.linestyle(base), markevery=100)
+        axins_S.plot(E, normalize_S(l_function(E)), 
                     label=styles.pretty_label(base), marker=styles.marker(base),
                  color=styles.color(base), linestyle=styles.linestyle(base), markevery=100)
     elif method == 'z':
         for e in energy_boundaries:
-            plt.axvline(e)
-        plt.plot(E, normalize_S(l_function(E)),
+            ax_S.axvline(e, color='g', alpha=0.25)
+            axins_S.axvline(e, color='g', alpha=0.25)
+        ax_S.plot(E, normalize_S(l_function(E)),
+                    label=styles.pretty_label(base),
+                 color=styles.color(base), linestyle=styles.linestyle(base))
+        axins_S.plot(E, normalize_S(l_function(E)),
                     label=styles.pretty_label(base),
                  color=styles.color(base), linestyle=styles.linestyle(base))
 
     plt.figure('latest heat capacity')
     if 'z-' in fname:
-        heat_capacity.plot(l_function, fname=fname, ax=ax, axins=axins, Tmax=Tmax)
+        heat_capacity.plot(l_function, fname=fname, ax=ax_Cv, axins=axins_Cv, Tmax=Tmax)
     # correct_Cv = [heat_capacity.C(t,l_function) for t in T]
     # if method in {'wl','itwl','sad'}:
     #     plt.plot(T, correct_Cv, label=base, marker = markers[precision], color = colors[method], linestyle= linestyles[method], markevery=5)
@@ -161,7 +176,7 @@ for fname in paths:
 plt.figure('latest-entropy')
 plt.xlabel(r'$E$')
 plt.ylabel(r'$S(E)$')
-plt.legend()
+axins_S.legend()#bbox_to_anchor = [0.7, 0.])
 plt.savefig(system.system+'-entropy.pdf')
 
 plt.figure('fraction-well')
@@ -208,9 +223,9 @@ plt.savefig(system.system+'-heat-capacity-convergence.pdf')
 
 
 plt.figure('latest heat capacity')
-heat_capacity.plot(system.S, ax=ax, axins=axins, Tmax=Tmax)
+heat_capacity.plot(system.S, ax=ax_Cv, axins=axins_Cv, Tmax=Tmax)
 
-ax.legend()
+ax_Cv.legend()
 plt.xlabel('$T$')
 # axins.set_xlabel('$T$')
 plt.ylabel('heat capacity')
