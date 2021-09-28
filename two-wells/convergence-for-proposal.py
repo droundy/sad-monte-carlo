@@ -34,6 +34,7 @@ def normalize_S(S):
 
 
 fig_S, ax_S = plt.subplots(figsize=[5, 4], num='latest-entropy')
+ax_S.set_xlim(-system.h_small*1.005, max_interesting_E)
 
 axins_S = ax_S.inset_axes(np.array([0.22, 0.08, 0.7, 0.7]))
 axins_S.set_xlim(-1.01,-0.99)
@@ -46,8 +47,6 @@ axins_S.set_ylim(-50,-15)
 correct_S = normalize_S(system.S(E))
 
 correct_S_for_err = correct_S[indices_for_err]
-plt.plot(E, correct_S, ':', label='exact', linewidth=2)
-plt.xlim(-system.h_small*1.005, max_interesting_E)
 
 fig_S, ax_Cv = plt.subplots(figsize=[5, 4], num='latest heat capacity')
 # [0.005, 0.012, 25, 140])
@@ -84,16 +83,17 @@ for fname in paths:
     plt.figure('latest-entropy')
     #plt.plot(E, normalize_S(l_function(E)), label=base)
     if method in {'wl', 'itwl', 'sad'}:
-        ax_S.plot(E, normalize_S(l_function(E)), 
-                    label=styles.pretty_label(base), marker=styles.marker(base),
-                 color=styles.color(base), linestyle=styles.linestyle(base), markevery=100)
-        axins_S.plot(E, normalize_S(l_function(E)), 
-                    label=styles.pretty_label(base), marker=styles.marker(base),
-                 color=styles.color(base), linestyle=styles.linestyle(base), markevery=100)
+        pass # just the ZMC plot for here
+        # ax_S.plot(E, normalize_S(l_function(E)), 
+        #             label=styles.pretty_label(base), marker=styles.marker(base),
+        #          color=styles.color(base), linestyle=styles.linestyle(base), markevery=100)
+        # axins_S.plot(E, normalize_S(l_function(E)), 
+        #             label=styles.pretty_label(base), marker=styles.marker(base),
+        #          color=styles.color(base), linestyle=styles.linestyle(base), markevery=100)
     elif method == 'z':
         for e in energy_boundaries:
-            ax_S.axvline(e, color='g', alpha=0.25)
-            axins_S.axvline(e, color='g', alpha=0.25)
+            ax_S.axvline(e, color='g', alpha=0.25, linewidth=0.5)
+            axins_S.axvline(e, color='g', alpha=0.25, linewidth=0.5)
         ax_S.plot(E, normalize_S(l_function(E)),
                     label=styles.pretty_label(base),
                  color=styles.color(base), linestyle=styles.linestyle(base))
@@ -174,6 +174,18 @@ for fname in paths:
     # print(base[:base.find('-')]) #for debugging
 
 plt.figure('latest-entropy')
+ax_S.plot(E, correct_S,
+            label=styles.pretty_label(None), 
+            marker = styles.marker(None), 
+            color = styles.color(None), 
+            linestyle= styles.linestyle(None), 
+            markevery=10)
+axins_S.plot(E, correct_S,
+            label=styles.pretty_label(None), 
+            marker = styles.marker(None), 
+            color = styles.color(None), 
+            linestyle= styles.linestyle(None),
+            markevery=10)
 plt.xlabel(r'$E$')
 plt.ylabel(r'$S(E)$')
 axins_S.legend()#bbox_to_anchor = [0.7, 0.])
