@@ -43,9 +43,9 @@ paths = [# 'wl-tiny-0.0001+0.0001-lnw.dat',
         #  'wl-tiny-0.0001+0.001-lnw.dat',
         #  'wl-tiny-1e-05+0.0001-lnw.dat',
         #  'wl-tiny-1e-05+0.01-lnw.dat',
-         'itwl-lj31-0.00048828125/00023713737057',
-         'wl-lj31-0.00048828125/00023713737057',
-         'sad-lj31-0.00048828125/00023713737057',
+         'itwl-lj31-0.00048828125-lnw.dat',
+         'wl-lj31-0.00048828125-lnw.dat',
+         'sad-lj31-0.00048828125-lnw.dat',
          'z-lj31-lnw.dat',
 ]
 
@@ -70,9 +70,9 @@ axins_S.axvline(-133.29382, color='k', linestyle=':')
 ax.indicate_inset_zoom(axins, edgecolor="black", label=None)
 
 ax_S.set_xlim(-133.6, -100)
-axins_S.set_xlim(-133.6, -133.1)
+axins_S.set_xlim(-133.56, -132.7)
 ax_S.set_ylim(-500, -75)
-axins_S.set_ylim(-500, -325)
+axins_S.set_ylim(-475, -275)
 ax_S.indicate_inset_zoom(axins_S, edgecolor="black", label=None)
 
 minimum_moves = 1e7
@@ -90,6 +90,10 @@ for fname in paths:
     l_function, eee, sss = compute.linear_entropy(
         energy_boundaries, mean_e, my_lnw)
     plt.figure('latest-entropy')
+    if 'z-' in fname:
+        for e in energy_boundaries:
+            ax_S.axvline(e)
+            axins_S.axvline(e)
     ax_S.plot(E, normalize_S(l_function(E)), 
                     label=styles.pretty_label(base), marker=styles.marker(base),
                  color=styles.color(base), linestyle=styles.linestyle(base), markevery=100)
