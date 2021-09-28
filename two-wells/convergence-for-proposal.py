@@ -35,10 +35,12 @@ def normalize_S(S):
 
 fig_S, ax_S = plt.subplots(figsize=[5, 4], num='latest-entropy')
 ax_S.set_xlim(-system.h_small*1.005, max_interesting_E)
+ax_S.set_ylim(-60, 2)
 
 axins_S = ax_S.inset_axes(np.array([0.22, 0.08, 0.7, 0.7]))
-axins_S.set_xlim(-1.01,-0.99)
+axins_S.set_xlim(-1.01,-0.992)
 axins_S.set_ylim(-50,-15)
+
 # axins.set_xticklabels('')
 # axins.set_yticklabels('')
 #ax_S.set_ylim(0, 119)
@@ -186,6 +188,7 @@ axins_S.plot(E, correct_S,
             color = styles.color(None), 
             linestyle= styles.linestyle(None),
             markevery=10)
+ax_S.indicate_inset_zoom(axins_S, edgecolor="black", label=None)
 plt.xlabel(r'$E$')
 plt.ylabel(r'$S(E)$')
 axins_S.legend()#bbox_to_anchor = [0.7, 0.])

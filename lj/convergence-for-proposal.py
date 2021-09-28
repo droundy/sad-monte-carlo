@@ -15,13 +15,6 @@ E = 0.5*(E[1:] + E[:-1])
 dE = E[1] - E[0]
 hist = None
 
-lowest_interesting_E = -1.07
-highest_interesting_E = -0.5
-
-indices_for_err = np.array([i for i in range(
-    len(E)) if lowest_interesting_E <= E[i] <= highest_interesting_E])
-E_for_err = E[indices_for_err]
-
 
 def normalize_S(S):
     S = S - max(S)
@@ -37,16 +30,11 @@ axins = ax.inset_axes(0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))
 
 Tmax = 0.6
 
-paths = [# 'wl-tiny-0.0001+0.0001-lnw.dat',
-        #  'wl-tiny-0.0001+0.01-lnw.dat',
-        #  'wl-tiny-1e-05+0.001-lnw.dat',
-        #  'wl-tiny-0.0001+0.001-lnw.dat',
-        #  'wl-tiny-1e-05+0.0001-lnw.dat',
-        #  'wl-tiny-1e-05+0.01-lnw.dat',
-         'itwl-lj31-0.00048828125-lnw.dat',
-         'wl-lj31-0.00048828125-lnw.dat',
-         'sad-lj31-0.00048828125-lnw.dat',
-         'z-lj31-lnw.dat',
+paths = [
+#  'itwl-lj31-0.00048828125-lnw.dat',
+#  'wl-lj31-0.00048828125-lnw.dat',
+#  'sad-lj31-0.00048828125-lnw.dat',
+    'z-lj31-lnw.dat',
 ]
 
 energy_boundaries, mean_e, my_lnw, _, _ = compute.read_file('z-lj31')
@@ -55,7 +43,7 @@ energy_boundaries, mean_e, my_lnw, _, _ = compute.read_file('z-lj31')
 reference_S, _, _ = compute.linear_entropy(energy_boundaries, mean_e, my_lnw)
 
 fig_S, ax_S = plt.subplots(figsize=[7, 5], num='latest-entropy')
-axins_S = ax_S.inset_axes([0.5, 0.1, 0.47, 0.47])
+axins_S = ax_S.inset_axes(np.array([0.22, 0.08, 0.7, 0.7]))
 # plt.plot(E, normalize_S(reference_S(E)), ':', label='exact', linewidth=2)
 # Cite Calvo, Doye, and Wales "Quantum partition functions from classical distributions: application fo rare-gas clusters"
 ax_S.axvline(-133.58642, color='k', linestyle=':')
@@ -69,10 +57,10 @@ axins_S.axvline(-133.29382, color='k', linestyle=':')
 # heat_capacity.plot(reference_S, ax=ax, axins=axins, Tmax=Tmax)
 ax.indicate_inset_zoom(axins, edgecolor="black", label=None)
 
-ax_S.set_xlim(-133.6, -100)
-axins_S.set_xlim(-133.56, -132.7)
+ax_S.set_xlim(-133.61, -100)
+axins_S.set_xlim(-133.56, -132.8)
 ax_S.set_ylim(-500, -75)
-axins_S.set_ylim(-475, -275)
+axins_S.set_ylim(-475, -290)
 ax_S.indicate_inset_zoom(axins_S, edgecolor="black", label=None)
 
 minimum_moves = 1e7
@@ -92,8 +80,8 @@ for fname in paths:
     plt.figure('latest-entropy')
     if 'z-' in fname:
         for e in energy_boundaries:
-            ax_S.axvline(e)
-            axins_S.axvline(e)
+            ax_S.axvline(e, color='g', alpha=0.25, linewidth=0.5)
+            axins_S.axvline(e, color='g', alpha=0.25, linewidth=0.5)
     ax_S.plot(E, normalize_S(l_function(E)), 
                     label=styles.pretty_label(base), marker=styles.marker(base),
                  color=styles.color(base), linestyle=styles.linestyle(base), markevery=100)
@@ -162,9 +150,9 @@ for fname in paths:
 plt.figure('latest-entropy')
 plt.xlabel(r'$E$')
 plt.ylabel(r'$S(E)$')
-plt.legend()
+plt.legend(loc='upper left')
 plt.tight_layout()
-plt.savefig('lj31.pdf')
+plt.savefig('lj31-entropy.pdf')
 
 plt.figure('convergence_heat_capacity')
 plt.xlabel(r'# of Moves')
