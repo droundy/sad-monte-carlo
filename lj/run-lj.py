@@ -74,6 +74,9 @@ systems = {
 }
 
 run_replicas(name='lj31', min_T=0.001, max_iter=1e14, max_independent_samples=10000,
+             extraname='balanced-',
+             extraflags='--independent-systems-before-new-bin 16 --always-balance')
+run_replicas(name='lj31', min_T=0.001, max_iter=1e14, max_independent_samples=10000,
              extraflags='--independent-systems-before-new-bin 16')
 
 de = 2**-11

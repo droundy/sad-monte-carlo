@@ -642,7 +642,9 @@ impl<
                 assert_eq!(r0.cutoff_energy, r1.max_energy);
                 // We will swap them if both systems can go into the lower bin.
                 if (r0.energy().is_some() && r0.energy().unwrap() < r1.max_energy)
-                    || (always_balance && r0.energy().is_none())
+                    // If the higher energy is a bubble, move it down with 50% probability,
+                    // so bubbles will freely diffuse.
+                    || (always_balance && r0.energy().is_none() && r0.rng.gen())
                 {
                     if r0.max_energy.value_unsafe.is_finite() {
                         std::mem::swap(
