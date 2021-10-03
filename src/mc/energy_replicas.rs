@@ -28,6 +28,8 @@ pub struct MCParams {
     pub _report: plugin::ReportParams,
     /// Use the mean as an approximation of the median
     pub mean_for_median: bool,
+    /// Always obey detailed balance as far as we can
+    pub always_balance: bool,
 }
 
 impl Default for MCParams {
@@ -39,7 +41,8 @@ impl Default for MCParams {
             _save: plugin::SaveParams::default(),
             _movies: plugin::MovieParams::default(),
             _report: plugin::ReportParams::default(),
-            mean_for_median: true,
+            mean_for_median: false,
+            always_balance: false,
         }
     }
 }
@@ -370,6 +373,8 @@ pub struct MC<S> {
 
     /// Use the mean as an approximation of the median
     pub mean_for_median: bool,
+    /// Always obey detailed balance as far as we can
+    pub always_balance: bool,
 
     /// The relative sizes of the bins
     pub replicas: Vec<Replica<S>>,
@@ -436,6 +441,7 @@ impl<
             moves: 0,
             median: MedianEstimator::new(energies[energies.len() / 4]),
             mean_for_median: params.mean_for_median,
+            always_balance: params.always_balance,
             independent_systems_before_new_bin: params
                 .independent_systems_before_new_bin
                 .unwrap_or(64),
@@ -570,16 +576,18 @@ impl<
 
         let any_missing = self.replicas.iter().any(|r| r.energy().is_none());
         let lowest_max_energy = self.replicas.last().unwrap().max_energy;
+        let always_balance = self.always_balance;
         // Run a few steps of the simulation for each replica
         self.replicas.par_iter_mut().for_each(|r| {
             if any_missing
+                && !always_balance
                 && r.max_energy != lowest_max_energy
                 && r.max_energy.value_unsafe.is_finite()
             {
                 // If we have any bubbles, and we are not looking at the highest or lowest
                 // zones, we should stop collecting data for a while to avoid violations
                 // of detailed balance while we let the bubbles rise.
-                r.collecting_data = false;
+                r.collecting_data = always_balance;
             }
             if r.system_with_lowest_max_energy.is_some() {
                 these_moves.fetch_add(steps, std::sync::atomic::Ordering::Relaxed);
@@ -597,7 +605,7 @@ impl<
         });
 
         // Now let us try swapping if we can.
-        if any_missing {
+        if any_missing && !self.always_balance {
             // Bubble up as rapidly as posssible
             for i in (1..self.replicas.len()).rev() {
                 if let [r0, r1] = &mut self.replicas[i - 1..i + 1] {
@@ -633,7 +641,9 @@ impl<
             if let [r0, r1] = chunk {
                 assert_eq!(r0.cutoff_energy, r1.max_energy);
                 // We will swap them if both systems can go into the lower bin.
-                if r0.energy().is_some() && r0.energy().unwrap() < r1.max_energy {
+                if (r0.energy().is_some() && r0.energy().unwrap() < r1.max_energy)
+                    || (always_balance && r0.energy().is_none())
+                {
                     if r0.max_energy.value_unsafe.is_finite() {
                         std::mem::swap(
                             &mut r0.system_with_lowest_max_energy,
@@ -682,13 +692,10 @@ impl<
         let new_replica = if let Some(r) = self.replicas.last() {
             // We will create a new bin if we have had
             // INDEPENDENT_SYSTEMS_BEFORE_NEW_BIN unique visitors at the lowest
-            // energy, and the current system at the lowest energy is *not* a
-            // of another system, to avoid having the same system cloned
-            // disproportionately many times.  Also, we need the mean energy
-            // below our lowest cutoff to be lower than min_T below that cutoff
-            // (so we aren't at lower microcanonical temperature than min_T),
-            // the system energy must be below the median so that we have a
-            // to put into our new bin.  Wow, that's a lot of, ))
+            // energy.  Also, we need the mean energy below our lowest cutoff to
+            // be lower than min_T below that cutoff (so we aren't at lower
+            // microcanonical temperature than min_T), the system energy must be
+            // below the median so that we have a to put into our new bin.
             if let Some((system, _)) = &r.system_with_lowest_max_energy {
                 if r.unique_visitors >= independent_systems_before_new_bin
                 // && self.replicas.iter().all(|rr| rr.energy().is_some())
@@ -735,8 +742,10 @@ impl<
             self.replicas.push(r);
             // We now choose to throw away data, to account for the fact that
             // we're now spending some time violating detailed balance.
-            for r in self.replicas.iter_mut() {
-                r.decimate();
+            if !self.always_balance {
+                for r in self.replicas.iter_mut() {
+                    r.decimate();
+                }
             }
         }
 
