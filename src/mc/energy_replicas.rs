@@ -147,7 +147,7 @@ pub struct Replica<S> {
     pub translation_scale: Length,
 }
 
-impl<S: MovableSystem> Replica<S> {
+impl<S: MovableSystem + Clone> Replica<S> {
     fn new(max_energy: Energy, cutoff_energy: Energy, system: S, rng: crate::rng::MyRng) -> Self {
         let mut r = Replica::empty(max_energy, cutoff_energy, rng);
         r.translation_scale = system.max_size();
@@ -333,10 +333,43 @@ impl<S: MovableSystem> Replica<S> {
         next.printme();
         next
     }
+    fn split_clone(&mut self) -> Replica<S> {
+        print!("Cloning ");
+        self.printme();
+        let middle = 0.5 * (self.max_energy + self.cutoff_energy);
+        let mut next = self.clone();
+        next.cutoff_energy = middle;
+        next.max_energy = self.cutoff_energy;
+        next.rng.jump();
+        // Ensure that neither clone can count as unique after this
+        if let Some((_, lme)) = &mut self.system_with_lowest_max_energy {
+            *lme = Energy::new(f64::NEG_INFINITY);
+        }
+        if let Some((_, lme)) = &mut next.system_with_lowest_max_energy {
+            *lme = Energy::new(f64::NEG_INFINITY);
+        }
+        self.printme();
+        next.printme();
+        next
+    }
     fn printme(&self) {
         print!(
             "   {} {:2.1}% > {:9.5} {:.2} unique, 𝚫E = {:.2} ({:.3}% up)",
-            if self.energy().is_none() { ":(" } else { "  " },
+            if self.energy().is_none() {
+                ":("
+            } else if self.system_with_lowest_max_energy.is_some()
+                && self
+                    .system_with_lowest_max_energy
+                    .as_ref()
+                    .unwrap()
+                    .1
+                    .value_unsafe
+                    .is_infinite()
+            {
+                ":/"
+            } else {
+                "  "
+            },
             crate::prettyfloat::PrettyFloat(100.0 * self.above_fraction()),
             self.cutoff_energy.pretty(),
             crate::prettyfloat::PrettyFloat(self.unique_visitors as f64),
@@ -712,8 +745,21 @@ impl<
                             self.median.median()
                         };
                         self.median.reset(median_below);
-                        let mut newr =
-                            Replica::empty(r.cutoff_energy, median_below, self.rng.clone());
+                        let mut newr = if always_balance {
+                            let mut newr = r.clone();
+                            newr.max_energy = r.cutoff_energy;
+                            newr.cutoff_energy = median_below;
+                            // Ensure that neither clone can count as unique after this
+                            // if let Some((_, lme)) = &mut r.system_with_lowest_max_energy {
+                            //     *lme = Energy::new(f64::NEG_INFINITY);
+                            // }
+                            if let Some((_, lme)) = &mut newr.system_with_lowest_max_energy {
+                                *lme = Energy::new(f64::NEG_INFINITY);
+                            }
+                            newr
+                        } else {
+                            Replica::empty(r.cutoff_energy, median_below, self.rng.clone())
+                        };
                         newr.translation_scale =
                             r.translation_scale * 0.5f64.powf(1.0 / system.dimensionality() as f64);
                         println!(
@@ -769,7 +815,11 @@ impl<
                 .map(|(i, _)| i)
                 .collect::<Vec<_>>();
             for i in need_splitting.iter().rev().cloned() {
-                let next = self.replicas[i].split();
+                let next = if always_balance {
+                    self.replicas[i].split_clone()
+                } else {
+                    self.replicas[i].split()
+                };
                 self.replicas.insert(i + 1, next);
             }
         }
