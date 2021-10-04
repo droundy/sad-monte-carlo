@@ -737,8 +737,10 @@ impl<
             // be lower than min_T below that cutoff (so we aren't at lower
             // microcanonical temperature than min_T), the system energy must be
             // below the median so that we have a to put into our new bin.
-            if let Some((system, _)) = &r.system_with_lowest_max_energy {
+            if let Some((system, lowest_energy_seen)) = &r.system_with_lowest_max_energy {
                 if r.unique_visitors >= independent_systems_before_new_bin
+                    // The following ensures we don't end up cloning a clone.
+                    && *lowest_energy_seen == r.max_energy
                 // && self.replicas.iter().all(|rr| rr.energy().is_some())
                 {
                     let mean_below = r.below_total / r.below_count as f64;
@@ -755,6 +757,7 @@ impl<
                             let mut newr = r.clone();
                             newr.max_energy = r.cutoff_energy;
                             newr.cutoff_energy = median_below;
+                            newr.decimate();
                             // Ensure that neither clone can count as unique after this
                             // if let Some((_, lme)) = &mut r.system_with_lowest_max_energy {
                             //     *lme = Energy::new(f64::NEG_INFINITY);
