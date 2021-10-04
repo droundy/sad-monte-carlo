@@ -189,6 +189,13 @@ axins_S.plot(E, correct_S,
             linestyle= styles.linestyle(None),
             markevery=10)
 ax_S.indicate_inset_zoom(axins_S, edgecolor="black", label=None)
+
+ax_S.axvline(-system.h_small, color='r', linestyle='--', linewidth=0.5)
+ax_S.axvline(-1, color='r', linestyle='--', linewidth=0.5)
+# ax_S.axvline(-133.10462, color='k', linestyle=':')
+
+axins_S.axvline(-system.h_small, color='r', linestyle='--', linewidth=0.5)
+axins_S.axvline(-1, color='r', linestyle='--', linewidth=0.5)
 plt.xlabel(r'$E$')
 plt.ylabel(r'$S(E)$')
 axins_S.legend()#bbox_to_anchor = [0.7, 0.])
