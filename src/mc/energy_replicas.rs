@@ -211,6 +211,11 @@ impl<S: MovableSystem + Clone> Replica<S> {
             .as_ref()
             .map(|(s, _)| s.energy())
     }
+    fn is_a_clone(&self) -> bool {
+        self.system_with_lowest_max_energy
+            .as_ref()
+            .map_or(false, |(_, e)| e.value_unsafe.is_infinite())
+    }
     fn run_once(&mut self, moves: u64, very_lowest_max_energy: Energy) {
         if let Some((system, lowest_max_energy)) = &mut self.system_with_lowest_max_energy {
             if self.max_energy.value_unsafe.is_finite() {
@@ -357,15 +362,7 @@ impl<S: MovableSystem + Clone> Replica<S> {
             "   {} {:2.1}% > {:9.5} {:.2} unique, 𝚫E = {:.2} ({:.3}% up)",
             if self.energy().is_none() {
                 ":("
-            } else if self.system_with_lowest_max_energy.is_some()
-                && self
-                    .system_with_lowest_max_energy
-                    .as_ref()
-                    .unwrap()
-                    .1
-                    .value_unsafe
-                    .is_infinite()
-            {
+            } else if self.is_a_clone() {
                 ":/"
             } else {
                 "  "
@@ -555,13 +552,7 @@ impl<
             "    [{} walkers in {} zones]",
             self.replicas
                 .iter()
-                .filter(|r| r.system_with_lowest_max_energy.is_some()
-                    && r.system_with_lowest_max_energy
-                        .as_ref()
-                        .unwrap()
-                        .1
-                        .value_unsafe
-                        .is_finite())
+                .filter(|r| r.system_with_lowest_max_energy.is_some() && !r.is_a_clone())
                 .count(),
             self.replicas.len()
         );
@@ -571,7 +562,8 @@ impl<
         let mut print_one_more = false;
         for (which, r) in self.replicas.iter().enumerate() {
             let percent = r.above_count as f64 / (r.above_count as f64 + r.below_count as f64);
-            let am_crazy = percent > 0.75 || percent < 0.25 || r.energy().is_none();
+            let am_crazy =
+                percent > 0.75 || percent < 0.25 || r.energy().is_none() || r.is_a_clone();
             if which < 5 || which + 15 >= num_replicas || am_crazy || print_one_more {
                 need_dots = true;
                 print_one_more = am_crazy; // print one more bin after a crazy bin.
