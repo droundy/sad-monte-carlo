@@ -73,8 +73,8 @@ systems = {
     'huge-lj31':  '--lj-N 31 --lj-radius 15 --independent-systems-before-new-bin 16'.split(),
 }
 
-run_replicas(name='lj31', min_T=0.001, max_iter=1e14, max_independent_samples=10000,
-             extraname='balanced-',
+run_replicas(name='lj31', min_T=0.001, max_iter=1e14, max_independent_samples=1e7,
+             extraname='detailed-',
              extraflags='--independent-systems-before-new-bin 16 --always-balance')
 run_replicas(name='lj31', min_T=0.001, max_iter=1e14, max_independent_samples=10000,
              extraflags='--independent-systems-before-new-bin 16')

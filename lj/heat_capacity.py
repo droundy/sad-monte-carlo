@@ -6,7 +6,7 @@ import styles
 import time
 from mytimer import Timer
 
-T_peak = 0.0045
+T_peak = 0.01
 
 def C(T, S):#T is a temperature and S is an entropy function
     # start = time.process_time()

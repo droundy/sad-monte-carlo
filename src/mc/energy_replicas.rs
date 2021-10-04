@@ -555,7 +555,13 @@ impl<
             "    [{} walkers in {} zones]",
             self.replicas
                 .iter()
-                .filter(|r| r.system_with_lowest_max_energy.is_some())
+                .filter(|r| r.system_with_lowest_max_energy.is_some()
+                    && r.system_with_lowest_max_energy
+                        .as_ref()
+                        .unwrap()
+                        .1
+                        .value_unsafe
+                        .is_finite())
                 .count(),
             self.replicas.len()
         );
