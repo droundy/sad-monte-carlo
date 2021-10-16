@@ -31,9 +31,9 @@ axins = ax.inset_axes(0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))
 Tmax = 0.6
 
 paths = [
- 'itwl-lj31-0.00048828125-lnw.dat',
- 'wl-lj31-0.00048828125-lnw.dat',
- 'sad-lj31-0.00048828125-lnw.dat',
+#  'itwl-lj31-0.00048828125-lnw.dat',
+#  'wl-lj31-0.00048828125-lnw.dat',
+#  'sad-lj31-0.00048828125-lnw.dat',
     'z-lj31-lnw.dat',
 ]
 
@@ -43,7 +43,7 @@ energy_boundaries, mean_e, my_lnw, _, _ = compute.read_file('z-lj31')
 reference_S, _, _ = compute.linear_entropy(energy_boundaries, mean_e, my_lnw)
 
 fig_S, ax_S = plt.subplots(figsize=[7, 5], num='latest-entropy')
-axins_S = ax_S.inset_axes(np.array([0.22, 0.08, 0.7, 0.7]))
+axins_S = ax_S.inset_axes(np.array([0.22, 0.08, 0.7, 0.65]))
 # plt.plot(E, normalize_S(reference_S(E)), ':', label='exact', linewidth=2)
 
 # heat_capacity.plot(reference_S, ax=ax, axins=axins, Tmax=Tmax)
@@ -51,8 +51,8 @@ ax.indicate_inset_zoom(axins, edgecolor="black", label=None)
 
 ax_S.set_xlim(-133.9, -100)
 axins_S.set_xlim(-133.6, -132.8)
-ax_S.set_ylim(-500, -75)
-axins_S.set_ylim(-475, -290)
+ax_S.set_ylim(-450, -75)
+axins_S.set_ylim(-425, -290)
 ax_S.indicate_inset_zoom(axins_S, edgecolor="black", label=None)
 
 minimum_moves = 1e7
@@ -178,4 +178,4 @@ plt.ylabel('heat capacity')
 plt.savefig('lj31-heat-capacity.svg')
 plt.savefig('lj31-heat-capacity.pdf')
 
-plt.show()
+# plt.show()
