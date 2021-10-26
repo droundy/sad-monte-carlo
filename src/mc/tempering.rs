@@ -9,8 +9,6 @@ use rayon::prelude::*;
 use rand::{Rng, SeedableRng};
 use std::default::Default;
 
-use std::collections::HashMap;
-
 /// The parameters needed to configure a simulation.
 #[derive(Debug, AutoArgs, Clone)]
 pub struct MCParams {
@@ -56,6 +54,11 @@ pub struct Replica<S> {
     /// The random number generator.
     pub rng: crate::rng::MyRng,
 
+    /// The total energy over all moves
+    pub total_energy: Energy,
+    /// The total energy squared over all moves
+    pub total_energy_squared: EnergySquared,
+
     /// The current translation scale
     pub translation_scale: Length,
 }
@@ -68,6 +71,9 @@ impl<S: MovableSystem> Replica<S> {
             rejected_count: 0,
             accepted_count: 0,
 
+            total_energy: Energy::new(0.0),
+            total_energy_squared: EnergySquared::new(0.0),
+
             translation_scale: Length::new(1.0),
             rng,
         }
@@ -75,7 +81,7 @@ impl<S: MovableSystem> Replica<S> {
     fn energy(&self) -> Energy {
         self.system.energy()
     }
-    fn run_once(&mut self, moves: u64) {
+    fn run_once(&mut self) {
         if let Some(e) = self.system.plan_move(&mut self.rng, self.translation_scale) {
             if e < Energy::new(0.0) {
                 self.system.confirm();
@@ -85,6 +91,8 @@ impl<S: MovableSystem> Replica<S> {
             }
             let e = self.system.energy();
             // collect data
+            self.total_energy += e;
+            self.total_energy_squared += e*e;
         }
     }
     fn printme(&self) {
@@ -278,7 +286,6 @@ impl<
 
     /// Run a simulation
     pub fn run_once(&mut self) {
-        let moves = self.moves;
         // The unwrap below is safe because the unbounded high energy bin will always be occupied.
         let steps = self.replicas[0].system.min_moves_to_randomize();
 
@@ -286,8 +293,8 @@ impl<
 
         // Run a few steps of the simulation for each replica
         self.replicas.par_iter_mut().for_each(|r| {
-            for i in 0..steps {
-                r.run_once(moves + i);
+            for _ in 0..steps {
+                r.run_once();
             }
         });
 
