@@ -26,10 +26,6 @@ pub struct MCParams {
     pub _save: plugin::SaveParams,
     /// report input
     pub _report: plugin::ReportParams,
-    /// Use the mean as an approximation of the median
-    pub mean_for_median: bool,
-    /// Always obey detailed balance as far as we can
-    pub always_balance: bool,
 }
 
 impl Default for MCParams {
@@ -41,8 +37,6 @@ impl Default for MCParams {
             _save: plugin::SaveParams::default(),
             _movies: plugin::MovieParams::default(),
             _report: plugin::ReportParams::default(),
-            mean_for_median: false,
-            always_balance: false,
         }
     }
 }
@@ -303,60 +297,6 @@ impl<S: MovableSystem + Clone> Replica<S> {
             }
         }
     }
-    fn split(&mut self) -> Replica<S> {
-        print!("Splitting ");
-        self.printme();
-        // let mean = self.above_total / self.above_count as f64;
-        let middle = 0.5 * (self.max_energy + self.cutoff_energy);
-        let mut next = Replica::empty(middle, self.cutoff_energy, self.rng.clone());
-        next.rng.jump();
-        next.translation_scale = self.translation_scale;
-        *self = Replica {
-            max_energy: self.max_energy,
-            cutoff_energy: middle,
-            above_count: 0,
-            below_count: 0,
-            upwelling_count: 0,
-            rejected_count: 0,
-            accepted_count: 0,
-            above_total: Energy::new(0.0),
-            below_total: Energy::new(0.0),
-            above_total_squared: EnergySquared::new(0.0),
-            below_total_squared: EnergySquared::new(0.0),
-            above_extra: HashMap::new(),
-
-            translation_scale: self.translation_scale,
-            system_with_lowest_max_energy: std::mem::replace(
-                &mut self.system_with_lowest_max_energy,
-                None,
-            ),
-            unique_visitors: 1,
-            collecting_data: true,
-            rng: self.rng.clone(),
-        };
-        self.printme();
-        next.printme();
-        next
-    }
-    fn split_clone(&mut self) -> Replica<S> {
-        print!("Cloning ");
-        self.printme();
-        let middle = 0.5 * (self.max_energy + self.cutoff_energy);
-        let mut next = self.clone();
-        next.cutoff_energy = middle;
-        next.max_energy = self.cutoff_energy;
-        next.rng.jump();
-        // Ensure that neither clone can count as unique after this
-        if let Some((_, lme)) = &mut self.system_with_lowest_max_energy {
-            *lme = Energy::new(f64::NEG_INFINITY);
-        }
-        if let Some((_, lme)) = &mut next.system_with_lowest_max_energy {
-            *lme = Energy::new(f64::NEG_INFINITY);
-        }
-        self.printme();
-        next.printme();
-        next
-    }
     fn printme(&self) {
         print!(
             "   {} {:2.1}% > {:9.5} {:.2} unique, 𝚫E = {:.2} ({:.3}% up)",
@@ -400,11 +340,6 @@ pub struct MC<S> {
 
     /// An estimator for the median energy below the lowest bin
     pub median: MedianEstimator,
-
-    /// Use the mean as an approximation of the median
-    pub mean_for_median: bool,
-    /// Always obey detailed balance as far as we can
-    pub always_balance: bool,
 
     /// The relative sizes of the bins
     pub replicas: Vec<Replica<S>>,
@@ -470,8 +405,6 @@ impl<
             replicas,
             moves: 0,
             median: MedianEstimator::new(energies[energies.len() / 4]),
-            mean_for_median: params.mean_for_median,
-            always_balance: params.always_balance,
             independent_systems_before_new_bin: params
                 .independent_systems_before_new_bin
                 .unwrap_or(64),
@@ -605,21 +538,9 @@ impl<
 
         let these_moves = std::sync::atomic::AtomicU64::new(0);
 
-        let any_missing = self.replicas.iter().any(|r| r.energy().is_none());
         let lowest_max_energy = self.replicas.last().unwrap().max_energy;
-        let always_balance = self.always_balance;
         // Run a few steps of the simulation for each replica
         self.replicas.par_iter_mut().for_each(|r| {
-            if any_missing
-                && !always_balance
-                && r.max_energy != lowest_max_energy
-                && r.max_energy.value_unsafe.is_finite()
-            {
-                // If we have any bubbles, and we are not looking at the highest or lowest
-                // zones, we should stop collecting data for a while to avoid violations
-                // of detailed balance while we let the bubbles rise.
-                r.collecting_data = always_balance;
-            }
             if r.system_with_lowest_max_energy.is_some() {
                 these_moves.fetch_add(steps, std::sync::atomic::Ordering::Relaxed);
                 if r.max_energy.value_unsafe.is_finite() {
@@ -635,31 +556,6 @@ impl<
             }
         });
 
-        // Now let us try swapping if we can.
-        if any_missing && !self.always_balance {
-            // Bubble up as rapidly as posssible
-            for i in (1..self.replicas.len()).rev() {
-                if let [r0, r1] = &mut self.replicas[i - 1..i + 1] {
-                    if r1.energy().is_none() {
-                        if let Some(e) = r0.energy() {
-                            if e < r1.max_energy {
-                                if r0.max_energy.value_unsafe.is_finite() {
-                                    std::mem::swap(
-                                        &mut r0.system_with_lowest_max_energy,
-                                        &mut r1.system_with_lowest_max_energy,
-                                    );
-                                } else {
-                                    // If the higher-energy bin is unbounded, then leave the existing system
-                                    // there, since it'll get randomized in a moment anyhow.
-                                    r1.system_with_lowest_max_energy =
-                                        r0.system_with_lowest_max_energy.clone();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
         let iterator = if self.rng.gen::<bool>() {
             // Try swapping odd onces
             self.replicas.chunks_exact_mut(2)
@@ -672,20 +568,13 @@ impl<
             if let [r0, r1] = chunk {
                 assert_eq!(r0.cutoff_energy, r1.max_energy);
                 // We will swap them if both systems can go into the lower bin.
-                if (r0.energy().is_some() && r0.energy().unwrap() < r1.max_energy)
-                    // If the higher energy is a bubble, move it down with 50% probability,
-                    // so bubbles will freely diffuse.
-                    || (always_balance && r0.energy().is_none() && r0.rng.gen())
-                {
+                if r0.energy().is_some() && r0.energy().unwrap() < r1.max_energy {
                     if r0.max_energy.value_unsafe.is_finite() {
                         std::mem::swap(
                             &mut r0.system_with_lowest_max_energy,
                             &mut r1.system_with_lowest_max_energy,
                         );
                         // We start collecting data after the zone has done an ordinary swap.
-                        // This is a heuristic to avoid the bias that
-                        // comes from systems dropping down to lower energies and not
-                        // returning because we have created new low-energy zones.
                         r0.collecting_data = true;
                         r1.collecting_data = true;
                     } else {
@@ -739,28 +628,15 @@ impl<
                     if mean_below + self.min_T < r.cutoff_energy
                         && system.energy() < r.cutoff_energy
                     {
-                        let median_below = if self.mean_for_median {
-                            mean_below
-                        } else {
-                            self.median.median()
-                        };
+                        let median_below = self.median.median();
                         self.median.reset(median_below);
-                        let mut newr = if always_balance {
-                            let mut newr = r.clone();
-                            newr.max_energy = r.cutoff_energy;
-                            newr.cutoff_energy = median_below;
-                            newr.decimate();
-                            // Ensure that neither clone can count as unique after this
-                            // if let Some((_, lme)) = &mut r.system_with_lowest_max_energy {
-                            //     *lme = Energy::new(f64::NEG_INFINITY);
-                            // }
-                            if let Some((_, lme)) = &mut newr.system_with_lowest_max_energy {
-                                *lme = Energy::new(f64::NEG_INFINITY);
-                            }
-                            newr
-                        } else {
-                            Replica::empty(r.cutoff_energy, median_below, self.rng.clone())
-                        };
+                        let mut newr = r.clone();
+                        newr.max_energy = r.cutoff_energy;
+                        newr.cutoff_energy = median_below;
+                        newr.decimate(); // this clears out the data
+                        if let Some((_, lme)) = &mut newr.system_with_lowest_max_energy {
+                            *lme = Energy::new(f64::NEG_INFINITY);
+                        }
                         newr.translation_scale =
                             r.translation_scale * 0.5f64.powf(1.0 / system.dimensionality() as f64);
                         println!(
@@ -789,41 +665,11 @@ impl<
         };
         if let Some(r) = new_replica {
             self.replicas.push(r);
-            // We now choose to throw away data, to account for the fact that
-            // we're now spending some time violating detailed balance.
-            if !self.always_balance {
-                for r in self.replicas.iter_mut() {
-                    r.decimate();
-                }
-            }
         }
 
         self.replicas
             .par_iter_mut()
             .for_each(|r| r.occasional_update());
-
-        if false && self.replicas.iter().all(|rr| rr.energy().is_some()) {
-            // Split bins only when we've got the "decks" cleared in terms of bubbles.
-            // This helps ensure we don't go overboard.
-            let need_splitting = self
-                .replicas
-                .iter()
-                .enumerate()
-                .filter(|(_, r)| {
-                    r.above_fraction() > 0.75
-                        && 2.0 / (r.unique_visitors as f64).sqrt() < r.above_fraction() - 0.75
-                })
-                .map(|(i, _)| i)
-                .collect::<Vec<_>>();
-            for i in need_splitting.iter().rev().cloned() {
-                let next = if always_balance {
-                    self.replicas[i].split_clone()
-                } else {
-                    self.replicas[i].split()
-                };
-                self.replicas.insert(i + 1, next);
-            }
-        }
 
         let mut moves = self.moves;
         let these_moves = these_moves.load(std::sync::atomic::Ordering::Relaxed);
