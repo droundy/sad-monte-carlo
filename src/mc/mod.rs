@@ -2,6 +2,7 @@
 
 pub mod binning;
 pub mod energy;
+pub mod tempering;
 pub mod energy_binning;
 pub mod energy_number;
 pub mod energy_production;
