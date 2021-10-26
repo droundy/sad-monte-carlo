@@ -283,6 +283,9 @@ impl System for Lj {
     fn dimensionality(&self) -> u64 {
         self.min_moves_to_randomize() * 3
     }
+    fn print_debug(&self) {
+        print!(" E: {:9.3}", self.E.pretty());
+    }
 }
 
 impl GrandSystem for Lj {

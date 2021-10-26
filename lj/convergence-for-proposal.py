@@ -43,24 +43,16 @@ energy_boundaries, mean_e, my_lnw, _, _ = compute.read_file('z-lj31')
 reference_S, _, _ = compute.linear_entropy(energy_boundaries, mean_e, my_lnw)
 
 fig_S, ax_S = plt.subplots(figsize=[7, 5], num='latest-entropy')
-axins_S = ax_S.inset_axes(np.array([0.22, 0.08, 0.7, 0.7]))
+axins_S = ax_S.inset_axes(np.array([0.22, 0.08, 0.7, 0.65]))
 # plt.plot(E, normalize_S(reference_S(E)), ':', label='exact', linewidth=2)
-# Cite Calvo, Doye, and Wales "Quantum partition functions from classical distributions: application fo rare-gas clusters"
-ax_S.axvline(-133.58642, color='k', linestyle=':')
-ax_S.axvline(-133.29382, color='k', linestyle=':')
-# ax_S.axvline(-133.10462, color='k', linestyle=':')
-
-axins_S.axvline(-133.58642, color='k', linestyle=':')
-axins_S.axvline(-133.29382, color='k', linestyle=':')
-# axins_S.axvline(-133.10462, color='k', linestyle=':')
 
 # heat_capacity.plot(reference_S, ax=ax, axins=axins, Tmax=Tmax)
 ax.indicate_inset_zoom(axins, edgecolor="black", label=None)
 
-ax_S.set_xlim(-133.61, -100)
-axins_S.set_xlim(-133.56, -132.8)
-ax_S.set_ylim(-500, -75)
-axins_S.set_ylim(-475, -290)
+ax_S.set_xlim(-133.9, -100)
+axins_S.set_xlim(-133.6, -132.8)
+ax_S.set_ylim(-450, -75)
+axins_S.set_ylim(-425, -290)
 ax_S.indicate_inset_zoom(axins_S, edgecolor="black", label=None)
 
 minimum_moves = 1e7
@@ -148,6 +140,15 @@ for fname in paths:
     # print(base[:base.find('-')]) #for debugging
 
 plt.figure('latest-entropy')
+# Cite Calvo, Doye, and Wales "Quantum partition functions from classical distributions: application fo rare-gas clusters"
+ax_S.axvline(-133.58642, color='r', linestyle='--', linewidth=0.5)
+ax_S.axvline(-133.29382, color='r', linestyle='--', linewidth=0.5)
+# ax_S.axvline(-133.10462, color='k', linestyle=':')
+
+axins_S.axvline(-133.58642, color='r', linestyle='--', linewidth=0.5)
+axins_S.axvline(-133.29382, color='r', linestyle='--', linewidth=0.5)
+# axins_S.axvline(-133.10462, color='k', linestyle=':')
+
 plt.xlabel(r'$E$')
 plt.ylabel(r'$S(E)$')
 plt.legend(loc='upper left')
@@ -177,4 +178,4 @@ plt.ylabel('heat capacity')
 plt.savefig('lj31-heat-capacity.svg')
 plt.savefig('lj31-heat-capacity.pdf')
 
-plt.show()
+# plt.show()
