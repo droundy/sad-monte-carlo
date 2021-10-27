@@ -127,8 +127,10 @@ pub struct Replica<S> {
     pub below_total_squared: EnergySquared,
     /// Any extra data we might want to collect, total and count
     pub above_extra: HashMap<Interned, (f64, u64)>,
-    /// The lowest `max_energy` that the system has visited, and the system itself
-    pub system_with_lowest_max_energy: (S, Energy),
+    /// The lowest `max_energy` that the system has visited
+    pub lowest_max_energy: Energy,
+    /// the system itself
+    pub system: S,
     /// The number of completely and provably indepdendent systems that have
     /// us
     pub unique_visitors: u64,
@@ -158,7 +160,8 @@ impl<S: MovableSystem + Clone> Replica<S> {
             above_extra: HashMap::new(),
 
             translation_scale: system.max_size(),
-            system_with_lowest_max_energy: (system, max_energy),
+            system,
+            lowest_max_energy: max_energy,
             unique_visitors: 1,
             collecting_data: true,
             rng,
@@ -183,7 +186,7 @@ impl<S: MovableSystem + Clone> Replica<S> {
             }
         }
         // Restart tracking unique visitors.
-        self.system_with_lowest_max_energy.1 = self.max_energy;
+        self.lowest_max_energy = self.max_energy;
         self.accepted_count = 1;
         self.rejected_count = 1;
         self.unique_visitors = 1;
@@ -192,13 +195,14 @@ impl<S: MovableSystem + Clone> Replica<S> {
         self.above_count as f64 / (self.above_count as f64 + self.below_count as f64)
     }
     fn energy(&self) -> Energy {
-        self.system_with_lowest_max_energy.0.energy()
+        self.system.energy()
     }
     fn is_a_clone(&self) -> bool {
         self.energy().value_unsafe.is_infinite()
     }
     fn run_once(&mut self, moves: u64, very_lowest_max_energy: Energy) {
-        let (system, lowest_max_energy) = &mut self.system_with_lowest_max_energy;
+        let system = &mut self.system;
+        let lowest_max_energy = &mut self.lowest_max_energy;
         if self.max_energy.value_unsafe.is_finite() {
             if let Some(e) = system.plan_move(&mut self.rng, self.translation_scale) {
                 if e < self.max_energy {
@@ -241,7 +245,7 @@ impl<S: MovableSystem + Clone> Replica<S> {
         }
     }
     fn occasional_update(&mut self) {
-        let system = &self.system_with_lowest_max_energy.0;
+        let system = &self.system;
         if self.rejected_count > 128
             && self.accepted_count > 128
             && self.max_energy.value_unsafe.is_finite()
@@ -295,7 +299,7 @@ impl<S: MovableSystem + Clone> Replica<S> {
                     / (self.above_count as f64 + self.below_count as f64)
             ),
         );
-        self.system_with_lowest_max_energy.0.print_debug();
+        self.system.print_debug();
         println!();
     }
 }
@@ -423,7 +427,7 @@ impl<
                         };
                         println!("Resuming from file {:?}", save_as);
                         for r in s.replicas.iter_mut() {
-                            r.system_with_lowest_max_energy.0.update_caches();
+                            r.system.update_caches();
                         }
                         s.report.update_from(_mc._report);
                         s.save.update_from(_mc._save);
@@ -500,10 +504,7 @@ impl<
     pub fn run_once(&mut self) {
         let moves = self.moves;
         // The unwrap below is safe because the unbounded high energy bin will always be occupied.
-        let steps = self.replicas[0]
-            .system_with_lowest_max_energy
-            .0
-            .min_moves_to_randomize();
+        let steps = self.replicas[0].system.min_moves_to_randomize();
 
         let these_moves = std::sync::atomic::AtomicU64::new(0);
 
@@ -536,20 +537,12 @@ impl<
                 assert_eq!(r0.cutoff_energy, r1.max_energy);
                 // We will swap them if both systems can go into the lower bin.
                 if r0.energy() < r1.max_energy {
-                    if r0.max_energy.value_unsafe.is_finite() {
-                        std::mem::swap(
-                            &mut r0.system_with_lowest_max_energy,
-                            &mut r1.system_with_lowest_max_energy,
-                        );
-                        // We start collecting data after the zone has done an ordinary swap.
-                        r0.collecting_data = true;
-                        r1.collecting_data = true;
-                    } else {
-                        // If the higher-energy bin is unbounded, then leave the existing system
-                        // there, since it'll get randomized in a moment anyhow.
-                        r1.system_with_lowest_max_energy = r0.system_with_lowest_max_energy.clone();
-                    }
-                    if r1.system_with_lowest_max_energy.1 > r1.max_energy {
+                    std::mem::swap(&mut r0.system, &mut r1.system);
+                    std::mem::swap(&mut r0.lowest_max_energy, &mut r1.lowest_max_energy);
+                    // We start collecting data after the zone has done an ordinary swap.
+                    r0.collecting_data = true;
+                    r1.collecting_data = true;
+                    if r1.lowest_max_energy > r1.max_energy {
                         // if r1.collecting_data && !any_missing {
                         //     // Only increment the number of unique visitors if we're
                         //     // currently actually collecting statistics.  This may
@@ -561,7 +554,7 @@ impl<
                         // know how many there have been, and any visitors that pass by while
                         // we aren't collecting data will probably come back again later.
                         r1.unique_visitors += 1;
-                        r1.system_with_lowest_max_energy.1 = r1.max_energy;
+                        r1.lowest_max_energy = r1.max_energy;
                     }
                 }
             }
@@ -580,22 +573,21 @@ impl<
             // be lower than min_T below that cutoff (so we aren't at lower
             // microcanonical temperature than min_T), the system energy must be
             // below the median so that we have a to put into our new bin.
-            let (system, lowest_energy_seen) = &r.system_with_lowest_max_energy;
             if r.unique_visitors >= independent_systems_before_new_bin
                     // The following ensures we don't end up cloning a clone.
-                    && *lowest_energy_seen == r.max_energy
+                    && r.lowest_max_energy == r.max_energy
             {
                 let mean_below = r.below_total / r.below_count as f64;
-                if mean_below + self.min_T < r.cutoff_energy && system.energy() < r.cutoff_energy {
+                if mean_below + self.min_T < r.cutoff_energy && r.energy() < r.cutoff_energy {
                     let median_below = self.median.median();
                     self.median.reset(median_below);
                     let mut newr = r.clone();
                     newr.max_energy = r.cutoff_energy;
                     newr.cutoff_energy = median_below;
                     newr.decimate(); // this clears out the data
-                    newr.system_with_lowest_max_energy.1 = Energy::new(f64::NEG_INFINITY);
+                    newr.lowest_max_energy = Energy::new(f64::NEG_INFINITY);
                     newr.translation_scale =
-                        r.translation_scale * 0.5f64.powf(1.0 / system.dimensionality() as f64);
+                        r.translation_scale * 0.5f64.powf(1.0 / r.system.dimensionality() as f64);
                     println!(
                         "      New bin: {:5} with mean {:5} and max {:.5} with {} unique",
                         median_below.pretty(),
