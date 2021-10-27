@@ -3,7 +3,7 @@
 import numpy as np
 from subprocess import run
 
-run(['cargo', 'build', '--release', '--bin',
+run(['cargo', 'build', '--target=x86_64-unknown-linux-musl', '--release', '--bin',
      'replicas', '--bin', 'histogram'], check=True)
 
 max_iter_default = 1e12
@@ -22,7 +22,7 @@ def run_replicas(name, max_iter=max_iter_default, min_T=0.001, max_independent_s
     if max_independent_samples is not None:
         samples = ['--max-independent-samples', str(max_independent_samples)]
     rq(name=save,
-       cmd=['../target/release/replicas']+systems[name]+movie_args
+       cmd=['../target/x86_64-unknown-linux-musl/release/replicas']+systems[name]+movie_args
         + f'--save-time 0.5 --save-as {save}.cbor'.split()
         + extraflags.split()
         + f'--max-iter {max_iter} --min-T {min_T}'.split()
@@ -34,7 +34,7 @@ def run_replicas(name, max_iter=max_iter_default, min_T=0.001, max_independent_s
 #     return f'../target/release/binning --save-time 0.5 --histogram-bin {de} --translation-scale {translation_scale}'.split()+movie_args+systems[name]
 
 def histogram(name, de, translation_scale):
-    return f'../target/release/histogram --save-time 0.5 --energy-bin {de} --translation-scale {translation_scale}'.split()+movie_args+systems[name]
+    return f'../target/x86_64-unknown-linux-musl/release/histogram --save-time 0.5 --energy-bin {de} --translation-scale {translation_scale}'.split()+movie_args+systems[name]
 
 def run_sad(name, de, max_iter=max_iter_default, min_T=0.001, max_E=None, translation_scale=0.05):
     de = str(de)
