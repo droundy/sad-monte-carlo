@@ -153,7 +153,7 @@ plt.xlabel(r'$E$')
 plt.ylabel(r'$S(E)$')
 plt.legend(loc='upper left')
 plt.tight_layout()
-plt.savefig('lj31-entropy.pdf')
+plt.savefig('lj31-entropy.pdf', transparent=True)
 
 plt.figure('convergence_heat_capacity')
 plt.xlabel(r'# of Moves')
