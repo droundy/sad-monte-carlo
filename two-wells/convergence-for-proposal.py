@@ -199,7 +199,7 @@ axins_S.axvline(-1, color='r', linestyle='--', linewidth=0.5)
 plt.xlabel(r'$E$')
 plt.ylabel(r'$S(E)$')
 axins_S.legend()#bbox_to_anchor = [0.7, 0.])
-plt.savefig(system.system+'-entropy.pdf')
+plt.savefig(system.system+'-entropy.pdf', transparent=True)
 
 plt.figure('fraction-well')
 plt.xlabel(r'E')
@@ -226,7 +226,7 @@ y = 1/np.sqrt(x)
 for i in range(40):
     plt.loglog(x, y*10**(4*i/5-3), color='g', alpha=0.25)
 plt.savefig(system.system+'-convergence.svg')
-plt.savefig(system.system+'-convergence.pdf')
+plt.savefig(system.system+'-convergence.pdf', transparent=True)
 
 plt.figure('convergence_heat_capacity')
 plt.xlabel(r'# of Moves')
@@ -254,4 +254,4 @@ plt.ylabel('heat capacity')
 plt.savefig(system.system+'-heat-capacity.svg')
 plt.savefig(system.system+'-heat-capacity.pdf')
 
-plt.show()
+# plt.show()
