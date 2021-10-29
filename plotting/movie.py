@@ -58,7 +58,7 @@ def heat_capacity(T, S_func):
     P_boundaries = np.exp(boltz_arg_boundaries - boltz_arg_boundaries.max())
 
     if (P_boundaries > 0).any():
-        E = np.linspace(6*mean_e[1:-1].min() - 5*energy_boundaries[-1], energy_boundaries[P_boundaries > 0].max(), 1000)
+        E = np.linspace(6*mean_e[1:-1].min() - 5*energy_boundaries[-1], energy_boundaries[P_boundaries > 0].max(), 10000)
         S = S_func(E)
         for i in range(len(T)):
             boltz_arg = S - E/T[i]
@@ -259,7 +259,7 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         # plt.plot(E, entropy_here, label=beautiful_name(f))
         plt.plot(eee, sss - offset, '.-', label=beautiful_name(f), markersize=4)
         plt.xlim(E.min(), E.max())
-        if not np.any(np.isnan(entropy_here)):
+        if not np.any(np.isnan(entropy_here)) and np.any(eee <= E.max()) and np.any(eee >= E.min()):
             ymin = min(ymin, sss[eee >= E.min()].min() - offset)
             ymax = max(ymax, sss[eee <= E.max()].max() - offset)
         #     plt.ylim(entropy_here.min() - offset, entropy_here.max() - offset)
