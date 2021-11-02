@@ -12,15 +12,13 @@ use std::default::Default;
 /// The parameters needed to configure a simulation.
 #[derive(Debug, AutoArgs, Clone)]
 pub struct MCParams {
-    /// The lowest temperature of interest
-    min_T: Energy,
+    /// A temperature of interest
+    T: Vec<f64>,
     /// The seed for the random number generator.
     pub seed: Option<u64>,
-    /// The number of independent systems required before creating a new bin (default 64).
-    pub independent_systems_before_new_bin: Option<u64>,
     /// report input
     pub _movies: plugin::MovieParams,
-    /// report input
+    /// saving
     pub _save: plugin::SaveParams,
     /// report input
     pub _report: plugin::ReportParams,
@@ -29,9 +27,8 @@ pub struct MCParams {
 impl Default for MCParams {
     fn default() -> Self {
         MCParams {
-            min_T: 0.2 * units::EPSILON,
+            T: vec![0.2],
             seed: None,
-            independent_systems_before_new_bin: None,
             _save: plugin::SaveParams::default(),
             _movies: plugin::MovieParams::default(),
             _report: plugin::ReportParams::default(),
@@ -92,7 +89,7 @@ impl<S: MovableSystem> Replica<S> {
             let e = self.system.energy();
             // collect data
             self.total_energy += e;
-            self.total_energy_squared += e*e;
+            self.total_energy_squared += e * e;
         }
     }
     fn printme(&self) {
@@ -118,17 +115,14 @@ impl<S: MovableSystem> Replica<S> {
 /// A simulation with many replicas
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MC<S> {
-    /// The minimum temperature of interest
-    min_T: Energy,
+    /// The temperatures of interest
+    T: Vec<Energy>,
     /// The random number generator.
     pub rng: crate::rng::MyRng,
     /// Where to save the resume file.
     pub save_as: ::std::path::PathBuf,
     /// The number of MC moves we have done
     pub moves: u64,
-    /// The number of independent systems required before we create a new bin
-    #[serde(default)]
-    pub independent_systems_before_new_bin: u64,
 
     /// The relative sizes of the bins
     pub replicas: Vec<Replica<S>>,
@@ -152,7 +146,7 @@ impl<
 {
     fn from_params(params: MCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
         let mut rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
-        let min_T = params.min_T;
+        let T = params.T.iter().cloned().map(|e| Energy::new(e)).collect();
 
         const MAX_INIT: usize = 1 << 15; // Number of energies to use in computing the first couple of quantiles.
 
@@ -180,12 +174,9 @@ impl<
         ];
         rng.jump();
         MC {
-            min_T,
+            T,
             replicas,
             moves: 0,
-            independent_systems_before_new_bin: params
-                .independent_systems_before_new_bin
-                .unwrap_or(64),
 
             rng,
             save_as: save_as,
