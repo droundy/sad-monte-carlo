@@ -48,7 +48,7 @@ def run_sad(name, de, max_iter=max_iter_default, min_T=0.001, max_E=None, transl
     if max_E is not None:
         max_E_args = f'--max-allowed-energy {max_E}'.split()
     rq(name=save,
-       cmd=histogram(name, de, translation_scale=translation_scale)
+       cmd=histogram(name, de, translation_scale=translation_scale, seed = seed_str)
         + f'--save-as {save}.cbor'.split()
         + f'--max-iter {max_iter} --sad-min-T {min_T}'.split()
         + max_E_args,
