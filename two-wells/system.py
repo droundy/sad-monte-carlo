@@ -46,7 +46,7 @@ systems = {
         'min_T': 0.001,
         'min_E': -1.08
     },
-    'T_trans_1': {
+    'T-trans-1': {
         'h_small': 1.1,
         'R_small': 0.5,
         'n': 12,
