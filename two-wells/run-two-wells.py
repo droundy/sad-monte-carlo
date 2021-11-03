@@ -38,12 +38,12 @@ def histogram(name, de, translation_scale, seed_str):
 
 def run_sad(name, de, max_iter=max_iter_default, min_T=0.001, max_E=None, translation_scale=0.05, seed=None, extraname=''):
     de = str(de)
-    if seed is not None:
+    if seed is None:
         seed_str = ''
         save = f'sad-{name}-{de}+{translation_scale}'
     else:
         seed_str = f'--seed {seed}'
-        save = f'sad-{name}-{seed}-{de}+{translation_scale}'
+        save = f'sad+{name}+seed-{seed}+de-{de}+step-{translation_scale}'
     max_E_args = []
     if max_E is not None:
         max_E_args = f'--max-allowed-energy {max_E}'.split()
