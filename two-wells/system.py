@@ -46,7 +46,7 @@ systems = {
         'min_T': 0.001,
         'min_E': -1.08
     },
-    'T-0.01': {
+    'T_trans_1': {
         'h_small': 1.1,
         'R_small': 0.5,
         'n': 12,
@@ -58,7 +58,7 @@ systems = {
 if len(sys.argv) == 2:
     system = sys.argv[1]
 else:
-    system = 'T-0.01'
+    system = 'T_trans_1'
 
 min_T = systems[system]['min_T']
 min_E = systems[system]['min_E']
