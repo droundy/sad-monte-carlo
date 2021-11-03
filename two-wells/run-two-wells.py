@@ -102,8 +102,8 @@ systems = {
     'lj31-like': '--two-wells-N 90 --two-wells-h2-to-h1 1.005 --two-wells-barrier-over-h1 0.03 --two-wells-r2 0.75'.split(),
 
     #For the thesis
-    'T-trans-1+1e-1': f'--two-wells-N {T_trans_1_n} --two-wells-h2-to-h1 {T_trans_1_h2} --two-wells-barrier-over-h1 0.1 --two-wells-r2 {T_trans_1_r2}'.split(),
-    'T-trans-1+0': f'--two-wells-N {T_trans_1_n} --two-wells-h2-to-h1 {T_trans_1_h2} --two-wells-barrier-over-h1 0 --two-wells-r2 {T_trans_1_r2}'.split(),
+    'T-trans-1+barrier-1e-1': f'--two-wells-N {T_trans_1_n} --two-wells-h2-to-h1 {T_trans_1_h2} --two-wells-barrier-over-h1 0.1 --two-wells-r2 {T_trans_1_r2}'.split(),
+    'T-trans-1+barrier-0': f'--two-wells-N {T_trans_1_n} --two-wells-h2-to-h1 {T_trans_1_h2} --two-wells-barrier-over-h1 0 --two-wells-r2 {T_trans_1_r2}'.split(),
 
     'easier': '--two-wells-N 9 --two-wells-h2-to-h1 1.1347 --two-wells-barrier-over-h1 0.5 --two-wells-r2 0.5'.split(),
     'easier-all-barrier': '--two-wells-N 9 --two-wells-h2-to-h1 1.1347 --two-wells-barrier-over-h1 1 --two-wells-r2 0.5'.split(),
@@ -123,7 +123,7 @@ seeds = [1,12,123,1234,12345,123456,1234567,12345678]
 #             extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
 
 for seed in seeds:
-    for s in ['T-trans-1+0', 'T-trans-1+1e-1']:
+    for s in ['T-trans-1+barrier-0', 'T-trans-1+barrier-1e-1']:
         for de in [0.00001, 0.0001]:
             for translation_scale in [1e-4, 1e-3, 0.01]:
                     run_sad(name=s, min_T=system.systems['T_trans_1']['min_T'], max_iter=1e12, translation_scale=translation_scale, de=de, seed=seed)
