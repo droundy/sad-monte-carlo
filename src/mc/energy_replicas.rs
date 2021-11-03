@@ -198,7 +198,7 @@ impl<S: MovableSystem + Clone> Replica<S> {
         self.system.energy()
     }
     fn is_a_clone(&self) -> bool {
-        self.energy().value_unsafe.is_infinite()
+        self.lowest_max_energy.value_unsafe.is_infinite()
     }
     fn run_once(&mut self, moves: u64, very_lowest_max_energy: Energy) {
         let system = &mut self.system;
