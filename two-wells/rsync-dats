@@ -2,4 +2,4 @@
 
 set -ev
 
-rsync -avz --exclude '*.cbor' bingley.physics.oregonstate.edu:/home/sprueilh/sad-monte-carlo/two-wells/{z,sad,wl,itwl}-* .
+rsync -avz --exclude '*.cbor' bingley.physics.oregonstate.edu:/home/sprueilh/sad-monte-carlo/two-wells/{z,sad,wl,itwl}-*seed* .
