@@ -11,7 +11,7 @@ T_peak = find_phase_transition.actual_T
 
 def C(T, S):#T is a temperature and S is an entropy function
     # start = time.process_time()
-    E = np.linspace(-system.h_small, 0, 5000)
+    E = np.linspace(-system.h_small, 0, 1000)
     E = 0.5*(E[1:] + E[:-1])
     dE = E[1] - E[0]
 
@@ -101,9 +101,9 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
 #Testing
 if __name__ == "__main__":
     
-    t_low = np.linspace(0.001,0.002,50)
-    t_peak = np.linspace(0.002,0.009,150)
-    t_high = np.linspace(0.009,0.1,50)
+    t_low = np.linspace(0.001,0.002,10)
+    t_peak = np.linspace(0.002,0.009,50)
+    t_high = np.linspace(0.009,0.1,10)
     try:
         c_low = np.loadtxt('cv_low_saved.txt')
     except:

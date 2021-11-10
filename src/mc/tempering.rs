@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::system::*;
+use dimensioned::Dimensionless;
 use rayon::prelude::*;
 
 use rand::{Rng, SeedableRng};
@@ -80,13 +81,18 @@ impl<S: MovableSystem> Replica<S> {
     }
     fn run_once(&mut self) {
         if let Some(e) = self.system.plan_move(&mut self.rng, self.translation_scale) {
-            if e < Energy::new(0.0) {
+            let beta_delta_e = *((e - self.energy())/self.T).value();
+            if beta_delta_e < 0.0 {
+                // always allow energy to drop
                 self.system.confirm();
-                self.accepted_count += 1;
+                self.accepted_count += 1;//Probably not right?
+            } else if self.rng.gen::<f64>() < (-beta_delta_e).exp() {
+                self.system.confirm();
+                self.accepted_count += 1;//Probably not right?
             } else {
                 self.rejected_count += 1;
             }
-            let e = self.system.energy();
+            let e = self.energy();
             // collect data
             self.total_energy += e;
             self.total_energy_squared += e * e;
