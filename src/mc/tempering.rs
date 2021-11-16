@@ -82,13 +82,9 @@ impl<S: MovableSystem> Replica<S> {
     fn run_once(&mut self) {
         if let Some(e) = self.system.plan_move(&mut self.rng, self.translation_scale) {
             let beta_delta_e = *((e - self.energy())/self.T).value();
-            if beta_delta_e < 0.0 {
-                // always allow energy to drop
+            if beta_delta_e < 0.0 || self.rng.gen::<f64>() < (-beta_delta_e).exp() {
                 self.system.confirm();
-                self.accepted_count += 1;//Probably not right?
-            } else if self.rng.gen::<f64>() < (-beta_delta_e).exp() {
-                self.system.confirm();
-                self.accepted_count += 1;//Probably not right?
+                self.accepted_count += 1;
             } else {
                 self.rejected_count += 1;
             }
