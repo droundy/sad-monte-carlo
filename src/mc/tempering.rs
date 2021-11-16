@@ -175,8 +175,8 @@ impl<
             println!("  {:3}: {}", i, e.pretty());
         }
         let mut replicas = Vec::<Replica<S>>::with_capacity(T.len());
-        for t in T{
-            replicas.push(Replica::new(t, system, rng.clone()));
+        for t in T.iter().copied() {
+            replicas.push(Replica::new(t, system.clone(), rng.clone()));
         }
             
         rng.jump();
