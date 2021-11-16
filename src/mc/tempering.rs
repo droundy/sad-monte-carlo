@@ -152,7 +152,7 @@ impl<
 {
     fn from_params(params: MCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
         let mut rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
-        let T = params.T.iter().cloned().map(|e| Energy::new(e)).collect();
+        let T:Vec<Energy> = params.T.iter().cloned().map(|e| Energy::new(e)).collect();
 
         const MAX_INIT: usize = 1 << 15; // Number of energies to use in computing the first couple of quantiles.
 
@@ -174,10 +174,11 @@ impl<
         for (i, e) in energies.iter().enumerate() {
             println!("  {:3}: {}", i, e.pretty());
         }
-        let replicas = vec![
-            Replica::new(Energy::new(std::f64::INFINITY), high_system, rng.clone()),
-            Replica::new(energies[energies.len() / 2], system, rng.clone()),
-        ];
+        let mut replicas = Vec::<Replica<S>>::with_capacity(T.len());
+        for t in T{
+            replicas.push(Replica::new(t, system, rng.clone()));
+        }
+            
         rng.jump();
         MC {
             T,
@@ -307,9 +308,12 @@ impl<
             // for chunk in iterator {
             if let [r0, r1] = chunk {
                 // We will swap them if both systems can go into the lower bin.
-                if r0.energy() < r1.energy() {
+                let de_db = *((r0.energy() - r1.energy())*(1./r0.T - 1./r1.T)).value();
+                if de_db >= 0. {
                     std::mem::swap(&mut r0.system, &mut r1.system);
-                }
+                } else if r1.rng.gen::<f64>() < de_db.exp(){
+                    std::mem::swap(&mut r0.system, &mut r1.system)
+                }//else don't swap
             }
         });
 
