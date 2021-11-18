@@ -82,13 +82,9 @@ impl<S: MovableSystem> Replica<S> {
     fn run_once(&mut self) {
         if let Some(e) = self.system.plan_move(&mut self.rng, self.translation_scale) {
             let beta_delta_e = *((e - self.energy())/self.T).value();
-            if beta_delta_e < 0.0 {
-                // always allow energy to drop
+            if beta_delta_e < 0.0 || self.rng.gen::<f64>() < (-beta_delta_e).exp() {
                 self.system.confirm();
-                self.accepted_count += 1;//Probably not right?
-            } else if self.rng.gen::<f64>() < (-beta_delta_e).exp() {
-                self.system.confirm();
-                self.accepted_count += 1;//Probably not right?
+                self.accepted_count += 1;
             } else {
                 self.rejected_count += 1;
             }
@@ -175,8 +171,8 @@ impl<
             println!("  {:3}: {}", i, e.pretty());
         }
         let mut replicas = Vec::<Replica<S>>::with_capacity(T.len());
-        for t in T{
-            replicas.push(Replica::new(t, system, rng.clone()));
+        for t in T.iter().copied() {
+            replicas.push(Replica::new(t, system.clone(), rng.clone()));
         }
             
         rng.jump();
@@ -309,10 +305,8 @@ impl<
             if let [r0, r1] = chunk {
                 // We will swap them if both systems can go into the lower bin.
                 let de_db = *((r0.energy() - r1.energy())*(1./r0.T - 1./r1.T)).value();
-                if de_db >= 0. {
+                if de_db >= 0. || r1.rng.gen::<f64>() < de_db.exp() {
                     std::mem::swap(&mut r0.system, &mut r1.system);
-                } else if r1.rng.gen::<f64>() < de_db.exp(){
-                    std::mem::swap(&mut r0.system, &mut r1.system)
                 }//else don't swap
             }
         });
