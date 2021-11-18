@@ -71,6 +71,8 @@ R_big = 1.
 def V(n):
     return np.pi**(n/2)/(spl.gamma(n/2+1))
 
+def name():
+    return system
 
 x_of_cylinder = np.sqrt(R_big**2 - R_small**2)
 total_volume = (0.5*V(n)*R_small**n # the small hemisphere
