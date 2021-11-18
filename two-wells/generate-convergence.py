@@ -28,7 +28,7 @@ def normalize_S(S):
 
 correct_S = normalize_S(system.S(E))
 
-correct_S_for_err = correct_S[indices_for_err]
+correct_S_for_err = normalize_S(system.S(E[indices_for_err]))
 
 np.savez(system.name(), E=E, correct_S=normalize_S(system.S(E)), correct_S_for_err=correct_S_for_err)
 
@@ -44,10 +44,12 @@ for fname in sorted(glob.glob('*'+system.system+'*-lnw.dat')):
         else:
             paths.append(fname)
 
-for fname in paths:
+def generate_npz(fname):
     print(fname)
     start_fname = time.process_time()
     base = fname[:-8]
+    if os.path.exists(fname+'.npz'):
+        return
     method = base[:base.find('-')]
 
     energy_boundaries, mean_e, my_lnw, my_system, p_exc = compute.read_file(base)
@@ -74,7 +76,7 @@ for fname in paths:
             energy_boundaries, mean_e, my_lnw, my_system, p_exc = compute.read_file(frame_base)
             l_function, eee, sss = compute.linear_entropy(energy_boundaries, mean_e, my_lnw)
             moves.append(frame_moves)
-            err = np.max(np.abs(normalize_S(l_function(E))[indices_for_err] - correct_S_for_err))
+            err = np.max(np.abs(normalize_S(l_function(E[indices_for_err])) - correct_S_for_err))
             errors.append(err)
         except:
             pass
@@ -87,3 +89,9 @@ for fname in paths:
                             S=normalize_S(l_function(E)),
                             moves=moves,
                             errors_S=errors)
+
+from multiprocessing import Pool
+
+if __name__ == '__main__':
+    with Pool(7) as p:
+        p.map(generate_npz, list(paths))
