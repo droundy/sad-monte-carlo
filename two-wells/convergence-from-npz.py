@@ -10,13 +10,21 @@ highest_interesting_E = -0.5
 
 exact = np.load(system.name()+'.npz')
 correct_S=exact['correct_S']
+E=exact['E']
+plt.plot
 paths = glob.glob('*.npz')
+
+plt.figure('latest-entropy')
+plt.plot(E, correct_S, ':', label='exact', linewidth=2)
 
 
 for fname in paths:
-    if ['sad', 'z', 'wl', 'itwl'] in fname:
+    if any( [method in fname[:-3] for method in ['sad', 'z', 'wl', 'itwl']] ) and 'seed-1+' in fname:
         base = fname[:-4]
-        method = base[:base.find('-')]
+        print(base)
+        de_ind = base.rfind('de')
+        precision = base[de_ind:]
+        method = base[:base.find('+')]
         data = np.load(fname)
 
         E = data['E']
@@ -26,7 +34,6 @@ for fname in paths:
         hist=data['hist']
 
         plt.figure('fraction-well')
-        mean_which = np.loadtxt(f'{base}-which.dat')
         plt.plot(mean_e, mean_which, label=base)
     
 
@@ -42,16 +49,16 @@ for fname in paths:
         plt.figure('latest-entropy')
 
         if method in {'wl','itwl','sad'}:
-            plt.plot(E, S, label=base, marker = styles.marker(base),
-                    color = styles.color(base), linestyle= styles.linestyle(base), markevery=100)
+            plt.plot(E, S, label=precision, marker = styles.marker(base),
+                    color = styles.color(base), linestyle= styles.linestyle(base), markevery=50)
         elif method == 'z':
-            plt.plot(E, S, label=base, color = styles.color(base), linestyle= styles.linestyle(base))
+            plt.plot(E, S, label=precision, color = styles.color(base), linestyle= styles.linestyle(base))
 
         plt.figure('convergence')
         if method in {'wl','itwl','sad'}:
-            plt.loglog(moves, errors_S, label=base, marker = styles.marker(base), color = styles.color(base), linestyle= styles.linestyle(base), markevery=2)
+            plt.loglog(moves, errors_S, label=precision, marker = styles.marker(base), color = styles.color(base), linestyle= styles.linestyle(base), markevery=2)
         elif method == 'z':
-            plt.loglog(moves, errors_S, label=base, color = styles.color(base), linestyle= styles.linestyle(base), linewidth = 3)
+            plt.loglog(moves, errors_S, label=precision, color = styles.color(base), linestyle= styles.linestyle(base), linewidth = 3)
 
         
 
