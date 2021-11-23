@@ -52,7 +52,6 @@ def linestyle(base):
         return ':'
     barr_ind = base.find('barrier')
     barrier = base[barr_ind:barr_ind+base[barr_ind:].find('+')]
-    print(barrier)
     if barrier in _linestyles:
         return _linestyles[barrier]
     else:
