@@ -17,21 +17,64 @@ paths = glob.glob('*.npz')
 plt.figure('latest-entropy')
 plt.plot(E, correct_S, ':', label='exact', linewidth=2)
 
+#Combines two strings, truncating the longer one
+#to the length of the shorter one and adding them
+def combine_data(a,b):
+    if type(b) is int:
+        return a
+    elif type(a) is int:
+        return b
+    elif len(a) < len(b):
+        return combine_data(b,a)
+    elif len(a) == len(b):
+        return a+b
+    else:
+        return a[:len(b)] + b
 
 for fname in paths:
     if any( [method in fname[:-3] for method in ['sad', 'z', 'wl', 'itwl']] ) and 'seed-1+' in fname:
-        base = fname[:-4]
-        print(base)
-        de_ind = base.rfind('de')
-        precision = base[de_ind:]
-        method = base[:base.find('+')]
-        data = np.load(fname)
+        tail = fname[:fname.find('seed')]
+        b = fname[fname.find('seed'):]
+        i= fname.find('seed') + b.find('+')
+        front = fname[i:]
 
-        E = data['E']
+        mean_e=0
+        mean_which=0
+        hist=0
+        S=0
+        moves=0
+        errors_S=0
 
-        mean_e = data['mean_e']
-        mean_which=data['mean_which']
-        hist=data['hist']
+
+        i=0
+        for seed in ['1','12','123','1234','12345','123456','1234567','12345678']:
+            print(fname)
+            base = fname[:-4]
+            i+=1
+            fname = tail + 'seed-' + seed + front
+            
+            de_ind = base.rfind('de')
+            precision = base[de_ind:]
+            method = base[:base.find('+')]
+            data = np.load(fname)
+
+            mean_e=combine_data(mean_e,data['mean_e'])
+            mean_which=combine_data(mean_which,data['mean_which'])
+            try:
+                hist=combine_data(hist,data['hist'])
+            except:
+                hist=None
+            S=combine_data(S,data['S'])
+            moves=combine_data(moves,data['moves'])
+            errors_S=combine_data(errors_S,data['errors_S'])
+
+        #finish average
+        mean_e=mean_e/i
+        mean_which=mean_which/i
+        hist=hist/i
+        S=S/i
+        moves=moves/i
+        errors_S=errors_S/i
 
         plt.figure('fraction-well')
         plt.plot(mean_e, mean_which, label=base)
@@ -40,11 +83,6 @@ for fname in paths:
         if hist is not None:
             plt.figure('histogram')
             plt.plot(mean_e, hist, label=base)
-
-
-        S=data['S']
-        moves=data['moves']
-        errors_S=data['errors_S']
 
         plt.figure('latest-entropy')
 

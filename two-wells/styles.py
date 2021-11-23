@@ -29,14 +29,15 @@ def marker(base):
 
 
 def color(base):
-    if base is None:
-        return ':'
-    barr_ind = base.find('barrier')
-    barrier = base[barr_ind:barr_ind+base[barr_ind:].find('+')]
-    if barrier in _colors:
-        return _colors[barrier]
-    else:
-        return None
+    return None
+    # if base is None:
+    #     return ':'
+    # barr_ind = base.find('barrier')
+    # barrier = base[barr_ind:barr_ind+base[barr_ind:].find('+')]
+    # if barrier in _colors:
+    #     return _colors[barrier]
+    # else:
+    #     return None
     # if base is None:
     #     return 'tab:cyan'
     # method = base[:base.find('+')]
@@ -51,6 +52,7 @@ def linestyle(base):
         return ':'
     barr_ind = base.find('barrier')
     barrier = base[barr_ind:barr_ind+base[barr_ind:].find('+')]
+    print(barrier)
     if barrier in _linestyles:
         return _linestyles[barrier]
     else:
