@@ -125,10 +125,6 @@ pub struct MC<S> {
     pub save_as: ::std::path::PathBuf,
     /// The number of MC moves we have done
     pub moves: u64,
-    /// The number of attempted swaps
-    pub swaps_attempted: u64,
-    /// The number of accepted swaps
-    pub swaps_accepted: u64,
 
     /// The relative sizes of the bins
     pub replicas: Vec<Replica<S>>,
@@ -184,8 +180,6 @@ impl<
             T,
             replicas,
             moves: 0,
-            swaps_attempted: 0,
-            swaps_accepted: 0,
 
             rng,
             save_as: save_as,
@@ -310,11 +304,9 @@ impl<
             // for chunk in iterator {
             if let [r0, r1] = chunk {
                 // We will swap them if both systems can go into the lower bin.
-                swap_attempted += 1;
                 let de_db = *((r0.energy() - r1.energy())*(1./r0.T - 1./r1.T)).value();
                 if de_db >= 0. || r1.rng.gen::<f64>() < de_db.exp() {
                     std::mem::swap(&mut r0.system, &mut r1.system);
-                    swap_accepted += 1;
                 }//else don't swap
             }
         });
