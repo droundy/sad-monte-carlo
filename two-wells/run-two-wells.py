@@ -124,9 +124,9 @@ seeds = [1,12,123,1234,12345,123456,1234567,12345678]
 
 for seed in seeds:
     for s in ['T-trans-1+barrier-0', 'T-trans-1+barrier-1e-1']:
-        for de in [0.00001, 0.0001]:
-            for translation_scale in [1e-4, 1e-3, 0.01]:
-                    run_sad(name=s, min_T=system.systems['T-trans-1']['min_T'], max_iter=1e12, translation_scale=translation_scale, de=de, seed=seed)
+        for de in [0.00001]:#, 0.0001]:
+            for translation_scale in [0.01]:#[1e-4, 1e-3, 0.01]:
+                    run_sad(name=s, min_T=system.systems['T-trans-1']['min_T'], max_iter=1e13, translation_scale=translation_scale, de=de, seed=seed)
                 
                 ## UNCOMMENT THESE WHEN YOU KNOW WHICH TRANSLATION SCALE TO USE ##
 
