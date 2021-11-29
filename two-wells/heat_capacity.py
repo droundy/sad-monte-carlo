@@ -126,7 +126,6 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
 # temperature and heat capacity arrays
 
 def data(S, fname=None, Tmax=0.25):
-    timer = Timer(f'heat_capacity.plot {fname}')
     T_width = T_peak/2 # this is just a guess
     t_low = np.linspace(T_peak/10,T_peak - T_width,10)
     t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
