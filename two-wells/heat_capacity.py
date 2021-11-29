@@ -72,11 +72,11 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
 
     # print('peak should be at', T_peak)
     T_width = T_peak/2 # this is just a guess
-    t_low = np.linspace(T_peak/10,T_peak - T_width,50)
+    t_low = np.linspace(T_peak/10,T_peak - T_width,10)
     t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
     axins.set_xlim(T_peak - T_width, T_peak + T_width)
     axins.set_ylim(0, 119)
-    t_high = np.linspace(T_peak + T_width,Tmax, 50)
+    t_high = np.linspace(T_peak + T_width,Tmax, 10)
     try:
         c_low = np.loadtxt(f'{base}-cv_low_saved.txt')
     except:
@@ -129,7 +129,7 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
 if __name__ == "__main__":
     
     t_low = np.linspace(0.001,0.002,10)
-    t_peak = np.linspace(0.002,0.009,10)
+    t_peak = np.linspace(0.002,0.009,50)
     t_high = np.linspace(0.009,0.1,10)
     try:
         c_low = np.loadtxt('cv_low_saved.txt')
