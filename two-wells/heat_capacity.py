@@ -131,12 +131,15 @@ def data(S, fname=None, Tmax=0.25):
     t_low = np.linspace(T_peak/10,T_peak - T_width,10)
     t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
     t_high = np.linspace(T_peak + T_width,Tmax, 10)
+    t = np.concatenate( (t_low,t_peak,t_high) )
+    
 
     c_low = np.array([C(T,S) for T in t_low])
     c_peak = np.array([C(T,S) for T in t_peak])
     c_high = np.array([C(T,S) for T in t_high])
+    c = np.concatenate( (c_low,c_peak,c_high) )
 
-    return (np.concatenate( (t_low,T_peak,t_high) ), np.concatenate( (c_low,c_peak,c_high) ))
+    return [t, c]
 
 
 
