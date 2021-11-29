@@ -34,6 +34,33 @@ def C(T, S):#T is a temperature and S is an entropy function
     # print('C took', time.process_time() - start)
     return (avg_E_squared - avg_E**2 ) / T**2
 
+def C_vector(T, S):#T is an array of temperatures and S is an entropy function
+    # start = time.process_time()
+    E = np.linspace(-system.h_small, 0, 1000)
+    E = 0.5*(E[1:] + E[:-1])
+    dE = E[1] - E[0]
+
+    def normalize_S(S):
+        S = S - max(S)
+        total = np.sum(np.exp(S)*dE)
+        return S - np.log(total)
+
+    S = S(E) # normalize_S(S(E))
+    E_integrate = np.tile(E, (len(T),1))
+
+    S_minus_E = np.array([S-E/t for t in T])
+    M = np.max(S_minus_E, axis=1)
+    print(M.shape)
+
+    Z = np.sum(np.exp(S_minus_E-M), axis=1)*dE
+
+    avg_E = np.sum(np.exp(S_minus_E-M) * E, axis=1) * dE / Z
+
+    avg_E_squared = np.sum(np.exp(S_minus_E-M) * E**2, axis=1) * dE / Z
+
+    # print('C took', time.process_time() - start)
+    return (avg_E_squared - avg_E**2 ) / T**2
+
 def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
     timer = Timer(f'heat_capacity.plot {fname}')
     if fname is not None:
@@ -102,7 +129,7 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
 if __name__ == "__main__":
     
     t_low = np.linspace(0.001,0.002,10)
-    t_peak = np.linspace(0.002,0.009,50)
+    t_peak = np.linspace(0.002,0.009,10)
     t_high = np.linspace(0.009,0.1,10)
     try:
         c_low = np.loadtxt('cv_low_saved.txt')
