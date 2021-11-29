@@ -122,6 +122,21 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
 
     # ax.indicate_inset_zoom(axins, edgecolor="black")
 
+# returns data for heat capcity plot. Only returns single 
+# temperature and heat capacity arrays
+
+def data(S, fname=None, Tmax=0.25):
+    timer = Timer(f'heat_capacity.plot {fname}')
+    T_width = T_peak/2 # this is just a guess
+    t_low = np.linspace(T_peak/10,T_peak - T_width,10)
+    t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
+    t_high = np.linspace(T_peak + T_width,Tmax, 10)
+
+    c_low = np.array([C(T,S) for T in t_low])
+    c_peak = np.array([C(T,S) for T in t_peak])
+    c_high = np.array([C(T,S) for T in t_high])
+
+    return (np.concatenate( (t_low,T_peak,t_high) ), np.concatenate( (c_low,c_peak,c_high) ))
 
 
 
