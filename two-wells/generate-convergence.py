@@ -33,6 +33,7 @@ correct_S_for_err = normalize_S(system.S(E[indices_for_err]))
 T,correct_C = heat_capacity.data(system.S)
 
 np.savez(system.name(), E=E,
+                        T=T,
                         correct_S=normalize_S(system.S(E)),
                         correct_S_for_err=correct_S_for_err,
                         correct_C=correct_C)

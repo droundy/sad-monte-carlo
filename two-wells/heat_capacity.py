@@ -61,6 +61,17 @@ def C_vector(T, S):#T is an array of temperatures and S is an entropy function
     # print('C took', time.process_time() - start)
     return (avg_E_squared - avg_E**2 ) / T**2
 
+
+def _set_temperatures(ax=None, axins=None, Tmax=0.25):
+    T_width = T_peak/2 # this is just a guess
+    t_low = np.linspace(T_peak/10,T_peak - T_width,10)
+    t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
+    axins.set_xlim(T_peak - T_width, T_peak + T_width)
+    axins.set_ylim(0, 119)
+    t_high = np.linspace(T_peak + T_width,Tmax, 10)
+    return (t_low, t_peak, t_high)
+
+
 def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
     timer = Timer(f'heat_capacity.plot {fname}')
     if fname is not None:
@@ -70,13 +81,7 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
         base = None
         method = None
 
-    # print('peak should be at', T_peak)
-    T_width = T_peak/2 # this is just a guess
-    t_low = np.linspace(T_peak/10,T_peak - T_width,10)
-    t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
-    axins.set_xlim(T_peak - T_width, T_peak + T_width)
-    axins.set_ylim(0, 119)
-    t_high = np.linspace(T_peak + T_width,Tmax, 10)
+    t_low, t_peak, t_high = _set_temperatures(ax=ax,axins=axins,Tmax=Tmax)
     try:
         c_low = np.loadtxt(f'{base}-cv_low_saved.txt')
     except:
@@ -122,9 +127,41 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
 
     # ax.indicate_inset_zoom(axins, edgecolor="black")
 
+
+
+
+def plot_from_data(C, t_data, fname=None, ax=None, axins=None, Tmax=0.25):
+    if fname is not None:
+        base = fname[:-8]
+        method = base[:base.find('-')]
+    else:
+        base = None
+        method = None
+
+    _, t_peak, _ = _set_temperatures(ax=ax,axins=axins,Tmax=Tmax)
+
+    ax.plot(t_data, 
+            C, 
+            label=styles.pretty_label(base), 
+            color = styles.color(base), 
+            linestyle= styles.linestyle(base), 
+            markevery=10)
+
+    # inset axes....
+    #axins = ax.inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012, 25, 140])
+    mask = [(T >= t_peak[0] and T<= t_peak[-1]) for T in t_data]
+    axins.plot(t_data[mask], 
+               C[mask], 
+               label=styles.pretty_label(base), 
+               marker = styles.marker(base), 
+               color = styles.color(base), 
+               linestyle= styles.linestyle(base), 
+               markevery=10)
+
+
+
 # returns data for heat capcity plot. Only returns single 
 # temperature and heat capacity arrays
-
 def data(S, fname=None, Tmax=0.25):
     T_width = T_peak/2 # this is just a guess
     t_low = np.linspace(T_peak/10,T_peak - T_width,10)

@@ -4,6 +4,7 @@ import glob
 import matplotlib.pyplot as plt
 import system
 import styles
+import heat_capacity
 
 lowest_interesting_E = -1.07
 highest_interesting_E = -0.5
@@ -17,9 +18,17 @@ paths = glob.glob('*.npz')
 plt.figure('latest-entropy')
 plt.plot(E, correct_S, ':', label='exact', linewidth=2)
 
+fig, ax = plt.subplots(figsize=[5, 4], num='latest heat capacity')
+axins = ax.inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012, 25, 140])
+
+heat_capacity.plot_from_data(exact['correct_C'],exact['T'], ax=ax, axins=axins)
+ax.indicate_inset_zoom(axins, edgecolor="black")
+
 #Combines two strings, truncating the longer one
 #to the length of the shorter one and adding them
-def combine_data(a,b):
+def combine_data(a,b, replace = False):
+    if replace:#return only b--to replace a
+        return b
     if type(b) is int:
         return a
     elif type(a) is int:
@@ -41,38 +50,47 @@ for fname in paths:
         mean_e=0
         mean_which=0
         hist=0
+        E=0
         S=0
+        T=0
+        C=0
         moves=0
         errors_S=0
-
+        errors_C=0
 
         i=0
         for seed in ['1','12','123','1234','12345','123456','1234567','12345678']:
-            print(fname)
-            base = fname[:-4]
-            i+=1
-            fname = tail + 'seed-' + seed + front
-            
-            de_ind = base.rfind('de')
-            precision = base[de_ind:]
-            method = base[:base.find('+')]
-            data = np.load(fname)
-
-            mean_e=combine_data(mean_e,data['mean_e'])
-            mean_which=combine_data(mean_which,data['mean_which'])
             try:
-                hist=combine_data(hist,data['hist'])
+                base = fname[:-4]
+                i+=1
+                fname = tail + 'seed-' + seed + front
+                print(fname)
+                
+                de_ind = base.rfind('de')
+                precision = base[de_ind:]
+                method = base[:base.find('+')]
+                data = np.load(fname)
+
+                mean_e=combine_data(mean_e,data['mean_e'])
+                mean_which=combine_data(mean_which,data['mean_which'])
+                try:
+                    hist=combine_data(hist,data['hist'])
+                except:
+                    hist=None
+                E=combine_data(E,data['E'], replace = True)
+                S=combine_data(S,data['S'], replace = True)
+                T=combine_data(E,data['T'], replace = True)
+                C=combine_data(S,data['C'], replace = True)
+                moves=combine_data(moves,data['moves'])
+                errors_S=combine_data(errors_S,data['errors_S'])
+                errors_C=combine_data(errors_C,data['errors_C'])
             except:
-                hist=None
-            S=combine_data(S,data['S'])
-            moves=combine_data(moves,data['moves'])
-            errors_S=combine_data(errors_S,data['errors_S'])
+                pass
 
         #finish average
         mean_e=mean_e/i
         mean_which=mean_which/i
         hist=hist/i
-        S=S/i
         moves=moves/i
         errors_S=errors_S/i
 
@@ -91,12 +109,21 @@ for fname in paths:
                     color = styles.color(base), linestyle= styles.linestyle(base), markevery=50)
         elif method == 'z':
             plt.plot(E, S, label=precision, color = styles.color(base), linestyle= styles.linestyle(base))
+        
+        plt.figure('latest-heat-capacity')
+        heat_capacity.plot_from_data(T, C, fname=fname,ax=ax, axins=axins)
 
         plt.figure('convergence')
         if method in {'wl','itwl','sad'}:
             plt.loglog(moves, errors_S, label=precision, marker = styles.marker(base), color = styles.color(base), linestyle= styles.linestyle(base), markevery=2)
         elif method == 'z':
             plt.loglog(moves, errors_S, label=precision, color = styles.color(base), linestyle= styles.linestyle(base), linewidth = 3)
+
+        plt.figure('convergence-heat-capacity')
+        if method in {'wl','itwl','sad'}:
+            plt.loglog(moves, errors_C, label=precision, marker = styles.marker(base), color = styles.color(base), linestyle= styles.linestyle(base), markevery=2)
+        elif method == 'z':
+            plt.loglog(moves, errors_C, label=precision, color = styles.color(base), linestyle= styles.linestyle(base), linewidth = 3)
 
         
 
