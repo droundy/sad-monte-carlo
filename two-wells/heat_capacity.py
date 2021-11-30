@@ -66,8 +66,9 @@ def _set_temperatures(ax=None, axins=None, Tmax=0.25):
     T_width = T_peak/2 # this is just a guess
     t_low = np.linspace(T_peak/10,T_peak - T_width,10)
     t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
-    axins.set_xlim(T_peak - T_width, T_peak + T_width)
-    axins.set_ylim(0, 119)
+    if axins is not None:
+        axins.set_xlim(T_peak - T_width, T_peak + T_width)
+        axins.set_ylim(0, 119)
     t_high = np.linspace(T_peak + T_width,Tmax, 10)
     return (t_low, t_peak, t_high)
 
@@ -130,7 +131,7 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
 
 
 
-def plot_from_data(C, t_data, fname=None, ax=None, axins=None, Tmax=0.25):
+def plot_from_data(C_data, T_data, fname=None, ax=None, axins=None, Tmax=0.25):
     if fname is not None:
         base = fname[:-8]
         method = base[:base.find('-')]
@@ -140,8 +141,8 @@ def plot_from_data(C, t_data, fname=None, ax=None, axins=None, Tmax=0.25):
 
     _, t_peak, _ = _set_temperatures(ax=ax,axins=axins,Tmax=Tmax)
 
-    ax.plot(t_data, 
-            C, 
+    ax.plot(T_data, 
+            C_data, 
             label=styles.pretty_label(base), 
             color = styles.color(base), 
             linestyle= styles.linestyle(base), 
@@ -149,31 +150,35 @@ def plot_from_data(C, t_data, fname=None, ax=None, axins=None, Tmax=0.25):
 
     # inset axes....
     #axins = ax.inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012, 25, 140])
-    mask = [(T >= t_peak[0] and T<= t_peak[-1]) for T in t_data]
-    axins.plot(t_data[mask], 
-               C[mask], 
+    mask = [(T >= t_peak[0] and T<= t_peak[-1]) for T in T_data]
+    axins.plot(T_data[mask], 
+               C_data[mask], 
                label=styles.pretty_label(base), 
                marker = styles.marker(base), 
                color = styles.color(base), 
                linestyle= styles.linestyle(base), 
                markevery=10)
+    x1, x2, y1, y2 = 0.002, 0.009, 5, 30
+    # axins.set_xlim(x1, x2)
+    axins.set_ylim(y1, y2)
 
 
 
 # returns data for heat capcity plot. Only returns single 
 # temperature and heat capacity arrays
 def data(S, fname=None, Tmax=0.25):
-    T_width = T_peak/2 # this is just a guess
-    t_low = np.linspace(T_peak/10,T_peak - T_width,10)
-    t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
-    t_high = np.linspace(T_peak + T_width,Tmax, 10)
+    # T_width = T_peak/2 # this is just a guess
+    # t_low = np.linspace(T_peak/10,T_peak - T_width,10)
+    # t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
+    # t_high = np.linspace(T_peak + T_width,Tmax, 10)
+    t_low, t_peak, t_high = _set_temperatures()
     t = np.concatenate( (t_low,t_peak,t_high) )
     
 
     c_low = np.array([C(T,S) for T in t_low])
     c_peak = np.array([C(T,S) for T in t_peak])
     c_high = np.array([C(T,S) for T in t_high])
-    c = np.concatenate( (c_low,c_peak,c_high) )
+    c = np.array([C(T,S) for T in t])
 
     return [t, c]
 
@@ -181,43 +186,39 @@ def data(S, fname=None, Tmax=0.25):
 
 #Testing
 if __name__ == "__main__":
+    fig, ax = plt.subplots(figsize=[5, 4])
+    axins = ax.inset_axes( np.array([0.27, 0.27, 0.7, 0.7]))#[0.005, 0.012, 25, 140])
     
-    t_low = np.linspace(0.001,0.002,10)
-    t_peak = np.linspace(0.002,0.009,50)
-    t_high = np.linspace(0.009,0.1,10)
-    try:
-        c_low = np.loadtxt('cv_low_saved.txt')
-    except:
-        c_low = np.array([C(T,system.S) for T in t_low])
-        np.savetxt('cv_low_saved.txt', c_low)
+    t_low = np.linspace(0.001,0.006,50)
+    t_peak = np.linspace(0.006,0.02,50)
+    t_high = np.linspace(0.02,0.1,50)
+    t_low, t_peak, t_high = _set_temperatures(axins = axins)
 
-    try:
-        c_peak = np.loadtxt('cv_peak_saved.txt')
-    except:
-        c_peak = np.array([C(T,system.S) for T in t_peak])
-        np.savetxt('cv_peak_saved.txt', c_peak)
-
-    try:
-        c_high= np.loadtxt('cv_high_saved.txt')
-    except:
-        c_high = np.array([C(T,system.S) for T in t_high])
-        np.savetxt('cv_high_saved.txt', c_high)
+    c_low = np.array([C(T,system.S) for T in t_low])
 
     c_peak = np.array([C(T,system.S) for T in t_peak])
 
-    fig, ax = plt.subplots(figsize=[5, 4])
+
+
+
+
+    c_high = np.array([C(T,system.S) for T in t_high])
+
+
+    c_peak = np.array([C(T,system.S) for T in t_peak])
+
+    
 
     ax.plot(np.concatenate((t_low,t_peak,t_high)), np.concatenate((c_low,c_peak,c_high)))
 
     # inset axes....
-    axins = ax.inset_axes( np.array([0.27, 0.27, 0.7, 0.7]))#[0.005, 0.012, 25, 140])
     axins.plot(t_peak,c_peak)
     # sub region of the original image
     x1, x2, y1, y2 = 0.002, 0.009, 25, 140
-    axins.set_xlim(x1, x2)
+    #axins.set_xlim(x1, x2)
     axins.set_ylim(y1, y2)
-    axins.set_xticklabels('')
-    axins.set_yticklabels('')
+    # axins.set_xticklabels('')
+    # axins.set_yticklabels('')
 
     ax.indicate_inset_zoom(axins, edgecolor="black")
 

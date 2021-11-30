@@ -34,11 +34,11 @@ def combine_data(a,b, replace = False):
     elif type(a) is int:
         return b
     elif len(a) < len(b):
-        return combine_data(b,a)
+        return np.concatenate(b[:len(a)] + a, b[len(a):])
     elif len(a) == len(b):
         return a+b
     else:
-        return a[:len(b)] + b
+        return np.concatenate(a[:len(b)] + b, a[len(b):])
 
 for fname in paths:
     if any( [method in fname[:-3] for method in ['sad', 'z', 'wl', 'itwl']] ) and 'seed-1+' in fname:
@@ -110,7 +110,6 @@ for fname in paths:
         elif method == 'z':
             plt.plot(E, S, label=precision, color = styles.color(base), linestyle= styles.linestyle(base))
         
-        plt.figure('latest-heat-capacity')
         heat_capacity.plot_from_data(T, C, fname=fname,ax=ax, axins=axins)
 
         plt.figure('convergence')
@@ -173,10 +172,10 @@ for i in range(20):
 plt.savefig(system.system+'-heat-capacity-convergence.svg')
 plt.savefig(system.system+'-heat-capacity-convergence.pdf')
 
-# TODO: Implement convergence saving in npz
-# plt.figure('latest heat capacity')
-# ax.legend()
-# plt.savefig(system.system+'-heat-capacity.svg')
-# plt.savefig(system.system+'-heat-capacity.pdf')
+
+plt.figure('latest heat capacity')
+ax.legend()
+plt.savefig(system.system+'-heat-capacity.svg')
+plt.savefig(system.system+'-heat-capacity.pdf')
 
 plt.show()
