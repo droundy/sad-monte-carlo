@@ -47,6 +47,10 @@ pub struct Replica<S> {
     pub rejected_count: u64,
     /// The number of accepted moves since we adjusted the translation_scale
     pub accepted_count: u64,
+    /// The numberof rejected swaps involving this replica
+    pub rejected_swap_count: u64,
+    /// The numberof accepted swaps involving this replica
+    pub accepted_swap_count: u64,
     /// The lowest `max_energy` that the system has visited, and the system itself
     pub system: S,
     /// The random number generator.
@@ -68,6 +72,9 @@ impl<S: MovableSystem> Replica<S> {
             system,
             rejected_count: 0,
             accepted_count: 0,
+
+            rejected_swap_count: 0,
+            accepted_swap_count: 0,
 
             total_energy: Energy::new(0.0),
             total_energy_squared: EnergySquared::new(0.0),
@@ -306,8 +313,13 @@ impl<
                 // We will swap them if both systems can go into the lower bin.
                 let de_db = *((r0.energy() - r1.energy())*(1./r0.T - 1./r1.T)).value();
                 if de_db >= 0. || r1.rng.gen::<f64>() < de_db.exp() {
+                    r0.accepted_swap_count += 1;
+                    r1.accepted_swap_count += 1;
                     std::mem::swap(&mut r0.system, &mut r1.system);
-                }//else don't swap
+                }else{//else don't swap
+                    r0.rejected_swap_count += 1;
+                    r1.rejected_swap_count += 1;
+                }
             }
         });
 
