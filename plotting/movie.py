@@ -60,6 +60,9 @@ def heat_capacity(T, S_func):
     if (P_boundaries > 0).any():
         E = np.linspace(6*mean_e[1:-1].min() - 5*energy_boundaries[-1], energy_boundaries[P_boundaries > 0].max(), 10000)
         S = S_func(E)
+        okay_indices = S==S
+        S = S[okay_indices]
+        E = E[okay_indices]
         for i in range(len(T)):
             boltz_arg = S - E/T[i]
             P = np.exp(boltz_arg - boltz_arg.max())
