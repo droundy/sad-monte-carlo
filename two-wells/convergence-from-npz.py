@@ -12,16 +12,15 @@ highest_interesting_E = -0.5
 exact = np.load(system.name()+'.npz')
 correct_S=exact['correct_S']
 E=exact['E']
-plt.plot
 paths = glob.glob('*.npz')
 
 plt.figure('latest-entropy')
 plt.plot(E, correct_S, ':', label='exact', linewidth=2)
 
-fig, ax = plt.subplots(figsize=[5, 4], num='latest heat capacity')
+fig, ax = plt.subplots(figsize=[5, 4], num='latest-heat-capacity')
 axins = ax.inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012, 25, 140])
 
-heat_capacity.plot_from_data(exact['correct_C'],exact['T'], ax=ax, axins=axins)
+heat_capacity.plot_from_data(exact['T'],exact['correct_C'], ax=ax, axins=axins)
 ax.indicate_inset_zoom(axins, edgecolor="black")
 
 #Combines two strings, truncating the longer one
@@ -159,7 +158,7 @@ for i in range(20):
 plt.savefig(system.system+'-convergence.svg')
 plt.savefig(system.system+'-convergence.pdf')
 
-plt.figure('convergence_heat_capacity')
+plt.figure('convergence-heat-capacity')
 plt.xlabel(r'# of Moves')
 plt.ylabel(rf'max error in entropy between {lowest_interesting_E} and {highest_interesting_E}')
 plt.ylim(1e-2, 1e2)
@@ -173,7 +172,7 @@ plt.savefig(system.system+'-heat-capacity-convergence.svg')
 plt.savefig(system.system+'-heat-capacity-convergence.pdf')
 
 
-plt.figure('latest heat capacity')
+plt.figure('latest-heat-capacity')
 ax.legend()
 plt.savefig(system.system+'-heat-capacity.svg')
 plt.savefig(system.system+'-heat-capacity.pdf')

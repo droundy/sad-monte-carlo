@@ -20,8 +20,9 @@ def marker(base):
     if base is None:
         return None
     # return None # Always use no marker if dE etc. is same for all simulations
-    de_ind = base.rfind('de')
-    precision = base[de_ind:]
+    splits = base.split('+')
+    precision = splits[-2] + '+' + splits[-1]
+    print(precision)
     if precision in _markers:
         return _markers[precision]
     else:
