@@ -359,7 +359,7 @@ impl Save {
     /// Allows to use just the save plugin by itself without the rest of
     /// the plugin infrastructure. Returns true if we should save now.
     pub fn shall_i_save(&self, moves: u64) -> bool {
-        let save_please = moves > self.next_output.get();
+        let save_please = moves >= self.next_output.get();
         if save_please {
             // We are definitely saving now, and will also decide when to save next.
             if let Some(period) = self.save_time_seconds {
