@@ -131,9 +131,9 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
 
 
 
-def plot_from_data(C_data, T_data, fname=None, ax=None, axins=None, Tmax=0.25):
+def plot_from_data(T_data, C_data, fname=None, ax=None, axins=None, Tmax=0.25):
     if fname is not None:
-        base = fname[:-8]
+        base = fname[:-4]
         method = base[:base.find('-')]
     else:
         base = None
@@ -143,7 +143,8 @@ def plot_from_data(C_data, T_data, fname=None, ax=None, axins=None, Tmax=0.25):
 
     ax.plot(T_data, 
             C_data, 
-            label=styles.pretty_label(base), 
+            label=base,
+            marker = styles.marker(base),
             color = styles.color(base), 
             linestyle= styles.linestyle(base), 
             markevery=10)
