@@ -31,6 +31,19 @@ def run_replicas(name, max_iter=max_iter_default, min_T=0.001, max_independent_s
         + samples,
        cpus='all')
 
+def run_tempering(name, max_iter=max_iter_default, min_T=0.001, mult_T=2, num_T=10, max_independent_samples=None, extraname='', extraflags=''):
+    T = [min_T*mult_T**i for i in range(num_T)]
+    T_string = ''
+    for t in T:
+        T_string += str(t)+' '
+    save = f'tem-{extraname}{name}'
+    rq(name=save,
+       cmd=['bin tempering']+systems[name]+movie_args
+        + f'--save-time 0.5 --save-as {save}.cbor'.split()
+        + extraflags.split()
+        + f'--max-iter {max_iter} --T {T_string}'.split(),
+       cpus='4')
+
 
 def histogram(name, de, translation_scale, seed_str):
     return f'../target/release/histogram --save-time 0.5 --energy-bin {de} --translation-scale {translation_scale} {seed_str}'.split()+movie_args+systems[name]
@@ -55,25 +68,35 @@ def run_sad(name, de, max_iter=max_iter_default, min_T=0.001, max_E=None, transl
        cpus=1)
 
 #TODO: Make it accept a seed
-def run_wl(name, de, min_E, max_E, min_gamma=None, max_iter=max_iter_default, translation_scale=0.05):
+def run_wl(name, de, min_E, max_E, min_gamma=None, max_iter=max_iter_default, translation_scale=0.05, seed=None):
     de = str(de)
-    save = f'wl-{name}-{de}+{translation_scale}'
+    if seed is None:
+        seed_str = ''
+        save = f'wl-{name}-{de}+{translation_scale}'
+    else:
+        seed_str = f'--seed {seed}'
+        save = f'wl+{name}+seed-{seed}+de-{de}+step-{translation_scale}'
     min_gamma_args = []
     if min_gamma is not None:
         min_gamma_args = f'--wl-min-gamma {min_gamma}'.split()
     rq(name=save,
-       cmd=histogram(name, de, translation_scale=translation_scale)
+       cmd=histogram(name, de, translation_scale=translation_scale, seed_str=seed_str)
         + f'--save-as {save}.cbor'.split()
         + f'--max-iter {max_iter} --wl --min-allowed-energy {min_E} --max-allowed-energy {max_E}'.split()
         + min_gamma_args,
        cpus=1)
 
 
-def run_inv_t_wl(name, de, min_E, max_E, max_iter=max_iter_default, translation_scale=0.05):
+def run_inv_t_wl(name, de, min_E, max_E, max_iter=max_iter_default, translation_scale=0.05, seed=None):
     de = str(de)
-    save = f'itwl-{name}-{de}+{translation_scale}'
+    if seed is None:
+        seed_str = ''
+        save = f'itwl-{name}-{de}+{translation_scale}'
+    else:
+        seed_str = f'--seed {seed}'
+        save = f'itwl+{name}+seed-{seed}+de-{de}+step-{translation_scale}'
     rq(name=save,
-       cmd=histogram(name, de, translation_scale=translation_scale)
+       cmd=histogram(name, de, translation_scale=translation_scale, seed_str=seed_str)
         + f'--save-as {save}.cbor'.split()
         + f'--max-iter {max_iter} --inv-t-wl --min-allowed-energy {min_E} --max-allowed-energy {max_E}'.split(),
        cpus=1)
@@ -122,19 +145,22 @@ seeds = [1,12,123,1234,12345,123456,1234567,12345678]
 #run_replicas(name='tiny', min_T=system.systems['tiny']['min_T'], max_iter=1e13, max_independent_samples=3e7,
 #             extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
 
+## Uncomment when you want to rerun stuff ##
+
 for seed in seeds:
     for s in ['T-trans-1+barrier-0', 'T-trans-1+barrier-1e-1']:
-        for de in [0.00001]:#, 0.0001]:
-            for translation_scale in [0.01]:#[1e-4, 1e-3, 0.01]:
-                    run_sad(name=s, min_T=system.systems['T-trans-1']['min_T'], max_iter=1e13, translation_scale=translation_scale, de=de, seed=seed)
+        for de in [1e-5]:#, 0.0001]:
+            for translation_scale in [0.01,1e-3]:#[1e-4, 1e-3, 0.01]:
+#                     run_sad(name=s, min_T=system.systems['T-trans-1']['min_T'], max_iter=1e13, translation_scale=translation_scale, de=de, seed=seed)
                 
                 ## UNCOMMENT THESE WHEN YOU KNOW WHICH TRANSLATION SCALE TO USE ##
 
                 #run_wl(name=s, min_E=system.systems[s]['min_E'], max_E=de/2, max_iter=1e12,
                 #            translation_scale=translation_scale, de=de, min_gamma=1e-9)
-                #run_inv_t_wl(name=s, min_E=system.systems[s]['min_E'], max_E=de/2, max_iter=1e12,
-                #            translation_scale=translation_scale, de=de)
+                run_inv_t_wl(name=s, min_E=system.systems[s]['min_E'], max_E=de/2, max_iter=1e12,
+                           translation_scale=translation_scale, de=de)
 
+run_tempering('T-trans-1+barrier-1e-1', max_iter=1e12)
 
 # hard_min_T = system.systems['hard']['min_T']
 # hard_min_E = system.systems['hard']['min_E']
