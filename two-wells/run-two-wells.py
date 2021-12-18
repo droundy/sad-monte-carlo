@@ -72,7 +72,7 @@ def run_wl(name, de, min_E, max_E, min_gamma=None, max_iter=max_iter_default, tr
     de = str(de)
     if seed is None:
         seed_str = ''
-        save = f'wl-{name}-{de}+{translation_scale}'
+        save = f'wl+{name}-{de}+{translation_scale}'
     else:
         seed_str = f'--seed {seed}'
         save = f'wl+{name}+seed-{seed}+de-{de}+step-{translation_scale}'
@@ -91,7 +91,7 @@ def run_inv_t_wl(name, de, min_E, max_E, max_iter=max_iter_default, translation_
     de = str(de)
     if seed is None:
         seed_str = ''
-        save = f'itwl-{name}-{de}+{translation_scale}'
+        save = f'itwl+{name}-{de}+{translation_scale}'
     else:
         seed_str = f'--seed {seed}'
         save = f'itwl+{name}+seed-{seed}+de-{de}+step-{translation_scale}'
@@ -158,7 +158,7 @@ for seed in seeds:
                 #run_wl(name=s, min_E=system.systems[s]['min_E'], max_E=de/2, max_iter=1e12,
                 #            translation_scale=translation_scale, de=de, min_gamma=1e-9)
                 run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e12,
-                           translation_scale=translation_scale, de=de)
+                           translation_scale=translation_scale, de=de, seed=seed)
 
 #run_tempering('T-trans-1+barrier-1e-1', max_iter=1e12)
 
