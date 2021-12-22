@@ -2,6 +2,9 @@
 
 set -ev
 
+../plotting/parse-tempering.py --reparse temp*.cbor
+../plotting/parse-tempering.py temp*.cbor
+
 ../plotting/parse-replicas.py --reparse z+*.cbor
 ../plotting/parse-replicas.py z+*/*.cbor
 
