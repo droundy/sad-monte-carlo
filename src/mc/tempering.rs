@@ -13,7 +13,7 @@ use std::default::Default;
 /// The parameters needed to configure a simulation.
 #[derive(Debug, AutoArgs, Clone)]
 pub struct MCParams {
-    /// A temperature of interest
+    /// The temperatures of interest
     T: Vec<f64>,
     /// The seed for the random number generator.
     pub seed: Option<u64>,
@@ -28,7 +28,7 @@ pub struct MCParams {
 impl Default for MCParams {
     fn default() -> Self {
         MCParams {
-            T: vec![0.2],
+            T: vec![0.001, 0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.512, 1.024],
             seed: None,
             _save: plugin::SaveParams::default(),
             _movies: plugin::MovieParams::default(),
@@ -43,9 +43,9 @@ impl Default for MCParams {
 pub struct Replica<S> {
     /// The temperature of this replica
     pub T: Energy,
-    /// The number of rejected moves since we adjusted the translation_scale.
+    /// The number of rejected moves
     pub rejected_count: u64,
-    /// The number of accepted moves since we adjusted the translation_scale
+    /// The number of accepted moves
     pub accepted_count: u64,
     /// The numberof rejected swaps involving this replica
     pub rejected_swap_count: u64,
@@ -155,18 +155,20 @@ impl<
 {
     fn from_params(params: MCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
         let mut rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
+        println!("T args{:?}", params.T);
         let T:Vec<Energy> = params.T.iter().cloned().map(|e| Energy::new(e)).collect();
+        
 
         const MAX_INIT: usize = 1 << 15; // Number of energies to use in computing the first couple of quantiles.
 
-        // First let's brute-force to find where a number of the quantiles are
-        // We look for at most MAX_INIT quantiles.
+        //First let's brute-force to find where a number of the quantiles are
+        //We look for at most MAX_INIT quantiles.
         let mut energies = Vec::with_capacity(MAX_INIT);
         for _ in 0..MAX_INIT {
             energies.push(system.randomize(&mut rng));
             print!("Random: ");
-            system.print_debug();
-            println!(" E: {:.3}", system.energy().pretty());
+           system.print_debug();
+           println!(" E: {:.3}", system.energy().pretty());
         }
         let mut high_system = system.clone();
         high_system.randomize(&mut rng);
@@ -180,8 +182,8 @@ impl<
         let mut replicas = Vec::<Replica<S>>::with_capacity(T.len());
         for t in T.iter().copied() {
             replicas.push(Replica::new(t, system.clone(), rng.clone()));
-        }
-            
+            println!("Creating new Replica with temperature  {:3}", t);
+        } 
         rng.jump();
         MC {
             T,
@@ -294,10 +296,12 @@ impl<
 
         // Run a few steps of the simulation for each replica
         self.replicas.par_iter_mut().for_each(|r| {
+            these_moves.fetch_add(steps, std::sync::atomic::Ordering::Relaxed);
             for _ in 0..steps {
                 r.run_once();
             }
         });
+        self.moves += 1;
 
         // Now let us try swapping if we can.
         let iterator = if self.rng.gen::<bool>() {
@@ -322,7 +326,6 @@ impl<
                 }
             }
         });
-
         let mut moves = self.moves;
         let these_moves = these_moves.load(std::sync::atomic::Ordering::Relaxed);
         self.moves += these_moves;
