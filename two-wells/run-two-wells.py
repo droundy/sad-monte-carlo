@@ -15,7 +15,7 @@ def rq(name, cmd, cpus):
         [name, '--']+cmd, check=True)
 
 
-movie_args = '--movie-time 10^(1/8)'.split()
+movie_args = '--movie-time 10^1/8)'.split()
 
 
 def run_replicas(name, max_iter=max_iter_default, min_T=0.001, max_independent_samples=None, extraname='', extraflags=''):
@@ -31,18 +31,25 @@ def run_replicas(name, max_iter=max_iter_default, min_T=0.001, max_independent_s
         + samples,
        cpus='all')
 
-def run_tempering(name, max_iter=max_iter_default, min_T=0.001, mult_T=2, num_T=10, max_independent_samples=None, extraname='', extraflags=''):
-    T = [min_T*mult_T**i for i in range(num_T)]
+def geometric_spacing(min, max, number):
+    numbers = []
+    r = (max/min)**(1/(number-1))
+    for i in range(number):
+        numbers.append(min*r**i)
+    return numbers
+
+def run_tempering(name, max_iter=max_iter_default, min_T=0.001, max_T=1, num_T=20, max_independent_samples=None, extraname='', extraflags=''):
+    T = geometric_spacing(min_T,max_T,num_T)
     T_string = ''
     for t in T:
-        T_string += str(t)+' '
+        T_string += '--T '+str(t)+' '
     save = f'tem-{extraname}{name}'
     rq(name=save,
-       cmd=['bin tempering']+systems[name]+movie_args
+       cmd=['../target/debug/tempering']+systems[name]+movie_args
         + f'--save-time 0.5 --save-as {save}.cbor'.split()
         + extraflags.split()
-        + f'--max-iter {max_iter} --T {T_string}'.split(),
-       cpus='4')
+        + f'--max-iter {max_iter} {T_string}'.split(),
+       cpus='6')
 
 
 def histogram(name, de, translation_scale, seed_str):
@@ -125,6 +132,7 @@ systems = {
     'lj31-like': '--two-wells-N 90 --two-wells-h2-to-h1 1.005 --two-wells-barrier-over-h1 0.03 --two-wells-r2 0.75'.split(),
 
     #For the thesis
+    'T-trans-1+barrier-3e-1': f'--two-wells-N {T_trans_1_n} --two-wells-h2-to-h1 {T_trans_1_h2} --two-wells-barrier-over-h1 0.3 --two-wells-r2 {T_trans_1_r2}'.split(),
     'T-trans-1+barrier-1e-1': f'--two-wells-N {T_trans_1_n} --two-wells-h2-to-h1 {T_trans_1_h2} --two-wells-barrier-over-h1 0.1 --two-wells-r2 {T_trans_1_r2}'.split(),
     'T-trans-1+barrier-0': f'--two-wells-N {T_trans_1_n} --two-wells-h2-to-h1 {T_trans_1_h2} --two-wells-barrier-over-h1 0 --two-wells-r2 {T_trans_1_r2}'.split(),
 
@@ -160,7 +168,7 @@ for seed in seeds:
                 run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e12,
                            translation_scale=translation_scale, de=de, seed=seed)
 
-#run_tempering('T-trans-1+barrier-1e-1', max_iter=1e12)
+#run_tempering('T-trans-1+barrier-4e-1', max_iter=1e12, num_T=50)
 
 # hard_min_T = system.systems['hard']['min_T']
 # hard_min_E = system.systems['hard']['min_E']

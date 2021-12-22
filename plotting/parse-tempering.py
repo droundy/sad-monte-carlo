@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import numpy as np
 import yaml
 import cbor
@@ -34,4 +36,28 @@ for fname in args.fname:
             exit(1)
     print('done reading', fname)
 
-print(data_loaded)
+
+
+for r in data_loaded['replicas']:
+
+
+
+    r_clean = dict()
+    r_clean['accepted_swap'] = r['accepted_swap_count'] / (
+                    r['rejected_swap_count'] + r['accepted_swap_count']
+                )
+    r_clean['accepted_moves'] = r['accepted_count'] / (
+                r['rejected_count'] + r['accepted_count']
+                )
+
+    num_moves = r['accepted_count'] + r['rejected_count'] #number of energies
+
+    r_clean['mean_E_squared'] = r['total_energy_squared']/num_moves
+
+    r_clean['mean_E'] = r['total_energy']/num_moves
+
+    r_clean['T'] = r['T']
+
+    print(r_clean)
+
+
