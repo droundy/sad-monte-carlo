@@ -37,11 +37,8 @@ for fname in args.fname:
     print('done reading', fname)
 
 
-
+rs = []
 for r in data_loaded['replicas']:
-
-
-
     r_clean = dict()
     r_clean['accepted_swap'] = r['accepted_swap_count'] / (
                     r['rejected_swap_count'] + r['accepted_swap_count']
@@ -58,6 +55,17 @@ for r in data_loaded['replicas']:
 
     r_clean['T'] = r['T']
 
+    r_clean['Cv'] = r_clean['mean_E_squared'] - r_clean['mean_E']**2 /(r_clean['T']**2)
+
     print(r_clean)
+    rs.append(r_clean)
+
+cvs = []
+Ts = []
+for r in rs:
+    cvs.append(r['Cv'])
+    Ts.append(r['T'])
+
+np.savez('Cv.npz', T = Ts, Cv = cvs)
 
 

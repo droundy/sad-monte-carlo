@@ -49,7 +49,7 @@ def run_tempering(name, max_iter=max_iter_default, min_T=0.001, max_T=1, num_T=2
         + f'--save-time 0.5 --save-as {save}.cbor'.split()
         + extraflags.split()
         + f'--max-iter {max_iter} {T_string}'.split(),
-       cpus='6')
+       cpus='8')
 
 
 def histogram(name, de, translation_scale, seed_str):
@@ -132,7 +132,7 @@ systems = {
     'lj31-like': '--two-wells-N 90 --two-wells-h2-to-h1 1.005 --two-wells-barrier-over-h1 0.03 --two-wells-r2 0.75'.split(),
 
     #For the thesis
-    'T-trans-1+barrier-3e-1': f'--two-wells-N {T_trans_1_n} --two-wells-h2-to-h1 {T_trans_1_h2} --two-wells-barrier-over-h1 0.3 --two-wells-r2 {T_trans_1_r2}'.split(),
+    'T-trans-1+barrier-4e-1': f'--two-wells-N {T_trans_1_n} --two-wells-h2-to-h1 {T_trans_1_h2} --two-wells-barrier-over-h1 0.4 --two-wells-r2 {T_trans_1_r2}'.split(),
     'T-trans-1+barrier-1e-1': f'--two-wells-N {T_trans_1_n} --two-wells-h2-to-h1 {T_trans_1_h2} --two-wells-barrier-over-h1 0.1 --two-wells-r2 {T_trans_1_r2}'.split(),
     'T-trans-1+barrier-0': f'--two-wells-N {T_trans_1_n} --two-wells-h2-to-h1 {T_trans_1_h2} --two-wells-barrier-over-h1 0 --two-wells-r2 {T_trans_1_r2}'.split(),
 
@@ -165,10 +165,11 @@ for seed in seeds:
 
                 #run_wl(name=s, min_E=system.systems[s]['min_E'], max_E=de/2, max_iter=1e12,
                 #            translation_scale=translation_scale, de=de, min_gamma=1e-9)
-                run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e12,
-                           translation_scale=translation_scale, de=de, seed=seed)
+                #run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e12,
+                           #translation_scale=translation_scale, de=de, seed=seed)
+                pass
 
-#run_tempering('T-trans-1+barrier-4e-1', max_iter=1e12, num_T=50)
+run_tempering('T-trans-1+barrier-1e-1', max_iter=1e12, num_T=50)
 
 # hard_min_T = system.systems['hard']['min_T']
 # hard_min_E = system.systems['hard']['min_E']

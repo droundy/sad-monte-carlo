@@ -39,7 +39,7 @@ np.savez(system.name(), E=E,
                         correct_C=correct_C)
 
 paths = []
-for fname in sorted(glob.glob('*'+system.system+'*-lnw.dat')):
+for fname in sorted(glob.glob('itwl*'+system.system+'*-lnw.dat')):
     if not ('half-barrier' in fname):
         if 'sad' in fname:
             if True:#not( '0.01+0.001' in fname):
@@ -107,5 +107,5 @@ def generate_npz(fname):
 from multiprocessing import Pool
 
 if __name__ == '__main__':
-    with Pool(7) as p:
+    with Pool(8 ) as p:
         p.map(generate_npz, list(paths))
