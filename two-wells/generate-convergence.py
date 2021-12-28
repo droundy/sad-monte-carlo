@@ -18,6 +18,8 @@ hist = None
 lowest_interesting_E = -1.07
 highest_interesting_E = -0.5
 
+lowest_interestng_T=0.008
+
 indices_for_err = np.array([i for i in range(len(E)) if lowest_interesting_E <= E[i] <= highest_interesting_E])
 E_for_err = E[indices_for_err]
 
@@ -88,7 +90,9 @@ def generate_npz(fname):
             err = np.max(np.abs(normalize_S(l_function(E[indices_for_err])) - correct_S_for_err))
             errors_S.append(err)
             T,C = heat_capacity.data(l_function, fname=fname)
-            errors_C.append(np.max(np.abs(correct_C-C)))
+            C_mask = [t>=lowest_interestng_T for t in T]
+            assert(len(correct_C) == len(C))
+            errors_C.append(np.max(np.abs(correct_C[C_mask]-C[C_mask])))
         except:
             pass
     
