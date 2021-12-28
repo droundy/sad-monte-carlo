@@ -66,6 +66,9 @@ for r in rs:
     cvs.append(r['Cv'])
     Ts.append(r['T'])
 
-np.savez('Cv.npz', T = Ts, Cv = cvs)
+
+if '1e' in fname:
+    print(f'Saved data from: {fname}')
+    np.savez('Cv.npz', T = Ts, Cv = cvs)
 
 
