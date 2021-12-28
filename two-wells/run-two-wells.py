@@ -169,7 +169,7 @@ for seed in seeds:
                            #translation_scale=translation_scale, de=de, seed=seed)
                 pass
 
-run_tempering('T-trans-1+barrier-1e-1', max_iter=1e12, num_T=50)
+run_tempering('T-trans-1+barrier-4e-1', max_iter=1e12, num_T=50)
 
 # hard_min_T = system.systems['hard']['min_T']
 # hard_min_E = system.systems['hard']['min_E']
