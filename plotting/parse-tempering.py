@@ -55,7 +55,7 @@ for r in data_loaded['replicas']:
 
     r_clean['T'] = r['T']
 
-    r_clean['Cv'] = r_clean['mean_E_squared'] - r_clean['mean_E']**2 /(r_clean['T']**2)
+    r_clean['Cv'] = (r_clean['mean_E_squared'] - r_clean['mean_E']**2) /(r_clean['T']**2)
 
     print(r_clean)
     rs.append(r_clean)
