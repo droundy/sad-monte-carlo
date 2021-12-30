@@ -68,8 +68,8 @@ def _set_temperatures(ax=None, axins=None, Tmax=0.25):
     t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
     if axins is not None:
         axins.set_xlim(T_peak - T_width, T_peak + T_width)
-        axins.set_ylim(0, 119)
-    t_high = np.linspace(T_peak + T_width,Tmax, 10)
+        axins.set_ylim(0, 40)
+    t_high = np.linspace(T_peak + T_width,Tmax, 50)
     return (t_low, t_peak, t_high)
 
 
@@ -83,25 +83,16 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
         method = None
 
     t_low, t_peak, t_high = _set_temperatures(ax=ax,axins=axins,Tmax=Tmax)
-    try:
-        c_low = np.loadtxt(f'{base}-cv_low_saved.txt')
-    except:
-        timer_low_T = Timer('C for low T')
-        c_low = np.array([C(T,S) for T in t_low])
-        del timer_low_T
-        np.savetxt(f'{base}-cv_low_saved.txt', c_low)
 
-    try:
-        c_peak = np.loadtxt(f'{base}-cv_peak_saved.txt')
-    except:
-        c_peak = np.array([C(T,S) for T in t_peak])
-        np.savetxt(f'{base}-cv_peak_saved.txt', c_peak)
+    timer_low_T = Timer('C for low T')
+    c_low = np.array([C(T,S) for T in t_low])
+    del timer_low_T
 
-    try:
-        c_high= np.loadtxt(f'{base}-cv_high_saved.txt')
-    except:
-        c_high = np.array([C(T,S) for T in t_high])
-        np.savetxt(f'{base}-cv_high_saved.txt', c_high)
+    timer_peak = Timer('C for peak T')
+    c_peak = np.array([C(T,S) for T in t_peak])
+    del timer_peak
+
+    c_high = np.array([C(T,S) for T in t_high])
 
     ax.plot(np.concatenate((t_low,t_peak,t_high)), 
             np.concatenate((c_low,c_peak,c_high)), 

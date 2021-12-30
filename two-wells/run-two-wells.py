@@ -169,11 +169,12 @@ for seed in seeds:
 
                     #run_wl(name=s, min_E=system.systems[s]['min_E'], max_E=de/2, max_iter=1e12,
                     #            translation_scale=translation_scale, de=de, min_gamma=1e-9)
-                    run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e12,
-                            translation_scale=translation_scale, de=de, seed=seed)
+                    #run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e12,
+                            #translation_scale=translation_scale, de=de, seed=seed)
+                    pass
 
 
-#run_tempering('T-trans-1+barrier-4e-1', max_iter=1e12, num_T=50)
+run_tempering('T-trans-1+barrier-0', max_iter=1e12, num_T=50)
 
 # hard_min_T = system.systems['hard']['min_T']
 # hard_min_E = system.systems['hard']['min_E']

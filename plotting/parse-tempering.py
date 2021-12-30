@@ -47,7 +47,8 @@ for r in data_loaded['replicas']:
                 r['rejected_count'] + r['accepted_count']
                 )
 
-    num_moves = r['accepted_count'] + r['rejected_count'] #number of energies
+    num_moves = r['accepted_count'] + r['rejected_count'] + \
+        r['accepted_swap_count'] + r['rejected_swap_count'] #number of energies
 
     r_clean['mean_E_squared'] = r['total_energy_squared']/num_moves
 
@@ -67,7 +68,7 @@ for r in rs:
     Ts.append(r['T'])
 
 
-if '1e' in fname:
+if '0' in fname:
     print(f'Saved data from: {fname}')
     np.savez('Cv.npz', T = Ts, Cv = cvs)
 

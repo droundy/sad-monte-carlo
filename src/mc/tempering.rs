@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::system::*;
-use dimensioned::Dimensionless;
+use dimensioned::{Dimensionless}; //TODO: What was the unused import si::E 
 use rayon::prelude::*;
 
 use rand::{Rng, SeedableRng};
@@ -320,9 +320,24 @@ impl<
                     r0.accepted_swap_count += 1;
                     r1.accepted_swap_count += 1;
                     std::mem::swap(&mut r0.system, &mut r1.system);
+                    let e0=r0.energy();
+                    let e1 = r1.energy();
+                    r0.total_energy += e0;
+                    r1.total_energy += e1;
+
+                    r0.total_energy_squared += e0 * e0;
+                    r1.total_energy_squared += e1 * e1;
                 }else{//else don't swap
                     r0.rejected_swap_count += 1;
                     r1.rejected_swap_count += 1;
+
+                    let e0=r0.energy();
+                    let e1 = r1.energy();
+                    r0.total_energy += e0;
+                    r1.total_energy += e1;
+
+                    r0.total_energy_squared += e0 * e0;
+                    r1.total_energy_squared += e1 * e1;
                 }
             }
         });
