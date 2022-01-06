@@ -50,6 +50,16 @@ for r in data_loaded['replicas']:
     num_moves = r['accepted_count'] + r['rejected_count'] + \
         r['accepted_swap_count'] + r['rejected_swap_count'] #number of energies
 
+    swaps = 0
+    steps = 0
+    for k in r.keys():
+        if 'swap_count' in k:
+            swaps += r[k]
+        elif 'count' in k:
+            steps += r[k]
+    
+    print(f'swaps: {swaps}\nsteps: {steps}')
+
     r_clean['mean_E_squared'] = r['total_energy_squared']/num_moves
 
     r_clean['mean_E'] = r['total_energy']/num_moves

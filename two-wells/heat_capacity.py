@@ -67,9 +67,12 @@ def _set_temperatures(ax=None, axins=None, Tmax=0.25):
     t_low = np.linspace(T_peak/10,T_peak - T_width,10)
     t_peak = np.linspace(T_peak - T_width,T_peak + T_width,150)
     if axins is not None:
-        axins.set_xlim(T_peak - T_width, T_peak + T_width)
-        axins.set_ylim(0, 40)
-    t_high = np.linspace(T_peak + T_width,Tmax, 50)
+        axins.set_xlim(0, T_peak + T_width+0.005)
+        axins.set_ylim(5, 27)
+    t_high = np.linspace(T_peak + T_width,Tmax, 200)
+    if ax is not None:
+        ax.set_xlim(0,max(t_high))
+        ax.set_ylim(0, 30)
     return (t_low, t_peak, t_high)
 
 
