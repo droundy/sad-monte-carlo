@@ -6,6 +6,28 @@ import system
 import styles
 import heat_capacity
 
+def arithmetic_mean(list_of_arr):
+    mu=list_of_arr[0]
+    i=1
+    for arr in list_of_arr[1:]:
+        try:
+            mu+=arr
+            i+=1 
+        except:
+            pass
+    return mu/i
+
+def geometric_mean(list_of_arr):
+    mu=list_of_arr[0]
+    i=1
+    for arr in list_of_arr[1:]:
+        try:
+            mu*=arr
+            i+=1 
+        except:
+            pass
+    return mu**(1/i)
+
 lowest_interesting_E = -1.07
 highest_interesting_E = -0.5
 
@@ -46,16 +68,16 @@ for fname in paths:
         i= fname.find('seed') + b.find('+')
         front = fname[i:]
 
-        mean_e=0
-        mean_which=0
-        hist=0
-        E=0
-        S=0
-        T=0
-        C=0
-        moves=0
-        errors_S=0
-        errors_C=0
+        mean_e=[]
+        mean_which=[]
+        hist=[]
+        E=[]
+        S=[]
+        T=[]
+        C=[]
+        moves=[]
+        errors_S=[]
+        errors_C=[]
 
         i=0
         for seed in ['1','12','123','1234','12345','123456','1234567','12345678']:
@@ -70,27 +92,26 @@ for fname in paths:
                 method = base[:base.find('+')]
                 data = np.load(fname)
 
-                mean_e=combine_data(mean_e,data['mean_e'])
-                mean_which=combine_data(mean_which,data['mean_which'])
+                mean_e.append(data['mean_e'])
+                mean_which.append(data['mean_which'])
                 try:
-                    hist=combine_data(hist,data['hist'])
+                    hist.append(data['hist'])
                 except:
                     hist=None
-                E=combine_data(E,data['E'], replace = True)
-                S=combine_data(S,data['S'], replace = True)
-                T=combine_data(E,data['T'], replace = True)
-                C=combine_data(S,data['C'], replace = True)
-                moves=combine_data(moves,data['moves'])
-                errors_S=combine_data(errors_S,data['errors_S'])
-                errors_C=combine_data(errors_C,data['errors_C'])
+                if len(E) < len(data['E']): E = data['E']
+                S.append(data['S'])
+                if len(T) < len(data['T']): T = data['T']
+                C.append(data['C'])
+                moves.append(moves,data['moves'])
+                errors_S.append(data['errors_S'])
+                errors_C.append(data['errors_C'])
             except:
                 pass
 
         #finish average
-        mean_e=mean_e/i
-        mean_which=mean_which/i
-        hist=hist/i
-        moves=moves/i
+        mean_e=arithmetic_mean(mean_e)
+        mean_which=arithmetic_mean(mean_which)
+        hist=arithmetic_mean(hist)
         errors_S=errors_S/i
 
         plt.figure('fraction-well')
@@ -104,24 +125,24 @@ for fname in paths:
         plt.figure('latest-entropy')
 
         if method in {'wl','itwl','sad'}:
-            plt.plot(E, S, label=precision, marker = styles.marker(base),
+            plt.plot(E[0][:len(S)], S, label=precision, marker = styles.marker(base),
                     color = styles.color(base), linestyle= styles.linestyle(base), markevery=50)
         elif method == 'z':
-            plt.plot(E, S, label=precision, color = styles.color(base), linestyle= styles.linestyle(base))
+            plt.plot(E[0][:len(S)], S, label=precision, color = styles.color(base), linestyle= styles.linestyle(base))
         
-        heat_capacity.plot_from_data(T, C, fname=fname,ax=ax, axins=axins)
+        heat_capacity.plot_from_data(T[0][:len(C)], C, fname=fname,ax=ax, axins=axins)
 
         plt.figure('convergence')
         if method in {'wl','itwl','sad'}:
-            plt.loglog(moves, errors_S, label=precision, marker = styles.marker(base), color = styles.color(base), linestyle= styles.linestyle(base), markevery=2)
+            plt.loglog(moves[0][:len(errors_S)], errors_S, label=precision, marker = styles.marker(base), color = styles.color(base), linestyle= styles.linestyle(base), markevery=2)
         elif method == 'z':
-            plt.loglog(moves, errors_S, label=precision, color = styles.color(base), linestyle= styles.linestyle(base), linewidth = 3)
+            plt.loglog(moves[0][:len(errors_S)], errors_S, label=precision, color = styles.color(base), linestyle= styles.linestyle(base), linewidth = 3)
 
         plt.figure('convergence-heat-capacity')
         if method in {'wl','itwl','sad'}:
-            plt.loglog(moves, errors_C, label=precision, marker = styles.marker(base), color = styles.color(base), linestyle= styles.linestyle(base), markevery=2)
+            plt.loglog(moves[0][:len(errors_C)], errors_C, label=precision, marker = styles.marker(base), color = styles.color(base), linestyle= styles.linestyle(base), markevery=2)
         elif method == 'z':
-            plt.loglog(moves, errors_C, label=precision, color = styles.color(base), linestyle= styles.linestyle(base), linewidth = 3)
+            plt.loglog(moves[0][:len(errors_C)], errors_C, label=precision, color = styles.color(base), linestyle= styles.linestyle(base), linewidth = 3)
 
         
 
