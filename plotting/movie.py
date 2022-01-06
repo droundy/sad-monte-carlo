@@ -5,7 +5,7 @@ import yaml, cbor, argparse, sys, os, glob
 import scipy.constants as const
 import scipy.optimize as optimize
 import matplotlib.pyplot as plt
-#import colorcet as cc #Unused import
+import colorcet as cc
 
 import compute
 
