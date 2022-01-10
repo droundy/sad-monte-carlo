@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::system::*;
-use dimensioned::Dimensionless;
+use dimensioned::{Dimensionless}; //TODO: What was the unused import si::E 
 use rayon::prelude::*;
 
 use rand::{Rng, SeedableRng};
@@ -260,8 +260,7 @@ impl<
     pub fn checkpoint(&mut self) {
         self.report.print(self.moves, 0);
         println!(
-            "    [{} walkers in {} zones]",
-            self.replicas.len(),
+            "    [{} walkers]",
             self.replicas.len()
         );
 
@@ -314,7 +313,7 @@ impl<
         iterator.for_each(|chunk| {
             // for chunk in iterator {
             if let [r0, r1] = chunk {
-                // We will swap them if both systems can go into the lower bin.
+                // We will swap them if both systems accept the swap.
                 let de_db = *((r0.energy() - r1.energy())*(1./r0.T - 1./r1.T)).value();
                 if de_db >= 0. || r1.rng.gen::<f64>() < de_db.exp() {
                     r0.accepted_swap_count += 1;
@@ -324,6 +323,13 @@ impl<
                     r0.rejected_swap_count += 1;
                     r1.rejected_swap_count += 1;
                 }
+                let e0=r0.energy();
+                let e1=r1.energy();
+                r0.total_energy += e0;
+                r1.total_energy += e1;
+
+                r0.total_energy_squared += e0 * e0;
+                r1.total_energy_squared += e1 * e1;
             }
         });
         let mut moves = self.moves;
