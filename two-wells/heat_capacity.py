@@ -106,8 +106,8 @@ def plot(S, fname=None, ax=None, axins=None, Tmax=0.25):
 
     # inset axes....
     #axins = ax.inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012, 25, 140])
-    axins.plot(t_peak, 
-               c_peak, 
+    axins.plot(np.concatenate((t_low,t_peak,t_high)), 
+               np.concatenate((c_low,c_peak,c_high)), 
                label=styles.pretty_label(base), 
                marker = styles.marker(base), 
                color = styles.color(base), 
@@ -145,9 +145,8 @@ def plot_from_data(T_data, C_data, fname=None, ax=None, axins=None, Tmax=0.25):
 
     # inset axes....
     #axins = ax.inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012, 25, 140])
-    mask = [(T >= t_peak[0] and T<= t_peak[-1]) for T in T_data]
-    axins.plot(T_data[mask], 
-               C_data[mask], 
+    axins.plot(T_data, 
+               C_data, 
                label=styles.pretty_label(base), 
                marker = styles.marker(base), 
                color = styles.color(base), 

@@ -178,7 +178,7 @@ if plot_Cv:
 use_inset = False
 
 starting_moves = 1e8
-for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(bases[0]+'/*.cbor'))))):
+for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(os.path.join(base,'*.cbor')))))):
     which_color = 0
     plotted_something = False
     if plot_Cv:
@@ -220,7 +220,7 @@ for frame in range(len(list(filter(lambda f: parse_moves(f) >= starting_moves, g
         if base not in moves:
             moves[base] = []
             error[base] = []
-        frames = sorted(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(base+'/*.cbor')))
+        frames = sorted(filter(lambda f: parse_moves(f) >= starting_moves, glob.glob(os.path.join(base,'*.cbor'))))
         if frame >= len(frames):
             continue
         f = os.path.splitext(frames[frame])[0]
