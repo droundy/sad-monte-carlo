@@ -48,7 +48,7 @@ for r in data_loaded['replicas']:
                 )
 
     num_moves = r['accepted_count'] + r['rejected_count'] + \
-        r['accepted_swap_count'] + r['rejected_swap_count'] #number of energies
+        r['accepted_swap_count'] + r['rejected_swap_count'] - r['ignored_count'] #number of samples
 
     swaps = 0
     steps = 0
@@ -57,8 +57,9 @@ for r in data_loaded['replicas']:
             swaps += r[k]
         elif 'count' in k:
             steps += r[k]
-    
-    print(f'swaps: {swaps}\nsteps: {steps}')
+    ignored = r['ignored_count']
+    T=r['T']
+    print(f'T: {T}\nswaps: {swaps}\nsteps: {steps}\nignored: {ignored}')
 
     r_clean['mean_E_squared'] = r['total_energy_squared']/num_moves
 
@@ -68,18 +69,25 @@ for r in data_loaded['replicas']:
 
     r_clean['Cv'] = (r_clean['mean_E_squared'] - r_clean['mean_E']**2) /(r_clean['T']**2)
 
+    #Old way of doing it
+    num_moves = r['accepted_count'] + r['rejected_count'] + \
+        r['accepted_swap_count'] + r['rejected_swap_count']
+    r_clean['Cv_old'] = (r['total_energy_squared']/num_moves - (r['total_energy']/num_moves)**2) /(r_clean['T']**2)
+
     #print(r_clean)
     rs.append(r_clean)
 
+cvos = []
 cvs = []
 Ts = []
 for r in rs:
+    cvos.append(r['Cv_old'])
     cvs.append(r['Cv'])
     Ts.append(r['T'])
 
 
 if '0' in fname:
     print(f'Saved data from: {fname}')
-    np.savez('Cv.npz', T = Ts, Cv = cvs)
+    np.savez('Cv.npz', T = Ts, Cv = cvs, Cv_old=cvos)
 
 

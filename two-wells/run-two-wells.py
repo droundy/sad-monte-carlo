@@ -15,7 +15,7 @@ def rq(name, cmd, cpus):
         [name, '--']+cmd, check=True)
 
 
-movie_args = '--movie-time 10^1/8)'.split()
+movie_args = '--movie-time 10^(1/8)'.split()
 
 
 def run_replicas(name, max_iter=max_iter_default, min_T=0.001, max_independent_samples=None, extraname='', extraflags=''):
@@ -173,22 +173,22 @@ for seed in seeds:
                     run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e12,
                             translation_scale=translation_scale, de=de, seed=seed)
 
-for seed in seeds:
-    for s in ['T-trans-1+barrier-0', 'T-trans-1+barrier-1e-1']:
-        for de in [1e-5]:#, 0.0001]:
-            for translation_scale in [1e-3]:#[1e-4, 1e-3, 0.01]:
-                if de == 1e-4 and translation_scale != 1e-3:
-                    pass
-                else:
+# for seed in seeds:
+#     for s in ['T-trans-1+barrier-0', 'T-trans-1+barrier-1e-1']:
+#         for de in [1e-5]:#, 0.0001]:
+#             for translation_scale in [1e-3]:#[1e-4, 1e-3, 0.01]:
+#                 if de == 1e-4 and translation_scale != 1e-3:
+#                     pass
+#                 else:
 
-#                     run_sad(name=s, min_T=system.systems['T-trans-1']['min_T'], max_iter=1e13, translation_scale=translation_scale, de=de, seed=seed)
+# #                     run_sad(name=s, min_T=system.systems['T-trans-1']['min_T'], max_iter=1e13, translation_scale=translation_scale, de=de, seed=seed)
                 
-                ## UNCOMMENT THESE WHEN YOU KNOW WHICH TRANSLATION SCALE TO USE ##
+#                 ## UNCOMMENT THESE WHEN YOU KNOW WHICH TRANSLATION SCALE TO USE ##
 
-                    #run_wl(name=s, min_E=system.systems[s]['min_E'], max_E=de/2, max_iter=1e12,
-                    #            translation_scale=translation_scale, de=de, min_gamma=1e-9)
-                    run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e13,
-                            translation_scale=translation_scale, de=de, seed=seed)
+#                     #run_wl(name=s, min_E=system.systems[s]['min_E'], max_E=de/2, max_iter=1e12,
+#                     #            translation_scale=translation_scale, de=de, min_gamma=1e-9)
+#                     run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e13,
+#                             translation_scale=translation_scale, de=de, seed=seed)
 
 
 
