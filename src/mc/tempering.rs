@@ -47,11 +47,13 @@ pub struct Replica<S> {
     pub rejected_count: u64,
     /// The number of accepted moves
     pub accepted_count: u64,
-    /// The numberof rejected swaps involving this replica
+    /// The number of rejected swaps involving this replica
     pub rejected_swap_count: u64,
-    /// The numberof accepted swaps involving this replica
+    /// The number of accepted swaps involving this replica
     pub accepted_swap_count: u64,
-    /// The lowest `max_energy` that the system has visited, and the system itself
+    /// The number of ignored moves involving this replica
+    pub ignored_count: u64,
+    /// The system to analyze
     pub system: S,
     /// The random number generator.
     pub rng: crate::rng::MyRng,
@@ -76,6 +78,8 @@ impl<S: MovableSystem> Replica<S> {
             rejected_swap_count: 0,
             accepted_swap_count: 0,
 
+            ignored_count: 0,
+
             total_energy: Energy::new(0.0),
             total_energy_squared: EnergySquared::new(0.0),
 
@@ -99,6 +103,9 @@ impl<S: MovableSystem> Replica<S> {
             // collect data
             self.total_energy += e;
             self.total_energy_squared += e * e;
+            if e >= Energy::new(0.){
+                self.ignored_count += 1
+            }
         }
     }
     fn printme(&self) {
@@ -330,6 +337,12 @@ impl<
 
                 r0.total_energy_squared += e0 * e0;
                 r1.total_energy_squared += e1 * e1;
+                if e0 >= Energy::new(0.){
+                    r0.ignored_count += 1
+                }
+                if e1 >= Energy::new(0.){
+                    r1.ignored_count += 1
+                }
             }
         });
         let mut moves = self.moves;
