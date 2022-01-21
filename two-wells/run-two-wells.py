@@ -5,7 +5,7 @@ from subprocess import run
 import system
 
 run(['cargo', 'build', '--release', '--bin',
-     'replicas', '--bin', 'histogram'], check=True)
+     'replicas', '--bin', 'histogram', '--bin', 'tempering'], check=True)
 
 max_iter_default = 1e12
 
@@ -45,11 +45,11 @@ def run_tempering(name, max_iter=max_iter_default, min_T=0.001, max_T=1, num_T=2
         T_string += '--T '+str(t)+' '
     save = f'tem-{extraname}{name}'
     rq(name=save,
-       cmd=['../target/debug/tempering']+systems[name]+movie_args
+       cmd=['../target/release/tempering']+systems[name]+movie_args
         + f'--save-time 0.5 --save-as {save}.cbor'.split()
         + extraflags.split()
         + f'--max-iter {max_iter} {T_string}'.split(),
-       cpus='8')
+       cpus='all')
 
 
 def histogram(name, de, translation_scale, seed_str):
@@ -192,7 +192,7 @@ for seed in seeds:
 
 
 
-#run_tempering('T-trans-1+barrier-0', max_iter=1e12, num_T=50)
+# run_tempering('T-trans-1+barrier-0', max_iter=1e12, num_T=50)
 
 # hard_min_T = system.systems['hard']['min_T']
 # hard_min_E = system.systems['hard']['min_E']

@@ -307,7 +307,6 @@ impl<
                 r.run_once();
             }
         });
-        self.moves += 1;
 
         // Now let us try swapping if we can.
         let iterator = if self.rng.gen::<bool>() {
