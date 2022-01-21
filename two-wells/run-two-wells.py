@@ -7,7 +7,7 @@ import system
 run(['cargo', 'build', '--release', '--bin',
      'replicas', '--bin', 'histogram'], check=True)
 
-max_iter_default = 1e13
+max_iter_default = 1e12
 
 
 def rq(name, cmd, cpus):
