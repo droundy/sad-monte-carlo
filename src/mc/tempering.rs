@@ -15,6 +15,8 @@ use std::default::Default;
 pub struct MCParams {
     /// The temperatures of interest
     T: Vec<f64>,
+    /// The number of Canonical steps to take between swaps
+    canonical_steps: u64,
     /// The seed for the random number generator.
     pub seed: Option<u64>,
     /// report input
@@ -29,6 +31,7 @@ impl Default for MCParams {
     fn default() -> Self {
         MCParams {
             T: vec![0.001, 0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.512, 1.024],
+            canonical_steps: 1,
             seed: None,
             _save: plugin::SaveParams::default(),
             _movies: plugin::MovieParams::default(),
@@ -142,6 +145,8 @@ pub struct MC<S> {
 
     /// The relative sizes of the bins
     pub replicas: Vec<Replica<S>>,
+    /// The number of Canonical steps to take between swaps
+    pub canonical_steps: u64,
     /// How frequently to save...
     save: plugin::Save,
     /// Movie state
@@ -160,32 +165,12 @@ impl<
             + serde::de::DeserializeOwned,
     > MC<S>
 {
-    fn from_params(params: MCParams, mut system: S, save_as: ::std::path::PathBuf) -> Self {
+    fn from_params(params: MCParams, system: S, save_as: ::std::path::PathBuf) -> Self {
         let mut rng = crate::rng::MyRng::seed_from_u64(params.seed.unwrap_or(0));
         println!("T args{:?}", params.T);
         let T:Vec<Energy> = params.T.iter().cloned().map(|e| Energy::new(e)).collect();
         
 
-        const MAX_INIT: usize = 1 << 15; // Number of energies to use in computing the first couple of quantiles.
-
-        //First let's brute-force to find where a number of the quantiles are
-        //We look for at most MAX_INIT quantiles.
-        let mut energies = Vec::with_capacity(MAX_INIT);
-        for _ in 0..MAX_INIT {
-            energies.push(system.randomize(&mut rng));
-            print!("Random: ");
-           system.print_debug();
-           println!(" E: {:.3}", system.energy().pretty());
-        }
-        let mut high_system = system.clone();
-        high_system.randomize(&mut rng);
-        while system.energy() > energies[energies.len() / 2] {
-            system.randomize(&mut rng);
-        }
-        energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        for (i, e) in energies.iter().enumerate() {
-            println!("  {:3}: {}", i, e.pretty());
-        }
         let mut replicas = Vec::<Replica<S>>::with_capacity(T.len());
         for t in T.iter().copied() {
             replicas.push(Replica::new(t, system.clone(), rng.clone()));
@@ -196,6 +181,7 @@ impl<
             T,
             replicas,
             moves: 0,
+            canonical_steps: params.canonical_steps,
 
             rng,
             save_as: save_as,
@@ -296,7 +282,7 @@ impl<
     /// Run a simulation
     pub fn run_once(&mut self) {
         // The unwrap below is safe because the unbounded high energy bin will always be occupied.
-        let steps = self.replicas[0].system.min_moves_to_randomize();
+        let steps = self.replicas[0].system.min_moves_to_randomize()*self.canonical_steps;
 
         let these_moves = std::sync::atomic::AtomicU64::new(0);
 

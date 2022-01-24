@@ -14,7 +14,7 @@ parser.add_argument("--reparse", help="parse file even if it has already been pa
                     action="store_true")
 
 args = parser.parse_args()
-
+i=0
 for fname in args.fname:
     base = os.path.splitext(fname)[0]
     if not args.reparse and os.path.exists(base+'-lnw.dat') or '*' in base:
@@ -36,58 +36,62 @@ for fname in args.fname:
             exit(1)
     print('done reading', fname)
 
+    try:
+        i+=1
+        cvos = []
+        cvs = []
+        Ts = []
+        for r in data_loaded['replicas']:
+            
+            #print((r, i))
+            
+            r_clean = dict()
+            r_clean['accepted_swap'] = r['accepted_swap_count'] / (
+                            r['rejected_swap_count'] + r['accepted_swap_count']
+                        )
+            r_clean['accepted_moves'] = r['accepted_count'] / (
+                        r['rejected_count'] + r['accepted_count']
+                        )
 
-rs = []
-for r in data_loaded['replicas']:
-    r_clean = dict()
-    r_clean['accepted_swap'] = r['accepted_swap_count'] / (
-                    r['rejected_swap_count'] + r['accepted_swap_count']
-                )
-    r_clean['accepted_moves'] = r['accepted_count'] / (
-                r['rejected_count'] + r['accepted_count']
-                )
+            num_moves = r['accepted_count'] + r['rejected_count'] + \
+                r['accepted_swap_count'] + r['rejected_swap_count'] - r['ignored_count'] #number of samples
 
-    num_moves = r['accepted_count'] + r['rejected_count'] + \
-        r['accepted_swap_count'] + r['rejected_swap_count'] - r['ignored_count'] #number of samples
+            swaps = 0
+            steps = 0
+            for k in r.keys():
+                if 'swap_count' in k:
+                    swaps += r[k]
+                elif 'count' in k:
+                    steps += r[k]
+            ignored = r['ignored_count']
+            T=r['T']
+            #print(f'T: {T}\nswaps: {swaps}\nsteps: {steps}\nignored: {ignored}')
 
-    swaps = 0
-    steps = 0
-    for k in r.keys():
-        if 'swap_count' in k:
-            swaps += r[k]
-        elif 'count' in k:
-            steps += r[k]
-    ignored = r['ignored_count']
-    T=r['T']
-    print(f'T: {T}\nswaps: {swaps}\nsteps: {steps}\nignored: {ignored}')
+            r_clean['mean_E_squared'] = r['total_energy_squared']/num_moves
 
-    r_clean['mean_E_squared'] = r['total_energy_squared']/num_moves
+            r_clean['mean_E'] = r['total_energy']/num_moves
 
-    r_clean['mean_E'] = r['total_energy']/num_moves
+            r_clean['T'] = r['T']
 
-    r_clean['T'] = r['T']
+            r_clean['Cv'] = (r_clean['mean_E_squared'] - r_clean['mean_E']**2) /(r_clean['T']**2)
 
-    r_clean['Cv'] = (r_clean['mean_E_squared'] - r_clean['mean_E']**2) /(r_clean['T']**2)
+            #Old way of doing it
+            num_moves = r['accepted_count'] + r['rejected_count'] + \
+                r['accepted_swap_count'] + r['rejected_swap_count']
+            r_clean['Cv_old'] = (r['total_energy_squared']/num_moves - (r['total_energy']/num_moves)**2) /(r_clean['T']**2)
 
-    #Old way of doing it
-    num_moves = r['accepted_count'] + r['rejected_count'] + \
-        r['accepted_swap_count'] + r['rejected_swap_count']
-    r_clean['Cv_old'] = (r['total_energy_squared']/num_moves - (r['total_energy']/num_moves)**2) /(r_clean['T']**2)
-
-    #print(r_clean)
-    rs.append(r_clean)
-
-cvos = []
-cvs = []
-Ts = []
-for r in rs:
-    cvos.append(r['Cv_old'])
-    cvs.append(r['Cv'])
-    Ts.append(r['T'])
+            
+            cvos.append(r_clean['Cv_old'])
+            cvs.append(r_clean['Cv'])
+            Ts.append(r_clean['T'])
 
 
-if '0' in fname:
-    print(f'Saved data from: {fname}')
-    np.savez('Cv.npz', T = Ts, Cv = cvs, Cv_old=cvos)
+        np.savez(f'{fname[:-5]}.npz', T = Ts, Cv = cvs, Cv_old=cvos)
+
+    except ZeroDivisionError as err:
+        print(f'Skipping file {fname} due to {err}')
+        pass
+    except BaseException as err:
+        raise(f"Unexpected {err}, {type(err)}")
 
 

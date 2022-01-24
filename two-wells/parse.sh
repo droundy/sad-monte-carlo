@@ -2,7 +2,7 @@
 
 set -ev
 
-#../plotting/parse-tempering.py --reparse tem-*.cbor
+../plotting/parse-tempering.py --reparse tem-*/*.cbor
 #../plotting/parse-tempering.py tem-*.cbor
 
 ../plotting/parse-replicas.py --reparse z+*.cbor

@@ -38,7 +38,7 @@ def geometric_spacing(min, max, number):
         numbers.append(min*r**i)
     return numbers
 
-def run_tempering(name, max_iter=max_iter_default, min_T=0.001, max_T=1, num_T=20, max_independent_samples=None, extraname='', extraflags=''):
+def run_tempering(name, max_iter=max_iter_default, min_T=0.001, max_T=1, num_T=20, can_steps=1, max_independent_samples=None, extraname='', extraflags=''):
     T = geometric_spacing(min_T,max_T,num_T)
     T_string = ''
     for t in T:
@@ -48,7 +48,8 @@ def run_tempering(name, max_iter=max_iter_default, min_T=0.001, max_T=1, num_T=2
        cmd=['../target/release/tempering']+systems[name]+movie_args
         + f'--save-time 0.5 --save-as {save}.cbor'.split()
         + extraflags.split()
-        + f'--max-iter {max_iter} {T_string}'.split(),
+        + f'--max-iter {max_iter} {T_string}'.split()
+        + f'--canonical-steps {can_steps}'.split(),
        cpus='all')
 
 
@@ -156,22 +157,22 @@ seeds = [1,12,123,1234,12345,123456,1234567,12345678]
 
 ## Uncomment when you want to rerun stuff ##
 
-for seed in seeds:
-    for s in ['T-trans-1+barrier-2e-1']:
-        for de in [1e-5,1e-4]:#, 0.0001]:
-            for translation_scale in [1e-2,1e-3,1e-4]:#[1e-4, 1e-3, 0.01]:
-                if de == 1e-4 and translation_scale != 1e-3:
-                    pass
-                else:
+# for seed in seeds:
+#     for s in ['T-trans-1+barrier-2e-1']:
+#         for de in [1e-5,1e-4]:#, 0.0001]:
+#             for translation_scale in [1e-2,1e-3,1e-4]:#[1e-4, 1e-3, 0.01]:
+#                 if de == 1e-4 and translation_scale != 1e-3:
+#                     pass
+#                 else:
 
-#                     run_sad(name=s, min_T=system.systems['T-trans-1']['min_T'], max_iter=1e13, translation_scale=translation_scale, de=de, seed=seed)
+# #                     run_sad(name=s, min_T=system.systems['T-trans-1']['min_T'], max_iter=1e13, translation_scale=translation_scale, de=de, seed=seed)
                 
-                ## UNCOMMENT THESE WHEN YOU KNOW WHICH TRANSLATION SCALE TO USE ##
+#                 ## UNCOMMENT THESE WHEN YOU KNOW WHICH TRANSLATION SCALE TO USE ##
 
-                    #run_wl(name=s, min_E=system.systems[s]['min_E'], max_E=de/2, max_iter=1e12,
-                    #            translation_scale=translation_scale, de=de, min_gamma=1e-9)
-                    run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e12,
-                            translation_scale=translation_scale, de=de, seed=seed)
+#                     #run_wl(name=s, min_E=system.systems[s]['min_E'], max_E=de/2, max_iter=1e12,
+#                     #            translation_scale=translation_scale, de=de, min_gamma=1e-9)
+#                     run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e12,
+#                             translation_scale=translation_scale, de=de, seed=seed)
 
 # for seed in seeds:
 #     for s in ['T-trans-1+barrier-0', 'T-trans-1+barrier-1e-1']:
@@ -192,52 +193,8 @@ for seed in seeds:
 
 
 
-# run_tempering('T-trans-1+barrier-0', max_iter=1e12, num_T=50)
+run_tempering('T-trans-1+barrier-0', max_iter=1e12, num_T=50, can_steps=10)
 
-# hard_min_T = system.systems['hard']['min_T']
-# hard_min_E = system.systems['hard']['min_E']
-# run_replicas(name='hard-half-barrier', min_T=hard_min_T, max_iter=1e13, max_independent_samples=10000,
-#              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
-# run_replicas(name='hard-fifth-barrier', min_T=hard_min_T, max_iter=1e13, max_independent_samples=10000,
-#              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
-
-# for s in ['hard-half-barrier','hard-no-barrier', 'hard']:#['hard', 'hard-no-barrier', 'hard-fifth-barrier']:
-#     for de in [0.001, 0.01]:
-#         for translation_scale in [0.01, 0.1]:
-#                 run_wl(name=s, min_E=hard_min_E, max_E=de/2, max_iter=1e12,
-#                             translation_scale=translation_scale, de=de, min_gamma=1e-9)
-#                 run_inv_t_wl(name=s, min_E=hard_min_E, max_E=de/2, max_iter=1e12,
-#                             translation_scale=translation_scale, de=de)
-#                 run_sad(name=s, min_T=hard_min_T, max_iter=1e12, translation_scale=translation_scale, de=de)
-
-# run_replicas(name='hard-no-barrier', min_T=hard_min_T, max_iter=1e13, max_independent_samples=10000,
-#              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
-# run_replicas(name='hard', min_T=hard_min_T, max_iter=1e13, max_independent_samples=10000,
-#              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
-
-# run_replicas(name='easier-all-barrier', min_T=0.005, max_iter=1e13, max_independent_samples=10000,
-#              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
-# run_replicas(name='easier', min_T=0.005, max_iter=1e13, max_independent_samples=10000,
-#              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
-# run_replicas(name='easier-no-barrier', min_T=0.005, max_iter=1e13, max_independent_samples=10000,
-#              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
-
-# for de in [0.001, 0.01, 0.1]:
-#     for translation_scale in [0.001, 0.01]:
-#         for system in ['easier-no-barrier', 'easier-all-barrier', 'easier']:
-#             run_wl(name=system, min_E=-1.13, max_E=0.0005, max_iter=1e12,
-#                         translation_scale=translation_scale, de=de, min_gamma=1e-9)
-#             run_inv_t_wl(name=system, min_E=-1.13, max_E=0.0005, max_iter=1e12,
-#                         translation_scale=translation_scale, de=de)
-#             run_sad(name=system, min_T=0.005, max_iter=1e12, translation_scale=translation_scale, de=de)
-
-# run_inv_t_wl(name='easiest', min_E=-1.13, max_E=0.0005, max_iter=1e12,
-#              translation_scale=0.05, de=0.001)
-# run_replicas(name='easiest', min_T=0.005, max_iter=1e13, max_independent_samples=100000)
-
-# run_replicas(name='hard', min_T=0.001, max_iter=1e13, max_independent_samples=100)
-# run_replicas(name='hard', min_T=0.001, max_iter=1e13, max_independent_samples=100,
-#              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
 
 # run_replicas(name='lj31-like', min_T=min_T, max_iter=1e13, max_independent_samples=100,
 #              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
