@@ -181,7 +181,7 @@ for seed in seeds:
                     pass
                 else:
 
-#                     run_sad(name=s, min_T=system.systems['T-trans-1']['min_T'], max_iter=1e13, translation_scale=translation_scale, de=de, seed=seed)
+                    run_sad(name=s, min_T=system.systems['T-trans-1']['min_T'], max_iter=1e13, translation_scale=translation_scale, de=de, seed=seed)
                 
                 ## UNCOMMENT THESE WHEN YOU KNOW WHICH TRANSLATION SCALE TO USE ##
 
