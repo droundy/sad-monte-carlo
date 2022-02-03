@@ -169,31 +169,28 @@ seeds = [1,12,123,1234,12345,123456,1234567,12345678]
                 
 #                 ## UNCOMMENT THESE WHEN YOU KNOW WHICH TRANSLATION SCALE TO USE ##
 
-#                     #run_wl(name=s, min_E=system.systems[s]['min_E'], max_E=de/2, max_iter=1e12,
-#                     #            translation_scale=translation_scale, de=de, min_gamma=1e-9)
+
 #                     run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e12,
 #                             translation_scale=translation_scale, de=de, seed=seed)
 
-# for seed in seeds:
-#     for s in ['T-trans-1+barrier-0', 'T-trans-1+barrier-1e-1']:
-#         for de in [1e-5]:#, 0.0001]:
-#             for translation_scale in [1e-3]:#[1e-4, 1e-3, 0.01]:
-#                 if de == 1e-4 and translation_scale != 1e-3:
-#                     pass
-#                 else:
+for seed in seeds:
+    for s in ['T-trans-1+barrier-0', 'T-trans-1+barrier-1e-1', 'T-trans-1+barrier2e-1']:
+        for de in [1e-5]:#, 0.0001]:
+            for translation_scale in [1e-4, 1e-3, 0.01]:
+                if de == 1e-4 and translation_scale != 1e-3:
+                    pass
+                else:
 
-# #                     run_sad(name=s, min_T=system.systems['T-trans-1']['min_T'], max_iter=1e13, translation_scale=translation_scale, de=de, seed=seed)
+#                     run_sad(name=s, min_T=system.systems['T-trans-1']['min_T'], max_iter=1e13, translation_scale=translation_scale, de=de, seed=seed)
                 
-#                 ## UNCOMMENT THESE WHEN YOU KNOW WHICH TRANSLATION SCALE TO USE ##
+                ## UNCOMMENT THESE WHEN YOU KNOW WHICH TRANSLATION SCALE TO USE ##
 
-#                     #run_wl(name=s, min_E=system.systems[s]['min_E'], max_E=de/2, max_iter=1e12,
-#                     #            translation_scale=translation_scale, de=de, min_gamma=1e-9)
-#                     run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e13,
-#                             translation_scale=translation_scale, de=de, seed=seed)
+                    run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e13,
+                            translation_scale=translation_scale, de=de, seed=seed)
 
 
 
-run_tempering('T-trans-1+barrier-0', max_iter=1e12, num_T=50, can_steps=10)
+#run_tempering('T-trans-1+barrier-0', max_iter=1e12, num_T=10, can_steps=10, extraname='temps-10-')
 
 
 # run_replicas(name='lj31-like', min_T=min_T, max_iter=1e13, max_independent_samples=100,
