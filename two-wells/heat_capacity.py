@@ -34,6 +34,31 @@ def C(T, S):#T is a temperature and S is an entropy function
     # print('C took', time.process_time() - start)
     return (avg_E_squared - avg_E**2 ) / T**2
 
+
+def C_E_Esqrd(T, S):#T is a temperature and S is an entropy function
+    # start = time.process_time()
+    E = np.linspace(-system.h_small, 0, 1000)
+    E = 0.5*(E[1:] + E[:-1])
+    dE = E[1] - E[0]
+
+    def normalize_S(S):
+        S = S - max(S)
+        total = np.sum(np.exp(S)*dE)
+        return S - np.log(total)
+
+    S = S(E) # normalize_S(S(E))
+
+    S_minus_E = S-E/T
+    M = np.max(S_minus_E)
+
+    Z = np.sum(np.exp(S_minus_E-M))*dE
+
+    avg_E = np.sum(np.exp(S_minus_E-M) * E) * dE / Z
+
+    avg_E_squared = np.sum(np.exp(S_minus_E-M) * E**2) * dE / Z
+
+    # print('C took', time.process_time() - start)
+    return ((avg_E_squared - avg_E**2 ) / T**2, avg_E, avg_E_squared)
 def C_vector(T, S):#T is an array of temperatures and S is an entropy function
     # start = time.process_time()
     E = np.linspace(-system.h_small, 0, 1000)
@@ -181,7 +206,7 @@ def data(S, fname=None, Tmax=0.25):
 #Testing
 if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=[5, 4])
-    axins = ax.inset_axes( np.array([0.27, 0.27, 0.7, 0.7]))#[0.005, 0.012, 25, 140])
+    axins = ax.inset_axes( np.array([0.37, 0.37, 0.6, 0.6]))#[0.005, 0.012, 25, 140])
     
     t_low = np.linspace(0.001,0.006,50)
     t_peak = np.linspace(0.006,0.02,50)
@@ -192,7 +217,9 @@ if __name__ == "__main__":
 
     c_peak = np.array([C(T,system.S) for T in t_peak])
 
-
+    plt.title('Heat Capacity Example')
+    plt.ylabel(r'$C_V$')
+    plt.xlabel(r'$T$')
 
 
 
@@ -206,9 +233,9 @@ if __name__ == "__main__":
     ax.plot(np.concatenate((t_low,t_peak,t_high)), np.concatenate((c_low,c_peak,c_high)))
 
     # inset axes....
-    axins.plot(t_peak,c_peak)
+    axins.plot(np.concatenate((t_low,t_peak,t_high)),np.concatenate((c_low,c_peak,c_high)))
     # sub region of the original image
-    x1, x2, y1, y2 = 0.002, 0.009, 25, 140
+    x1, x2, y1, y2 = 0.002, 0.009, 5, 27
     #axins.set_xlim(x1, x2)
     axins.set_ylim(y1, y2)
     # axins.set_xticklabels('')

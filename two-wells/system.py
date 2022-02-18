@@ -96,5 +96,8 @@ def D_simplified(e, energy_barrier=0):
         return (V(n)*R_small**n/2*np.sqrt(e/h_small+1)**(n-2) + V(n)*R_big**n/2*np.sqrt(e/h_big+1)**(n-2))/total_volume
     return V(n)*R_big**n/2*np.sqrt(e/h_big+1)**(n-2)
 
-def S(E):
-    return np.log(D(E))
+def S(e):
+    return np.log(D(e))
+
+def S_simplified(e, energy_barrier=0):
+    return np.log(D_simplified(e), energy_barrier=0)

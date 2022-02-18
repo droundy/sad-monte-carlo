@@ -32,10 +32,10 @@ def geometric_mean(list_of_arr):
 lowest_interesting_E = -1.07
 highest_interesting_E = -0.5
 
-exact = np.load(system.name()+'.npz')
+exact = np.load(os.path.join('.','thesis-data',system.name()+'.npz'))
 correct_S=exact['correct_S']
 E=exact['E']
-paths = glob.glob('*.npz')
+paths = glob.glob(os.path.join('thesis-data','*.npz'))
 
 plt.figure('latest-entropy')
 plt.plot(E, correct_S, ':', label='exact', linewidth=2)
@@ -63,7 +63,7 @@ def combine_data(a,b, replace = False):
         return np.concatenate(a[:len(b)] + b, a[len(b):])
 
 for fname in paths:
-    if any( [method in fname[:-3] for method in [ 'z', 'itwl']] ) and 'seed-1+' in fname:
+    if any( [method in fname[:-3] for method in [ 'itwl']] ) and 'seed-1+' and 'de-1e-05+step-0.01'  in fname and not'barrier-2e-1' in fname:
         tail = fname[:fname.find('seed')]
         b = fname[fname.find('seed'):]
         i= fname.find('seed') + b.find('+')
@@ -81,7 +81,7 @@ for fname in paths:
         errors_C=[]
 
         i=0
-        for seed in ['1','12','123','1234','12345','123456','1234567','12345678']:
+        for seed in ['1']:
             try:
                 base = fname[:-4]
                 i+=1
@@ -90,7 +90,7 @@ for fname in paths:
                 
                 de_ind = base.rfind('de')
                 precision = base[de_ind:]
-                method = base[:base.find('+')]
+                method = base[12:base.find('+')]
                 data = np.load(fname)
                 
 
@@ -123,6 +123,8 @@ for fname in paths:
         S=S[0]
         C=C[0]
 
+        print(S)
+
         plt.figure('fraction-well')
         plt.plot(mean_e[:len(mean_which)], mean_which[:len(mean_e)], label=base)
     
@@ -134,7 +136,7 @@ for fname in paths:
 
         if method in {'wl','itwl','sad'}:
             plt.plot(E[:len(S)], S[:len(E)], label=precision, marker = styles.marker(base),
-                    color = styles.color(base), linestyle= styles.linestyle(base), markevery=50)
+                    color = styles.color(base), linestyle= styles.linestyle(base), markevery=250)
         elif method == 'z':
             plt.plot(E[:len(S)], S[:len(E)], label=precision, color = styles.color(base), linestyle= styles.linestyle(base))
         
@@ -180,9 +182,9 @@ plt.ylabel(rf'max error in entropy between {lowest_interesting_E} and {highest_i
 plt.ylim(1e-2, 1e2)
 plt.legend()
 #make diagonal lines for convergence
-x = np.linspace(1e-10,1e20,2)
+x = np.linspace(1e-30,1e40,2)
 y = 1/np.sqrt(x)
-for i in range(20):
+for i in range(50):
     plt.loglog(x,y*10**(4*i/5-2), color = 'y',alpha=0.5)
 plt.savefig(system.system+'-convergence.svg')
 plt.savefig(system.system+'-convergence.pdf')

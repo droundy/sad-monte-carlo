@@ -6,11 +6,12 @@ _markers = {
 }
 
 #_colors = {'z': 'k', 'wl': 'b', 'itwl': 'g', 'sad': 'tab:orange'}
-_colors = {'z': 'k', 'wl': 'b', 'barrier-0': 'g', 'barrier-1e-1': 'tab:orange'}
+_colors = {'z': 'k', 'wl': 'b', 'barrier-0': 'g', 'barrier-1e-1': 'tab:orange', 'barrier-1e-2': 'tab:cyan'}
 dashes = {0: 'solid', 1: 'dashed'}
 _linestyles = {
     'barrier-0': '-',
     'barrier-1e-1': 'dashed',
+    'barrier-1e-1': '-.',
     'itwl': 'dashdot',
     'sad': (0, (3, 1, 1, 1, 1, 1))
 }
@@ -22,7 +23,6 @@ def marker(base):
     # return None # Always use no marker if dE etc. is same for all simulations
     splits = base.split('+')
     precision = splits[-2] + '+' + splits[-1]
-    print(precision)
     if precision in _markers:
         return _markers[precision]
     else:
@@ -30,7 +30,14 @@ def marker(base):
 
 
 def color(base):
-    return None
+    if base is None:
+        return 'b'
+    barr_ind = base.find('barrier')
+    barrier = base[barr_ind:barr_ind+base[barr_ind:].find('+')]
+    if barrier in _colors:
+        return _colors[barrier]
+    else:
+        return None
     # if base is None:
     #     return ':'
     # barr_ind = base.find('barrier')

@@ -82,7 +82,7 @@ def generate_npz(fname):
 
         try:
             frame_moves = int(frame_fname[len(base)+1:-8])
-            if frame_moves < 1e8:
+            if frame_moves < 1e4:
                 continue
             energy_boundaries, mean_e, my_lnw, my_system, p_exc = compute.read_file(frame_base)
             l_function, eee, sss = compute.linear_entropy(energy_boundaries, mean_e, my_lnw)
