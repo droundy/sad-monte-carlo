@@ -18,9 +18,12 @@ def rq(name, cmd, cpus):
 movie_args = '--movie-time 10^(1/8)'.split()
 
 
-def run_replicas(name, max_iter=max_iter_default, min_T=0.001, max_independent_samples=None, extraname='', extraflags=''):
-    save = f'z-{extraname}{name}'
+def run_replicas(name, max_iter=max_iter_default, min_T=0.001, seed=None, max_independent_samples=None, extraname='', extraflags=''):
+    save = f'z+{name}+seed-{seed}+{extraname}'
     samples = []
+    seed_str = []
+    if seed is not None:
+        seed_str = ['--seed', str(seed)]
     if max_independent_samples is not None:
         samples = ['--max-independent-samples', str(max_independent_samples)]
     rq(name=save,
@@ -28,7 +31,8 @@ def run_replicas(name, max_iter=max_iter_default, min_T=0.001, max_independent_s
         + f'--save-time 0.5 --save-as {save}.cbor'.split()
         + extraflags.split()
         + f'--max-iter {max_iter} --min-T {min_T}'.split()
-        + samples,
+        + samples
+        + seed_str,
        cpus='all')
 
 def geometric_spacing(min, max, number):
@@ -180,20 +184,19 @@ for seed in seeds:
                 if de == 1e-4 and translation_scale != 1e-3:
                     pass
                 else:
-
-                    run_sad(name=s, min_T=system.systems['T-trans-1']['min_T'], max_iter=1e12, translation_scale=translation_scale, de=de, seed=seed)
+                    pass
+                    #run_sad(name=s, min_T=system.systems['T-trans-1']['min_T'], max_iter=1e12, translation_scale=translation_scale, de=de, seed=seed)
                 
                 ## UNCOMMENT THESE WHEN YOU KNOW WHICH TRANSLATION SCALE TO USE ##
 
-                    run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e12,
-                            translation_scale=translation_scale, de=de, seed=seed)
+                    #run_inv_t_wl(name=s, min_E=system.systems['T-trans-1']['min_E'], max_E=de/2, max_iter=1e12,
+                    #        translation_scale=translation_scale, de=de, seed=seed)
 
 
 
 #run_tempering('T-trans-1+barrier-0', max_iter=1e12, num_T=10, can_steps=10, extraname='temps-10-')
 
-
-# run_replicas(name='lj31-like', min_T=min_T, max_iter=1e13, max_independent_samples=100,
-#              extraflags=' --independent-systems-before-new-bin 16', extraname='i16-')
-# run_replicas(name='lj31-like', min_T=min_T,
-#              max_iter=1e13, max_independent_samples=100)
+for seed in seeds:
+    for s in ['T-trans-1+barrier-0', 'T-trans-1+barrier-1e-1', 'T-trans-1+barrier-2e-1']:
+        run_replicas(name=s, min_T=system.systems['T-trans-1']['min_T'],
+                    max_iter=1e13, max_independent_samples=3e7, seed=seed)

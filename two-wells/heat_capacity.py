@@ -172,7 +172,7 @@ def plot_from_data(T_data, C_data, fname=None, ax=None, axins=None, Tmax=0.25):
     #axins = ax.inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012, 25, 140])
     axins.plot(T_data, 
                C_data, 
-               label=styles.pretty_label(base), 
+               label=styles.get_barrier(base), 
                marker = styles.marker(base), 
                color = styles.color(base), 
                linestyle= styles.linestyle(base), 
