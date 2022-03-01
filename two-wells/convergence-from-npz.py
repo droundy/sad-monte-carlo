@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import system
 import styles
 import heat_capacity
+from results_plotting import Results
 
 def arithmetic_mean(list_of_arr):
     mu=list_of_arr[0]
@@ -31,6 +32,8 @@ def geometric_mean(list_of_arr):
 
 lowest_interesting_E = -1.07
 highest_interesting_E = -0.5
+
+lowest_interesting_T=0.008
 
 exact = np.load(os.path.join('.','thesis-data',system.name()+'.npz'))
 correct_S=exact['correct_S']
@@ -64,7 +67,7 @@ def combine_data(a,b, replace = False):
         return np.concatenate(a[:len(b)] + b, a[len(b):])
 
 for fname in paths:
-    if any( [method in fname[:-3] for method in [ 'sad', 'itwl']] ) and ('seed-1+' in fname and 'de-1e-05+step-0.01'  in fname):
+    if any( [method in fname[:-3] for method in [ 'sad', 'itwl']] ) and ('seed-1+' in fname and 'de-1e-05+step-0.0001'  in fname):
         tail = fname[:fname.find('seed')]
         b = fname[fname.find('seed'):]
         i= fname.find('seed') + b.find('+')
@@ -82,84 +85,23 @@ for fname in paths:
         errors_C=[]
 
         i=0
-        for seed in ['1']:
+        results = Results()
+        for seed in [1, 12, 123, 1234, 12345, 123456, 1234567, 12345678]:
+            seed = str(seed)
             try:
                 base = fname[:-4]
                 i+=1
                 fname = tail + 'seed-' + seed + front
-                print(fname)
+                #print(fname)
                 
                 de_ind = base.rfind('de')
                 precision = base[de_ind:]
                 method = base[12:base.find('+')]
-                data = np.load(fname)
-                
-
-                mean_e.append(data['mean_e'])
-                mean_which.append(data['mean_which'])
-                try:
-                    hist.append(data['hist'])
-                except:
-                    hist=None
-                if len(E) < len(data['E']): E = data['E']
-                S.append(data['S'])
-                if len(T) < len(data['T']): T = data['T']
-                
-                C.append(data['C'])
-                moves.append(data['moves'])
-                
-                errors_S.append(data['errors_S'])
-                
-                errors_C.append(data['errors_C'])
+                results.add_npz(fname)
             except:
                 print(f'skipping file {fname}')
                 pass
-
-            #finish average
-            mean_e=geometric_mean(mean_e)
-            mean_which=geometric_mean(mean_which)
-            hist=geometric_mean(hist)
-            errors_S=geometric_mean(errors_S)
-            
-            errors_C=geometric_mean(errors_C)
-
-            S=S[0]
-            C=C[0]
-            if method == 'itwl':
-                label = r'$1/t$-WL' + r'-$E_{barr}$=0.'+styles.get_barrier(base)[8]
-            if method == 'sad':
-                label = r'SAD' + r'-$E_{barr}$=0.'+styles.get_barrier(base)[8]
-            print(label)
-
-
-            plt.figure('fraction-well')
-            plt.plot(mean_e[:len(mean_which)], mean_which[:len(mean_e)], label=label)
-        
-            if hist is not None:
-                plt.figure('histogram')
-                plt.plot(mean_e[:len(hist)], hist[:len(mean_e)], label=label)
-
-            plt.figure('latest-entropy')
-
-            if method in {'wl','itwl','sad'}:
-                plt.plot(E[:len(S)], S[:len(E)], label=label, marker = styles.marker(base),
-                        color = styles.color(base), linestyle= styles.linestyle(base), markevery=250)
-            elif method == 'z':
-                plt.plot(E[:len(S)], S[:len(E)], label=label, color = styles.color(base), linestyle= styles.linestyle(base))
-            
-            heat_capacity.plot_from_data(T[:len(C)], C[:len(T)], fname=fname,ax=ax, axins=axins)
-
-            plt.figure('convergence')
-            if method in {'wl','itwl','sad'}:
-                plt.loglog(moves[0][:len(errors_S)], errors_S[:len(moves[0])], label=label, marker = styles.marker(base), color = styles.color(base), linestyle= styles.linestyle(base), markevery=2)
-            elif method == 'z':
-                plt.loglog(moves[0][:len(errors_S)], errors_S[:len(moves[0])], label=label, color = styles.color(base), linestyle= styles.linestyle(base), linewidth = 3)
-
-            plt.figure('convergence-heat-capacity')
-            if method in {'wl','itwl','sad'}:
-                plt.loglog(moves[0][:len(errors_C)], errors_C[:len(moves[0])], label=label, marker = styles.marker(base), color = styles.color(base), linestyle= styles.linestyle(base), markevery=2)
-            elif method == 'z':
-                plt.loglog(moves[0][:len(errors_C)], errors_C[:len(moves[0])], label=label, color = styles.color(base), linestyle= styles.linestyle(base), linewidth = 3)
+        results.median_method(ax, axins)
 
         
 
@@ -168,7 +110,10 @@ plt.figure('latest-entropy')
 plt.xlabel(r'$E$')
 plt.ylabel(r'$S(E)$')
 plt.legend()
-plt.savefig(system.system+'.svg')
+plt.ylim(-40,0)
+plt.xlim(-1.15,-0.85)
+plt.savefig(system.system+'latest-entropy.svg')
+plt.savefig(system.system+'latest-entropy.pdf')
 
 plt.figure('fraction-well')
 plt.xlabel(r'E')
@@ -187,6 +132,7 @@ plt.figure('convergence')
 plt.xlabel(r'# of Moves')
 plt.ylabel(rf'max error in entropy between {lowest_interesting_E} and {highest_interesting_E}')
 plt.ylim(1e-2, 1e2)
+plt.xlim(1e8, 1e12)
 plt.legend()
 #make diagonal lines for convergence
 x = np.linspace(1e-30,1e40,2)
@@ -198,8 +144,9 @@ plt.savefig(system.system+'-convergence.pdf')
 
 plt.figure('convergence-heat-capacity')
 plt.xlabel(r'# of Moves')
-plt.ylabel(rf'max error in heat capacity between {lowest_interesting_E} and {highest_interesting_E}')
+plt.ylabel(rf'max error in heat capacity above $T=${lowest_interesting_T}')
 plt.ylim(1e-2, 1e2)
+plt.xlim(1e8, 1e12)
 plt.legend()
 #make diagonal lines for convergence
 x = np.linspace(1e-10,1e20,2)
@@ -211,7 +158,7 @@ plt.savefig(system.system+'-heat-capacity-convergence.pdf')
 
 
 plt.figure('latest-heat-capacity')
-ax.legend()
+ax.legend(loc='lower right')
 plt.savefig(system.system+'-heat-capacity.svg')
 plt.savefig(system.system+'-heat-capacity.pdf')
 

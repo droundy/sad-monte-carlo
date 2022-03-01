@@ -16,7 +16,7 @@ _markers = {
 }
 
 #_colors = {'z': 'k', 'wl': 'b', 'itwl': 'g', 'sad': 'tab:orange'}
-_colors = {'z': 'k', 'wl': 'b', 'barrier-0': 'g', 'barrier-1e-1': 'tab:orange', 'barrier-1e-2': 'tab:cyan'}
+_colors = {'z': 'k', 'wl': 'b', 'barrier-0': 'g', 'barrier-1e-1': 'tab:orange', 'barrier-2e-1': 'tab:cyan'}
 dashes = {0: 'solid', 1: 'dashed'}
 _linestyles = {
     'barrier-0': '-',
@@ -50,9 +50,8 @@ def marker(base):
 def color(base):
     if base is None:
         return 'b'
-    barr_ind = base.find('barrier')
-    barrier = base[barr_ind:barr_ind+base[barr_ind:].find('+')]
-    if barrier in _colors:
+    barrier = 'barrier-'+get_barrier(base)
+    if barrier in _linestyles:
         return _colors[barrier]
     else:
         return None
@@ -75,14 +74,14 @@ def color(base):
 def get_barrier(base):
     if base is None:
         return 'exact'
-    barr_ind = base.find('barrier')
-    return base[barr_ind:barr_ind+base[barr_ind:].find('+')]
+    b = base.split('barrier-')[-1]
+    return b.split('+')[0]
 
 
 def linestyle(base):
     if base is None:
         return ':'
-    barrier = get_barrier(base)
+    barrier = 'barrier-'+get_barrier(base)
     if barrier in _linestyles:
         return _linestyles[barrier]
     else:

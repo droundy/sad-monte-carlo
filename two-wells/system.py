@@ -1,5 +1,5 @@
 import numpy as np
-import scipy.special as spl
+from scipy.special import gamma, gammainc
 import sys
 import scipy
 
@@ -69,7 +69,7 @@ h_big = 1
 R_big = 1.
 
 def V(n):
-    return np.pi**(n/2)/(spl.gamma(n/2+1))
+    return np.pi**(n/2)/(gamma(n/2+1))
 
 def name():
     return system
@@ -101,3 +101,22 @@ def S(e):
 
 def S_simplified(e, energy_barrier=0):
     return np.log(D_simplified(e), energy_barrier=0)
+
+def _mean_E_antideriv(e, T):
+    front = np.exp(-1/T)*(1+e)*np.sqrt((1+e)**(-2+n))*(-(1+e)/T)**(-n/2)
+    back = gammainc((n/2), -(1+e)/T)+T*gammainc((2+n)/2, -(1+e)/T)
+    return front*back
+
+def _mean_E_sqr_antideriv(e,T):
+    front = np.exp(-1/T)*(1+e)*np.sqrt((1+e)**(-2+n))*(-(1+e)/T)**(1-n/2)*T
+    back = T**2*gammainc(2+n/2, -(1+e)/T)+ gammainc(n/2,-(1+e)/T) + 2*T*gammainc((2+n)/2, -(1+e)/T)
+    return front*back
+
+def _Z_antideriv(e, T):
+    front = np.exp(-1/T)*np.sqrt((1+e)**(-2+n))*(-(1+e)/T)**(1-n/2)*T
+    back = T*gammainc(n/2,-(1+e)/T)
+    return front*back
+
+def C_v(T):
+    mean_E_small_unnormalized = _mean_E_antideriv(-1,T) - \
+        _mean_E_antideriv(0,T)

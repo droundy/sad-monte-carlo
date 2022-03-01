@@ -1,0 +1,248 @@
+import os
+from typing import final
+import numpy as np
+import glob
+import matplotlib.pyplot as plt
+import system
+import styles
+import heat_capacity
+
+class Results:
+    def __init__(self):
+        self.fnames = []
+        self.mean_e=dict()
+        self.mean_which=dict()
+        self.hist=dict()
+        self.E=dict()
+        self.S=dict()
+        self.T=dict()
+        self.C=dict()
+        self.moves=dict()
+        self.errors_S=dict()
+        self.errors_C=dict()
+    
+    def _query_fname(self, fname):
+        data = dict()
+        if fname not in self.fnames:
+            return None
+        #else:
+        data['mean_e']=self.mean_e[fname]
+        data['mean_which']=self.mean_which[fname]
+        data['hist']=self.hist[fname]
+        data['E']=self.E[fname]
+        data['S']=self.S[fname]
+        data['T']=self.T[fname]
+        data['C']=self.C[fname]
+        data['moves']=self.moves[fname]
+        data['errors_S']=self.errors_S[fname]
+        data['errors_C']=self.errors_C[fname]
+        return data
+    
+    def _mean_data(self, fname):
+        min_data = np.nan_to_num(self._query_fname(fname), 
+                                    nan=np.inf)
+        max_data = np.nan_to_num(min_data.copy(), 
+                                    nan=-np.inf)
+        mean_data = np.nan_to_num(min_data.copy(),
+                                    nan=0)
+
+        given_seed = 'seed-'+fname.split('seed-')[-1].split('+')[0]
+        print(given_seed)
+        filt = lambda f: \
+            f.replace('seed-'+f.split('seed-')[-1].split('+')[0], '') == \
+                fname.replace(given_seed, '') and f!=fname
+        i=0
+        for f in filter(filt, self.fnames):
+            print(f)
+            i+=1
+            new_data = self._query_fname(f)
+            for k in new_data.keys():
+                if new_data[k] is not None and k not in ['E','T']:
+                    idx = min(len(min_data[k])-1, len(new_data[k])-1)
+                    min_data[k] = np.minimum(min_data[k][:idx], np.nan_to_num(new_data[k][:idx], nan=np.inf))
+                    max_data[k] = np.maximum(max_data[k][:idx], np.nan_to_num(new_data[k][:idx], nan=-np.inf))
+
+                    mean_data[k] = mean_data[k][:idx] + np.nan_to_num(new_data[k][:idx], nan=0)
+        for k in mean_data:
+            if mean_data[k] is not None and k not in ['E','T']:
+                mean_data[k] = mean_data[k] / i
+
+        return min_data, mean_data, max_data
+
+
+    def _stack_data_by_seed(self, fname):
+        data_stack = self._query_fname(fname)
+
+        given_seed = 'seed-'+fname.split('seed-')[-1].split('+')[0]
+        print(given_seed)
+        filt = lambda f: \
+            f.replace('seed-'+f.split('seed-')[-1].split('+')[0], '') == \
+                fname.replace(given_seed, '') and f!=fname
+        i=0
+        for f in filter(filt, self.fnames):
+            print(f)
+            i+=1
+            new_data = self._query_fname(f)
+            for k in new_data.keys():
+                if new_data[k] is not None:
+                    idx = min(data_stack[k].shape[-1], len(new_data[k]))
+                    if len(data_stack[k].shape) == 1:
+                        data_stack[k] = np.vstack((data_stack[k][:idx], new_data[k][:idx]))
+                    else:
+                        data_stack[k] = np.vstack((data_stack[k][:,:idx], new_data[k][:idx]))
+        return data_stack
+
+
+    def _plot_from_data(self, ax, axins, fname, data=None, data_bounds=None):
+        if data is None:
+            data = self._query_fname(fname)
+        if data_bounds is not None:
+            lower_data, upper_data = data_bounds
+        base = fname[:-4]
+        method = os.path.split(fname)[-1].split('+')[0]
+        if method == 'itwl':
+            label = r'$1/t$-WL' + r'-$E_{barr}$=0.'+styles.get_barrier(base)[0]
+        if method == 'sad':
+            label = r'SAD' + r'-$E_{barr}$=0.'+styles.get_barrier(base)[0]
+        plt.figure('fraction-well')
+        plt.plot(data['mean_e'], data['mean_which'], label=label)
+    
+        if data['hist'] is not None:
+            plt.figure('histogram')
+            plt.plot(data['mean_e'], data['hist'], label=label)
+
+        plt.figure('latest-entropy')
+
+        if method in {'wl','itwl','sad'}:
+            plt.plot(data['E'][:len(data['S'])], data['S'], 
+                                                    label=label, 
+                                                    marker = styles.marker(base),
+                                                    color = styles.color(base), 
+                                                    linestyle= styles.linestyle(base), 
+                                                    markevery=250)
+        elif method == 'z':
+            plt.plot(data['E'], data['S'], 
+                                    label=label, 
+                                    color = styles.color(base), 
+                                    linestyle= styles.linestyle(base))
+        
+        heat_capacity.plot_from_data(data['T'][:len(data['C'])], data['C'],
+                                                                    fname=fname,
+                                                                    ax=ax, 
+                                                                    axins=axins)
+
+        plt.figure('convergence')
+        if method in {'wl','itwl','sad'}:
+            plt.loglog(data['moves'], data['errors_S'], 
+                                                label=label, 
+                                                marker = styles.marker(base), 
+                                                color = styles.color(base), 
+                                                linestyle= styles.linestyle(base), 
+                                                markevery=2)
+        elif method == 'z':
+            plt.loglog(data['moves'], data['errors_S'], 
+                                                label=label, 
+                                                color = styles.color(base), 
+                                                linestyle= styles.linestyle(base), 
+                                                linewidth = 3)
+        if data_bounds is not None:
+            plt.fill_between(lower_data['moves'], lower_data['errors_S'], upper_data['errors_S'],
+                                                color = styles.color(base),
+                                                linestyle=styles.linestyle(base),
+                                                linewidth = 2,
+                                                alpha = 0.2)
+
+
+        plt.figure('convergence-heat-capacity')
+        if method in {'wl','itwl','sad'}:
+            plt.loglog(data['moves'], data['errors_C'], 
+                                                label=label, 
+                                                marker = styles.marker(base), 
+                                                color = styles.color(base), 
+                                                linestyle= styles.linestyle(base), 
+                                                markevery=2)
+        elif method == 'z':
+            plt.loglog(data['moves'], data['errors_C'], 
+                                                label=label, 
+                                                color = styles.color(base), 
+                                                linestyle= styles.linestyle(base), 
+                                                linewidth = 3)
+        if data_bounds is not None:
+            plt.fill_between(lower_data['moves'], lower_data['errors_C'], upper_data['errors_C'],
+                                                color = styles.color(base),
+                                                alpha = 0.2)
+        
+
+
+    def add_npz(self, fname):
+        if fname[-4:] != '.npz':
+            raise('Incorrect filetype')
+        self.fnames.append(fname)
+        seed = fname.split('seed-')[-1].split('+')[0]
+        data = np.load(fname)
+        self.mean_e[fname] = data['mean_e']
+        self.mean_which[fname] = data['mean_which']
+        try:
+            self.hist[fname] = data['hist']
+        except:
+            self.hist[fname] = None
+        self.E[fname] = data['E']
+        self.T[fname] = data['T']
+        self.moves[fname] = data['moves']
+
+        self.S[fname] = data['S']
+        self.C[fname] = data['C']
+        self.errors_S[fname] = data['errors_S']
+        self.errors_C[fname] = data['errors_C']
+
+
+    def plot_seed(self,
+                    ax,
+                    axins,
+                    seed, 
+                    method = None, 
+                    additional_filters = None):
+        seed = str(seed)
+        filter_seed_hist = lambda f: 'seed-'+seed+'+' in f
+        filter_seed_replicas = lambda f: 'seed-'+seed+'+' in f
+        filters = [filter_seed_hist, filter_seed_replicas]
+        if method is not None:
+            method_filter = lambda f: method in f
+        else:
+            method_filter = lambda f: True
+        filters.append(method_filter)
+        if additional_filters is None:
+            additional_filters = lambda f: True
+        filters.append(additional_filters)
+        fnames = self.fnames
+        for filt in filters:
+            fnames = filter(filt, fnames)
+
+        for f in fnames:
+            self._plot_from_data(ax, axins, f)
+            
+
+    def mean_method(self, ax, axins):
+        for f in filter(lambda f: 'seed-1+' in f, self.fnames):
+            stacked_data = self._stack_data_by_seed(f)
+            min_data = dict()
+            mean_data = dict()
+            max_data = dict()
+            for k in stacked_data.keys():
+                min_data[k] = np.nanmin(stacked_data[k], axis=0)
+                mean_data[k] = np.nanmean(stacked_data[k], axis=0)
+                max_data[k] = np.nanmax(stacked_data[k], axis=0)
+            self._plot_from_data(ax, axins, f, data = mean_data, data_bounds=(min_data, max_data))
+    
+    def median_method(self, ax, axins):
+        for f in filter(lambda f: 'seed-1+' in f, self.fnames):
+            stacked_data = self._stack_data_by_seed(f)
+            min_data = dict()
+            median_data = dict()
+            max_data = dict()
+            for k in stacked_data.keys():
+                min_data[k] = np.nanmin(stacked_data[k], axis=0)
+                median_data[k] = np.nanmedian(stacked_data[k], axis=0)
+                max_data[k] = np.nanmax(stacked_data[k], axis=0)
+            print(max_data['errors_S'])
+            self._plot_from_data(ax, axins, f, data = median_data, data_bounds=(min_data, max_data))
