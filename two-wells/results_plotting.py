@@ -93,7 +93,7 @@ class Results:
         return data_stack
 
 
-    def _plot_from_data(self, ax, axins, fname, data=None, data_bounds=None):
+    def _plot_from_data(self, ax, axins, fname, data=None, data_bounds=None, subplot = None, dump_into_thesis = None):
         if data is None:
             data = self._query_fname(fname)
         if data_bounds is not None:
@@ -172,6 +172,68 @@ class Results:
                                                 color = styles.color(base),
                                                 alpha = 0.2)
         
+        if subplot is not None:
+            axs = subplot[0]
+            axins_subplot = subplot[1]
+            if method in {'wl','itwl','sad'}:
+                axs[1,0].plot(data['E'][:len(data['S'])], data['S'], 
+                                                        label=label, 
+                                                        marker = styles.marker(base),
+                                                        color = styles.color(base), 
+                                                        linestyle= styles.linestyle(base), 
+                                                        markevery=250)
+            elif method == 'z':
+                axs[1,0].plot(data['E'], data['S'], 
+                                        label=label, 
+                                        color = styles.color(base), 
+                                        linestyle= styles.linestyle(base))
+            
+            heat_capacity.plot_from_data(data['T'][:len(data['C'])], data['C'],
+                                                                        fname=fname,
+                                                                        ax=axs[1,1], 
+                                                                        axins=axins_subplot)
+
+            plt.figure('convergence')
+            if method in {'wl','itwl','sad'}:
+                axs[0,0].loglog(data['moves'], data['errors_S'], 
+                                                    label=label, 
+                                                    marker = styles.marker(base), 
+                                                    color = styles.color(base), 
+                                                    linestyle= styles.linestyle(base), 
+                                                    markevery=2)
+            elif method == 'z':
+                axs[0,0].loglog(data['moves'], data['errors_S'], 
+                                                    label=label, 
+                                                    color = styles.color(base), 
+                                                    linestyle= styles.linestyle(base), 
+                                                    linewidth = 3)
+            if data_bounds is not None:
+                axs[0,0].fill_between(lower_data['moves'], lower_data['errors_S'], upper_data['errors_S'],
+                                                    color = styles.color(base),
+                                                    linestyle=styles.linestyle(base),
+                                                    linewidth = 2,
+                                                    alpha = 0.2)
+
+
+            plt.figure('convergence-heat-capacity')
+            if method in {'wl','itwl','sad'}:
+                axs[0,1].loglog(data['moves'], data['errors_C'], 
+                                                    label=label, 
+                                                    marker = styles.marker(base), 
+                                                    color = styles.color(base), 
+                                                    linestyle= styles.linestyle(base), 
+                                                    markevery=2)
+            elif method == 'z':
+                axs[0,1].loglog(data['moves'], data['errors_C'], 
+                                                    label=label, 
+                                                    color = styles.color(base), 
+                                                    linestyle= styles.linestyle(base), 
+                                                    linewidth = 3)
+            if data_bounds is not None:
+                axs[0,1].fill_between(lower_data['moves'], lower_data['errors_C'], upper_data['errors_C'],
+                                                    color = styles.color(base),
+                                                    alpha = 0.2)
+        
 
 
     def add_npz(self, fname):
@@ -234,7 +296,7 @@ class Results:
                 max_data[k] = np.nanmax(stacked_data[k], axis=0)
             self._plot_from_data(ax, axins, f, data = mean_data, data_bounds=(min_data, max_data))
     
-    def median_method(self, ax, axins):
+    def median_method(self, ax, axins, subplot = None, dump_into_thesis = None):
         for f in filter(lambda f: 'seed-1+' in f, self.fnames):
             stacked_data = self._stack_data_by_seed(f)
             min_data = dict()
@@ -245,4 +307,8 @@ class Results:
                 median_data[k] = np.nanmedian(stacked_data[k], axis=0)
                 max_data[k] = np.nanmax(stacked_data[k], axis=0)
             print(max_data['errors_S'])
-            self._plot_from_data(ax, axins, f, data = median_data, data_bounds=(min_data, max_data))
+            self._plot_from_data(ax, axins, f, 
+                                    data = median_data, 
+                                    data_bounds=(min_data, max_data), 
+                                    subplot = subplot, 
+                                    dump_into_thesis = dump_into_thesis)

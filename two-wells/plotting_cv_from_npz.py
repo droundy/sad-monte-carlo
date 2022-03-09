@@ -8,12 +8,14 @@ import glob
 import os
 import find_phase_transition
 
-def normalize_S(S):
-    E = np.linspace(-system.h_small, 0, 10000)
+def normalize_S(S, E=None):
+    if E is None:
+        E = np.linspace(-system.h_small, 0, 10000)
+
+    dE = np.diff(E)
     E = 0.5*(E[1:] + E[:-1])
-    dE = E[1] - E[0]
     S = S - max(S)
-    total = np.sum(np.exp(S)*dE)
+    total = np.sum(0.5*(np.exp(S)[1:] + np.exp(S)[:-1])*dE)
     return S - np.log(total)
 
 def make_plots(Ts, mean_E, mean_Esqr, label):
@@ -124,11 +126,11 @@ else:
         print(k)
 
 
-    variance_50 = interp1d(data_50['T'], data_50['var_E'], fill_value='extrapolate', kind='cubic')
+    variance_50 = interp1d(data_50['T'], data_50['var_E'], fill_value='extrapolate', kind='linear')
 
     cv_50 = lambda t: variance_50(t)/(t**2)
 
-    T_low,T_peak,T_high = heat_capacity._set_temperatures()
+    T_low,T_peak,T_high = heat_capacity._set_temperatures(Tmax = .5)
     Ts = np.concatenate((T_low[:-1],T_peak,T_high[1:]))
 
     mean_E_exact=[]
@@ -142,28 +144,35 @@ else:
     mean_Esqr_exact=np.array(mean_Esqr_exact)
     variance_exact = mean_Esqr_exact - mean_E_exact**2
 
-    var_exact = interp1d(Ts, variance_exact, fill_value='extrapolate', kind='cubic')
-    mean_E_exact_f = interp1d(Ts, mean_E_exact, fill_value='extrapolate', kind='cubic')
+    var_exact = interp1d(Ts, variance_exact, fill_value='extrapolate', kind='linear')
+    mean_E_exact_f = interp1d(Ts, mean_E_exact, fill_value='extrapolate', kind='linear')
     C_exact = lambda t: var_exact(t)/t**2
 
-    var_tempering = interp1d(data_50['T'], data_50['var_E'], fill_value='extrapolate', kind='cubic')
-    mean_E_tempering_f = interp1d(data_50['T'], data_50['mean_E'], fill_value='extrapolate', kind='cubic')
+    plt.figure('mean-E')
+    plt.plot(Ts, mean_E_exact, 'x-')
+
+    var_tempering = interp1d(data_50['T'], data_50['var_E'], fill_value='extrapolate', kind='linear')
+    mean_E_tempering_f = interp1d(data_50['T'], data_50['mean_E'], fill_value='extrapolate', kind='linear')
     C_tempering = lambda t: var_tempering(t)/t**2
 
-    T_int = np.linspace(0.001, 0.5, 1000)[1:]
+    T_int = np.linspace(0.0001, .5, 100000)[1:]
     dT = T_int[1] - T_int[0]
 
-    C_int_exact = -C_exact(T_int)*dT/T_int
-    C_int_tempering = -C_tempering(T_int)*dT/T_int
+    C_int_exact = C_exact(T_int)*dT/T_int
+    C_int_tempering = C_tempering(T_int)*dT/T_int
+    plt.figure('C')
+    plt.plot(T_int, C_exact(T_int))
 
-    S_int = np.flip(np.cumsum(np.flip(C_int_exact)))
-    S_tempering = np.flip(np.cumsum(np.flip(C_int_tempering)))
+    S_int = np.flip(np.cumsum(np.flip(-C_int_exact)))
+    S_int_2 = np.cumsum(C_int_exact)
+    S_tempering = np.flip(np.cumsum(np.flip(-C_int_tempering)))
     plt.figure('S')
 
-    E = np.linspace(-1.1, -0.5, 100)
-    plt.plot(mean_E_exact_f(T_int), S_int , ':', label= 'exact int')
-    plt.plot(E, system.S(E), label='exact')
-    plt.plot(mean_E_tempering_f(T_int), S_tempering, label = 'Par Temp')
+    E = np.linspace(-system.h_small, 0, 10000)
+    plt.plot(mean_E_exact_f(T_int), normalize_S(S_int_2, mean_E_exact_f(T_int)) , label= 'exact by integrating Cv')
+    plt.plot(E, normalize_S(system.S(E), E), ':', label='exact')
+    #plt.plot(mean_E_tempering_f(T_int), S_tempering, label = 'Par Temp')
+    plt.title(r'$S(E)$ from integrating heat capacity')
     plt.legend()
 
     #make_plots(Ts,mean_E_exact,mean_Esqr_exact,'exact')
