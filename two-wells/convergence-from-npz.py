@@ -32,10 +32,11 @@ def geometric_mean(list_of_arr):
 lowest_interesting_E = -1.07
 highest_interesting_E = -0.5
 
-exact = np.load(system.name()+'.npz')
+exact = np.load(os.path.join('.','thesis-data',system.name()+'.npz'))
 correct_S=exact['correct_S']
 E=exact['E']
-paths = glob.glob('*.npz')
+dE = E[1] - E[0]
+paths = glob.glob(os.path.join('thesis-data','*.npz'))
 
 plt.figure('latest-entropy')
 plt.plot(E, correct_S, ':', label='exact', linewidth=2)
@@ -63,7 +64,7 @@ def combine_data(a,b, replace = False):
         return np.concatenate(a[:len(b)] + b, a[len(b):])
 
 for fname in paths:
-    if any( [method in fname[:-3] for method in [ 'z', 'itwl']] ) and 'seed-1+' in fname:
+    if any( [method in fname[:-3] for method in [ 'sad', 'itwl']] ) and ('seed-1+' in fname and 'de-1e-05+step-0.01'  in fname):
         tail = fname[:fname.find('seed')]
         b = fname[fname.find('seed'):]
         i= fname.find('seed') + b.find('+')
@@ -81,7 +82,7 @@ for fname in paths:
         errors_C=[]
 
         i=0
-        for seed in ['1','12','123','1234','12345','123456','1234567','12345678']:
+        for seed in ['1']:
             try:
                 base = fname[:-4]
                 i+=1
@@ -90,7 +91,7 @@ for fname in paths:
                 
                 de_ind = base.rfind('de')
                 precision = base[de_ind:]
-                method = base[:base.find('+')]
+                method = base[12:base.find('+')]
                 data = np.load(fname)
                 
 
@@ -111,46 +112,54 @@ for fname in paths:
                 
                 errors_C.append(data['errors_C'])
             except:
+                print(f'skipping file {fname}')
                 pass
 
-        #finish average
-        mean_e=geometric_mean(mean_e)
-        mean_which=geometric_mean(mean_which)
-        hist=geometric_mean(hist)
-        errors_S=geometric_mean(errors_S)
-        errors_C=geometric_mean(errors_C)
+            #finish average
+            mean_e=geometric_mean(mean_e)
+            mean_which=geometric_mean(mean_which)
+            hist=geometric_mean(hist)
+            errors_S=geometric_mean(errors_S)
+            
+            errors_C=geometric_mean(errors_C)
 
-        S=S[0]
-        C=C[0]
+            S=S[0]
+            C=C[0]
+            if method == 'itwl':
+                label = r'$1/t$-WL' + r'-$E_{barr}$=0.'+styles.get_barrier(base)[8]
+            if method == 'sad':
+                label = r'SAD' + r'-$E_{barr}$=0.'+styles.get_barrier(base)[8]
+            print(label)
 
-        plt.figure('fraction-well')
-        plt.plot(mean_e[:len(mean_which)], mean_which[:len(mean_e)], label=base)
-    
-        if hist is not None:
-            plt.figure('histogram')
-            plt.plot(mean_e[:len(hist)], hist[:len(mean_e)], label=base)
 
-        plt.figure('latest-entropy')
-
-        if method in {'wl','itwl','sad'}:
-            plt.plot(E[:len(S)], S[:len(E)], label=precision, marker = styles.marker(base),
-                    color = styles.color(base), linestyle= styles.linestyle(base), markevery=50)
-        elif method == 'z':
-            plt.plot(E[:len(S)], S[:len(E)], label=precision, color = styles.color(base), linestyle= styles.linestyle(base))
+            plt.figure('fraction-well')
+            plt.plot(mean_e[:len(mean_which)], mean_which[:len(mean_e)], label=label)
         
-        heat_capacity.plot_from_data(T[:len(C)], C[:len(T)], fname=fname,ax=ax, axins=axins)
+            if hist is not None:
+                plt.figure('histogram')
+                plt.plot(mean_e[:len(hist)], hist[:len(mean_e)], label=label)
 
-        plt.figure('convergence')
-        if method in {'wl','itwl','sad'}:
-            plt.loglog(moves[0][:len(errors_S)], errors_S[:len(moves[0])], label=precision, marker = styles.marker(base), color = styles.color(base), linestyle= styles.linestyle(base), markevery=2)
-        elif method == 'z':
-            plt.loglog(moves[0][:len(errors_S)], errors_S[:len(moves[0])], label=precision, color = styles.color(base), linestyle= styles.linestyle(base), linewidth = 3)
+            plt.figure('latest-entropy')
 
-        plt.figure('convergence-heat-capacity')
-        if method in {'wl','itwl','sad'}:
-            plt.loglog(moves[0][:len(errors_C)], errors_C[:len(moves[0])], label=precision, marker = styles.marker(base), color = styles.color(base), linestyle= styles.linestyle(base), markevery=2)
-        elif method == 'z':
-            plt.loglog(moves[0][:len(errors_C)], errors_C[:len(moves[0])], label=precision, color = styles.color(base), linestyle= styles.linestyle(base), linewidth = 3)
+            if method in {'wl','itwl','sad'}:
+                plt.plot(E[:len(S)], S[:len(E)], label=label, marker = styles.marker(base),
+                        color = styles.color(base), linestyle= styles.linestyle(base), markevery=250)
+            elif method == 'z':
+                plt.plot(E[:len(S)], S[:len(E)], label=label, color = styles.color(base), linestyle= styles.linestyle(base))
+            
+            heat_capacity.plot_from_data(T[:len(C)], C[:len(T)], fname=fname,ax=ax, axins=axins)
+
+            plt.figure('convergence')
+            if method in {'wl','itwl','sad'}:
+                plt.loglog(moves[0][:len(errors_S)], errors_S[:len(moves[0])], label=label, marker = styles.marker(base), color = styles.color(base), linestyle= styles.linestyle(base), markevery=2)
+            elif method == 'z':
+                plt.loglog(moves[0][:len(errors_S)], errors_S[:len(moves[0])], label=label, color = styles.color(base), linestyle= styles.linestyle(base), linewidth = 3)
+
+            plt.figure('convergence-heat-capacity')
+            if method in {'wl','itwl','sad'}:
+                plt.loglog(moves[0][:len(errors_C)], errors_C[:len(moves[0])], label=label, marker = styles.marker(base), color = styles.color(base), linestyle= styles.linestyle(base), markevery=2)
+            elif method == 'z':
+                plt.loglog(moves[0][:len(errors_C)], errors_C[:len(moves[0])], label=label, color = styles.color(base), linestyle= styles.linestyle(base), linewidth = 3)
 
         
 
@@ -180,9 +189,9 @@ plt.ylabel(rf'max error in entropy between {lowest_interesting_E} and {highest_i
 plt.ylim(1e-2, 1e2)
 plt.legend()
 #make diagonal lines for convergence
-x = np.linspace(1e-10,1e20,2)
+x = np.linspace(1e-30,1e40,2)
 y = 1/np.sqrt(x)
-for i in range(20):
+for i in range(50):
     plt.loglog(x,y*10**(4*i/5-2), color = 'y',alpha=0.5)
 plt.savefig(system.system+'-convergence.svg')
 plt.savefig(system.system+'-convergence.pdf')

@@ -1,3 +1,6 @@
+from find_phase_transition import S
+
+
 _markers = {
     'de-0.0001+step-0.001': 'D', 'de-0.0001+step-0.01': '^', 'de-0.0001+step-0.0001': 'o', 'de-0.0001+0.001': 'x',
     'de-0.0001+0.1': '^', 'de-1e-05+step-0.001': 'x',
@@ -5,32 +8,54 @@ _markers = {
     'de-1e-05+step-0.1': 'x', '05+0.001': 'D', '05+0.0001': 'o',
 }
 
+_markers = {
+    'de-0.0001+step-0.001': 'D', 'de-0.0001+step-0.01': '^', 'de-0.0001+step-0.0001': 'o', 'de-0.0001+0.001': 'x',
+    'de-0.0001+0.1': '^', 'de-1e-05+step-0.001': 'x',
+    'sad': 's', 'itwl': '<', 'de-1e-05+step-0.001': '>',
+    'de-1e-05+step-0.1': 'x', '05+0.001': 'D', '05+0.0001': 'o',
+}
+
 #_colors = {'z': 'k', 'wl': 'b', 'itwl': 'g', 'sad': 'tab:orange'}
-_colors = {'z': 'k', 'wl': 'b', 'barrier-0': 'g', 'barrier-1e-1': 'tab:orange'}
+_colors = {'z': 'k', 'wl': 'b', 'barrier-0': 'g', 'barrier-1e-1': 'tab:orange', 'barrier-1e-2': 'tab:cyan'}
 dashes = {0: 'solid', 1: 'dashed'}
 _linestyles = {
     'barrier-0': '-',
     'barrier-1e-1': 'dashed',
+    'barrier-2e-1': '-.',
     'itwl': 'dashdot',
     'sad': (0, (3, 1, 1, 1, 1, 1))
 }
 
 
+# def marker(base):
+#     if base is None:
+#         return None
+#     # return None # Always use no marker if dE etc. is same for all simulations
+#     splits = base.split('+')
+#     precision = splits[-2] + '+' + splits[-1]
+#     if precision in _markers:
+#         return _markers[precision]
+#     else:
+#         return None
+
 def marker(base):
     if base is None:
         return None
-    # return None # Always use no marker if dE etc. is same for all simulations
-    splits = base.split('+')
-    precision = splits[-2] + '+' + splits[-1]
-    print(precision)
-    if precision in _markers:
-        return _markers[precision]
-    else:
-        return None
+    if 'itwl' in base:
+        return _markers['itwl']
+    if 'sad' in base:
+        return _markers['sad']
 
 
 def color(base):
-    return None
+    if base is None:
+        return 'b'
+    barr_ind = base.find('barrier')
+    barrier = base[barr_ind:barr_ind+base[barr_ind:].find('+')]
+    if barrier in _colors:
+        return _colors[barrier]
+    else:
+        return None
     # if base is None:
     #     return ':'
     # barr_ind = base.find('barrier')
@@ -47,12 +72,17 @@ def color(base):
     # else:
     #     return None
 
+def get_barrier(base):
+    if base is None:
+        return 'exact'
+    barr_ind = base.find('barrier')
+    return base[barr_ind:barr_ind+base[barr_ind:].find('+')]
+
 
 def linestyle(base):
     if base is None:
         return ':'
-    barr_ind = base.find('barrier')
-    barrier = base[barr_ind:barr_ind+base[barr_ind:].find('+')]
+    barrier = get_barrier(base)
     if barrier in _linestyles:
         return _linestyles[barrier]
     else:

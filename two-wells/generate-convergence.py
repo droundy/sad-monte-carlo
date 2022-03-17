@@ -41,7 +41,7 @@ np.savez(system.name(), E=E,
                         correct_C=correct_C)
 
 paths = []
-for fname in sorted(glob.glob('itwl*'+system.system+'*-lnw.dat')):
+for fname in sorted(glob.glob(os.path.join('thesis-data', 'itwl*'+system.system+'*-lnw.dat'))):
     if not ('half-barrier' in fname):
         if 'sad' in fname:
             if True:#not( '0.01+0.001' in fname):
@@ -82,7 +82,7 @@ def generate_npz(fname):
 
         try:
             frame_moves = int(frame_fname[len(base)+1:-8])
-            if frame_moves < 1e8:
+            if frame_moves < 1e4:
                 continue
             energy_boundaries, mean_e, my_lnw, my_system, p_exc = compute.read_file(frame_base)
             l_function, eee, sss = compute.linear_entropy(energy_boundaries, mean_e, my_lnw)

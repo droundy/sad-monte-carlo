@@ -38,7 +38,8 @@ for fname in args.fname:
 
     try:
         i+=1
-        cvos = []
+        mean_Es = []
+        var_Es = []
         cvs = []
         Ts = []
         for r in data_loaded['replicas']:
@@ -75,18 +76,14 @@ for fname in args.fname:
 
             r_clean['Cv'] = (r_clean['mean_E_squared'] - r_clean['mean_E']**2) /(r_clean['T']**2)
 
-            #Old way of doing it
-            num_moves = r['accepted_count'] + r['rejected_count'] + \
-                r['accepted_swap_count'] + r['rejected_swap_count']
-            r_clean['Cv_old'] = (r['total_energy_squared']/num_moves - (r['total_energy']/num_moves)**2) /(r_clean['T']**2)
 
-            
-            cvos.append(r_clean['Cv_old'])
+            mean_Es.append(r_clean['mean_E'])
+            var_Es.append(r_clean['mean_E_squared'] - (r_clean['mean_E'])**2)
             cvs.append(r_clean['Cv'])
             Ts.append(r_clean['T'])
 
 
-        np.savez(f'{fname[:-5]}.npz', T = Ts, Cv = cvs, Cv_old=cvos)
+        np.savez(f'{fname[:-5]}.npz', T = Ts, Cv = cvs, mean_E=mean_Es, var_E=var_Es)
 
     except ZeroDivisionError as err:
         print(f'Skipping file {fname} due to {err}')
