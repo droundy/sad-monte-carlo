@@ -200,6 +200,6 @@ for seed in seeds:
 
 #run_tempering('T-trans-1+barrier-0', max_iter=1e12, num_T=10, can_steps=10, extraname='temps-10-')
 
-for seed in [seeds[0]]:
+for seed in seeds:
     for s in ['T-trans-1+barrier-0', 'T-trans-1+barrier-1e-1', 'T-trans-1+barrier-2e-1']:
         run_tempering(s, max_iter=1e12, num_T=50, can_steps=10, seed=seed)
