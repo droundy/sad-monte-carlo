@@ -1,11 +1,20 @@
 import os
 import numpy as np
 import glob
-import matplotlib.pyplot as plt
 import system
 import styles
 import heat_capacity
 from results_plotting import Results
+
+
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.transforms as mtransforms
+
+matplotlib.rcParams['mathtext.fontset'] = 'stix'
+matplotlib.rcParams['font.family'] = 'STIXGeneral'
+matplotlib.pyplot.title(r'ABC123 vs $\mathrm{ABC123}^{123}$')
+matplotlib.rcParams.update({'font.size': 16})
 
 def arithmetic_mean(list_of_arr):
     mu=list_of_arr[0]
@@ -30,7 +39,27 @@ def geometric_mean(list_of_arr):
             pass
     return mu**(1/i)
 
-lowest_interesting_E = -1.07
+def legend_handles(exact = False):
+    import matplotlib.lines as mlines
+    lines=[]
+    if exact:
+        exact_line = mlines.Line2D([], [], color='blue',
+                            label='exact', linestyle=':')
+        lines+=[exact_line]
+    sad_line = mlines.Line2D([], [], color='k', marker='s',
+                          markersize=8, label=r'SAD')
+    itwl_line = mlines.Line2D([], [], color='k', marker='<',
+                          markersize=8, label=r'$1/t$-WL')
+    zero_line = mlines.Line2D([], [], color='g', linestyle='-',
+                          markersize=12, label=r'$E_{barr}$=0.0')
+    one_ten_line = mlines.Line2D([], [], color='tab:orange', linestyle='dashed',
+                          markersize=12, label=r'$E_{barr}$=0.1')
+    two_ten_line = mlines.Line2D([], [], color='tab:cyan', linestyle='-.',
+                          markersize=12, label=r'$E_{barr}$=0.2')
+    lines+=[sad_line, itwl_line, zero_line, one_ten_line, two_ten_line]
+    return lines
+
+lowest_interesting_E = -1.1
 highest_interesting_E = -0.5
 
 lowest_interesting_T=0.008
@@ -41,20 +70,26 @@ E=exact['E']
 dE = E[1] - E[0]
 paths = glob.glob(os.path.join('thesis-data-new','*.npz'))
 
-subplot_fig, axs = plt.subplots(2,2, tight_layout = True, figsize=(13,9))
+subplot_fig, axs = plt.subplot_mosaic([
+                            ['(a)','(b)'],
+                            ['(c)','(d)']
+                        ], 
+                        tight_layout = True, 
+                        figsize=(13,9),
+                        )
 
 plt.figure('latest-entropy')
 plt.plot(E, correct_S, ':', label='exact', linewidth=2)
-axs[1,0].plot(E, correct_S, ':', label='exact', linewidth=2)
+axs['(c)'].plot(E, correct_S, ':', label='exact', linewidth=2)
 
 fig, ax = plt.subplots(figsize=[5, 4], num='latest-heat-capacity')
 axins = ax.inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))#[0.005, 0.012, 25, 140])
-axins_subplot = axs[1,1].inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))
+axins_subplot = axs['(d)'].inset_axes( 0.5 * np.array([1, 1, 0.47/0.5, 0.47/0.5]))
 
 heat_capacity.plot_from_data(exact['T'],exact['correct_C'], ax=ax, axins=axins)
-heat_capacity.plot_from_data(exact['T'],exact['correct_C'], ax=axs[1,1], axins=axins_subplot)
+heat_capacity.plot_from_data(exact['T'],exact['correct_C'], ax=axs['(d)'], axins=axins_subplot)
 ax.indicate_inset_zoom(axins, edgecolor="black")
-axs[1,1].indicate_inset_zoom(axins_subplot, edgecolor="black")
+axs['(d)'].indicate_inset_zoom(axins_subplot, edgecolor="black")
 
 #Combines two strings, truncating the longer one
 #to the length of the shorter one and adding them
@@ -73,7 +108,8 @@ def combine_data(a,b, replace = False):
         return np.concatenate(a[:len(b)] + b, a[len(b):])
 
 for fname in paths:
-    if any( [method in fname[:-3] for method in [ 'sad', 'itwl']] ) and ('seed-1+' in fname and 'de-1e-05+step-0.01'  in fname):
+    step = 0.0001
+    if any( [method in fname[:-3] for method in [ 'sad', 'itwl']] ) and ('seed-1+' in fname and f'de-1e-05+step-{step}'  in fname):
         tail = fname[:fname.find('seed')]
         b = fname[fname.find('seed'):]
         i= fname.find('seed') + b.find('+')
@@ -119,11 +155,11 @@ plt.xlim(-1.15,-0.85)
 plt.savefig(system.system+'-latest-entropy.svg')
 plt.savefig(system.system+'-latest-entropy.pdf')
 
-axs[1,0].set_xlabel(r'$E$')
-axs[1,0].set_ylabel(r'$S(E)$')
-axs[1,0].legend()
-axs[1,0].set_ylim(-40,0)
-axs[1,0].set_xlim(-1.15,-0.85)
+axs['(c)'].set_xlabel(r'$E$')
+axs['(c)'].set_ylabel(r'$S(E)$')
+axs['(c)'].legend(handles = legend_handles(exact=True), loc='lower right')
+axs['(c)'].set_ylim(-40,0)
+axs['(c)'].set_xlim(-1.15,-0.85)
 
 plt.figure('fraction-well')
 plt.xlabel(r'E')
@@ -140,54 +176,71 @@ if hist is not None:
 
 plt.figure('convergence')
 plt.xlabel(r'# of Moves')
-plt.ylabel(rf'max error in entropy between {lowest_interesting_E} and {highest_interesting_E}')
+plt.ylabel(r'Max Error in $S$')
 plt.ylim(1e-2, 1e3)
 plt.xlim(1e4, 1e12)
 plt.legend()
 
-axs[0,0].set_xlabel(r'# of Moves')
-axs[0,0].set_ylabel(rf'max error in entropy between {lowest_interesting_E} and {highest_interesting_E}')
-axs[0,0].set_ylim(1e-2, 1e3)
-axs[0,0].set_xlim(1e4, 1e12)
-axs[0,0].legend()
+axs['(a)'].set_xlabel(r'# of Moves')
+axs['(a)'].set_ylabel(r'Max Error in $S$')
+axs['(a)'].set_ylim(1e-2, 1e3)
+axs['(a)'].set_xlim(1e4, 1e12)
+axs['(a)'].legend(handles=legend_handles())
+
 #make diagonal lines for convergence
 x = np.linspace(1e-30,1e40,2)
 y = 1/np.sqrt(x)
 for i in range(50):
-    plt.loglog(x,y*10**(4*i/5-2), color = 'y',alpha=0.5)
-    axs[0,0].loglog(x,y*10**(4*i/5-2), color = 'y',alpha=0.5)
+    plt.loglog(x,y*10**(4*i/5-2), color = 'y',alpha=0.3)
+    axs['(a)'].loglog(x,y*10**(4*i/5-2), color = 'y',alpha=0.3)
 plt.savefig(system.system+'-convergence.svg')
 plt.savefig(system.system+'-convergence.pdf')
 
 plt.figure('convergence-heat-capacity')
 plt.xlabel(r'# of Moves')
-plt.ylabel(rf'max error in heat capacity above $T=${lowest_interesting_T}')
+plt.ylabel(r'Max Error in $C_V$')
 plt.ylim(1e-2, 1e3)
 plt.xlim(1e4, 1e12)
 plt.legend()
 
-axs[0,1].set_xlabel(r'# of Moves')
-axs[0,1].set_ylabel(rf'max error in heat capacity above $T=${lowest_interesting_T}')
-axs[0,1].set_ylim(1e-2, 1e3)
-axs[0,1].set_xlim(1e4, 1e12)
-axs[0,1].legend()
+axs['(b)'].set_xlabel(r'# of Moves')
+axs['(b)'].set_ylabel(r'Max Error in $C_V$')
+axs['(c)'].legend(handles = legend_handles(exact=True), loc='lower right')
+axs['(b)'].set_ylim(1e-2, 1e3)
+axs['(b)'].set_xlim(1e4, 1e12)
+
 #make diagonal lines for convergence
 x = np.linspace(1e-10,1e20,2)
 y = 1/np.sqrt(x)
 for i in range(20):
-    plt.loglog(x,y*10**(4*i/5-2), color = 'y',alpha=0.5)
-    axs[0,1].loglog(x,y*10**(4*i/5-2), color = 'y',alpha=0.5)
+    plt.loglog(x,y*10**(4*i/5-2), color = 'y',alpha=0.3)
+    axs['(b)'].loglog(x,y*10**(4*i/5-2), color = 'y',alpha=0.3)
 plt.savefig(system.system+'-heat-capacity-convergence.svg')
 plt.savefig(system.system+'-heat-capacity-convergence.pdf')
 
 
 plt.figure('latest-heat-capacity')
 ax.legend(loc='lower right')
-axs[1,1].legend(loc='lower right')
+axs['(d)'].set_ylabel(r'$C_V$')
+axs['(d)'].set_xlabel(r'$T$')
+#axs[0,1].legend()
+
 plt.savefig(system.system+'-heat-capacity.svg')
 plt.savefig(system.system+'-heat-capacity.pdf')
 
 plt.figure(subplot_fig)
+for label, ax in axs.items():
+    # label physical distance to the left and up:
+    trans = mtransforms.ScaledTranslation(-20/72, 7/72, fig.dpi_scale_trans)
+    ax.set_title(label, transform=ax.transAxes + trans,
+            va='bottom',
+            loc='left')
 plt.savefig(system.system+'-combined.pdf')
 
-plt.show()
+if __name__ == '__main__':
+    dump_into_thesis = True
+    if dump_into_thesis:
+        plt.savefig(os.path.join(r'C:\Users\Henry Sprueill\Documents\Coding\Latex\Thesis\figure', 
+                                'step-'+str(step), 
+                                system.system+'-combined.pdf'))
+    plt.show()

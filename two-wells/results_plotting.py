@@ -138,7 +138,7 @@ class Results:
                                                 marker = styles.marker(base), 
                                                 color = styles.color(base), 
                                                 linestyle= styles.linestyle(base), 
-                                                markevery=2)
+                                                markevery=4)
         elif method == 'z':
             plt.loglog(data['moves'], data['errors_S'], 
                                                 label=label, 
@@ -160,7 +160,7 @@ class Results:
                                                 marker = styles.marker(base), 
                                                 color = styles.color(base), 
                                                 linestyle= styles.linestyle(base), 
-                                                markevery=2)
+                                                markevery=4)
         elif method == 'z':
             plt.loglog(data['moves'], data['errors_C'], 
                                                 label=label, 
@@ -176,39 +176,39 @@ class Results:
             axs = subplot[0]
             axins_subplot = subplot[1]
             if method in {'wl','itwl','sad'}:
-                axs[1,0].plot(data['E'][:len(data['S'])], data['S'], 
+                axs['(c)'].plot(data['E'][:len(data['S'])], data['S'], 
                                                         label=label, 
                                                         marker = styles.marker(base),
                                                         color = styles.color(base), 
                                                         linestyle= styles.linestyle(base), 
                                                         markevery=250)
             elif method == 'z':
-                axs[1,0].plot(data['E'], data['S'], 
+                axs['(c)'].plot(data['E'], data['S'], 
                                         label=label, 
                                         color = styles.color(base), 
                                         linestyle= styles.linestyle(base))
             
             heat_capacity.plot_from_data(data['T'][:len(data['C'])], data['C'],
                                                                         fname=fname,
-                                                                        ax=axs[1,1], 
+                                                                        ax=axs['(d)'], 
                                                                         axins=axins_subplot)
 
             plt.figure('convergence')
             if method in {'wl','itwl','sad'}:
-                axs[0,0].loglog(data['moves'], data['errors_S'], 
+                axs['(a)'].loglog(data['moves'], data['errors_S'], 
                                                     label=label, 
                                                     marker = styles.marker(base), 
                                                     color = styles.color(base), 
                                                     linestyle= styles.linestyle(base), 
                                                     markevery=2)
             elif method == 'z':
-                axs[0,0].loglog(data['moves'], data['errors_S'], 
+                axs['(a)'].loglog(data['moves'], data['errors_S'], 
                                                     label=label, 
                                                     color = styles.color(base), 
                                                     linestyle= styles.linestyle(base), 
                                                     linewidth = 3)
             if data_bounds is not None:
-                axs[0,0].fill_between(lower_data['moves'], lower_data['errors_S'], upper_data['errors_S'],
+                axs['(a)'].fill_between(lower_data['moves'], lower_data['errors_S'], upper_data['errors_S'],
                                                     color = styles.color(base),
                                                     linestyle=styles.linestyle(base),
                                                     linewidth = 2,
@@ -217,20 +217,20 @@ class Results:
 
             plt.figure('convergence-heat-capacity')
             if method in {'wl','itwl','sad'}:
-                axs[0,1].loglog(data['moves'], data['errors_C'], 
+                axs['(b)'].loglog(data['moves'], data['errors_C'], 
                                                     label=label, 
                                                     marker = styles.marker(base), 
                                                     color = styles.color(base), 
                                                     linestyle= styles.linestyle(base), 
                                                     markevery=2)
             elif method == 'z':
-                axs[0,1].loglog(data['moves'], data['errors_C'], 
+                axs['(b)'].loglog(data['moves'], data['errors_C'], 
                                                     label=label, 
                                                     color = styles.color(base), 
                                                     linestyle= styles.linestyle(base), 
                                                     linewidth = 3)
             if data_bounds is not None:
-                axs[0,1].fill_between(lower_data['moves'], lower_data['errors_C'], upper_data['errors_C'],
+                axs['(b)'].fill_between(lower_data['moves'], lower_data['errors_C'], upper_data['errors_C'],
                                                     color = styles.color(base),
                                                     alpha = 0.2)
         
