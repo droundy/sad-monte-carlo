@@ -10,7 +10,7 @@ import find_phase_transition
 
 def normalize_S(S, E=None):
     if E is None:
-        E = np.linspace(-system.h_small, 0, 10000)
+        E = np.linspace(-system.h_small, 0, 1000)
 
     dE = np.diff(E)
     E = 0.5*(E[1:] + E[:-1])
@@ -26,12 +26,12 @@ def make_plots(Ts, mean_E, mean_Esqr, label):
 
     variance = mean_Esqr - mean_E**2
     var_func = interp1d(Ts, variance, fill_value='extrapolate', kind='cubic')
-    refined_Ts = np.linspace(Ts[0], Ts[-1], len(Ts)*100)
-    C = var_func(refined_Ts) / (refined_Ts**2)
+    #refined_Ts = np.linspace(Ts[0], Ts[-1], len(Ts))
+    C = var_func(Ts) / (Ts**2)
     plt.figure('variance')
     plt.vlines(find_phase_transition.actual_T,min(variance),max(variance), alpha=0.25)
 
-    plt.plot(refined_Ts, var_func(refined_Ts), label=label, linestyle=linestyle)
+    plt.plot(Ts, var_func(Ts), label=label, linestyle=linestyle)
     plt.ylabel(r'Var$(E)$')
     plt.xlabel(r'$T$')
     plt.title('Variance of Energy')
@@ -68,7 +68,7 @@ def make_plots(Ts, mean_E, mean_Esqr, label):
     plt.figure('C_V')
     plt.vlines(find_phase_transition.actual_T,min(C),max(C), alpha=0.25)
 
-    plt.plot(refined_Ts, C, label=label, linestyle=linestyle)
+    plt.plot(Ts, C, label=label, linestyle=linestyle)
     plt.ylabel(r'$C_V(T)$')
     plt.xlabel(r'$T$')
     plt.title('Heat Capacity')
@@ -95,7 +95,7 @@ if movie:
         variance_10 = interp1d(data_10['T'], data_10['var_E'], fill_value='extrapolate', kind='cubic')
         cv_10 = lambda t: variance_10(t)/(t**2)
 
-        Ts = np.linspace(min(data_10['T']),max(data_10['T']),100000)
+        Ts = np.linspace(min(data_10['T']),max(data_10['T']),1000)
 
         plt.plot(Ts, cv_10(Ts), label = 10)
         axins.plot(Ts, cv_10(Ts))
@@ -155,7 +155,7 @@ else:
     mean_E_tempering_f = interp1d(data_50['T'], data_50['mean_E'], fill_value='extrapolate', kind='linear')
     C_tempering = lambda t: var_tempering(t)/t**2
 
-    T_int = np.linspace(0.0001, .5, 100000)[1:]
+    T_int = np.linspace(0.0001, .5, 10000)[1:]
     dT = T_int[1] - T_int[0]
 
     C_int_exact = C_exact(T_int)*dT/T_int

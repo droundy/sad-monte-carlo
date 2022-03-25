@@ -11,7 +11,7 @@ T_peak = find_phase_transition.actual_T
 
 def C(T, S):#T is a temperature and S is an entropy function
     # start = time.process_time()
-    E = np.linspace(-system.h_small, 0, 100000)
+    E = np.linspace(-system.h_small, 0, 10000)
     E = 0.5*(E[1:] + E[:-1])
     dE = E[1] - E[0]
 
@@ -163,7 +163,7 @@ def plot_from_data(T_data, C_data, fname=None, ax=None, axins=None, Tmax=0.25):
     else:
         base = None
         method = None
-        label=None
+        label='exact'
 
     _, t_peak, _ = _set_temperatures(ax=ax,axins=axins,Tmax=Tmax)
 
