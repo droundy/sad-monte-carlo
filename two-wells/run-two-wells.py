@@ -42,18 +42,22 @@ def geometric_spacing(min, max, number):
         numbers.append(min*r**i)
     return numbers
 
-def run_tempering(name, max_iter=max_iter_default, min_T=0.001, max_T=1, num_T=20, can_steps=1, max_independent_samples=None, extraname='', extraflags=''):
+def run_tempering(name, max_iter=max_iter_default, min_T=0.001, max_T=1, num_T=20, can_steps=1, seed=None, max_independent_samples=None, extraname='', extraflags=''):
     T = geometric_spacing(min_T,max_T,num_T)
     T_string = ''
+    seed_str = []
+    if seed is not None:
+        seed_str = ['--seed', str(seed)]
     for t in T:
         T_string += '--T '+str(t)+' '
-    save = f'tem-{extraname}{name}'
+    save = f'tem+{name}{extraname}+seed-{seed}'
     rq(name=save,
        cmd=['../target/release/tempering']+systems[name]+movie_args
         + f'--save-time 0.5 --save-as {save}.cbor'.split()
         + extraflags.split()
         + f'--max-iter {max_iter} {T_string}'.split()
-        + f'--canonical-steps {can_steps}'.split(),
+        + f'--canonical-steps {can_steps}'.split()
+        + seed_str,
        cpus='all')
 
 
@@ -196,7 +200,6 @@ for seed in seeds:
 
 #run_tempering('T-trans-1+barrier-0', max_iter=1e12, num_T=10, can_steps=10, extraname='temps-10-')
 
-for seed in seeds:
+for seed in [seeds[0]]:
     for s in ['T-trans-1+barrier-0', 'T-trans-1+barrier-1e-1', 'T-trans-1+barrier-2e-1']:
-        run_replicas(name=s, min_T=system.systems['T-trans-1']['min_T'],
-                    max_iter=1e13, max_independent_samples=3e7, seed=seed)
+        run_tempering(s, max_iter=1e12, num_T=50, can_steps=10, seed=seed)
