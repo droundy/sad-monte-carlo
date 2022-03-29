@@ -6,7 +6,7 @@ import scipy.special as special
 
 A = 3.1
 B = 0.2
-C = -0.001
+C = 0.001
 
 Esize = 100
 Estep = 0.1
@@ -22,10 +22,10 @@ bins = np.arange(0+bstep/2,Esize+bstep/2,bstep) #points at the centers, not the 
 
 
 #calculating W
-W = np.copy(bins)
+W = np.zeros_like(bins)
 for i in range(0,len(bins)):
     sumW = 0
-    for x in range(0,len(E)):
+    for x in range(0,len(E)): # for j in range(binnum): sumW += realDos[i*binnum + j]*dE ...
         if np.abs(E[x]-bins[i]) < bstep/2:
             sumW += realDos[x] * dE
             #print(i,x)
@@ -62,21 +62,29 @@ for i in bins:
 
 
 '''Testing Analytic Solutions:'''
-calcW = np.copy(bins)
+calcW = np.zeros_like(bins)
 calcAve = np.copy(bins)
 calcAve2 = np.copy(bins)
 
 for x in range(0,len(bins)):
     E0 = bins[x] - bstep*0.5
     E1 = bins[x] + bstep*0.5
-    #for C < 0
-    F3 = B/(2*np.sqrt(-C))
-    F1 = special.erf(np.sqrt(-C)*E1-F3) - special.erf(np.sqrt(-C)*E0-F3)
-    calcW[x] = 0.5*np.sqrt(-np.pi/C)*np.exp(A+F3*F3)*F1
-    comp1 = np.exp(B*E0+C*E0*E0) - np.exp(B*E1+C*E1*E1)
-    comp2 = np.exp(B*E0+C*E0*E0)*(B-2*C*E0) - np.exp(B*E1+C*E1*E1)*(B-2*C*E1)
-    calcAve[x] = 1/(np.sqrt(-C*np.pi)*np.exp(F3**2))*comp1/F1+F3/np.sqrt(-C)
-    calcAve2[x] = 1/(2*(-C)**1.5*np.pi**0.5*np.exp(F3**2))*comp2/F1+(B**2-2*C)/(4*C**2)    
+    if C < 0:
+        F3 = B/(2*np.sqrt(-C))
+        F1 = special.erf(np.sqrt(-C)*E1-F3) - special.erf(np.sqrt(-C)*E0-F3)
+        calcW[x] = 0.5*np.sqrt(-np.pi/C)*np.exp(A+F3*F3)*F1
+        comp1 = np.exp(B*E0+C*E0*E0) - np.exp(B*E1+C*E1*E1)
+        comp2 = np.exp(B*E0+C*E0*E0)*(B-2*C*E0) - np.exp(B*E1+C*E1*E1)*(B-2*C*E1)
+        calcAve[x] = 1/(np.sqrt(-C*np.pi)*np.exp(F3**2))*comp1/F1+F3/np.sqrt(-C)
+        calcAve2[x] = 1/(2*(-C)**1.5*np.pi**0.5*np.exp(F3**2))*comp2/F1+(B**2-2*C)/(4*C**2)
+    else:
+        F3 = B/(2*np.sqrt(C))
+        F1 = special.erfi(np.sqrt(C)*E1+F3) - special.erfi(np.sqrt(C)*E0+F3)
+        calcW[x] = 0.5*np.sqrt(np.pi/C)*np.exp(A-F3*F3)*F1
+        comp1 = np.exp(B*E0+C*E0*E0) - np.exp(B*E1+C*E1*E1)
+        comp2 = np.exp(B*E0+C*E0*E0)*(B-2*C*E0) - np.exp(B*E1+C*E1*E1)*(B-2*C*E1)
+        calcAve[x] = -1/(np.sqrt(C*np.pi)*np.exp(F3**2))*comp1/F1-F3/np.sqrt(C)
+        calcAve2[x] = 1/(2*(C)**1.5*np.pi**0.5)*np.exp(F3**2)*comp2/F1-(B**2-2*C)/(4*C**2)
 
 
 
@@ -91,27 +99,27 @@ plt.plot(E,realDos,label="real Dos")
 plt.plot(bins,W,label="W from Dos")
 plt.plot(bins,calcW,label="calcW")
 plt.legend()
-plt.figure()
+# plt.figure()
 
-plt.plot(E,realDos,label="realDos")
-plt.plot(bins,W,label="W from Dos")
-plt.plot(bins,Ave*W/bins,label="Ave from Dos * W")
-plt.plot(bins,Ave2*W/bins**2,label="Ave2 from Dos * W^2")
-plt.legend()
-plt.figure()
+# plt.plot(E,realDos,label="realDos")
+# plt.plot(bins,W,'.-',label="W from Dos")
+# plt.plot(bins,Ave*W/bins,'.-',label="Ave from Dos * W/E")
+# plt.plot(bins,Ave2*W/bins**2,'.-',label="Ave2 from Dos * $W^2/E^2$")
+# plt.legend()
+# plt.figure()
 
-plt.plot(bins,W,label="W")
-plt.plot(bins,calcW,label="calculated W")
-plt.legend()
-plt.figure()
+# plt.plot(bins,W,label="W")
+# plt.plot(bins,calcW,label="calculated W")
+# plt.legend()
+# plt.figure()
 
-plt.plot(bins,Ave,label="Ave")
-plt.plot(bins,calcAve,label="calculated Ave")
-plt.legend()
-plt.figure()
+# plt.plot(bins,Ave,label="Ave")
+# plt.plot(bins,calcAve,label="calculated Ave")
+# plt.legend()
+# plt.figure()
 
-plt.plot(bins,Ave2,label="Ave2")
-plt.plot(bins,calcAve2,label="calculated Ave2")
-plt.legend()
+# plt.plot(bins,Ave2,label="Ave2")
+# plt.plot(bins,calcAve2,label="calculated Ave2")
+# plt.legend()
 
 plt.show()
