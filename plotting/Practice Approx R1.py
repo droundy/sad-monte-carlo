@@ -83,9 +83,8 @@ for x in range(0,len(bins)):
         calcW[x] = 0.5*np.sqrt(np.pi/C)*np.exp(A-F3*F3)*F1
         comp1 = np.exp(B*E0+C*E0*E0) - np.exp(B*E1+C*E1*E1)
         comp2 = np.exp(B*E0+C*E0*E0)*(B-2*C*E0) - np.exp(B*E1+C*E1*E1)*(B-2*C*E1)
-        calcAve[x] = -1/(np.sqrt(C*np.pi)*np.exp(F3**2))*comp1/F1-F3/np.sqrt(C)
-        calcAve2[x] = 1/(2*(C)**1.5*np.pi**0.5)*np.exp(F3**2)*comp2/F1-(B**2-2*C)/(4*C**2)
-
+        calcAve[x] = -1/(np.sqrt(C*np.pi))*np.exp(F3**2)*comp1/F1-F3/np.sqrt(C)
+        calcAve2[x] = 1/(2*(C)**1.5*np.pi**0.5)*np.exp(F3**2)*comp2/F1+(B**2-2*C)/(4*C**2)
 
 
 
@@ -99,7 +98,7 @@ plt.plot(E,realDos,label="real Dos")
 plt.plot(bins,W,label="W from Dos")
 plt.plot(bins,calcW,label="calcW")
 plt.legend()
-# plt.figure()
+plt.figure()
 
 # plt.plot(E,realDos,label="realDos")
 # plt.plot(bins,W,'.-',label="W from Dos")
@@ -113,13 +112,13 @@ plt.legend()
 # plt.legend()
 # plt.figure()
 
-# plt.plot(bins,Ave,label="Ave")
-# plt.plot(bins,calcAve,label="calculated Ave")
-# plt.legend()
-# plt.figure()
+plt.plot(bins,Ave,label="Ave")
+plt.plot(bins,calcAve,label="calculated Ave")
+plt.legend()
+plt.figure()
 
-# plt.plot(bins,Ave2,label="Ave2")
-# plt.plot(bins,calcAve2,label="calculated Ave2")
-# plt.legend()
+plt.plot(bins,Ave2,label="Ave2")
+plt.plot(bins,calcAve2,label="calculated Ave2")
+plt.legend()
 
 plt.show()
