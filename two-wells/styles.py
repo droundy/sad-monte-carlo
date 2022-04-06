@@ -4,14 +4,8 @@ from find_phase_transition import S
 _markers = {
     'de-0.0001+step-0.001': 'D', 'de-0.0001+step-0.01': '^', 'de-0.0001+step-0.0001': 'o', 'de-0.0001+0.001': 'x',
     'de-0.0001+0.1': '^', 'de-1e-05+step-0.001': 'x',
-    'de-1e-05+step-0.01': 's', 'de-1e-05+step-0.0001': '<', 'de-1e-05+step-0.001': '>',
-    'de-1e-05+step-0.1': 'x', '05+0.001': 'D', '05+0.0001': 'o',
-}
-
-_markers = {
-    'de-0.0001+step-0.001': 'D', 'de-0.0001+step-0.01': '^', 'de-0.0001+step-0.0001': 'o', 'de-0.0001+0.001': 'x',
-    'de-0.0001+0.1': '^', 'de-1e-05+step-0.001': 'x',
-    'sad': 's', 'itwl': '<', 'de-1e-05+step-0.001': '>',
+    'sad': 's', 'itwl': '<', 'z': 'o', 'tem': 'x',
+    'de-1e-05+step-0.001': '>',
     'de-1e-05+step-0.1': 'x', '05+0.001': 'D', '05+0.0001': 'o',
 }
 
@@ -45,6 +39,10 @@ def marker(base):
         return _markers['itwl']
     if 'sad' in base:
         return _markers['sad']
+    if 'z' in base:
+        return _markers['z']
+    if 'tem' in base:
+        return _markers['tem']
 
 
 def color(base):
