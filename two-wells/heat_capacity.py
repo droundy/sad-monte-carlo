@@ -160,6 +160,10 @@ def plot_from_data(T_data, C_data, fname=None, ax=None, axins=None, Tmax=0.25):
             label = r'$1/t$-WL' + r'-$E_{barr}$=0.'+styles.get_barrier(base)[0]
         if method == 'sad':
             label = r'SAD' + r'-$E_{barr}$=0.'+styles.get_barrier(base)[0]
+        if method == 'z':
+            label = r'ZMC' + r'-$E_{barr}$=0.'+styles.get_barrier(base)[0]
+        if method == 'tem':
+            label = r'TEM' + r'-$E_{barr}$=0.'+styles.get_barrier(base)[0]
     else:
         base = None
         method = None

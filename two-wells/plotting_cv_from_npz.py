@@ -23,15 +23,17 @@ def make_plots(Ts, mean_E, mean_Esqr, label):
         linestyle = ':'
     else:
         linestyle = '--'
-
-    variance = mean_Esqr - mean_E**2
-    var_func = interp1d(Ts, variance, fill_value='extrapolate', kind='cubic')
-    #refined_Ts = np.linspace(Ts[0], Ts[-1], len(Ts))
-    C = var_func(Ts) / (Ts**2)
+    refined_Ts = np.linspace(Ts[np.argmin(abs(Ts-0.005))], Ts[np.argmin(abs(Ts-0.25))], 30*len(Ts))
+    mean_E_func = interp1d(Ts, mean_E, fill_value='extrapolate', kind='cubic')
+    mean_E_sqr_func = interp1d(Ts, mean_Esqr, fill_value='extrapolate', kind='cubic')
+    variance = mean_E_sqr_func(refined_Ts) - mean_E_func(refined_Ts)**2
+    #var_func = interp1d(Ts, variance, fill_value='extrapolate', kind='cubic')
+    
+    C = (mean_E_sqr_func(refined_Ts) - mean_E_func(refined_Ts)**2)/ (refined_Ts**2)
     plt.figure('variance')
     plt.vlines(find_phase_transition.actual_T,min(variance),max(variance), alpha=0.25)
 
-    plt.plot(Ts, var_func(Ts), label=label, linestyle=linestyle)
+    plt.plot(refined_Ts, variance, label=label, linestyle=linestyle)
     plt.ylabel(r'Var$(E)$')
     plt.xlabel(r'$T$')
     plt.title('Variance of Energy')
@@ -68,7 +70,7 @@ def make_plots(Ts, mean_E, mean_Esqr, label):
     plt.figure('C_V')
     plt.vlines(find_phase_transition.actual_T,min(C),max(C), alpha=0.25)
 
-    plt.plot(Ts, C, label=label, linestyle=linestyle)
+    plt.plot(refined_Ts, C, label=label, linestyle=linestyle)
     plt.ylabel(r'$C_V(T)$')
     plt.xlabel(r'$T$')
     plt.title('Heat Capacity')
@@ -85,7 +87,7 @@ if movie:
 
     heat_capacity.plot(system.S, ax=ax, axins=axins)
     ax.indicate_inset_zoom(axins, edgecolor="black")
-    data_paths = sorted(glob.glob(os.path.join('tem-T-50', '*.npz')))
+    data_paths = sorted(glob.glob(os.path.join('tem+T-trans-1+barrier-0+seed-1', '*.npz')))
     for d in data_paths:
         
         data = np.load(d)
@@ -120,7 +122,7 @@ if movie:
         plt.pause(1.01)
     plt.show()
 else:
-    data_paths_50 = sorted(glob.glob(os.path.join('tem-T-50', '*.npz')))
+    data_paths_50 = sorted(glob.glob(os.path.join('tem+T-trans-1+barrier-0+seed-1', '*.npz')))
     data_50 = np.load(data_paths_50[-1])
     for k in data_50.keys():
         print(k)
@@ -158,25 +160,25 @@ else:
     T_int = np.linspace(0.0001, .5, 10000)[1:]
     dT = T_int[1] - T_int[0]
 
-    C_int_exact = C_exact(T_int)*dT/T_int
-    C_int_tempering = C_tempering(T_int)*dT/T_int
+    #C_int_exact = C_exact(T_int)*dT/T_int
+    #C_int_tempering = C_tempering(T_int)*dT/T_int
     plt.figure('C')
     plt.plot(T_int, C_exact(T_int))
 
-    S_int = np.flip(np.cumsum(np.flip(-C_int_exact)))
-    S_int_2 = np.cumsum(C_int_exact)
-    S_tempering = np.flip(np.cumsum(np.flip(-C_int_tempering)))
-    plt.figure('S')
+    #S_int = np.flip(np.cumsum(np.flip(-C_int_exact)))
+    #S_int_2 = np.cumsum(C_int_exact)
+    #S_tempering = np.flip(np.cumsum(np.flip(-C_int_tempering)))
+    #plt.figure('S')
 
-    E = np.linspace(-system.h_small, 0, 10000)
-    plt.plot(mean_E_exact_f(T_int), normalize_S(S_int_2, mean_E_exact_f(T_int)) , label= 'exact by integrating Cv')
-    plt.plot(E, normalize_S(system.S(E), E), ':', label='exact')
+    #E = np.linspace(-system.h_small, 0, 10000)
+    #plt.plot(mean_E_exact_f(T_int), normalize_S(S_int_2, mean_E_exact_f(T_int)) , label= 'exact by integrating Cv')
+    #plt.plot(E, normalize_S(system.S(E), E), ':', label='exact')
     #plt.plot(mean_E_tempering_f(T_int), S_tempering, label = 'Par Temp')
-    plt.title(r'$S(E)$ from integrating heat capacity')
-    plt.legend()
+    #lt.title(r'$S(E)$ from integrating heat capacity')
+    #plt.legend()
 
-    #make_plots(Ts,mean_E_exact,mean_Esqr_exact,'exact')
-    #make_plots(data_50['T'],data_50['mean_E'], data_50['var_E'] + data_50['mean_E']**2, 'Paralell Tempering')
+    make_plots(Ts,mean_E_exact,mean_Esqr_exact,'exact')
+    make_plots(data_50['T'],data_50['mean_E'], data_50['var_E'] + data_50['mean_E']**2, 'Paralell Tempering')
 
 
 

@@ -6,14 +6,18 @@ import styles
 import heat_capacity
 from results_plotting import Results
 
+import warnings
+warnings.filterwarnings("ignore")
+
 
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
+import matplotlib.lines as mlines
 
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
-matplotlib.pyplot.title(r'ABC123 vs $\mathrm{ABC123}^{123}$')
+#matplotlib.pyplot.title(r'ABC123 vs $\mathrm{ABC123}^{123}$')
 matplotlib.rcParams.update({'font.size': 16})
 
 def arithmetic_mean(list_of_arr):
@@ -40,7 +44,6 @@ def geometric_mean(list_of_arr):
     return mu**(1/i)
 
 def legend_handles(exact = False):
-    import matplotlib.lines as mlines
     lines=[]
     if exact:
         exact_line = mlines.Line2D([], [], color='blue',
@@ -50,13 +53,15 @@ def legend_handles(exact = False):
                           markersize=8, label=r'SAD')
     itwl_line = mlines.Line2D([], [], color='k', marker='<',
                           markersize=8, label=r'$1/t$-WL')
+    z_line = mlines.Line2D([], [], color='k', marker='o',
+                          markersize=8, label=r'ZMC')
     zero_line = mlines.Line2D([], [], color='g', linestyle='-',
                           markersize=12, label=r'$E_{barr}$=0.0')
     one_ten_line = mlines.Line2D([], [], color='tab:orange', linestyle='dashed',
                           markersize=12, label=r'$E_{barr}$=0.1')
     two_ten_line = mlines.Line2D([], [], color='tab:cyan', linestyle='-.',
                           markersize=12, label=r'$E_{barr}$=0.2')
-    lines+=[sad_line, itwl_line, zero_line, one_ten_line, two_ten_line]
+    lines+=[sad_line, itwl_line, z_line, zero_line, one_ten_line, two_ten_line]
     return lines
 
 lowest_interesting_E = -1.1
@@ -107,43 +112,37 @@ def combine_data(a,b, replace = False):
     else:
         return np.concatenate(a[:len(b)] + b, a[len(b):])
 
-for fname in paths:
-    step = 0.0001
-    if any( [method in fname[:-3] for method in [ 'sad', 'itwl']] ) and ('seed-1+' in fname and f'de-1e-05+step-{step}'  in fname):
-        tail = fname[:fname.find('seed')]
-        b = fname[fname.find('seed'):]
-        i= fname.find('seed') + b.find('+')
-        front = fname[i:]
+z_filter = lambda fname: 'z+' in fname
+tem_filter = lambda fname: 'tem+' in fname
+seed_filter = lambda fname: 'seed-1+' in fname
+step_filter = lambda fname, step: 'de-1e-05+step-'+str(step) in fname
+step = 0.01
+total_filter = lambda fname: (step_filter(fname, step) or z_filter(fname) or tem_filter(fname)) and seed_filter(fname)
+for fname in filter(total_filter, paths):
+    print(fname)
+    tail = fname[:fname.find('seed')]
+    b = fname[fname.find('seed'):]
+    i= fname.find('seed') + b.find('+')
+    front = fname[i:]
 
-        mean_e=[]
-        mean_which=[]
-        hist=[]
-        E=[]
-        S=[]
-        T=[]
-        C=[]
-        moves=[]
-        errors_S=[]
-        errors_C=[]
 
-        i=0
-        results = Results()
-        for seed in [1, 12, 123, 1234, 12345, 123456, 1234567, 12345678]:
-            seed = str(seed)
-            try:
-                base = fname[:-4]
-                i+=1
-                fname = tail + 'seed-' + seed + front
-                #print(fname)
-                
-                de_ind = base.rfind('de')
-                precision = base[de_ind:]
-                method = base[12:base.find('+')]
-                results.add_npz(fname)
-            except:
-                print(f'skipping file {fname}')
-                pass
-        results.median_method(ax, axins, subplot=(axs, axins_subplot))
+
+    results = Results()
+    for seed in [1, 12, 123, 1234, 12345, 123456, 1234567, 12345678]:
+        seed = str(seed)
+        try:
+            base = fname[:-4]
+
+            fname = tail + 'seed-' + seed + front
+            #print(fname)
+            
+            results.add_npz(fname)
+            
+        except:
+            print(f'skipping file {fname}')
+            pass
+    results.median_method(ax, axins, subplot=(axs, axins_subplot))
+        
 
 
 plt.figure('latest-entropy')
@@ -167,12 +166,12 @@ plt.ylabel(r'Proportion in Small Well')
 plt.legend()
 plt.savefig(system.system+'-which.svg')
 
-if hist is not None:
-    plt.figure('histogram')
-    plt.xlabel(r'$E$')
-    plt.ylabel(r'# of Visitors')
-    plt.legend()
-    plt.savefig(system.system+'-histogram.svg')
+
+plt.figure('histogram')
+plt.xlabel(r'$E$')
+plt.ylabel(r'# of Visitors')
+plt.legend()
+plt.savefig(system.system+'-histogram.svg')
 
 plt.figure('convergence')
 plt.xlabel(r'# of Moves')
@@ -238,7 +237,7 @@ for label, ax in axs.items():
 plt.savefig(system.system+'-combined.pdf')
 
 if __name__ == '__main__':
-    dump_into_thesis = True
+    dump_into_thesis = False
     if dump_into_thesis:
         plt.savefig(os.path.join(r'C:\Users\Henry Sprueill\Documents\Coding\Latex\Thesis\figure', 
                                 'step-'+str(step), 
