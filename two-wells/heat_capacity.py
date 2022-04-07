@@ -9,6 +9,30 @@ from mytimer import Timer
 
 T_peak = find_phase_transition.actual_T
 
+def canonical(T, S_func):
+    #S-function
+    E = np.linspace(-system.h_small, 0, 10000)
+    E = 0.5*(E[1:] + E[:-1])
+    dE = E[1] - E[0]
+
+    def normalize_S(S):
+        S = S - max(S)
+        total = np.sum(np.exp(S)*dE)
+        return S - np.log(total)
+
+    S = normalize_S(S_func(E))
+
+    S_minus_E = S-E/T
+    M = np.max(S_minus_E)
+
+    Z = np.sum(np.exp(S_minus_E-M))*dE
+
+    canonical_dist = np.exp(S_minus_E-M) / Z
+
+    # print('C took', time.process_time() - start)
+    return (canonical_dist, E)
+
+
 def C(T, S):#T is a temperature and S is an entropy function
     # start = time.process_time()
     E = np.linspace(-system.h_small, 0, 10000)
@@ -37,7 +61,7 @@ def C(T, S):#T is a temperature and S is an entropy function
 
 def C_E_Esqrd(T, S):#T is a temperature and S is an entropy function
     # start = time.process_time()
-    E = np.linspace(-system.h_small, 0, 1000)
+    E = np.linspace(-system.h_small, 0, 10000)
     E = 0.5*(E[1:] + E[:-1])
     dE = E[1] - E[0]
 
@@ -204,10 +228,6 @@ def data(S, fname=None, Tmax=0.25):
     t_low, t_peak, t_high = _set_temperatures()
     t = np.concatenate( (t_low,t_peak,t_high) )
     
-
-    c_low = np.array([C(T,S) for T in t_low])
-    c_peak = np.array([C(T,S) for T in t_peak])
-    c_high = np.array([C(T,S) for T in t_high])
     c = np.array([C(T,S) for T in t])
 
     return [t, c]
@@ -255,10 +275,3 @@ if __name__ == "__main__":
     ax.indicate_inset_zoom(axins, edgecolor="black")
 
     plt.show()
-
-
-
-
-
-
-

@@ -28,39 +28,47 @@ def normalize_S(S):
     S = S - max(S)
     total = np.sum(np.exp(S)*dE)
     return S - np.log(total)
+if not os.path.exists(system.name()+'.npz'):
 
-correct_S = normalize_S(system.S(E))
+    correct_S = normalize_S(system.S(E))
 
-correct_S_for_err = normalize_S(system.S(E[indices_for_err]))
+    correct_S_for_err = normalize_S(system.S(E[indices_for_err]))
 
-T,correct_C = heat_capacity.data(system.S)
+    T,correct_C = heat_capacity.data(system.S)
 
-np.savez(system.name(), E=E,
-                        T=T,
-                        correct_S=normalize_S(system.S(E)),
-                        correct_S_for_err=correct_S_for_err,
-                        correct_C=correct_C)
+    np.savez(system.name(), E=E,
+                            T=T,
+                            correct_S=normalize_S(system.S(E)),
+                            correct_S_for_err=correct_S_for_err,
+                            correct_C=correct_C)
+else:
+    with np.load(system.name()+'.npz') as dat:
+        correct_S_for_err = dat['correct_S_for_err']
+        correct_C=dat['correct_C']
+        correct_S = dat['correct_S']
+        E = dat['E']
 
 paths = []
-for fname in sorted(glob.glob(os.path.join('thesis-data', 'tem+*'+system.system+'*/'))):
+for fname in sorted(glob.glob(os.path.join('thesis-data', '*+'+system.system+'*-lnw.dat'))):
     if not ('half-barrier' in fname):
-        if 'sad' in fname:
+        if 'sad' in fname and '0.01' in fname:
             if True:#not( '0.01+0.001' in fname):
                 paths.append(fname)
-        elif 'wl' in fname or 'itwl' in fname:
+        elif ('wl' in fname or 'itwl' in fname) and '0.01' in fname:
             if True:#'0.001+' in fname:
                 paths.append(fname)
-        elif 'tem+' in fname:
+        elif 'z+' in fname:
             paths.append(fname)
         else:
-            paths.append(fname)
+            #paths.append(fname)
+            pass
 
 def generate_npz(fname):
     print(fname)
     start_fname = time.process_time()
     base = fname[:-8]
-    if os.path.exists(fname+'.npz'):
-        return
+    if os.path.exists(fname+'diag.npz'):
+        pass
     method = base[:base.find('-')]
 
     energy_boundaries, mean_e, my_lnw, my_system, p_exc = compute.read_file(base)
@@ -68,6 +76,15 @@ def generate_npz(fname):
     # Create a function for the entropy
     l_function, eee, sss = compute.linear_entropy(energy_boundaries, mean_e, my_lnw)
     S = normalize_S(l_function(E))
+
+    canonical_dist_low_T, E_dist= heat_capacity.canonical(0.0107, l_function)
+    canonical_dist_high_T, E_dist= heat_capacity.canonical(0.0108, l_function)
+    actual_canonical_low_T, E_dist = heat_capacity.canonical(0.0107, system.S)
+    actual_canonical_high_T, E_dist = heat_capacity.canonical(0.0108, system.S)
+
+    can_error_low_T = canonical_dist_low_T - actual_canonical_low_T
+    can_error_high_t = canonical_dist_high_T - actual_canonical_high_T
+    error_dist_S = correct_S - normalize_S(l_function(E))
 
     T,C = heat_capacity.data(l_function, fname=fname)
 
@@ -85,23 +102,21 @@ def generate_npz(fname):
     for frame_fname in sorted(glob.glob(f'{base}/*-lnw.dat')):
         frame_base =frame_fname[:-8]
 
-        try:
-            frame_moves = int(frame_fname[len(base)+1:-8])
-            if frame_moves < 1e4:
-                continue
-            energy_boundaries, mean_e, my_lnw, my_system, p_exc = compute.read_file(frame_base)
-            l_function, eee, sss = compute.linear_entropy(energy_boundaries, mean_e, my_lnw)
-            moves.append(frame_moves)
-            err = np.max(np.abs(normalize_S(l_function(E[indices_for_err])) - correct_S_for_err))
-            errors_S.append(err)
-            T,C = heat_capacity.data(l_function, fname=fname)
-            C_mask = [t>=lowest_interestng_T for t in T]
-            assert(len(correct_C) == len(C))
-            errors_C.append(np.max(np.abs(correct_C[C_mask]-C[C_mask])))
-        except:
-            pass
+        frame_moves = int(frame_fname[len(base)+1:-8])
+        if frame_moves < 1e4:
+            continue
+        energy_boundaries, mean_e, my_lnw, my_system, p_exc = compute.read_file(frame_base)
+        l_function, eee, sss = compute.linear_entropy(energy_boundaries, mean_e, my_lnw)
+        moves.append(frame_moves)
+        err = np.max(np.abs(normalize_S(l_function(E[indices_for_err])) - correct_S_for_err))
+        errors_S.append(err)
+        T,C = heat_capacity.data(l_function, fname=fname)
+        C_mask = [t>=lowest_interestng_T for t in T]
+        assert(len(correct_C) == len(C))
+        errors_C.append(np.max(np.abs(correct_C[C_mask]-C[C_mask])))
+
     
-    np.savez(os.path.join('.',base)+'.npz',
+    np.savez(os.path.join(base)+'diag.npz',
                             E=E,
                             T=T,
                             mean_e=mean_e,
@@ -111,7 +126,11 @@ def generate_npz(fname):
                             C=C,
                             moves=moves,
                             errors_S=errors_S,
-                            errors_C=errors_C)
+                            errors_C=errors_C,
+                            error_dist_S=error_dist_S,
+                            can_error_low_T=can_error_low_T,
+                            can_error_high_t=can_error_high_t,
+                            E_dist=E_dist)
 
 def generate_npz_tempering(fname):
     print(fname)
@@ -151,5 +170,5 @@ def generate_npz_tempering(fname):
 from multiprocessing import Pool
 
 if __name__ == '__main__':
-    with Pool(8 ) as p:
-        p.map(generate_npz_tempering, list(paths))
+    with Pool(16) as p:
+        p.map(generate_npz, list(paths))
