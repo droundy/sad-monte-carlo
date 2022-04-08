@@ -13,7 +13,14 @@ use vector3d::Vector3d;
 // sigma = 3.166 Å
 // epsilon = 6.737 meV
 
-// alpha = 5.213 kJ/mol => polarizability const
+///Avagadro's Number
+const AVAGADROS_NUMBER: f64 = 6.0221415e23; // units of (thing/mol) 
+/// Boltzmans constant
+const K_BOLTZMAN: f64 = 1.38064852e-23; // units of Joules/Kelvin
+/// Conversion factor 1 D = 3.33e-30 (CM) 
+const DEBYE_TO_CM: f64 = 3.33564095e-30; // units of (Couloumbs * meters)/Debye
+/// Conversion factor 1 kcal = 4184 Joules
+const JOULES_TO_KCAL: f64 = 1.0/4184.0; // units of (kcal/Joule)
 
 /// Angle of water molecule
 const ANGLE_HOH: f64 = 1.911; // units of radians
@@ -22,9 +29,25 @@ const CHARGE_O: f64 = -0.8476; // units of elementary charges
 /// Charge of hydrogen
 const CHARGE_H: f64 = -CHARGE_O / 2.0; // units of elementary charges
 
+/// Polarizability of water molecule (alpha = 5.213 kJ/mol)
+const POLARIZABILITY: f64 = 1.608e-40; // units of Farads * meters**2
+
+/// Electric dipole moment of the effectively polarized water molecule (2.35 D)
+const MU: f64 = 2.35; // units of Debyes
+
+/// Electric dipole moment of an isolated water molecule (1.85 D)
+const MU_NAUGHT: f64 = 1.85; // units of Debyes
+
+/// Lennord Jones parameter
+const SIGMA: f64 = 3.165558; // units of Angstroms
+
+/// Lennord Jones parameter 78.24 (KBoltzman) 
+const EPSILON_LJ: f64 = 78.24 * K_BOLTZMAN * JOULES_TO_KCAL * AVAGADROS_NUMBER; // Units of kcal/mol 
+
+
 /// The parameters needed to configure a water system.
 #[allow(non_snake_case)]
-#[derive(Serialize, Deserialize, Debug, AutoArgs)] // some serde -> serialize/deserialize 
+#[derive(Serialize, Deserialize, Debug, AutoArgs)]
 pub struct WaterParams {
     /// The number of molecules
     N: usize,
@@ -84,31 +107,6 @@ enum Change {
     None,
 }
 
-
-//For potential below, induction energy or polarization energy needs to be added.
-// dipole moment is charge times distance of seperation. 1 D = 3.33564e-30 (Cm) (dim=>QL)
-
-//Ewald?
-
-    //adding induction energy
-    //let mut polarization: Energy = 0.0 * units::EPSILON;
-    // (1/2a)* sum( for all j) [(mu(j)-mu0)**2]
-    // a = alpha = polarizability of a water molecule
-    // mu0 = dipole moment of isolated molecule = 1.85 D
-    // Does this need to go outside the function with the caller?
-    // sum over what?
-
-    //let mut i = 0;
-   // sum thing
-
-
-   // FIX BAD units 
-//const ALPHA: f64 = 5.213; // kJ/mol ..alpha => polirizability 
-//const MU: f64 = 0.415; //2.3-1.885 = 1.115. Units are D, 1D = 3.335 xx 10^-30 Coulumbs * meters
-                        // 2.3 D - 1.885 D= 0.415 = mu-liquid - mu-gas => liquid and gas phase dipole moment
-                        // 2.43 D to 3.09 D have been used supposedly.
-
-
 /// Compute the energy between two molecules. SPC/E
 fn potential(a: WaterMolecule, b: WaterMolecule) -> Energy { // Returns an energy *
     let mut potential: Energy = 0.0 * units::EPSILON;
@@ -122,42 +120,27 @@ fn potential(a: WaterMolecule, b: WaterMolecule) -> Energy { // Returns an energ
     potential += electric_potential(a.h2, b.h1, CHARGE_H * CHARGE_H);
     potential += electric_potential(a.h2, b.h2, CHARGE_H * CHARGE_H);
 
-    let sigma = 3.1656; // Angstroms => L
-    //let epsilon_LJ = 78.24; // * KBoltzman  
-    //let k_boltzman = 1.3806e-23; // J/K => Q/T
-    let epsilon_lj_k_boltzman = 1.0802e-21; // J/K => Energy/Temp
-
-    // FIX ME bad units on epsilon_lj_k_boltzman ?
-    let sigma_over_r_2 = units::SIGMA * units::SIGMA *sigma*sigma / (a.position - b.position).norm2(); // sigma => length
+    let sigma_over_r_2 = units::SIGMA * units::SIGMA * SIGMA.powi(2) / (a.position - b.position).norm2();
     let sigma_over_r_6 = sigma_over_r_2 * sigma_over_r_2 * sigma_over_r_2;
     let sigma_over_r_12 = sigma_over_r_6 * sigma_over_r_6;
-    potential += 4.0 * units::EPSILON * epsilon_lj_k_boltzman * (sigma_over_r_12 - sigma_over_r_6); // 4 * epsilon LJ = 4*78.24*(1.38e-23 J/molK) =>4*78.24*Kb *(....12-6)?
 
-    // Does this make sense here? NO Outside with energy callers.. 
-    //move atom shouldn't call this.
-    //potential += units::EPSILON*(MU*MU) / ( 2.0 * ALPHA);
+    potential += units::EPSILON * 4.0 * EPSILON_LJ * (sigma_over_r_12 - sigma_over_r_6);
+
     potential
 }
 
 
 
+// The units are: (Angstroms) * (kcal/mol)*(1/e^2)
 
 
 
-
-/// Compute electric potential energy between two point charges.
+/// Compute electric potential energy between two point charges. Units => kcal/mol
 fn electric_potential(a: Vector3d<Length>, b: Vector3d<Length>, qq: f64) -> Energy {
-    let coulomb_constant = 675.109691 * units::EPSILON * units::SIGMA; // x = ky => x/k = y => y = 675.109691(Newton??? * Angstrom^2/elementary charge^2)/(9e9(N*m*m/C*C)) = 7.50121879e-8()
-    return coulomb_constant * qq / (a - b).norm2().sqrt(); // What are the units here? meV?
-}                   // qq has no units built in, but is elementary charge^2          
+    let coulomb_constant = 332.063711 * units::EPSILON * units::SIGMA; // kc != 675.109691 (kcal * Å)/(mol * e^2)
+    return coulomb_constant * qq / (a - b).norm2().sqrt(); 
+}                            
 
-// E => Nm =J... Kgm^2/s^2
-// is the mass of a proton the unit of mass
-// mp = 1.67e-27 kg
-// E => mp*A^2/s^2 ? 
-// kqq/r => Nmm/CC
-// Kgm^3/(Cs)2 *(AMU/Kg) *(A/m)^3 *(C/e)^2
-// e=> elementary charge, A => angstrom
 
 
 impl Water {
@@ -239,31 +222,15 @@ impl System for Water {
                 e += potential(m1, m2);
             }
         }
-
-        //let mut mu: f64 = 0.415; // D, 1D = 3.335e-30 Couloumbs * meters... 2.3 D - 1.885 D= 0.415
-        // Debyes to Couloumb meters to elementary charge * angstroms
-        //
-        //let couloumbMeter_debye = 3.335e-30; 
-        //let elementaryCharge_Couloumb = 1.6022e-19;
-        //let angstrom_meter = 1.0e10;
-        //mu = mu * couloumbMeter_debye *elementaryCharge_Couloumb *angstrom_meter;
-        //Computed the above for mu in python:
-        //FIX ME bad units on alpha... mu (fixed)
-        let alpha: f64 = 5213.0; // polirizability => J/mol 
-        let mu = 2.2175e-39; //elementary Charge * angstroms
-        let mMolar_H20: f64 = 18.015; // moles (15.999 moles O + 2*1.008 moles H)
-        e += units::EPSILON*(mu*mu) / ( 2.0 * alpha * mMolar_H20 *self.molecules.len() as f64 );// FIX ME bad units still
+        // Epol correction
+        //e += units::EPSILON*((MU-MU_NAUGHT).powi(2)) / ( 2.0 * POLARIZABILITY)*( self.molecules.len() as f64 );
+        //let epol = ( self.molecules.len() as f64)*1.25 * units::EPSILON; // units of kcal/mol 
+        let epol = (1.0/(2.0*POLARIZABILITY)) * ((MU - MU_NAUGHT)*DEBYE_TO_CM).powi(2) * JOULES_TO_KCAL * AVAGADROS_NUMBER ;
+        e += (self.molecules.len() as f64) * epol * units::EPSILON;
         e
 
-        //alpha units => J/mol = Nm/mol what is the energy unit we get from potential
+        
     }
-
-    //Can't add... undeclared func for system in mod.rs
-    //don't even need to call elsewhere as this is specific to this energy
-    // fn polarizationEnergy(&self) -> Energy {
-    //     let mut ePol: Energy = units::EPSILON * 0.0;
-    //     ePol
-    // }
 
     // fn lowest_possible_energy(&self) -> Option<Energy> {
     //     // TODO: where does this formula come from
@@ -386,7 +353,7 @@ fn rand_rotation(rng: &mut MyRng) -> Rotation {
 /// Generate a random molecule position and orientation. FIXME method WaterMolecule::random(&mut rng)
 fn rand_molecule(rng: &mut MyRng, radius: Length) -> WaterMolecule {
     // Distance between oxygen and hydrogen
-    let r_oh: Length = 0.315856 * units::SIGMA;
+    let r_oh: Length = 1.0 * units::SIGMA;
     let position = rand_unit_ball(rng) * radius;
     let rotation = rand_rotation(rng);
     let h1 = rotation * Vector3d::new(1.0, 0.0, 0.0) * r_oh;
@@ -413,29 +380,30 @@ fn energy_is_right_n200() {
 
 #[cfg(test)]
 fn energy_is_right(natoms: usize) {
+    let converter =  (1.0/JOULES_TO_KCAL) * (1.0 / K_BOLTZMAN ) * (1.0/AVAGADROS_NUMBER); // get energy as 1/(Kb)
     let mut water = mk_water(natoms);
     assert_eq!(water.energy(), water.compute_energy());
     let mut rng = MyRng::seed_from_u64(1);
     let mut old_energy = water.energy();
     let maxe = (natoms as f64) * 16.0 * units::EPSILON; // Why 16 * natoms?
     let mut i = 0.0;
-    while i < 1000.0 {
+    while i < 2000.0 {
         if let Some(newe) = water.plan_move(&mut rng, Length::new(1.0)) {
             if newe < maxe || newe < old_energy {
                 water.confirm();
                 println!(
                     "after move {}... {} vs {}",
-                    i,
-                    water.energy(),
-                    water.compute_energy()
+                    i*converter,
+                    water.energy()*converter,
+                    water.compute_energy()*converter
                 );
                 water.verify_energy();
                 old_energy = newe;
                 i += 1.0;
             } else {
                 println!(
-                    "rejected move giving {} (vs old_energy {} and maxe {})",
-                    newe, old_energy, maxe
+                    "rejected move giving {}  (vs old_energy {} and maxe {} )",
+                    newe*converter, old_energy*converter, maxe*converter
                 );
                 i += 1e-6;
             }
