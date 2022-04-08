@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.special as special
+from scipy.optimize import minimize
 
 """setup estimation data"""
 
@@ -16,7 +17,7 @@ dE = Estep
 realS = A + B*E + C*E**2
 realDos = np.exp(realS)
 
-binnum = 10
+binnum = 100
 bstep = Estep*binnum
 bins = np.arange(0+bstep/2,Esize+bstep/2,bstep) #points at the centers, not the dividers
 
@@ -127,13 +128,22 @@ def calcAve2(input_index,A,B,C):
 
 
 
+'''minimize methods'''
+# def test(b):
+#     return  4 - b    #W[1]-calcW(1,A,b,C)
+# res = minimize(test,3.9999999999,method='nelder-mead', options={'xatol': 1e-8, 'disp': True})
+# print(res)
+
+
+
+
 bindex = range(len(bins))
 
-plt.plot(E,realDos,label="real Dos")
-plt.plot(bins,W,label="W from Dos")
-plt.plot(bins,calcW(bindex,A,B,C),label="calcW")
-plt.legend()
-plt.figure()
+# plt.plot(E,realDos,label="real Dos")
+# plt.plot(bins,W,'.-',label="W from Dos")
+# plt.plot(bins,calcW(bindex,A,B,C),'.-',label="calcW")
+# plt.legend()
+# plt.figure()
 
 # plt.plot(E,realDos,label="realDos")
 # plt.plot(bins,W,'.-',label="W from Dos")
@@ -147,16 +157,16 @@ plt.figure()
 # plt.legend()
 # plt.figure()
 
-plt.plot(bins,Ave,label="Ave")
-plt.plot(bins,calcAve(bindex,A,B,C),label="calculated Ave")
-plt.legend()
-plt.figure()
+# plt.plot(bins,Ave,'.-',label="Ave")
+# plt.plot(bins,calcAve(bindex,A,B,C),'.-',label="calculated Ave")
+# plt.legend()
+# plt.figure()
 
-plt.plot(bins,Ave2,label="Ave2")
-plt.plot(bins,calcAve2(bindex,A,B,C),label="calculated Ave2")
-plt.legend()
+# plt.plot(bins,Ave2,'.-',label="Ave2")
+# plt.plot(bins,calcAve2(bindex,A,B,C),'.-',label="calculated Ave2")
+# plt.legend()
 
-plt.show()
+# plt.show()
 
 
 
