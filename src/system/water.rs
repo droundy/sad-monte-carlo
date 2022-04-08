@@ -13,12 +13,37 @@ use vector3d::Vector3d;
 // sigma = 3.166 Å
 // epsilon = 6.737 meV
 
+///Avagadro's Number
+const AVAGADROS_NUMBER: f64 = 6.0221415e23; // units of (thing/mol) 
+/// Boltzmans constant
+const K_BOLTZMAN: f64 = 1.38064852e-23; // units of Joules/Kelvin
+/// Conversion factor 1 D = 3.33e-30 (CM) 
+const DEBYE_TO_CM: f64 = 3.33564095e-30; // units of (Couloumbs * meters)/Debye
+/// Conversion factor 1 kcal = 4184 Joules
+const JOULES_TO_KCAL: f64 = 1.0/4184.0; // units of (kcal/Joule)
+
 /// Angle of water molecule
 const ANGLE_HOH: f64 = 1.911; // units of radians
 /// Charge of oxygen
 const CHARGE_O: f64 = -0.8476; // units of elementary charges
 /// Charge of hydrogen
 const CHARGE_H: f64 = -CHARGE_O / 2.0; // units of elementary charges
+
+/// Polarizability of water molecule (alpha = 5.213 kJ/mol)
+const POLARIZABILITY: f64 = 1.608e-40; // units of Farads * meters**2
+
+/// Electric dipole moment of the effectively polarized water molecule (2.35 D)
+const MU: f64 = 2.35; // units of Debyes
+
+/// Electric dipole moment of an isolated water molecule (1.85 D)
+const MU_NAUGHT: f64 = 1.85; // units of Debyes
+
+/// Lennord Jones parameter
+const SIGMA: f64 = 3.165558; // units of Angstroms
+
+/// Lennord Jones parameter 78.24 (KBoltzman) 
+const EPSILON_LJ: f64 = 78.24 * K_BOLTZMAN * JOULES_TO_KCAL * AVAGADROS_NUMBER; // Units of kcal/mol 
+
 
 /// The parameters needed to configure a water system.
 #[allow(non_snake_case)]
@@ -83,7 +108,7 @@ enum Change {
 }
 
 /// Compute the energy between two molecules. SPC/E
-fn potential(a: WaterMolecule, b: WaterMolecule) -> Energy {
+fn potential(a: WaterMolecule, b: WaterMolecule) -> Energy { // Returns an energy *
     let mut potential: Energy = 0.0 * units::EPSILON;
     potential += electric_potential(a.position, b.position, CHARGE_O * CHARGE_O);
     potential += electric_potential(a.position, b.h1, CHARGE_O * CHARGE_H);
@@ -94,26 +119,37 @@ fn potential(a: WaterMolecule, b: WaterMolecule) -> Energy {
     potential += electric_potential(a.h2, b.position, CHARGE_H * CHARGE_O);
     potential += electric_potential(a.h2, b.h1, CHARGE_H * CHARGE_H);
     potential += electric_potential(a.h2, b.h2, CHARGE_H * CHARGE_H);
-    let sigma_over_r_2 = units::SIGMA * units::SIGMA / (a.position - b.position).norm2();
+
+    let sigma_over_r_2 = units::SIGMA * units::SIGMA * SIGMA.powi(2) / (a.position - b.position).norm2();
     let sigma_over_r_6 = sigma_over_r_2 * sigma_over_r_2 * sigma_over_r_2;
     let sigma_over_r_12 = sigma_over_r_6 * sigma_over_r_6;
-    potential += 4.0 * units::EPSILON * (sigma_over_r_12 - sigma_over_r_6);
+
+    potential += units::EPSILON * 4.0 * EPSILON_LJ * (sigma_over_r_12 - sigma_over_r_6);
+
     potential
 }
 
-/// Compute electric potential energy between two point charges.
+
+
+// The units are: (Angstroms) * (kcal/mol)*(1/e^2)
+
+
+
+/// Compute electric potential energy between two point charges. Units => kcal/mol
 fn electric_potential(a: Vector3d<Length>, b: Vector3d<Length>, qq: f64) -> Energy {
-    let coulomb_constant = 675.109691 * units::EPSILON * units::SIGMA;
-    return coulomb_constant * qq / (a - b).norm2().sqrt();
-}
+    let coulomb_constant = 332.063711 * units::EPSILON * units::SIGMA; // kc != 675.109691 (kcal * Å)/(mol * e^2)
+    return coulomb_constant * qq / (a - b).norm2().sqrt(); 
+}                            
+
+
 
 impl Water {
     /// Change the position of a specified particle.  Returns the change in energy, or
     /// `None` if the particle could not be placed there.
-    pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> {
-        let old = self.molecules[which];
+    pub fn move_atom(&mut self, which: usize, r: Vector3d<Length>) -> Option<Energy> { // Why is there an Option? It could either return an energy, or none.
+        let old = self.molecules[which]; //                                             which is just a number, type usize "The size of this primitive is how many bytes it takes to reference any location in memory."
         let previous_rsqr = old.position.norm2();
-        if r.norm2() > self.max_radius_squared && r.norm2() > previous_rsqr {
+        if r.norm2() > self.max_radius_squared && r.norm2() > previous_rsqr { // if r^2 is outside The square of the maximum radius permitted
             return None;
         }
         let mut e = self.E;
@@ -174,6 +210,7 @@ impl From<WaterParams> for Water {
     }
 }
 
+#[allow(non_snake_case)]
 impl System for Water {
     fn energy(&self) -> Energy {
         self.E
@@ -185,8 +222,16 @@ impl System for Water {
                 e += potential(m1, m2);
             }
         }
+        // Epol correction
+        //e += units::EPSILON*((MU-MU_NAUGHT).powi(2)) / ( 2.0 * POLARIZABILITY)*( self.molecules.len() as f64 );
+        //let epol = ( self.molecules.len() as f64)*1.25 * units::EPSILON; // units of kcal/mol 
+        let epol = (1.0/(2.0*POLARIZABILITY)) * ((MU - MU_NAUGHT)*DEBYE_TO_CM).powi(2) * JOULES_TO_KCAL * AVAGADROS_NUMBER ;
+        e += (self.molecules.len() as f64) * epol * units::EPSILON;
         e
+
+        
     }
+
     // fn lowest_possible_energy(&self) -> Option<Energy> {
     //     // TODO: where does this formula come from
     //     let n = self.molecules.len() as f64;
@@ -308,7 +353,7 @@ fn rand_rotation(rng: &mut MyRng) -> Rotation {
 /// Generate a random molecule position and orientation. FIXME method WaterMolecule::random(&mut rng)
 fn rand_molecule(rng: &mut MyRng, radius: Length) -> WaterMolecule {
     // Distance between oxygen and hydrogen
-    let r_oh: Length = 0.315856 * units::SIGMA;
+    let r_oh: Length = 1.0 * units::SIGMA;
     let position = rand_unit_ball(rng) * radius;
     let rotation = rand_rotation(rng);
     let h1 = rotation * Vector3d::new(1.0, 0.0, 0.0) * r_oh;
@@ -335,29 +380,30 @@ fn energy_is_right_n200() {
 
 #[cfg(test)]
 fn energy_is_right(natoms: usize) {
+    let converter =  (1.0/JOULES_TO_KCAL) * (1.0 / K_BOLTZMAN ) * (1.0/AVAGADROS_NUMBER); // get energy as 1/(Kb)
     let mut water = mk_water(natoms);
     assert_eq!(water.energy(), water.compute_energy());
     let mut rng = MyRng::seed_from_u64(1);
     let mut old_energy = water.energy();
-    let maxe = (natoms as f64) * 16.0 * units::EPSILON;
+    let maxe = (natoms as f64) * 16.0 * units::EPSILON; // Why 16 * natoms?
     let mut i = 0.0;
-    while i < 1000.0 {
+    while i < 2000.0 {
         if let Some(newe) = water.plan_move(&mut rng, Length::new(1.0)) {
             if newe < maxe || newe < old_energy {
                 water.confirm();
                 println!(
                     "after move {}... {} vs {}",
-                    i,
-                    water.energy(),
-                    water.compute_energy()
+                    i*converter,
+                    water.energy()*converter,
+                    water.compute_energy()*converter
                 );
                 water.verify_energy();
                 old_energy = newe;
                 i += 1.0;
             } else {
                 println!(
-                    "rejected move giving {} (vs old_energy {} and maxe {})",
-                    newe, old_energy, maxe
+                    "rejected move giving {}  (vs old_energy {} and maxe {} )",
+                    newe*converter, old_energy*converter, maxe*converter
                 );
                 i += 1e-6;
             }
@@ -369,10 +415,11 @@ fn energy_is_right(natoms: usize) {
 fn mk_water(natoms: usize) -> Water {
     let radius = 2.0 * (natoms as f64).powf(1.0 / 3.0) * units::SIGMA;
     let radius = 5.0 * radius;
-    Water::from(WaterParams { N: natoms, radius })
+    Water::from(WaterParams { N: natoms, radius }) // Sets params
 }
 
 #[test]
 fn init_water() {
     mk_water(50);
 }
+
