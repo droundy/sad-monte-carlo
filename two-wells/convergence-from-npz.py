@@ -116,8 +116,9 @@ z_filter = lambda fname: 'z+' in fname
 tem_filter = lambda fname: 'tem+' in fname
 seed_filter = lambda fname: 'seed-1+' in fname
 step_filter = lambda fname, step: 'de-1e-05+step-'+str(step) in fname
+suffix_filter = lambda fname: 'diag' in fname or 'plt' in fname
 step = 0.01
-total_filter = lambda fname: (step_filter(fname, step) or z_filter(fname) or tem_filter(fname)) and seed_filter(fname)
+total_filter = lambda fname: (step_filter(fname, step) or z_filter(fname) or tem_filter(fname)) and seed_filter(fname) and suffix_filter(fname)
 for fname in filter(total_filter, paths):
     print(fname)
     tail = fname[:fname.find('seed')]
@@ -125,10 +126,46 @@ for fname in filter(total_filter, paths):
     i= fname.find('seed') + b.find('+')
     front = fname[i:]
 
-
-
     results = Results()
     for seed in [1, 12, 123, 1234, 12345, 123456, 1234567, 12345678]:
+        if seed == 12 and not tem_filter(tail):
+            method = os.path.split(fname)[-1].split('+')[0]
+            print(method)
+            if method == 'itwl':
+                label = r'$1/t$-WL' + r'-$E_{barr}$=0.'+styles.get_barrier(base)[0]
+            if method == 'sad':
+                label = r'SAD' + r'-$E_{barr}$=0.'+styles.get_barrier(base)[0]
+            if method == 'z':
+                label = r'ZMC' + r'-$E_{barr}$=0.'+styles.get_barrier(base)[0]
+            if method == 'tem':
+                label = r'TEM' + r'-$E_{barr}$=0.'+styles.get_barrier(base)[0]
+            fname = tail + 'seed-' + str(seed) + front
+            data = np.load(fname)
+            for k in data.keys():
+                print(k)
+            E = data['E']
+            error_dist = data['error_dist_S']
+            plt.figure('Entropy error distribution')
+            plt.plot(E, error_dist,
+                        label=label, 
+                        marker = styles.marker(base),
+                        color = styles.color(base), 
+                        linestyle= styles.linestyle(base), 
+                        markevery=75)
+            plt.figure('Canonical error incorrect peak')
+            plt.plot(data['E_dist'], data['can_error_low_T'],
+                        label=label, 
+                        marker = styles.marker(base),
+                        color = styles.color(base), 
+                        linestyle= styles.linestyle(base), 
+                        markevery=75)
+            plt.figure('Canonical error phase transition')
+            plt.plot(data['E_dist'], data['can_error_high_t'],
+                        label=label, 
+                        marker = styles.marker(base),
+                        color = styles.color(base), 
+                        linestyle= styles.linestyle(base), 
+                        markevery=75)
         seed = str(seed)
         try:
             base = fname[:-4]
