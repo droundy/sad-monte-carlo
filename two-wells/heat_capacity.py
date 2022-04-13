@@ -15,12 +15,7 @@ def canonical(T, S_func):
     E = 0.5*(E[1:] + E[:-1])
     dE = E[1] - E[0]
 
-    def normalize_S(S):
-        S = S - max(S)
-        total = np.sum(np.exp(S)*dE)
-        return S - np.log(total)
-
-    S = normalize_S(S_func(E))
+    S = S_func(E)
 
     S_minus_E = S-E/T
     M = np.max(S_minus_E)
@@ -38,11 +33,6 @@ def C(T, S):#T is a temperature and S is an entropy function
     E = np.linspace(-system.h_small, 0, 10000)
     E = 0.5*(E[1:] + E[:-1])
     dE = E[1] - E[0]
-
-    def normalize_S(S):
-        S = S - max(S)
-        total = np.sum(np.exp(S)*dE)
-        return S - np.log(total)
 
     S = S(E) # normalize_S(S(E))
 
