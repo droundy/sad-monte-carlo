@@ -65,7 +65,6 @@ for fname in sorted(glob.glob(os.path.join('thesis-data', '*+'+system.system+'*-
 
 def generate_npz(fname):
     print(fname)
-    start_fname = time.process_time()
     base = fname[:-8]
     if os.path.exists(fname+'diag.npz'):
         pass
@@ -134,7 +133,6 @@ def generate_npz(fname):
 
 def generate_npz_tempering(fname):
     print(fname)
-    start_fname = time.process_time()
     base = fname[:-1]
     if os.path.exists(fname+'.npz'):
         return
