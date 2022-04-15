@@ -30,7 +30,7 @@ def canonical(T, S_func):
 
 def C(T, S):#T is a temperature and S is an entropy function
     # start = time.process_time()
-    E = np.linspace(-system.h_small, 0, 10000)
+    E = np.linspace(-system.h_small, 0, 5000)
     E = 0.5*(E[1:] + E[:-1])
     dE = E[1] - E[0]
 
@@ -105,12 +105,12 @@ def C_vector(T, S):#T is an array of temperatures and S is an entropy function
 
 def _set_temperatures(ax=None, axins=None, Tmax=0.25):
     T_width = T_peak/2 # this is just a guess
-    t_low = np.linspace(T_peak/50,T_peak - T_width,1000)
-    t_peak = np.linspace(T_peak - T_width,T_peak + T_width,1500)
+    t_low = np.linspace(T_peak/50,T_peak - T_width,100)
+    t_peak = np.linspace(T_peak - T_width,T_peak + T_width,450)
     if axins is not None:
         axins.set_xlim(0, T_peak + T_width+0.005)
         axins.set_ylim(5, 27)
-    t_high = np.linspace(T_peak + T_width,Tmax, 2000)
+    t_high = np.linspace(T_peak + T_width,Tmax, 100)
     if ax is not None:
         ax.set_xlim(0,max(t_high))
         ax.set_ylim(0, 30)
