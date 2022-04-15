@@ -117,8 +117,9 @@ tem_filter = lambda fname: 'tem+' in fname
 seed_filter = lambda fname: 'seed-1+' in fname
 step_filter = lambda fname, step: 'de-1e-05+step-'+str(step) in fname
 suffix_filter = lambda fname: 'diag' in fname or 'plt' in fname
+barrier1_filter = lambda fname: 'barrier-1+' not in fname and 'barrier-1-small' not in fname
 step = 0.01
-total_filter = lambda fname: (step_filter(fname, step) or z_filter(fname) or tem_filter(fname)) and seed_filter(fname) and suffix_filter(fname)
+total_filter = lambda fname: (step_filter(fname, step) or z_filter(fname) or tem_filter(fname)) and seed_filter(fname) and suffix_filter(fname) and barrier1_filter(fname)
 for fname in filter(total_filter, paths):
     print(fname)
     tail = fname[:fname.find('seed')]
