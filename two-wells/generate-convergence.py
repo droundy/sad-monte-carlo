@@ -60,12 +60,10 @@ for fname in sorted(glob.glob(os.path.join('thesis-data', '*+'+system.system+'*-
         elif 'z+' in fname:
             paths.append(fname)
         else:
-            #paths.append(fname)
-            pass
+            paths.append(fname)
 
 def generate_npz(fname):
     print(fname)
-    start_fname = time.process_time()
     base = fname[:-8]
     if os.path.exists(fname+'diag.npz'):
         pass
@@ -77,14 +75,6 @@ def generate_npz(fname):
     l_function, eee, sss = compute.linear_entropy(energy_boundaries, mean_e, my_lnw)
     S = normalize_S(l_function(E))
 
-    canonical_dist_low_T, E_dist= heat_capacity.canonical(0.0107, l_function)
-    canonical_dist_high_T, E_dist= heat_capacity.canonical(0.0108, l_function)
-    actual_canonical_low_T, E_dist = heat_capacity.canonical(0.0107, system.S)
-    actual_canonical_high_T, E_dist = heat_capacity.canonical(0.0108, system.S)
-
-    can_error_low_T = canonical_dist_low_T - actual_canonical_low_T
-    can_error_high_t = canonical_dist_high_T - actual_canonical_high_T
-    error_dist_S = correct_S - normalize_S(l_function(E))
 
     T,C = heat_capacity.data(l_function, fname=fname)
 
@@ -110,10 +100,9 @@ def generate_npz(fname):
         moves.append(frame_moves)
         err = np.max(np.abs(normalize_S(l_function(E[indices_for_err])) - correct_S_for_err))
         errors_S.append(err)
-        T,C = heat_capacity.data(l_function, fname=fname)
-        C_mask = [t>=lowest_interestng_T for t in T]
-        assert(len(correct_C) == len(C))
-        errors_C.append(np.max(np.abs(correct_C[C_mask]-C[C_mask])))
+        T_conv,C_conv = heat_capacity.data(l_function, fname=fname)
+        C_mask = [t>=lowest_interestng_T for t in T_conv]
+        errors_C.append(np.max(np.abs(correct_C[C_mask]-C_conv[C_mask])))
 
     
     np.savez(os.path.join(base)+'diag.npz',
@@ -126,15 +115,10 @@ def generate_npz(fname):
                             C=C,
                             moves=moves,
                             errors_S=errors_S,
-                            errors_C=errors_C,
-                            error_dist_S=error_dist_S,
-                            can_error_low_T=can_error_low_T,
-                            can_error_high_t=can_error_high_t,
-                            E_dist=E_dist)
+                            errors_C=errors_C)
 
 def generate_npz_tempering(fname):
     print(fname)
-    start_fname = time.process_time()
     base = fname[:-1]
     if os.path.exists(fname+'.npz'):
         return
@@ -170,5 +154,5 @@ def generate_npz_tempering(fname):
 from multiprocessing import Pool
 
 if __name__ == '__main__':
-    with Pool(16) as p:
+    with Pool(8) as p:
         p.map(generate_npz, list(paths))
